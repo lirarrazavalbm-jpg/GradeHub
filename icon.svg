@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Versión geométrica del logo de GradeHub: tres placas isométricas apiladas.
+       Debe leerse igual que icon-512.png a tamaño de favicon. -->
+  <defs>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2f6f8"/>
+      <stop offset="1" stop-color="#b9c6cc"/>
+    </linearGradient>
+    <linearGradient id="mid" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6fe3d2"/>
+      <stop offset="1" stop-color="#2dd4bf"/>
+    </linearGradient>
+    <linearGradient id="bot" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b8cf0"/>
+      <stop offset="1" stop-color="#5b5bd6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#0a0e14"/>
+  <!-- placa inferior -->
+  <path d="M256 330 L104 258 L256 186 L408 258 Z" fill="url(#bot)" opacity=".9"/>
+  <!-- placa media -->
+  <path d="M256 286 L104 214 L256 142 L408 214 Z" fill="url(#mid)" opacity=".92"/>
+  <!-- placa superior -->
+  <path d="M256 242 L104 170 L256 98 L408 170 Z" fill="url(#top)"/>
+</svg>
