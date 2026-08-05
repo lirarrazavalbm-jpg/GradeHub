@@ -1060,8 +1060,11 @@ const MALLA={
 const TENANTS={
   fen:{name:'U. de Chile · FEN', short:'FEN', mono:'FEN', sub:'Economía y Negocios'},
   uc :{name:'U. Católica · Ingeniería', short:'UC', mono:'UC', sub:'Ingeniería'},
-  uai:{name:'U. Adolfo Ibáñez', short:'UAI', mono:'UAI', sub:'Todas las carreras'},
-  uandes:{name:'U. de los Andes', short:'UANDES', mono:'UA', sub:'Todas las carreras'},
+  // oculto:true → no se ofrece al elegir universidad, pero sigue funcionando
+  // completo (tema, carreras, presets) para quien ya lo tenga seleccionado.
+  // Quitar la marca cuando se quiera lanzar.
+  uai:{name:'U. Adolfo Ibáñez', short:'UAI', mono:'UAI', sub:'Todas las carreras', oculto:true},
+  uandes:{name:'U. de los Andes', short:'UANDES', mono:'UA', sub:'Todas las carreras', oculto:true},
 };
 
 // ─── GLIFOS DE UNIVERSIDAD ───────────────────────────────────────────────────
@@ -1177,6 +1180,12 @@ const THEME_FALLBACK=THEMES.fen;
 
 function themeFor(t){return THEMES[t]||THEME_FALLBACK;}
 
+// Universidades que se ofrecen al elegir. Una oculta sigue apareciendo si el
+// estudiante ya la tiene seleccionada, para no dejarlo sin su opción actual.
+function tenantsVisibles(actual){
+  return Object.entries(TENANTS).filter(([code,cfg])=>!cfg.oculto||code===actual);
+}
+
 // Escribe el tema como CSS custom properties en :root. Todos los componentes leen
 // de esas variables, así que no hay condicionales de tenant repartidos por el código.
 let _activeTheme='fen';
@@ -1256,7 +1265,7 @@ function selectTenant(t){
 }
 function renderTenantPick(){
   const g=document.getElementById('tenant-grid');if(!g)return;g.innerHTML='';
-  Object.entries(TENANTS).forEach(([code,cfg])=>{
+  tenantsVisibles(selectedTenant).forEach(([code,cfg])=>{
     const b=document.createElement('button');
     b.className='tenant-opt'+(code===selectedTenant?' sel':'');
     b.style.setProperty('--tb',themeFor(code).primary);
@@ -3072,7 +3081,7 @@ function openSettings(){
   // Solo se persiste al tocar "Guardar cambios".
   function renderSettingsTenantGrid(){
     const g=document.getElementById('s-tenant-grid');if(!g)return;g.innerHTML='';
-    Object.entries(TENANTS).forEach(([code,cfg])=>{
+    tenantsVisibles(settingsTenant).forEach(([code,cfg])=>{
       const b=document.createElement('button');
       b.className='s-tenant-btn'+(code===settingsTenant?' sel':'');
       // Solo punto de color + sigla: el glifo acá sería redundante con el texto
