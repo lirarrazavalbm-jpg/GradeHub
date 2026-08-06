@@ -1,5 +1,13 @@
 // ─── ANALYTICS ───────────────────────────────────────────────────────────────
-function track(event, params){try{if(typeof gtag==='function')gtag('event',event,params||{});}catch(e){}}
+// Google Analytics 4. El script va en index.html; si no cargó, esto no hace nada.
+//
+// REGLA: acá NUNCA van datos del usuario. Ni notas, ni nombres de ramos o
+// evaluaciones, ni nada que escriba él. Solo conteos, banderas y el tenant.
+// Queremos saber si la app se usa, no qué le fue mal a quién.
+// tests/analitica.test.js falla si alguien manda una clave prohibida.
+function track(event, params){
+  try{ if(typeof gtag==='function') gtag('event', event, params||{}); }catch(e){}
+}
 
 // ─── STORAGE ─────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'gradehub_v1';
@@ -1199,7 +1207,7 @@ function openRamo(id){
   ['nav-home','nav-stats','nav-agenda'].forEach(n=>document.getElementById(n).classList.remove('active'));
   document.getElementById('screen-ramo').classList.add('active');
   const r=S.ramos.find(x=>x.id===id);
-  track('view_ramo',{ramo:r?.nombre});
+  track('view_ramo',{del_catalogo:!!(r&&r.origen)});
   renderRamo();
 }
 function renderRamo(){
@@ -1752,7 +1760,7 @@ async function enviarReporte(ramoId){
       nota:(notaEl&&notaEl.value.trim())||null,
     },{onConflict:'user_id,tenant,carrera,ramo_norm'});
     if(error)throw error;
-    track('reporte_catalogo',{ramo:r.nombre});
+    track('reporte_catalogo',{tenant:S.tenant});
     closeModal();
     showToast('Gracias \u00b7 tu reporte qued\u00f3 registrado');
   }catch(e){
@@ -1948,7 +1956,7 @@ function confirmAddCat(){
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;
   const r=S.ramos.find(x=>x.id===currentRamoId);
   r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,notas:[]});
-  save();track('add_categoria',{nombre:name,peso,tiene_fecha:!!fecha});closeModal();renderRamo();
+  save();track('add_categoria',{peso,tiene_fecha:!!fecha});closeModal();renderRamo();
 }
 
 // ─── PAUTA MANUAL ───────────────────────────────────────────────────────────
@@ -2092,7 +2100,7 @@ function confirmAddNota(catId){
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
   cat.notas.push({id:uid(),nombre:name,valor:val,peso});
-  openCats[catId]=true;save();track('add_nota',{valor:val,ponderada:usaPond});closeModal();renderRamo();showToast(lecturaDespuesDeNota(r));
+  openCats[catId]=true;save();track('add_nota',{ponderada:usaPond});closeModal();renderRamo();showToast(lecturaDespuesDeNota(r));
 }
 
 // ─── MENÚ DE USUARIO ─────────────────────────────────────────────────────────

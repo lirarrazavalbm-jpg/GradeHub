@@ -55,6 +55,16 @@
 }
 </script>
 
+<!-- Analítica: Google Analytics 4. Nunca le mandamos notas ni nombres de ramos
+     — ver la regla en track(), app.js. El ID sale de GA → Admin → Flujos de datos. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-TS791S6PDM"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-TS791S6PDM');
+</script>
+
 <!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="stylesheet" href="styles.css"/>
