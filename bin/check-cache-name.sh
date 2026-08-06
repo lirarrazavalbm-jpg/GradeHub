@@ -17,8 +17,13 @@ fi
 
 # Lo commiteado contra la base, MÁS lo que todavía está sin commitear. Sin esto
 # la guarda da un falso OK justo cuando más se usa: a mano, antes de commitear.
-cambios=$( { git diff --name-only "$BASE"...HEAD -- index.html app.js data.js styles.css
-             git diff --name-only HEAD          -- index.html app.js data.js styles.css
+# La lista de archivos sale del SHELL de sw.js, no de una lista aparte: cuando
+# el refactor agregó engine.js y render-agenda.js, una lista fija se quedó
+# atrás en silencio y dejó pasar un cambio sin bump.
+VIGILADOS=$(grep -oE "'/[a-zA-Z0-9._-]+\.(js|css|html)'" sw.js | tr -d "'/" | grep -v '^sw\.js$' | sort -u | tr '\n' ' ')
+
+cambios=$( { git diff --name-only "$BASE"...HEAD -- $VIGILADOS
+             git diff --name-only HEAD          -- $VIGILADOS
            } | sort -u )
 if [ -z "$cambios" ]; then
   echo "Sin cambios en la app: no hace falta subir el CACHE_NAME."
