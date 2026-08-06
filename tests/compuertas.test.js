@@ -156,6 +156,14 @@ if(pendientesSct.length===1&&pendientesSct[0]===ppaSinCreditos){ok++;console.log
 else {fail++;console.log('  FAIL créditos pendientes → '+pendientesSct.length);}
 eq('historial archivado vacío', ctx.ultimoHistorialConGpa([]), null);
 
+console.log('\n=== Onboarding · carga flexible ===');
+eq('el último paso llena la barra', ctx.obProgressPct(5), 100);
+const obDatos={nombre:'Antonia',tenant:'fen',carrera:'ING',semestre:2};
+if(ctx.obStepValid(1,obDatos)&&ctx.obStepValid(2,obDatos)&&ctx.obStepValid(3,obDatos)&&ctx.obStepValid(4,obDatos)&&ctx.obStepValid(5,obDatos)){ok++;console.log('  OK   cada paso valida su propio dato');}
+else {fail++;console.log('  FAIL validación de pasos del onboarding');}
+if(!ctx.obStepValid(1,{tenant:'fen'})&&!ctx.obStepValid(2,{nombre:'Antonia'})&&!ctx.obStepValid(3,{tenant:'fen'})&&!ctx.obStepValid(4,{carrera:'ING'})&&ctx.obStepValid(5,{})){ok++;console.log('  OK   ramos sugeridos no son obligatorios');}
+else {fail++;console.log('  FAIL cada paso debería ser independiente');}
+
 console.log('\n=== Agenda · guía y foco ===');
 vm.runInContext("S={ramos:[{id:'agenda',nombre:'Ramo agenda',color:'#2563eb',categorias:[{id:'sin-fecha',nombre:'Control sin fecha',peso:20,notas:[]},{id:'rendida',nombre:'Control rendido',peso:20,notas:[{id:'n',valor:5,peso:1}]}]}]};", ctx);
 if(ctx.agendaSinFecha().length===1&&ctx.agendaSinFecha()[0].cat.id==='sin-fecha'){ok++;console.log('  OK   guía solo evaluaciones pendientes sin fecha');}
