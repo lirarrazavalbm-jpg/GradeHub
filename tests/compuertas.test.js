@@ -143,6 +143,19 @@ const historialReciente=ctx.ultimoHistorialConGpa([{label:'2026-1',gpa:5.4},{lab
 if(historialReciente&&historialReciente.label==='2026-1'){ok++;console.log('  OK   compara contra el último semestre archivado');}
 else {fail++;console.log('  FAIL último historial → '+JSON.stringify(historialReciente));}
 
+console.log('\n=== PPA · comparación y créditos pendientes ===');
+eq('PPA sin ramos', ctx.gpa([]), null);
+const ppaUnRamo=gestion(5.0,5.0,5.0,5.0);
+eq('PPA con un ramo', ctx.gpa([ppaUnRamo]), 5.0);
+const ppaConCreditos=gestion(4.0,4.0,4.0,4.0);
+const ppaSinCreditos=gestion(6.0,6.0,6.0,6.0);ppaSinCreditos.creditos=undefined;
+eq('PPA mezcla SCT usa promedio simple', ctx.gpa([ppaConCreditos,ppaSinCreditos]), 5.0);
+const sinNotaSinCreditos=gestion(null,null,null,null);sinNotaSinCreditos.creditos=undefined;
+const pendientesSct=ctx.ramosSinCreditosParaPpa([ppaConCreditos,ppaSinCreditos,sinNotaSinCreditos]);
+if(pendientesSct.length===1&&pendientesSct[0]===ppaSinCreditos){ok++;console.log('  OK   solo pide SCT de ramos ya evaluados');}
+else {fail++;console.log('  FAIL créditos pendientes → '+pendientesSct.length);}
+eq('historial archivado vacío', ctx.ultimoHistorialConGpa([]), null);
+
 console.log('\n=== Agenda · guía y foco ===');
 vm.runInContext("S={ramos:[{id:'agenda',nombre:'Ramo agenda',color:'#2563eb',categorias:[{id:'sin-fecha',nombre:'Control sin fecha',peso:20,notas:[]},{id:'rendida',nombre:'Control rendido',peso:20,notas:[{id:'n',valor:5,peso:1}]}]}]};", ctx);
 if(ctx.agendaSinFecha().length===1&&ctx.agendaSinFecha()[0].cat.id==='sin-fecha'){ok++;console.log('  OK   guía solo evaluaciones pendientes sin fecha');}
