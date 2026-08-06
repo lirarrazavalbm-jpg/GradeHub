@@ -187,6 +187,14 @@ const historialReciente=ctx.ultimoHistorialConGpa([{label:'2026-1',gpa:5.4},{lab
 if(historialReciente&&historialReciente.label==='2026-1'){ok++;console.log('  OK   compara contra el último semestre archivado');}
 else {fail++;console.log('  FAIL último historial → '+JSON.stringify(historialReciente));}
 
+console.log('\n=== Lectura después de ingresar una nota ===');
+const lecturaRamo={id:'lectura',categorias:[
+  {id:'ya',peso:50,notas:[{id:'n',valor:3.0,peso:1}]},
+  {id:'falta',peso:50,notas:[]}
+],gates:[]};
+if(ctx.lecturaDespuesDeNota(lecturaRamo).includes('necesitas 5.0')){ok++;console.log('  OK   explica la nota necesaria en lo pendiente');}
+else {fail++;console.log('  FAIL lectura post-nota → '+ctx.lecturaDespuesDeNota(lecturaRamo));}
+
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));
 if (act.length === 1 && act[0].grupo === true && Math.abs(act[0].actual - 3.0) < 0.01) { ok++; console.log('  OK   detecta el grupal en 3.0'); }
