@@ -2122,6 +2122,23 @@ function showConfirm(title,desc,fn,opts){
 }
 function closeConfirm(){document.getElementById('confirm-overlay').classList.remove('open');}
 
+// Cobertura real del semestre: contar notas no dice cuánto del ramo ya está
+// decidido. Esta métrica usa las ponderaciones de las evaluaciones rendidas.
+function avanceEvaluaciones(ramos){
+  let total=0,evaluado=0;
+  (ramos||[]).forEach(r=>(r.categorias||[]).forEach(c=>{
+    const peso=Number(c.peso)||0;
+    total+=peso;
+    if(avgPond(c.notas)!==null)evaluado+=peso;
+  }));
+  return {total,evaluado,pct:total>0?Math.round(evaluado/total*100):0};
+}
+// confirmArchiveSemester agrega lo más reciente al inicio; nunca usar el último
+// elemento del array para comparar el semestre actual.
+function ultimoHistorialConGpa(historial){
+  return (historial||[]).find(h=>h&&typeof h.gpa==='number')||null;
+}
+
 function renderStats(){
   const body=document.getElementById('stats-body');const g=gpa(S.ramos);
   const heroTitle=document.getElementById('stats-hero-title');
@@ -2160,7 +2177,27 @@ function renderStats(){
       <div class="ag-empty-desc">Cuando agregues tus primeras notas, acá vas a ver tu promedio, ramos aprobados, mejores y peores notas, y todo el histórico.</div>
     </div>`;
   } else {
+    const avance=avanceEvaluaciones(S.ramos);
+    const previo=ultimoHistorialConGpa(S.historial);
+    const diff=previo&&g!==null?g-previo.gpa:null;
+    const tendencia=diff===null?'':Math.abs(diff)<0.05?'igual que':diff>0?'sobre':'bajo';
+    const lectura=diff===null
+      ? `${avance.pct}% del semestre ya tiene nota.`
+      : Math.abs(diff)<0.05?`Vas igual que en ${previo.label||'el semestre anterior'}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${tendencia} ${previo.label||'el semestre anterior'}.`;
+    const detalle=diff===null
+      ? `${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''} · ${avance.evaluado}% del peso evaluado`
+      : `Promedio actual ${nf(g)} · antes ${nf(previo.gpa)} · ${avance.pct}% evaluado`;
     html+=`
+    <div class="section-hd" style="padding:6px 20px 8px;">
+      <span class="section-hd-title">Lectura del semestre</span>
+      <span class="ag-count">${avance.pct}%</span>
+    </div>
+    <div class="stat-card" style="margin:0 20px 16px;">
+      <div class="stat-label">Avance de evaluaciones</div>
+      <div class="stat-val" style="color:var(--primary);margin-top:4px;">${avance.pct}%</div>
+      <div class="stat-sub" style="margin-top:6px;">${lectura}</div>
+      <div class="stat-sub" style="margin-top:4px;">${detalle}</div>
+    </div>
     <div class="section-hd" style="padding:6px 20px 8px;">
       <span class="section-hd-title">Resumen</span>
     </div>
