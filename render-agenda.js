@@ -17,6 +17,27 @@ function abrirFechaAgenda(item){
   setTimeout(()=>openEditCatModal(item.cat.id),320);
 }
 
+// La agenda ya ordena por urgencia, peso y riesgo. Esta capa convierte el
+// primer resultado en una decisión sencilla, para que abrir la app responda
+// de inmediato "¿por dónde parto?" sin inventar un plan de estudio.
+function focoAgendaCopy(e){
+  if(e.dias<0)return 'Quedó pendiente. Registra la nota o revisa qué pasó antes de seguir.';
+  if(e.dias===0)return 'Es hoy. Revisa lo esencial y llega con lo importante resuelto.';
+  if(e.dias<=2)return `Faltan ${e.dias} día${e.dias!==1?'s':''}: es lo que más te conviene atender ahora.`;
+  if(e.necesita!==null&&e.necesita>5.0)return `Te exige ${nf(e.necesita)} en lo pendiente para aprobar: adelántate.`;
+  return `${cuandoTexto(e.dias)} · combina cercanía, peso y cómo vas en el ramo.`;
+}
+
+function focoAgendaHTML(e){
+  if(!e)return '';
+  return `<button class="ag-focus" onclick="openRamo('${esc(e.ramo.id)}')">
+    <span class="ag-focus-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2-9 12h7l-1 8 9-12h-7z"/></svg> Tu foco ahora</span>
+    <span class="ag-focus-main"><strong>${esc(e.cat.nombre)}</strong><small><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)} · ${r2(e.cat.peso||0)}%</small></span>
+    <span class="ag-focus-copy">${focoAgendaCopy(e)}</span>
+    <span class="ag-focus-action">Ver evaluación <span aria-hidden="true">›</span></span>
+  </button>`;
+}
+
 function renderAgenda(){
   const body=document.getElementById("agenda-body");if(!body)return;
   const events=agendaEvents();
@@ -82,6 +103,7 @@ function renderAgenda(){
     </button>`;
   }
   if(pendientes.length>0){
+    html+=focoAgendaHTML(pendientes[0]);
     const ramosVistos=new Set();
     pendientes.forEach(e=>{
       e.mostrarAlerta=!ramosVistos.has(e.ramo.id);

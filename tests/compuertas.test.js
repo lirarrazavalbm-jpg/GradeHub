@@ -195,6 +195,12 @@ const lecturaRamo={id:'lectura',categorias:[
 if(ctx.lecturaDespuesDeNota(lecturaRamo).includes('necesitas 5.0')){ok++;console.log('  OK   explica la nota necesaria en lo pendiente');}
 else {fail++;console.log('  FAIL lectura post-nota → '+ctx.lecturaDespuesDeNota(lecturaRamo));}
 
+console.log('\n=== Agenda · foco de estudio ===');
+if(ctx.focoAgendaCopy({dias:2,necesita:null}).includes('más te conviene atender ahora')){ok++;console.log('  OK   prioriza una evaluación cercana');}
+else {fail++;console.log('  FAIL foco agenda cercano');}
+if(ctx.focoAgendaCopy({dias:12,necesita:5.8}).includes('Te exige 5.8')){ok++;console.log('  OK   explica la exigencia académica');}
+else {fail++;console.log('  FAIL foco agenda exigente');}
+
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));
 if (act.length === 1 && act[0].grupo === true && Math.abs(act[0].actual - 3.0) < 0.01) { ok++; console.log('  OK   detecta el grupal en 3.0'); }
