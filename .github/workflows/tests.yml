@@ -10,7 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # El chequeo de CACHE_NAME compara contra la base: necesita historial.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - run: npm test
+
+      - name: CACHE_NAME del service worker
+        if: github.event_name == 'pull_request'
+        run: bash bin/check-cache-name.sh origin/${{ github.base_ref }}
+
+  # Avisa que el token de Cloudflare sirve ANTES de mergear, en vez de
+  # descubrirlo cuando el deploy ya falló. No publica nada: solo lista proyectos.
+  credenciales:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: El token puede ver Cloudflare Pages
+        run: npx wrangler pages project list
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

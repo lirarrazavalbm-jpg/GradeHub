@@ -36,8 +36,15 @@ git for-each-ref --sort=-committerdate refs/remotes/origin \
 
 echo
 echo "=== PRs ABIERTOS ==="
-if command -v gh >/dev/null 2>&1; then
-  gh pr list --state open 2>/dev/null || echo "(gh sin auth: corre 'gh auth login')"
+# Los agentes corren con un PATH más pobre que la shell interactiva: si gh está
+# instalado por brew y no aparece, lo buscamos donde brew lo deja.
+GH=""
+if command -v gh >/dev/null 2>&1; then GH=gh
+elif [ -x /opt/homebrew/bin/gh ]; then GH=/opt/homebrew/bin/gh
+elif [ -x /usr/local/bin/gh ]; then GH=/usr/local/bin/gh
+fi
+if [ -n "$GH" ]; then
+  "$GH" pr list --state open 2>/dev/null || echo "(gh sin auth: corre 'gh auth login')"
 else
   echo "(gh no instalado: 'brew install gh' para ver los PRs acá)"
 fi
