@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# Repo público: cualquiera puede abrir un PR. El token solo necesita leer.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
