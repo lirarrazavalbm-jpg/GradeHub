@@ -171,6 +171,12 @@ else {fail++;console.log('  FAIL estado de pauta parcial → '+JSON.stringify(pa
 const pautaLista=ctx.estadoPauta([{peso:60},{peso:40}]);
 if(pautaLista.total===100&&pautaLista.lista){ok++;console.log('  OK   reconoce una pauta completa');}
 else {fail++;console.log('  FAIL pauta completa → '+JSON.stringify(pautaLista));}
+const plantillaSolemnes=ctx.plantillaPauta('tres-solemnes');
+if(plantillaSolemnes.map(f=>f.nombre).join('|')==='Solemne 1|Solemne 2|Solemne 3|Examen'&&plantillaSolemnes.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de solemnes deja todos los pesos pendientes');}
+else {fail++;console.log('  FAIL plantilla de solemnes → '+JSON.stringify(plantillaSolemnes));}
+const plantillaPruebas=ctx.plantillaPauta('dos-pruebas');
+if(plantillaPruebas.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Examen'&&plantillaPruebas.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de pruebas no inventa ponderaciones');}
+else {fail++;console.log('  FAIL plantilla de pruebas → '+JSON.stringify(plantillaPruebas));}
 const reglasGp=ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:{tenant:'fen'}});
 if(reglasGp.length===2&&reglasGp[0].includes('Eximición')){ok++;console.log('  OK   muestra reglas oficiales que el motor no calcula');}
 else {fail++;console.log('  FAIL reglas no calculadas → '+JSON.stringify(reglasGp));}
