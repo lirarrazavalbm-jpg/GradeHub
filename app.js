@@ -132,9 +132,33 @@ if(window.matchMedia){
 function chartColors(){return COLORS;}
 
 // Siguiente color sugerido: rota la paleta del tema evitando repetir si se puede
-function nextRamoColor(){
+// Color sugerido para un ramo. Primero su familia (ver FAMILIAS_COLOR en
+// data.js); si no calza, uno estable derivado del nombre, para que el mismo
+// ramo se vea igual en la app de dos compañeros. El estudiante puede cambiarlo
+// siempre — esto es solo el punto de partida.
+function colorDeFamilia(nombre){
+  const n=normName(nombre);
+  const f=FAMILIAS_COLOR.find(([re])=>re.test(n));
+  return f?f[1]:null;
+}
+function colorEstable(nombre){
+  const pal=chartColors();
+  const n=normName(nombre);
+  let h=0;
+  for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))>>>0;
+  return pal[h%pal.length];
+}
+function nextRamoColor(nombre){
   const pal=chartColors();
   const usados=new Set((S&&S.ramos?S.ramos:[]).map(r=>r.color));
+  if(nombre){
+    // La familia manda aunque repita color: dos ramos de matemáticas del mismo
+    // lima es informativo, no un choque.
+    const fam=colorDeFamilia(nombre);
+    if(fam)return fam;
+    const est=colorEstable(nombre);
+    if(!usados.has(est))return est;
+  }
   const libre=pal.find(c=>!usados.has(c));
   return libre||pal[(S&&S.ramos?S.ramos.length:0)%pal.length];
 }
@@ -1332,7 +1356,7 @@ function confirmAddMalla(){
   if(!elegidos.length)return;
   elegidos.forEach(n=>{
     const preset=presetRamo(n,S.tenant,S.carrera);
-    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
   });
   save();track('add_malla_ramos',{count:elegidos.length,carrera:S.carrera,sem:S.careerSemestre});
   closeModal();
@@ -1341,6 +1365,7 @@ function confirmAddMalla(){
 }
 
 function openAddRamoModal(){
+  _colorElegidoAMano=false;
   modalColor=nextRamoColor();
   const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0;
   const uni=(TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'';
@@ -1352,7 +1377,7 @@ function openAddRamoModal(){
       <div id="m-ramo-results" class="cat-results"></div>
       <div class="oauth-divider" style="margin:14px 0;"><span>o créalo tú</span></div>`:''}
     <label class="modal-label">Nombre del ramo</label>
-    <div class="modal-input"><input type="text" id="m-ramo-name" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-ramo-name" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off" oninput="sugerirColorPorNombre(this.value)"/></div>
     <label class="modal-label">Créditos <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(SCT — opcional)</span></label>
     <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-creditos" placeholder="Ej: 10" maxlength="3" autocomplete="off"/></div>
     <label class="modal-label">Color</label>
@@ -1404,7 +1429,7 @@ function addFromCatalog(nombre){
   const presetName=findPresetName(nombre,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   S.ramos.push({
-    id:uid(),nombre:presetName||nombre,color:nextRamoColor(),
+    id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
     creditos:(preset&&preset.creditos)||null,origen:origenActual(),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],
   });
@@ -1412,12 +1437,20 @@ function addFromCatalog(nombre){
   closeModal();renderHome();
   showToast(preset?'Agregado con sus ponderaciones':'Ramo agregado');
 }
+let _colorElegidoAMano=false;
 function renderModalColors(){
   const c=document.getElementById('m-colors');if(!c)return;c.innerHTML='';
   chartColors().forEach(col=>{
     const d=document.createElement('div');d.className='color-dot'+(col===modalColor?' sel':'');d.style.background=col;
-    d.onclick=()=>{modalColor=col;renderModalColors();};c.appendChild(d);
+    d.onclick=()=>{modalColor=col;_colorElegidoAMano=true;renderModalColors();};c.appendChild(d);
   });
+}
+// Mientras el estudiante escribe el nombre, el color sigue a la familia del
+// ramo. Deja de seguirlo en cuanto elige uno a mano: su decisión gana.
+function sugerirColorPorNombre(nombre){
+  if(_colorElegidoAMano)return;
+  const sug=nextRamoColor(nombre);
+  if(sug!==modalColor){modalColor=sug;renderModalColors();}
 }
 // Matching tolerante: ignora tildes y mayúsculas para encontrar el preset.
 function normName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
