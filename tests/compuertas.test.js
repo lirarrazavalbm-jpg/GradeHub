@@ -200,6 +200,9 @@ if(ctx.focoAgendaCopy({dias:2,necesita:null}).includes('más te conviene atender
 else {fail++;console.log('  FAIL foco agenda cercano');}
 if(ctx.focoAgendaCopy({dias:12,necesita:5.8}).includes('Te exige 5.8')){ok++;console.log('  OK   explica la exigencia académica');}
 else {fail++;console.log('  FAIL foco agenda exigente');}
+const cargaSemana=ctx.resumenSemanaAgenda([{dias:0,cat:{peso:20}},{dias:7,cat:{peso:30}},{dias:8,cat:{peso:50}}]);
+if(cargaSemana&&cargaSemana.cantidad===2&&cargaSemana.peso===50){ok++;console.log('  OK   resume la carga de los próximos siete días');}
+else {fail++;console.log('  FAIL resumen semanal → '+JSON.stringify(cargaSemana));}
 
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));

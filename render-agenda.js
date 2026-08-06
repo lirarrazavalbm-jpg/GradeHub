@@ -38,6 +38,23 @@ function focoAgendaHTML(e){
   </button>`;
 }
 
+function resumenSemanaAgenda(pendientes){
+  const semana=pendientes.filter(e=>e.dias>=0&&e.dias<=7);
+  if(!semana.length)return null;
+  const peso=r2(semana.reduce((total,e)=>total+(e.cat.peso||0),0));
+  return {cantidad:semana.length,peso};
+}
+
+function resumenSemanaHTML(pendientes){
+  const resumen=resumenSemanaAgenda(pendientes);
+  if(!resumen)return '';
+  const plural=resumen.cantidad!==1;
+  return `<div class="ag-weekly" role="status">
+    <span class="ag-weekly-icon" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg></span>
+    <span><strong>Próximos 7 días</strong><small>${resumen.cantidad} evaluación${plural?'es':''} · ${resumen.peso}% de ponderación acumulada</small></span>
+  </div>`;
+}
+
 function renderAgenda(){
   const body=document.getElementById("agenda-body");if(!body)return;
   const events=agendaEvents();
@@ -104,6 +121,7 @@ function renderAgenda(){
   }
   if(pendientes.length>0){
     html+=focoAgendaHTML(pendientes[0]);
+    html+=resumenSemanaHTML(pendientes);
     const ramosVistos=new Set();
     pendientes.forEach(e=>{
       e.mostrarAlerta=!ramosVistos.has(e.ramo.id);
