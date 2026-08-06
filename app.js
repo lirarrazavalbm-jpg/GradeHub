@@ -2157,6 +2157,23 @@ function showConfirm(title,desc,fn,opts){
 }
 function closeConfirm(){document.getElementById('confirm-overlay').classList.remove('open');}
 
+// Cobertura real del semestre: contar notas no dice cuánto del ramo ya está
+// decidido. Esta métrica usa las ponderaciones de las evaluaciones rendidas.
+function avanceEvaluaciones(ramos){
+  let total=0,evaluado=0;
+  (ramos||[]).forEach(r=>(r.categorias||[]).forEach(c=>{
+    const peso=Number(c.peso)||0;
+    total+=peso;
+    if(avgPond(c.notas)!==null)evaluado+=peso;
+  }));
+  return {total,evaluado,pct:total>0?Math.round(evaluado/total*100):0};
+}
+// confirmArchiveSemester agrega lo más reciente al inicio; nunca usar el último
+// elemento del array para comparar el semestre actual.
+function ultimoHistorialConGpa(historial){
+  return (historial||[]).find(h=>h&&typeof h.gpa==='number')||null;
+}
+
 function renderStats(){
   const body=document.getElementById('stats-body');const g=gpa(S.ramos);
   const heroTitle=document.getElementById('stats-hero-title');
@@ -2195,13 +2212,29 @@ function renderStats(){
       <div class="ag-empty-desc">Cuando agregues tus primeras notas, acá vas a ver tu promedio, ramos aprobados, mejores y peores notas, y todo el histórico.</div>
     </div>`;
   } else {
+    const avance=avanceEvaluaciones(S.ramos);
+    const previo=ultimoHistorialConGpa(S.historial);
+    const diff=previo&&g!==null?g-previo.gpa:null;
+    const trend=diff===null?'':Math.abs(diff)<0.05?'igual que':diff>0?'sobre':'bajo';
+    const insightTitle=diff===null
+      ? `${avance.pct}% del semestre ya tiene nota.`
+      : Math.abs(diff)<0.05?`Vas igual que en ${previo.label||'el semestre anterior'}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${trend} ${previo.label||'el semestre anterior'}.`;
+    const insightMeta=diff===null
+      ? `${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''} · ${avance.evaluado}% del peso evaluado`
+      : `Promedio actual ${nf(g)} · antes ${nf(previo.gpa)} · ${avance.pct}% evaluado`;
     html+=`
+    <div class="stats-insight ${diff!==null&&diff<-.05?'down':diff!==null&&diff>.05?'up':''}">
+      <div class="stats-insight-top"><span class="stats-insight-kicker">Lectura del semestre</span><span class="stats-insight-pct">${avance.pct}%</span></div>
+      <div class="stats-insight-title">${insightTitle}</div>
+      <div class="stats-insight-meta">${insightMeta}</div>
+      <div class="stats-insight-track" aria-label="${avance.pct}% del peso de evaluaciones rendido"><span style="width:${avance.pct}%"></span></div>
+    </div>
     <div class="section-hd" style="padding:6px 20px 8px;">
       <span class="section-hd-title">Resumen</span>
     </div>
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-icon-wrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></div><div class="stat-label">Promedio</div><div class="stat-val" style="color:${getColor(g)}">${g!==null?nf(g):'—'}</div><div class="stat-sub">${gpaMode(S.ramos)==='creditos'?`ponderado · ${creditosConNota(S.ramos)} créditos`:`simple · ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`}</div></div>
-      <div class="stat-card"><div class="stat-icon-wrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div><div class="stat-label">Notas</div><div class="stat-val">${totalNotas}</div><div class="stat-sub">ingresadas</div></div>
+      <div class="stat-card"><div class="stat-icon-wrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20V8"/></svg></div><div class="stat-label">Avance</div><div class="stat-val">${avance.pct}%</div><div class="stat-sub">${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}</div></div>
       <div class="stat-card"><div class="stat-icon-wrap stat-icon-good"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/></svg></div><div class="stat-label">Sólidos</div><div class="stat-val" style="color:${ramosAprobados>0?'var(--green)':'var(--fg3)'}">${ramosAprobados}</div><div class="stat-sub">promedio ≥ 5.0</div></div>
       <div class="stat-card"><div class="stat-icon-wrap ${ramosReprobados>0?'stat-icon-bad':'stat-icon-warn'}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div><div class="stat-label">Por mejorar</div><div class="stat-val" style="color:${ramosReprobados>0?'var(--red)':ramosEnRiesgo>0?'var(--yellow)':'var(--fg3)'}">${ramosReprobados+ramosEnRiesgo}</div><div class="stat-sub">${ramosReprobados>0?ramosReprobados+' bajo 4.0':'entre 4.0 y 5.0'}</div></div>
     </div>

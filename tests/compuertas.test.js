@@ -178,6 +178,15 @@ const pendientesFecha=ctx.agendaSinFecha();
 if(pendientesFecha.length===1&&pendientesFecha[0].cat.id==='sin-fecha'){ok++;console.log('  OK   sugiere solo evaluaciones pendientes sin fecha');}
 else {fail++;console.log('  FAIL agendaSinFecha → '+JSON.stringify(pendientesFecha));}
 
+console.log('\n=== Estadísticas · avance y tendencia ===');
+const cobertura=ctx.avanceEvaluaciones([{categorias:[
+  {peso:30,notas:[{valor:5.0,peso:1}]},{peso:70,notas:[]}
+]}]);
+eq('avance usa el peso de evaluaciones rendidas', cobertura.pct, 30);
+const historialReciente=ctx.ultimoHistorialConGpa([{label:'2026-1',gpa:5.4},{label:'2025-2',gpa:4.8}]);
+if(historialReciente&&historialReciente.label==='2026-1'){ok++;console.log('  OK   compara contra el último semestre archivado');}
+else {fail++;console.log('  FAIL último historial → '+JSON.stringify(historialReciente));}
+
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));
 if (act.length === 1 && act[0].grupo === true && Math.abs(act[0].actual - 3.0) < 0.01) { ok++; console.log('  OK   detecta el grupal en 3.0'); }
