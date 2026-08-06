@@ -310,6 +310,14 @@ function avgDeGrupo(r,catIds){
   });
   return den>0?num/den:null;
 }
+// Una compuerta de grupo evalúa el promedio final del bloque. Mientras falte
+// una de sus categorías, el promedio parcial todavía puede cambiar y no debe
+// topar la nota del ramo.
+function grupoCompleto(r,catIds){
+  const set=new Set(catIds||[]);
+  const cats=(r.categorias||[]).filter(c=>set.has(c.id));
+  return cats.length>0&&cats.every(c=>avgPond(c.notas)!==null);
+}
 
 // ramoAvg pasa por el motor y luego aplica los pisos de nota del ramo.
 // Dos tipos de compuerta:
@@ -328,7 +336,7 @@ function ramoAvg(r){
         if(node && node.value!==null && node.value < g.min) v=Math.min(v,g.cap);
       } else if(g.type==='group_min'){
         const ga=avgDeGrupo(r,g.catIds);
-        if(ga!==null && ga < g.min){
+        if(grupoCompleto(r,g.catIds)&&ga!==null && ga < g.min){
           const tope=(g.cap==='self')?ga:g.cap;
           v=Math.min(v,tope);
         }
@@ -349,7 +357,7 @@ function gatesActivas(r){
       if(a!==null&&a<g.min)out.push({nombre:g.nombre||c.nombre,actual:a,min:g.min,cap:g.cap});
     } else if(g.type==='group_min'){
       const ga=avgDeGrupo(r,g.catIds);
-      if(ga!==null&&ga<g.min){
+      if(grupoCompleto(r,g.catIds)&&ga!==null&&ga<g.min){
         // con cap:'self' el tope es el propio promedio del grupo
         out.push({nombre:g.nombre||'Requisito',actual:ga,min:g.min,cap:(g.cap==='self')?ga:g.cap,grupo:true});
       }

@@ -73,6 +73,8 @@ console.log('\n=== El grupo se ignora mientras no tenga notas ===');
 eq('nada rendido', ctx.ramoAvg(gestion(null, null, null, null)), null);
 const parcial = gestion(5.0, null, null, null);
 eq('solo casos rendido (no topa)', ctx.ramoAvg(parcial), 5.0);
+const parcialBajo = gestion(3.0, null, null, 7.0);
+eq('bloque grupal incompleto no topa por un parcial bajo', ctx.ramoAvg(parcialBajo), (3.0*40+7.0*30)/70);
 
 console.log('\n=== Compuerta de grupo con tope fijo (no self) ===');
 const fijo = {
