@@ -125,6 +125,32 @@ hues.forEach((h, i) => {
 chk('ningún par de colores a menos de 18° de matiz', minSep >= 18);
 console.log('  ' + pal.length + ' colores, separación mínima ' + minSep.toFixed(0) + '° (' + par + ')');
 
+console.log('\n=== Color por familia de ramo ===');
+// Un ramo nuevo arranca con el color de su familia: todos los Métodos
+// Matemáticos comparten matiz, todos los Inglés otro. Si una familia devolviera
+// un color fuera de la paleta, el ramo se vería distinto a todo lo demás.
+const fams = vm.runInContext('FAMILIAS_COLOR', dark);
+chk('toda familia usa un color de la paleta', fams.every(([, c]) => pal.includes(c)));
+const ejemplos = [
+  ['Métodos Matemáticos II', 'Métodos Matemáticos IV'],
+  ['Inglés I', 'Inglés V'],
+  ['Contabilidad', 'Contabilidad Financiera'],
+];
+ejemplos.forEach(([a, b]) => {
+  const ca = vm.runInContext('colorDeFamilia(' + JSON.stringify(a) + ')', dark);
+  const cb = vm.runInContext('colorDeFamilia(' + JSON.stringify(b) + ')', dark);
+  chk(a + ' y ' + b + ' comparten color', ca !== null && ca === cb);
+});
+// Familias distintas no deberían confundirse entre sí
+chk('matemáticas e idiomas se distinguen',
+  vm.runInContext('colorDeFamilia("Métodos Matemáticos I")', dark) !==
+  vm.runInContext('colorDeFamilia("Inglés II")', dark));
+// Un ramo inventado igual recibe un color estable de la paleta
+const inv = vm.runInContext('colorEstable("Ramo Que No Existe")', dark);
+chk('un ramo desconocido recibe color de la paleta', pal.includes(inv));
+chk('y siempre el mismo', inv === vm.runInContext('colorEstable("Ramo Que No Existe")', dark));
+console.log('  ' + fams.length + ' familias, todas dentro de la paleta');
+
 // El semáforo es semántico: un ramo no debe teñirse de un color que se lea
 // como "aprobado" o "reprobado".
 const SEM = ['#2ee6c8', '#ffc94d', '#ff5f7a'];

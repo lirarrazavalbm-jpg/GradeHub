@@ -35,6 +35,38 @@ const COLORS=[
   '#ec4899', // rosa
 ];
 
+// ─── COLOR POR FAMILIA DE RAMO ───────────────────────────────────────────────
+// Un ramo nuevo no arranca con "el siguiente color libre" sino con el de su
+// familia: todos los Métodos Matemáticos comparten matiz, todos los Inglés
+// comparten otro. Así el estudiante ve su carga de matemáticas o de idiomas de
+// un vistazo, sin leer los nombres.
+//
+// Las asociaciones base salen de cómo Anto ordenaba sus propias carpetas:
+// microeconomía violeta, inglés rosa, comunicación naranjo, contabilidad verde,
+// gestión de personas azul, métodos matemáticos amarillo. Ese último es lima
+// acá: el amarillo puro está reservado al semáforo (ámbar = "al borde") y un
+// ramo teñido de amarillo se leería como un estado.
+//
+// El orden importa: gana la PRIMERA que calce. Por eso lo específico va antes
+// que lo general ('Métodos Cuantitativos' antes que 'Métodos').
+// Un ramo que no calce con ninguna toma un color estable derivado de su nombre,
+// así que dos compañeros ven el mismo ramo del mismo color.
+const FAMILIAS_COLOR=[
+  [/metodos matematicos|calculo|algebra/,        '#a3e635'], // lima — matemáticas
+  [/metodos cuantitativos|estadistica|probabil/, '#22c55e'], // verde — cuantitativo
+  [/contabilidad|costos|contable|tributa/,       '#22c55e'], // verde — contable
+  [/ingles|idioma/,                              '#ec4899'], // rosa — idiomas
+  [/comunicacion/,                               '#ea580c'], // naranjo — comunicación
+  [/microeconomia|macroeconomia|economia|econom/,'#a855f7'], // violeta — economía
+  [/gestion de personas|personas|organizacional/,'#3b82f6'], // azul — personas
+  [/finanzas|inversion|financier/,               '#06b6d4'], // cian — finanzas
+  [/marketing|negocios|comercial/,               '#d946ef'], // fucsia — negocios
+  [/programacion|machine learning|datos|sistemas|tecnologia|informatica/, '#6366f1'], // índigo — tecnología
+  [/derecho|legal|etica|filosof|pensamiento/,    '#ea580c'], // naranjo — humanidades
+  [/quimica|fisica|biolog/,                      '#06b6d4'], // cian — ciencias
+  [/practica|taller|integracion|afe/,            '#d946ef'], // fucsia — práctica
+];
+
 // ─── MALLAS FEN 2026 ─────────────────────────────────────────────────────────
 const CARRERAS={
   'IC-CE':'Ing. Comercial · Ciencias Económicas',
