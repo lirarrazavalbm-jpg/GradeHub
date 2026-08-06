@@ -134,6 +134,15 @@ const lecturaConTope={id:'tope',categorias:[
 if(ctx.lecturaDespuesDeNota(lecturaConTope).includes('nota topada en 3.9')){ok++;console.log('  OK   explica una compuerta activa');}
 else {fail++;console.log('  FAIL lectura con tope → '+ctx.lecturaDespuesDeNota(lecturaConTope));}
 
+console.log('\n=== Estadísticas · avance y tendencia ===');
+const cobertura=ctx.avanceEvaluaciones([{categorias:[
+  {peso:30,notas:[{valor:5.0,peso:1}]},{peso:70,notas:[]}
+]}]);
+eq('avance usa el peso de evaluaciones rendidas', cobertura.pct, 30);
+const historialReciente=ctx.ultimoHistorialConGpa([{label:'2026-1',gpa:5.4},{label:'2025-2',gpa:4.8}]);
+if(historialReciente&&historialReciente.label==='2026-1'){ok++;console.log('  OK   compara contra el último semestre archivado');}
+else {fail++;console.log('  FAIL último historial → '+JSON.stringify(historialReciente));}
+
 console.log('\n=== Agenda · guía y foco ===');
 vm.runInContext("S={ramos:[{id:'agenda',nombre:'Ramo agenda',color:'#2563eb',categorias:[{id:'sin-fecha',nombre:'Control sin fecha',peso:20,notas:[]},{id:'rendida',nombre:'Control rendido',peso:20,notas:[{id:'n',valor:5,peso:1}]}]}]};", ctx);
 if(ctx.agendaSinFecha().length===1&&ctx.agendaSinFecha()[0].cat.id==='sin-fecha'){ok++;console.log('  OK   guía solo evaluaciones pendientes sin fecha');}
