@@ -337,6 +337,12 @@ function gpa(ramos){
 function totalCreditos(ramos){
   return ramos.reduce((s,r)=>s+(typeof r.creditos==='number'&&r.creditos>0?r.creditos:0),0);
 }
+// La precisión del PPA depende de que cada ramo ya evaluado tenga SCT. Esto
+// solo identifica los datos pendientes para guiar al estudiante: no cambia
+// cómo gpa() calcula ni interpreta el promedio.
+function ramosSinCreditosParaPpa(ramos){
+  return (ramos||[]).filter(r=>ramoAvg(r)!==null&&!(typeof r.creditos==='number'&&r.creditos>0));
+}
 function semester(){
   const now=new Date(),m=now.getMonth(),y=now.getFullYear();
   // Ene-Feb = cierre del semestre anterior → año-1 S2
@@ -920,8 +926,8 @@ function renderHome(){
 
   // Delta vs último semestre archivado (si existe)
   if(deltaEl){
-    const last=S.historial&&S.historial.length?S.historial[S.historial.length-1]:null;
-    const lastGpa=last&&typeof last.gpa==='number'?last.gpa:null;
+    const last=ultimoHistorialConGpa(S.historial);
+    const lastGpa=last?last.gpa:null;
     if(g!==null && lastGpa!==null){
       const diff=g-lastGpa;const abs=Math.abs(diff);
       const kind=abs<0.05?'flat':diff>0?'up':'down';
@@ -963,6 +969,23 @@ function renderHome(){
             <div class="insight-label">Ramo en riesgo</div>
             <div class="insight-title">${esc(risky.ramo.nombre)}</div>
             <div class="insight-meta">Necesitas <span class="strong">${nf(risky.needed)}</span> promedio en lo pendiente para aprobar</div>
+          </div>
+          <span class="chevron-r">›</span>
+        </div>`);
+    }
+    // Si falta SCT en ramos ya evaluados, el promedio visible es simple. Llevo
+    // directo al editor del primer ramo pendiente para completar el dato.
+    const sinCreditos=ramosSinCreditosParaPpa(S.ramos);
+    const maxInsights=2;
+    if(g!==null&&sinCreditos.length>0&&cards.length<maxInsights){
+      const primero=sinCreditos[0];
+      cards.push(`
+        <div class="insight-card" style="--insight-color:var(--primary)" onclick="openRamo('${esc(primero.id)}');setTimeout(openEditRamoModal,320)">
+          <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M3 8h18"/><path d="M4 8l2 10h12l2-10"/><path d="M8 8l1-4h6l1 4"/></svg></div>
+          <div class="insight-body">
+            <div class="insight-label">PPA más preciso</div>
+            <div class="insight-title">Agrega créditos a ${sinCreditos.length===1?esc(primero.nombre):`${sinCreditos.length} ramos`}</div>
+            <div class="insight-meta">Ahora tu promedio es simple · toca para corregirlo</div>
           </div>
           <span class="chevron-r">›</span>
         </div>`);
