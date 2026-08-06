@@ -66,6 +66,15 @@ if (sucio.length) {
   }
 });
 
+// Inicio tiene tarjetas y filas clickeables generadas en JS: también deben poder
+// abrirse con teclado y mostrar un foco visible en escritorio.
+['insight-card', 'ramo-row'].forEach(clase => {
+  if (!app.includes("setAttribute('role','button')") || !app.includes("e.key==='Enter'||e.key===' '") || !css.includes('.' + clase + ':focus-visible')) {
+    console.error(clase + ' debe ser operable y tener foco visible');
+    process.exit(1);
+  }
+});
+
 // Un solo archivo de instrucciones con tres nombres. Si alguno deja de ser
 // symlink (hay editores que los reemplazan al guardar), cada agente empieza a
 // leer una versión distinta y nadie se entera hasta que ya divergieron.

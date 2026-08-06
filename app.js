@@ -1000,6 +1000,12 @@ function renderHome(){
       }
     }
     insightsEl.innerHTML=cards.join('');
+    // Las tarjetas son acciones, no solo decoración: teclado y lectores de
+    // pantalla deben poder abrir el ramo igual que un toque o click.
+    insightsEl.querySelectorAll('.insight-card').forEach(card=>{
+      card.setAttribute('role','button');card.tabIndex=0;
+      card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}};
+    });
     insightsEl.style.display=cards.length?'block':'none';
   }
 
@@ -1021,7 +1027,8 @@ function renderHome(){
       const pctLabel=prog.pct===100?'completo':`${prog.pct}% evaluado`;
       metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="width:${prog.pct}%"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
     }
-    const div=document.createElement('div');div.className='ramo-row';div.onclick=()=>openRamo(r.id);
+    const div=document.createElement('div');div.className='ramo-row';div.setAttribute('role','button');div.tabIndex=0;div.onclick=()=>openRamo(r.id);
+    div.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRamo(r.id);}};
     div.style.setProperty('--ramo-tint',r.color);
     div.innerHTML=`
       <div class="ramo-band" style="background:${esc(r.color)}"></div>
