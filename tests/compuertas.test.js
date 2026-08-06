@@ -121,6 +121,19 @@ eq('examen bajo 3.0 topa en 3.9', ctx.ramoAvg(metodos(6, 6, 6, 2.5)), 3.9);
 // examen 2.5 con solemnes malas: ponderado = 0.6*2 + 0.4*2.5 = 2.2 → min(2.2, 3.9) = 2.2
 eq('el tope no mejora una nota peor', ctx.ramoAvg(metodos(2, 2, 2, 2.5)), 2.2);
 
+console.log('\n=== Feedback después de ingresar una nota ===');
+const lecturaRamo={id:'lectura',categorias:[
+  {id:'ya',peso:50,notas:[{id:'n',valor:3.0,peso:1}]},
+  {id:'falta',peso:50,notas:[]}
+],gates:[]};
+if(ctx.lecturaDespuesDeNota(lecturaRamo).includes('necesitas 5.0')){ok++;console.log('  OK   explica la nota necesaria en lo pendiente');}
+else {fail++;console.log('  FAIL lectura post-nota → '+ctx.lecturaDespuesDeNota(lecturaRamo));}
+const lecturaConTope={id:'tope',categorias:[
+  {id:'ex',nombre:'Examen',peso:100,notas:[{id:'n',valor:2.5,peso:1}]}
+],gates:[{type:'min_grade_required',catId:'ex',min:3.0,cap:3.9,nombre:'Examen'}]};
+if(ctx.lecturaDespuesDeNota(lecturaConTope).includes('nota topada en 3.9')){ok++;console.log('  OK   explica una compuerta activa');}
+else {fail++;console.log('  FAIL lectura con tope → '+ctx.lecturaDespuesDeNota(lecturaConTope));}
+
 console.log('\n=== Agenda · guía y foco ===');
 vm.runInContext("S={ramos:[{id:'agenda',nombre:'Ramo agenda',color:'#2563eb',categorias:[{id:'sin-fecha',nombre:'Control sin fecha',peso:20,notas:[]},{id:'rendida',nombre:'Control rendido',peso:20,notas:[{id:'n',valor:5,peso:1}]}]}]};", ctx);
 if(ctx.agendaSinFecha().length===1&&ctx.agendaSinFecha()[0].cat.id==='sin-fecha'){ok++;console.log('  OK   guía solo evaluaciones pendientes sin fecha');}
