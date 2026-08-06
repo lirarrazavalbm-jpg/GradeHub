@@ -1,0 +1,32 @@
+name: deploy
+
+# Mergear a main publica en gradehub.cl. Los tests corren primero: si fallan,
+# el deploy no ocurre — esa es la única red real que protege producción.
+on:
+  push:
+    branches: [main]
+  # Para reintentar un deploy sin inventar un commit: Actions → deploy → Run workflow
+  workflow_dispatch:
+
+# Si se mergean dos PRs seguidos, que no se pisen dos deploys en paralelo.
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Tests
+        run: npm test
+
+      - name: Publicar en Cloudflare Pages
+        run: npx wrangler pages deploy . --project-name gradehub --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

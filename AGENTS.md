@@ -97,12 +97,20 @@ de compuerta que topan la nota.
 
 ## Desplegar
 
-```bash
-npx wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true
-```
+**Mergear a `main` publica en gradehub.cl.** El workflow corre los tests primero
+y solo despliega si pasan. No hay paso manual y no hace falta que nadie tenga
+Wrangler autenticado en su máquina.
 
-**Sube el `CACHE_NAME` en `sw.js`** (va en `gradehub-vN`) en cada deploy, o los
-usuarios con la PWA instalada no reciben la actualización.
+Para republicar sin un commit nuevo (reintentar un deploy caído): pestaña
+Actions → `deploy` → *Run workflow*.
+
+**Sube el `CACHE_NAME` en `sw.js`** (va en `gradehub-vN`) cuando toques
+`index.html`, `app.js`, `data.js` o `styles.css`, o los usuarios con la PWA
+instalada se quedan con la versión vieja. El CI te lo exige — corre
+`bash bin/check-cache-name.sh` antes de abrir el PR y te lo dice al tiro.
+
+El deploy manual sigue existiendo por si el CI está caído (`npm run deploy`),
+pero necesita Wrangler autenticado y solo Lucas lo tiene.
 
 ## Modelo de datos
 
@@ -174,8 +182,6 @@ hablarías a un compañero, no como un manual.
 - Analítica (no hay ninguna) y política de privacidad (Ley 19.628)
 - `app.js` sigue en 150 KB tras sacar los datos: el próximo corte natural es
   separar el render (`renderHome`, `renderRamo`, stats) del motor de cálculo
-- Deploy manual desde la Mac de Lucas: pasa a GitHub Actions para que cualquiera
-  de los dos pueda publicar mergeando
 
 ## En vuelo
 
