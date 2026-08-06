@@ -1229,10 +1229,18 @@ function setSlotNota(catId,slot,raw){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const cat=r.categorias.find(c=>c.id===catId);if(!cat)return;
   const txt=String(raw||'').trim();
-  cat.notas=cat.notas.filter(n=>n.slot!==slot);
-  if(txt!==''){
+  if(txt===''){
+    cat.notas=cat.notas.filter(n=>n.slot!==slot);
+  }else{
     const val=parseNota(txt);
-    if(!isNaN(val))cat.notas.push({id:uid(),nombre:cat.nombre+' '+(slot+1),valor:val,peso:1,slot});
+    if(isNaN(val)){
+      showToast('Ingresa una nota entre 1.0 y 7.0',true);
+      renderRamo();
+      return;
+    }
+    const anterior=cat.notas.find(n=>n.slot===slot);
+    cat.notas=cat.notas.filter(n=>n.slot!==slot);
+    cat.notas.push({id:(anterior&&anterior.id)||uid(),nombre:cat.nombre+' '+(slot+1),valor:val,peso:1,slot});
   }
   save();track('set_nota_slot');renderRamo();
 }
@@ -1244,7 +1252,12 @@ function setDirectNota(catId,raw){
   if(txt===''){cat.notas=[];}
   else{
     const val=parseNota(txt);
-    if(!isNaN(val))cat.notas=[{id:(cat.notas[0]&&cat.notas[0].id)||uid(),nombre:cat.nombre,valor:val,peso:1}];
+    if(isNaN(val)){
+      showToast('Ingresa una nota entre 1.0 y 7.0',true);
+      renderRamo();
+      return;
+    }
+    cat.notas=[{id:(cat.notas[0]&&cat.notas[0].id)||uid(),nombre:cat.nombre,valor:val,peso:1}];
   }
   save();track('set_nota_directa');renderRamo();
 }

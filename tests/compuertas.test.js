@@ -128,6 +128,17 @@ ramoSinNota.id = 'pendiente'; ramoSinNota.creditos = 12;
 eq('solo suma créditos de ramos con nota', ctx.creditosConNota([ramoConNota, ramoSinNota]), 6);
 eq('PPA ignora créditos de ramos pendientes', ctx.gpa([ramoConNota, ramoSinNota]), 5.0);
 
+console.log('\n=== Edición segura de notas por slot ===');
+vm.runInContext(`
+  save=()=>{};track=()=>{};renderRamo=()=>{};showToast=()=>{};
+  S={ramos:[{id:'slot-ramo',categorias:[{id:'lab',nombre:'Laboratorio',notas:[{id:'nota-original',slot:0,valor:5.5,peso:1}]}]}]};
+  currentRamoId='slot-ramo';
+`, ctx);
+ctx.setSlotNota('lab', 0, '8.0');
+eq('entrada inválida conserva la nota existente', vm.runInContext('S.ramos[0].categorias[0].notas[0].valor', ctx), 5.5);
+ctx.setSlotNota('lab', 0, '6,0');
+eq('entrada válida reemplaza la nota del slot', vm.runInContext('S.ramos[0].categorias[0].notas[0].valor', ctx), 6.0);
+
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));
 if (act.length === 1 && act[0].grupo === true && Math.abs(act[0].actual - 3.0) < 0.01) { ok++; console.log('  OK   detecta el grupal en 3.0'); }
