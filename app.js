@@ -2479,13 +2479,19 @@ function simGlobalClear(ramoId){
   renderSimGlobal();
 }
 
-// Promedio proyectado: usa la nota hipotética si existe, si no la real del ramo
+// Promedio proyectado: usa la nota hipotética si existe, si no la real del ramo.
+// Respeta la misma regla del PPA: pondera por créditos solo cuando todos los
+// ramos que entran a la proyección los tienen cargados.
 function simGlobalAvg(){
-  const vals=S.ramos.map(r=>{
-    if(simGlobalState[r.id]!==undefined)return simGlobalState[r.id];
-    return ramoAvg(r);
-  }).filter(v=>v!==null&&v!==undefined);
-  return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+  const conNota=S.ramos.map(r=>({ramo:r,valor:simGlobalState[r.id]!==undefined?simGlobalState[r.id]:ramoAvg(r)}))
+    .filter(x=>x.valor!==null&&x.valor!==undefined);
+  if(!conNota.length)return null;
+  const conCreditos=conNota.every(x=>typeof x.ramo.creditos==='number'&&x.ramo.creditos>0);
+  if(conCreditos){
+    const den=conNota.reduce((s,x)=>s+x.ramo.creditos,0);
+    return den>0?conNota.reduce((s,x)=>s+x.valor*x.ramo.creditos,0)/den:null;
+  }
+  return conNota.reduce((s,x)=>s+x.valor,0)/conNota.length;
 }
 
 function renderSimGlobal(){

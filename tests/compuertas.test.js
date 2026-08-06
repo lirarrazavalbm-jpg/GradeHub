@@ -139,6 +139,18 @@ eq('entrada inválida conserva la nota existente', vm.runInContext('S.ramos[0].c
 ctx.setSlotNota('lab', 0, '6,0');
 eq('entrada válida reemplaza la nota del slot', vm.runInContext('S.ramos[0].categorias[0].notas[0].valor', ctx), 6.0);
 
+console.log('\n=== Simulador global y créditos SCT ===');
+vm.runInContext(`
+  S={ramos:[
+    {id:'a',creditos:10,categorias:[{id:'ca',peso:100,notas:[{id:'na',valor:4.0,peso:1}]}],gates:[]},
+    {id:'b',creditos:30,categorias:[{id:'cb',peso:100,notas:[{id:'nb',valor:6.0,peso:1}]}],gates:[]}
+  ]};
+  simGlobalState={};
+`, ctx);
+eq('sin cambios coincide con el PPA ponderado', ctx.simGlobalAvg(), 5.5);
+vm.runInContext("simGlobalState={b:7.0};", ctx);
+eq('proyección pondera la nota hipotética por créditos', ctx.simGlobalAvg(), 6.25);
+
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));
 if (act.length === 1 && act[0].grupo === true && Math.abs(act[0].actual - 3.0) < 0.01) { ok++; console.log('  OK   detecta el grupal en 3.0'); }
