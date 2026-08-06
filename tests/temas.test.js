@@ -3,9 +3,10 @@
 const fs = require('fs'), vm = require('vm');
 const h = fs.readFileSync(__dirname+'/../index.html', 'utf8');
 const DATA = fs.readFileSync(__dirname+'/../data.js', 'utf8');
+const ENGINE = fs.readFileSync(__dirname+'/../engine.js', 'utf8');
 const APP = fs.readFileSync(__dirname+'/../app.js', 'utf8');
-// Mismo orden que index.html: data.js define los const que app.js consume.
-const src = DATA + '\n' + APP;
+// Mismo orden que index.html: datos, motor puro y finalmente interfaz.
+const src = DATA + '\n' + ENGINE + '\n' + APP;
 new vm.Script(src);
 const css = fs.readFileSync(__dirname+'/../styles.css','utf8');
 const o = (css.match(/\{/g) || []).length, c = (css.match(/\}/g) || []).length;

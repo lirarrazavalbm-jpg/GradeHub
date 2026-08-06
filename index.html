@@ -325,6 +325,8 @@
 
 <!-- data.js primero: app.js lee sus const (mallas, temas, presets) -->
 <script src="data.js"></script>
+<!-- El motor puro va antes de la interfaz: no depende del DOM ni del estado. -->
+<script src="engine.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
