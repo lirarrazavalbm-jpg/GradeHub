@@ -3,10 +3,11 @@
 // cache-first para assets estáticos (íconos, fuentes).
 // Los datos del usuario viven en localStorage + Supabase — el SW solo maneja la app shell.
 
-const CACHE_NAME = 'gradehub-v38';
+const CACHE_NAME = 'gradehub-v39';
 const SHELL = [
   '/',
   '/index.html',
+  '/data.js',
   '/app.js',
   '/styles.css',
   '/manifest.json',

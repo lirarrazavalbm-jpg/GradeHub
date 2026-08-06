@@ -2,8 +2,10 @@
 // requisitos" (Gestión de Personas ENGEP155, FEN).
 const fs = require('fs'), vm = require('vm');
 const h = fs.readFileSync(__dirname+'/../index.html', 'utf8');
+const DATA = fs.readFileSync(__dirname+'/../data.js', 'utf8');
 const APP = fs.readFileSync(__dirname+'/../app.js', 'utf8');
-const src = APP;
+// Mismo orden que index.html: data.js define los const que app.js consume.
+const src = DATA + '\n' + APP;
 new vm.Script(src);
 
 const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };

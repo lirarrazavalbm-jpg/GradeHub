@@ -7,13 +7,22 @@ importa: *¿qué nota necesito para aprobar?*
 
 ## Arquitectura
 
-Sin build, sin frameworks. Tres archivos que se despliegan tal cual:
+Sin build, sin frameworks. Cuatro archivos que se despliegan tal cual:
 
 | Archivo | Qué tiene |
 |---|---|
 | `index.html` | Estructura, logo en base64, metadatos |
-| `app.js` | Motor de cálculo, render, catálogo, auth |
-| `styles.css` | Estilos y los 4 temas por universidad |
+| `data.js` | Mallas, carreras, presets, temas, portales — solo literales |
+| `app.js` | Motor de cálculo, render, auth |
+| `styles.css` | Estilos y la base neutra compartida |
+
+`data.js` se carga **antes** que `app.js`: son `<script>` clásicos, así que sus
+`const` quedan en el ámbito léxico global y `app.js` los ve sin imports. Si
+inviertes el orden, `ReferenceError` en el primer render.
+
+**Contenido va en `data.js`, comportamiento en `app.js`.** Agregar una malla, una
+carrera o un preset no debería tocar `app.js`. Si tienes que escribir un `if` de
+tenant en `app.js` para que un dato nuevo funcione, el dato está mal modelado.
 
 Backend: **Supabase** (auth email + Google, RLS activo). Hosting: **Cloudflare Pages**.
 
@@ -39,7 +48,7 @@ que es pública por diseño y está protegida por RLS.
 
 ```bash
 # 1. Sintaxis
-node -e 'new (require("vm").Script)(require("fs").readFileSync("app.js","utf8"));console.log("JS OK")'
+node -e 'const vm=require("vm"),fs=require("fs");["data.js","app.js"].forEach(f=>new vm.Script(fs.readFileSync(f,"utf8")));console.log("JS OK")'
 
 # 2. CSS balanceado
 node -e 'const c=require("fs").readFileSync("styles.css","utf8");const o=(c.match(/\{/g)||[]).length,x=(c.match(/\}/g)||[]).length;console.log("CSS "+o+"/"+x+(o===x?" OK":" MISMATCH"))'
@@ -93,8 +102,8 @@ falta, cae a promedio simple. Mezclar daría un número engañoso.
 
 ## Temas
 
-Un registro `THEMES` con una entrada por universidad. Agregar una es agregar una
-entrada — no hay condicionales de tenant repartidos por el código.
+Un registro `THEMES` en `data.js` con una entrada por universidad. Agregar una es
+agregar una entrada — no hay condicionales de tenant repartidos por el código.
 
 Cada tema define acento (`primary`, `accent`, `secondary`) y superficies
 (`bg`, `card`, `border`…). Las superficies solo se aplican en modo oscuro.
@@ -121,4 +130,5 @@ hablarías a un compañero, no como un manual.
 - Mallas FEN 1° y 2° completas — hoy hay 4 ramos de ~46
 - Consumir el consenso de reportes para sugerir actualizaciones del catálogo
 - Analítica (no hay ninguna) y política de privacidad (Ley 19.628)
-- `app.js` sigue en 166 KB: separar los datos a `data.js` es el próximo split
+- `app.js` sigue en 150 KB tras sacar los datos: el próximo corte natural es
+  separar el render (`renderHome`, `renderRamo`, stats) del motor de cálculo
