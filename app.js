@@ -1164,7 +1164,7 @@ function renderRamo(){
         }
         const notasCount=cat.notas.length;
         wrap.innerHTML=`
-          <div class="eval-group-hd" role="button" tabindex="0" aria-expanded="${isOpen?'true':'false'}" onclick="toggleCat('${cat.id}')">
+          <div class="eval-group-hd" role="button" tabindex="0" aria-expanded="${isOpen?'true':'false'}" onclick="toggleCat('${cat.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCat('${cat.id}')}">
             <div style="flex:1;min-width:0;">
               <div class="eval-row-name">${esc(cat.nombre)}</div>
               <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}</div>
@@ -1180,7 +1180,7 @@ function renderRamo(){
       const row=document.createElement('div');row.className='eval-row';
       if(g!=null)row.style.borderLeftColor=getColor(g);
       row.innerHTML=`
-        <div class="eval-row-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" style="cursor:pointer;">
+        <div class="eval-row-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEditCatModal('${cat.id}')}" style="cursor:pointer;">
           <div class="eval-row-name">${esc(cat.nombre)}</div>
           <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}</div>
         </div>
@@ -1201,7 +1201,7 @@ function renderRamo(){
         </div>`).join('');
     card.innerHTML=`
       <div class="cat-header">
-        <div class="cat-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" onkeydown="if(event.key==='Enter'){openEditCatModal('${cat.id}')}" style="cursor:pointer;">
+        <div class="cat-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openEditCatModal('${cat.id}')}" style="cursor:pointer;">
           <div class="cat-name">${esc(cat.nombre)}</div>
           <div class="cat-peso-tag">${cat.peso}% del ramo · ${cat.notas.length} nota${cat.notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
         </div>

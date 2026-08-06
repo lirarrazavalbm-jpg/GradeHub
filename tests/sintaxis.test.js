@@ -3,7 +3,8 @@ const fs = require('fs'), vm = require('vm'), path = require('path');
 const raiz = path.join(__dirname, '..');
 
 new vm.Script(fs.readFileSync(path.join(raiz, 'data.js'), 'utf8'));
-new vm.Script(fs.readFileSync(path.join(raiz, 'app.js'), 'utf8'));
+const app = fs.readFileSync(path.join(raiz, 'app.js'), 'utf8');
+new vm.Script(app);
 
 const css = fs.readFileSync(path.join(raiz, 'styles.css'), 'utf8');
 const abre = (css.match(/\{/g) || []).length;
@@ -41,6 +42,18 @@ if (sucio.length) {
   console.error('data.js dejó de ser solo datos: contiene ' + sucio.join(', '));
   process.exit(1);
 }
+
+// Las superficies que se anuncian como botones deben funcionar también con
+// teclado; Enter y Espacio son el comportamiento esperado para role=button.
+['eval-group-hd', 'eval-row-info', 'cat-info'].forEach(clase => {
+  const inicio = app.indexOf('class="' + clase + '" role="button"');
+  const cierre = inicio < 0 ? -1 : app.indexOf('>', inicio);
+  const etiqueta = cierre < 0 ? '' : app.slice(inicio, cierre);
+  if (!etiqueta.includes('onkeydown=') || !etiqueta.includes("event.key==='Enter'") || !etiqueta.includes("event.key===' '")) {
+    console.error(clase + ' debe responder a Enter y Espacio');
+    process.exit(1);
+  }
+});
 
 // Un solo archivo de instrucciones con tres nombres. Si alguno deja de ser
 // symlink (hay editores que los reemplazan al guardar), cada agente empieza a
