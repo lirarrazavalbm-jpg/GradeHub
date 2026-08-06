@@ -174,10 +174,12 @@ function nextRamoColor(nombre){
   const pal=chartColors();
   const usados=new Set((S&&S.ramos?S.ramos:[]).map(r=>r.color));
   if(nombre){
-    // La familia manda aunque repita color: dos ramos de matemáticas del mismo
-    // lima es informativo, no un choque.
+    // La familia SUGIERE, no impone. Si el color de la familia ya lo tiene otro
+    // ramo del estudiante, se cede: distinguir un ramo de otro pesa más que
+    // agrupar por materia. Micro I y Macro I son economía los dos, pero en la
+    // lista tienen que verse distintos — esa fue la queja original.
     const fam=colorDeFamilia(nombre);
-    if(fam)return fam;
+    if(fam&&!usados.has(fam))return fam;
     const est=colorEstable(nombre);
     if(!usados.has(est))return est;
   }

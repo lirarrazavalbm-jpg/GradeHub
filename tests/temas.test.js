@@ -151,6 +151,40 @@ chk('un ramo desconocido recibe color de la paleta', pal.includes(inv));
 chk('y siempre el mismo', inv === vm.runInContext('colorEstable("Ramo Que No Existe")', dark));
 console.log('  ' + fams.length + ' familias, todas dentro de la paleta');
 
+console.log('\n=== Ningún semestre reparte dos ramos del mismo color ===');
+// La queja original fue "los ramos se ven todos iguales". La familia sugiere el
+// color, pero si ya está tomado se cede: distinguir pesa más que agrupar. Micro
+// I y Macro I son economía los dos y aun así tienen que verse distintos.
+const MALLAS = [vm.runInContext('MALLA', dark), vm.runInContext('MALLA_UC', dark)];
+let choques = 0, semestres = 0, mayores = 0;
+MALLAS.forEach(m => Object.values(m).forEach(sems => Object.entries(sems).forEach(([, ramos]) => {
+  semestres++;
+  if (ramos.length > pal.length) { mayores++; return; } // más ramos que colores: repetir es inevitable
+  vm.runInContext('S={ramos:[]}', dark);
+  const usados = [];
+  ramos.forEach(r => {
+    const c = vm.runInContext('nextRamoColor(' + JSON.stringify(r) + ')', dark);
+    vm.runInContext('S.ramos.push({color:' + JSON.stringify(c) + '})', dark);
+    usados.push(c);
+  });
+  if (new Set(usados).size !== usados.length) choques++;
+})));
+chk('cero semestres con colores repetidos', choques === 0);
+console.log('  ' + semestres + ' semestres revisados, ' + choques + ' con repetidos' +
+  (mayores ? ' (' + mayores + ' omitidos por tener más ramos que colores)' : ''));
+
+// Toda la malla debe caer en alguna familia: un ramo sin familia toma un color
+// del hash, que es estable pero arbitrario.
+let sinFamilia = 0, totalRamos = 0;
+const vistos = new Set();
+MALLAS.forEach(m => Object.values(m).forEach(sems => Object.values(sems).forEach(ramos => ramos.forEach(r => {
+  if (vistos.has(r)) return;
+  vistos.add(r); totalRamos++;
+  if (!vm.runInContext('colorDeFamilia(' + JSON.stringify(r) + ')', dark)) sinFamilia++;
+}))));
+chk('todos los ramos del catálogo tienen familia', sinFamilia === 0);
+console.log('  ' + (totalRamos - sinFamilia) + '/' + totalRamos + ' ramos con familia asignada');
+
 // El semáforo es semántico: un ramo no debe teñirse de un color que se lea
 // como "aprobado" o "reprobado".
 const SEM = ['#2ee6c8', '#ffc94d', '#ff5f7a'];

@@ -52,17 +52,21 @@ const COLORS=[
 // Un ramo que no calce con ninguna toma un color estable derivado de su nombre,
 // así que dos compañeros ven el mismo ramo del mismo color.
 const FAMILIAS_COLOR=[
+  // Lo específico va antes que lo general: 'Métodos Cuantitativos' tiene que
+  // resolverse antes de que 'Métodos Matemáticos' se lo lleve.
+  [/metodos cuantitativos|estadistica|probabil|investigacion operativa|juegos y estrategias|toma de decisiones|optimizacion/, '#a3e635'], // lima — cuantitativo
   [/metodos matematicos|calculo|algebra/,        '#a3e635'], // lima — matemáticas
-  [/metodos cuantitativos|estadistica|probabil/, '#22c55e'], // verde — cuantitativo
-  [/contabilidad|costos|contable|tributa/,       '#22c55e'], // verde — contable
+  [/contabilidad|costos|contable|tributa|impuesto/, '#22c55e'], // verde — contable
+  [/auditoria|control interno|riesgos/,          '#ea580c'], // naranjo — auditoría
   [/ingles|idioma/,                              '#ec4899'], // rosa — idiomas
   [/comunicacion/,                               '#ea580c'], // naranjo — comunicación
   [/microeconomia|macroeconomia|economia|econom/,'#a855f7'], // violeta — economía
   [/gestion de personas|personas|organizacional/,'#3b82f6'], // azul — personas
-  [/finanzas|inversion|financier/,               '#06b6d4'], // cian — finanzas
+  [/finanzas|inversion|financier|presupuesto/,   '#06b6d4'], // cian — finanzas
+  [/control de gestion|estrategia|gestion y empresas|gestion de procesos/, '#3b82f6'], // azul — gestión
   [/marketing|negocios|comercial/,               '#d946ef'], // fucsia — negocios
-  [/programacion|machine learning|datos|sistemas|tecnologia|informatica/, '#6366f1'], // índigo — tecnología
-  [/derecho|legal|etica|filosof|pensamiento/,    '#ea580c'], // naranjo — humanidades
+  [/programacion|machine learning|datos|sistemas|tecnologia|informatica|transformacion digital|ingenieria/, '#6366f1'], // índigo — tecnología
+  [/derecho|legal|legisla|etica|filosof|pensamiento|historia/, '#ea580c'], // naranjo — humanidades y derecho
   [/quimica|fisica|biolog/,                      '#06b6d4'], // cian — ciencias
   [/practica|taller|integracion|afe/,            '#d946ef'], // fucsia — práctica
 ];
