@@ -7,6 +7,16 @@ new vm.Script(fs.readFileSync(path.join(raiz, 'engine.js'), 'utf8'));
 const app = fs.readFileSync(path.join(raiz, 'app.js'), 'utf8');
 new vm.Script(app);
 
+// El guardado en nube está agrupado; cerrar sesión debe vaciar ese guardado
+// pendiente antes de invalidar la sesión, o se puede perder la última nota.
+const inicioSignOut = app.indexOf('async function signOut()');
+const finSignOut = inicioSignOut < 0 ? -1 : app.indexOf('\n}\n', inicioSignOut);
+const cuerpoSignOut = finSignOut < 0 ? '' : app.slice(inicioSignOut, finSignOut);
+if (inicioSignOut < 0 || cuerpoSignOut.indexOf('await syncNow()') < 0 || cuerpoSignOut.indexOf('await syncNow()') > cuerpoSignOut.indexOf('auth.signOut()')) {
+  console.error('signOut debe sincronizar antes de cerrar la sesión');
+  process.exit(1);
+}
+
 const css = fs.readFileSync(path.join(raiz, 'styles.css'), 'utf8');
 const abre = (css.match(/\{/g) || []).length;
 const cierra = (css.match(/\}/g) || []).length;

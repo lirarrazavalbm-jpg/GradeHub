@@ -600,6 +600,10 @@ async function syncProfile(){
   }catch(e){}
 }
 async function signOut(){
+  // save() agrupa la subida por 800 ms. Si se cierra sesión inmediatamente
+  // después de editar una nota, esperar la sincronización evita perderla.
+  clearTimeout(_syncTimer);
+  await syncNow();
   try{await supabaseClient.auth.signOut();}catch(e){}
   currentUser=null;closeModal();
   // Limpiar la caché local: si no, el siguiente que entre en este navegador
