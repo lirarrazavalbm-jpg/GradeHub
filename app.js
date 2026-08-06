@@ -695,7 +695,8 @@ selectedTenant=S.tenant||'fen';applyTheme(selectedTenant);
 // boot() lo usa al arrancar: con `let` más abajo caía en la zona muerta temporal
 // y la app crasheaba si Supabase no cargaba.
 let obStep=1;
-const OB_TOTAL=4;
+const OB_TOTAL=5;
+let obRamos=[],obRamosKey='',obManualOpen=false;
 
 initSemGrid();renderTenantPick();initCarreraGrid();
 document.getElementById('ob-name').addEventListener('input',checkOb);
@@ -728,26 +729,104 @@ function initCarreraGrid(){
 }
 // ─── ONBOARDING POR PASOS ────────────────────────────────────────────────────
 
-// ¿El paso actual tiene lo que necesita para avanzar?
-function obStepValid(step){
-  if(step===1)return !!document.getElementById('ob-name').value.trim();
-  if(step===2)return !!selectedTenant;
-  if(step===3)return !!selectedCarrera;
-  if(step===4)return !!selectedSem;
+// La validación es independiente por paso: la lista sugerida nunca obliga a
+// tomar un ramo, y cada pantalla solo exige su propio dato.
+function obStepValid(step,datos){
+  const d=datos||{
+    nombre:(document.getElementById('ob-name')||{}).value||'',
+    tenant:selectedTenant,carrera:selectedCarrera,semestre:selectedSem
+  };
+  if(step===1)return !!String(d.nombre||'').trim();
+  if(step===2)return !!d.tenant;
+  if(step===3)return !!d.carrera;
+  if(step===4)return !!d.semestre;
+  if(step===5)return true;
   return false;
+}
+function obProgressPct(step){return Math.round(step/OB_TOTAL*100);}
+
+function obRamosActuales(){return ((mallaFor(selectedTenant)[selectedCarrera]||{})[selectedSem]||[]);}
+function prepararObRamos(){
+  const key=[selectedTenant,selectedCarrera,selectedSem].join(':');
+  if(key===obRamosKey)return;
+  obRamosKey=key;obManualOpen=false;
+  obRamos=obRamosActuales().map(nombre=>({nombre,manual:false}));
+  renderObCoursePicker();
+}
+function obTieneRamo(nombre){return obRamos.some(r=>normName(r.nombre)===normName(nombre));}
+function obToggleRamo(nombre,checked){
+  if(checked&&!obTieneRamo(nombre))obRamos.push({nombre,manual:false});
+  if(!checked)obRamos=obRamos.filter(r=>normName(r.nombre)!==normName(nombre));
+  renderObCoursePicker();obRender();
+}
+function obToggleRamoCodificado(nombre,checked){obToggleRamo(decodeURIComponent(nombre),checked);}
+function obAgregarCatalogo(nombre){
+  if(!obTieneRamo(nombre))obRamos.push({nombre,manual:false});
+  renderObCoursePicker();obRender();
+}
+function obAgregarCatalogoCodificado(nombre){obAgregarCatalogo(decodeURIComponent(nombre));}
+function obToggleManual(){obManualOpen=!obManualOpen;renderObCoursePicker();}
+function obAgregarManual(){
+  const input=document.getElementById('ob-manual-name');
+  const nombre=(input&&input.value||'').trim();if(!nombre)return;
+  if(!obTieneRamo(nombre))obRamos.push({nombre,manual:true});
+  obManualOpen=false;renderObCoursePicker();obRender();
+}
+function renderObCoursePicker(){
+  const box=document.getElementById('ob-course-picker');if(!box)return;
+  const sugeridos=obRamosActuales();
+  const rows=sugeridos.length?sugeridos.map(nombre=>`
+    <label style="display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;">
+      <input type="checkbox" ${obTieneRamo(nombre)?'checked':''} onchange="obToggleRamoCodificado('${encodeURIComponent(nombre)}',this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
+      <span style="font-size:14px;color:var(--fg);">${esc(nombre)}</span>
+    </label>`).join(''):
+    '<p class="course-picker-reassurance">No encontramos ramos sugeridos para este semestre. Puedes buscarlos o agregarlos a mano.</p>';
+  box.innerHTML=`
+    <div class="course-picker">
+      <p class="course-picker-intro">Partimos con una sugerencia según tu avance. Puedes sumar ramos de cualquier otro semestre.</p>
+      <div class="course-picker-section">
+        <label class="modal-label">Sugeridos para ${selectedSem}° semestre</label>
+        ${rows}
+      </div>
+      <div class="course-picker-section">
+        <label class="modal-label" for="ob-course-search">Buscar otro ramo</label>
+        <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="ob-course-search" type="text" placeholder="Ej.: Inglés IV, Cálculo II" maxlength="40" autocomplete="off" autocapitalize="none"/></div>
+        <div id="ob-course-results"></div>
+      </div>
+      <button class="course-picker-manual" type="button" onclick="obToggleManual()">¿No aparece? Agregar un ramo a mano</button>
+      ${obManualOpen?'<div class="course-picker-search" style="margin-top:8px;"><input id="ob-manual-name" type="text" placeholder="Ej.: Electivo de cine" maxlength="40" autocomplete="off"/><button type="button" onclick="obAgregarManual()" style="border:0;background:none;color:var(--primary);font:inherit;font-weight:700;">Agregar</button></div>':''}
+    </div>`;
+  const search=document.getElementById('ob-course-search');
+  if(search){const pintar=()=>renderObCourseResults(search.value);search.addEventListener('input',pintar);pintar();}
+  const manual=document.getElementById('ob-manual-name');
+  if(manual)manual.addEventListener('keydown',e=>{if(e.key==='Enter')obAgregarManual();});
+}
+function renderObCourseResults(q){
+  const box=document.getElementById('ob-course-results');if(!box)return;
+  const term=(q||'').trim();if(!term){box.innerHTML='';return;}
+  const res=searchCatalog(term,selectedTenant,selectedCarrera,selectedSem).slice(0,6);
+  if(!res.length){box.innerHTML='<p class="course-picker-reassurance">No aparece en tu malla. Puedes agregarlo a mano.</p>';return;}
+  box.innerHTML=res.map(r=>{
+    const tengo=obTieneRamo(r.nombre),otro=r.semestre!==selectedSem;
+    return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${encodeURIComponent(r.nombre)}')"`}>
+      <span class="course-picker-result-info"><span class="course-picker-result-name">${esc(r.nombre)}</span><span class="course-picker-result-meta">${r.semestre}° semestre${r.tienePreset?' · con ponderaciones oficiales':''}</span></span>
+      <span class="chevron-r">${tengo?'✓':'+'}</span>
+    </button>${otro?'<p class="course-picker-reassurance">Que sea de otro semestre está bien.</p>':''}`;
+  }).join('');
 }
 
 function obRender(){
+  if(obStep===5)prepararObRamos();
   document.querySelectorAll('.ob-step').forEach(el=>{
     el.style.display=(Number(el.dataset.step)===obStep)?'block':'none';
   });
   const bar=document.getElementById('ob-progress-bar');
-  if(bar)bar.style.width=(obStep/OB_TOTAL*100)+'%';
+  if(bar)bar.style.width=obProgressPct(obStep)+'%';
   const back=document.getElementById('ob-back');
   if(back)back.style.visibility=obStep>1?'visible':'hidden';
   const next=document.getElementById('ob-next');
   if(next){
-    next.textContent=obStep===OB_TOTAL?'Comenzar':'Continuar';
+    next.textContent=obStep===OB_TOTAL?(obRamos.length?`Continuar con ${obRamos.length} ramo${obRamos.length!==1?'s':''}`:'Continuar sin ramos'):'Continuar';
     next.disabled=!obStepValid(obStep);
   }
   // Foco automático en el input del paso 1
@@ -769,11 +848,30 @@ function checkOb(){
 
 function completeOnboarding(){
   const name=document.getElementById('ob-name').value.trim();if(!name||!selectedCarrera)return;
-  S.userName=name;S.careerSemestre=selectedSem;S.carrera=selectedCarrera;S.tenant=selectedTenant;S.onboardingDone=true;save();
+  S.userName=name;S.careerSemestre=selectedSem;S.carrera=selectedCarrera;S.tenant=selectedTenant;
+  obRamos.forEach(item=>{
+    if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
+    const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
+    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:(preset&&preset.creditos)||null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+  });
+  S.onboardingDone=true;save();
   syncProfile();
-  track('onboarding_complete',{semestre:selectedSem,carrera:selectedCarrera});
+  track('onboarding_complete',{semestre:selectedSem,carrera:selectedCarrera,ramos:obRamos.length});
   enterApp();
-  maybeOfferMalla();
+  const oficiales=obRamos.filter(item=>!item.manual&&!!presetRamo(item.nombre,selectedTenant,selectedCarrera)).length;
+  mostrarRamosCargados(obRamos.length,oficiales);
+}
+function mostrarRamosCargados(cantidad,oficiales){
+  const count=cantidad?`${cantidad} ramo${cantidad!==1?'s':''} agregado${cantidad!==1?'s':''}`:'Partiste sin ramos';
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Tu semestre está cargado</div>
+    <div class="courses-loaded">
+      <div class="courses-loaded-count">${count}</div>
+      <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">Cuando tengas una nota, agrega su evaluación y su peso en el ramo.</p>
+      ${oficiales?`<div class="courses-official"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>${oficiales} pauta${oficiales!==1?'s':''} oficial${oficiales!==1?'es':''} cargada${oficiales!==1?'s':''}</div>`:''}
+    </div>
+    <div class="modal-btns"><button class="btn-confirm" onclick="closeModal()">Ver mis ramos</button></div>`;
+  openModal();
 }
 function showMainApp(){
   applyTheme(S.tenant);
