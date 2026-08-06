@@ -119,6 +119,13 @@ eq('examen bajo 3.0 topa en 3.9', ctx.ramoAvg(metodos(6, 6, 6, 2.5)), 3.9);
 // examen 2.5 con solemnes malas: ponderado = 0.6*2 + 0.4*2.5 = 2.2 → min(2.2, 3.9) = 2.2
 eq('el tope no mejora una nota peor', ctx.ramoAvg(metodos(2, 2, 2, 2.5)), 2.2);
 
+console.log('\n=== Créditos que participan en el PPA ===');
+const ramoConNota = gestion(5.0, 5.0, 5.0, 5.0); // 6 créditos, promedio 5.0
+const ramoSinNota = gestion(null, null, null, null);
+ramoSinNota.id = 'pendiente'; ramoSinNota.creditos = 12;
+eq('solo suma créditos de ramos con nota', ctx.creditosConNota([ramoConNota, ramoSinNota]), 6);
+eq('PPA ignora créditos de ramos pendientes', ctx.gpa([ramoConNota, ramoSinNota]), 5.0);
+
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));
 if (act.length === 1 && act[0].grupo === true && Math.abs(act[0].actual - 3.0) < 0.01) { ok++; console.log('  OK   detecta el grupal en 3.0'); }

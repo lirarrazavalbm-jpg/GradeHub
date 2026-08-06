@@ -376,9 +376,10 @@ function gpa(ramos){
   const a=conNota.map(ramoAvg);
   return a.reduce((x,y)=>x+y,0)/a.length;
 }
-// Total de créditos inscritos (solo cuenta los que tienen el dato)
-function totalCreditos(ramos){
-  return ramos.reduce((s,r)=>s+(typeof r.creditos==='number'&&r.creditos>0?r.creditos:0),0);
+// Créditos que efectivamente participan en el PPA. Los ramos sin nota todavía
+// no aportan al promedio, aunque estén inscritos y tengan créditos cargados.
+function creditosConNota(ramos){
+  return ramos.reduce((s,r)=>s+(ramoAvg(r)!==null&&typeof r.creditos==='number'&&r.creditos>0?r.creditos:0),0);
 }
 function semester(){
   const now=new Date(),m=now.getMonth(),y=now.getFullYear();
@@ -931,7 +932,7 @@ function renderHome(){
   }else{
     gpael.textContent='·';gpael.className='gpa-num empty';gpael.onclick=null;
   }
-  const cr=totalCreditos(S.ramos);
+  const cr=creditosConNota(S.ramos);
   const modo=gpaMode(S.ramos);
   gpaSub.textContent=`${semester()} · ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`
     +(modo==='creditos'?` · ${cr} créditos`:'');
@@ -2193,7 +2194,7 @@ function renderStats(){
       <span class="section-hd-title">Resumen</span>
     </div>
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-icon-wrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></div><div class="stat-label">Promedio</div><div class="stat-val" style="color:${getColor(g)}">${g!==null?nf(g):'—'}</div><div class="stat-sub">${gpaMode(S.ramos)==='creditos'?`ponderado · ${totalCreditos(S.ramos)} créditos`:`simple · ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`}</div></div>
+      <div class="stat-card"><div class="stat-icon-wrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></div><div class="stat-label">Promedio</div><div class="stat-val" style="color:${getColor(g)}">${g!==null?nf(g):'—'}</div><div class="stat-sub">${gpaMode(S.ramos)==='creditos'?`ponderado · ${creditosConNota(S.ramos)} créditos`:`simple · ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`}</div></div>
       <div class="stat-card"><div class="stat-icon-wrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div><div class="stat-label">Notas</div><div class="stat-val">${totalNotas}</div><div class="stat-sub">ingresadas</div></div>
       <div class="stat-card"><div class="stat-icon-wrap stat-icon-good"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/></svg></div><div class="stat-label">Sólidos</div><div class="stat-val" style="color:${ramosAprobados>0?'var(--green)':'var(--fg3)'}">${ramosAprobados}</div><div class="stat-sub">promedio ≥ 5.0</div></div>
       <div class="stat-card"><div class="stat-icon-wrap ${ramosReprobados>0?'stat-icon-bad':'stat-icon-warn'}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div><div class="stat-label">Por mejorar</div><div class="stat-val" style="color:${ramosReprobados>0?'var(--red)':ramosEnRiesgo>0?'var(--yellow)':'var(--fg3)'}">${ramosReprobados+ramosEnRiesgo}</div><div class="stat-sub">${ramosReprobados>0?ramosReprobados+' bajo 4.0':'entre 4.0 y 5.0'}</div></div>
