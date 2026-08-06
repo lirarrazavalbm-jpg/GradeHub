@@ -819,3 +819,25 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .modo-opt-name{font-size:13.5px;font-weight:600;color:var(--fg);letter-spacing:-.01em;}
 .modo-opt.sel .modo-opt-name{color:var(--primary);}
 .modo-opt-sub{font-size:10.5px;color:var(--fg3);line-height:1.2;text-align:center;}
+
+/* Aviso de versión nueva. Aparece cuando el service worker nuevo toma el
+   control: sin esto el estudiante tendría que recargar dos veces para ver un
+   cambio, y nadie lo hace. Va sobre la barra inferior, no encima del contenido:
+   informa, no interrumpe. */
+.update-toast{position:fixed;left:50%;transform:translateX(-50%) translateY(140%);
+  bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:400;
+  /* width:max-content o el elemento fijo se encoge al contenido y parte el
+     texto en tres líneas. El cap evita que se salga en pantallas angostas. */
+  display:flex;align-items:center;gap:12px;
+  width:max-content;max-width:calc(100vw - 28px);
+  padding:11px 12px 11px 16px;border-radius:14px;
+  background:var(--card);border:1px solid var(--border2);box-shadow:var(--shadow-lg);
+  font-family:'Inter',sans-serif;font-size:13px;color:var(--fg);letter-spacing:-.005em;
+  transition:transform .3s cubic-bezier(.22,1,.36,1);}
+.update-toast.show{transform:translateX(-50%) translateY(0);}
+.update-toast button{flex-shrink:0;padding:7px 13px;border:none;border-radius:9px;
+  background:var(--primary);color:var(--primary-fg,#fff);cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:-.005em;}
+@media(min-width:1024px){
+  .update-toast{bottom:24px;left:calc(50% + (var(--rail) / 2));}
+}
