@@ -121,6 +121,16 @@ eq('examen bajo 3.0 topa en 3.9', ctx.ramoAvg(metodos(6, 6, 6, 2.5)), 3.9);
 // examen 2.5 con solemnes malas: ponderado = 0.6*2 + 0.4*2.5 = 2.2 → min(2.2, 3.9) = 2.2
 eq('el tope no mejora una nota peor', ctx.ramoAvg(metodos(2, 2, 2, 2.5)), 2.2);
 
+console.log('\n=== Agenda · guía y foco ===');
+vm.runInContext("S={ramos:[{id:'agenda',nombre:'Ramo agenda',color:'#2563eb',categorias:[{id:'sin-fecha',nombre:'Control sin fecha',peso:20,notas:[]},{id:'rendida',nombre:'Control rendido',peso:20,notas:[{id:'n',valor:5,peso:1}]}]}]};", ctx);
+if(ctx.agendaSinFecha().length===1&&ctx.agendaSinFecha()[0].cat.id==='sin-fecha'){ok++;console.log('  OK   guía solo evaluaciones pendientes sin fecha');}
+else {fail++;console.log('  FAIL guía de fechas pendientes');}
+if(ctx.focoAgendaCopy({dias:2,necesita:null}).includes('más te conviene atender ahora')){ok++;console.log('  OK   explica el foco cercano');}
+else {fail++;console.log('  FAIL foco cercano');}
+const cargaSemana=ctx.resumenSemanaAgenda([{dias:0,cat:{peso:20}},{dias:7,cat:{peso:30}},{dias:8,cat:{peso:50}}]);
+if(cargaSemana&&cargaSemana.cantidad===2&&cargaSemana.peso===50){ok++;console.log('  OK   resume la carga de siete días');}
+else {fail++;console.log('  FAIL resumen semanal → '+JSON.stringify(cargaSemana));}
+
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));
 if (act.length === 1 && act[0].grupo === true && Math.abs(act[0].actual - 3.0) < 0.01) { ok++; console.log('  OK   detecta el grupal en 3.0'); }
