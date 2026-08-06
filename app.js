@@ -38,6 +38,7 @@ function normalize(data) {
   data.historial = Array.isArray(data.historial) ? data.historial : [];
   data.carrera = data.carrera || null;
   data.tenant = data.tenant || 'fen';
+  data.modo = ['claro','oscuro'].includes(data.modo) ? data.modo : 'sistema';
   data.sortMode = ['manual','avg','name'].includes(data.sortMode) ? data.sortMode : 'manual';
   return data;
 }
@@ -92,11 +93,32 @@ function tenantsVisibles(actual){
 // Escribe el tema como CSS custom properties en :root. Todos los componentes leen
 // de esas variables, así que no hay condicionales de tenant repartidos por el código.
 let _activeTheme='fen';
+// Modo de color: 'sistema' sigue al sistema operativo, 'claro' y 'oscuro' lo
+// fuerzan. El atributo data-modo en :root es lo que hace que el CSS forzado le
+// gane a la media query (ver el bloque de temas en styles.css).
+function modoColor(){
+  const m=S&&S.modo;
+  return m==='claro'||m==='oscuro'?m:'sistema';
+}
 function prefersDark(){
+  const m=modoColor();
+  if(m==='claro')return false;
+  if(m==='oscuro')return true;
   return !window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function aplicarModo(){
+  const m=modoColor();
+  const r=document.documentElement;
+  if(m==='sistema')r.removeAttribute('data-modo'); else r.setAttribute('data-modo',m);
+}
+function setModo(m){
+  S.modo=(m==='claro'||m==='oscuro')?m:'sistema';
+  save();aplicarModo();applyTheme(S.tenant);track('set_modo',{modo:S.modo});
+  const g=document.getElementById('s-modo-grid');if(g)renderModoGrid();
 }
 function applyTheme(t){
   _activeTheme=THEMES[t]?t:'fen';
+  aplicarModo();
   const th={...THEME_BASE,...themeFor(t)};
   const r=document.documentElement.style;
   // Acentos: valen en ambos modos
@@ -180,7 +202,7 @@ function renderTenantPick(){
 function portalFor(tenant){return tenant==='uc'?PORTAL_UC:PORTAL;}
 
 // ─── ESTADO ──────────────────────────────────────────────────────────────────
-let S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual'};
+let S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema'};
 let currentRamoId=null,openCats={},selectedSem=1,selectedCarrera=null,modalColor=COLORS[0];
 let openHist={};
 
@@ -378,7 +400,7 @@ try{
   }
 }catch(e){console.warn('Supabase no inicializado:',e);}
 
-function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual'};}
+function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema'};}
 
 function authError(msg,kind){
   // kind: 'error' (default, rojo) | 'info' (neutro, para mensajes tipo "revisa tu correo")
@@ -1867,6 +1889,8 @@ function openSettings(){
     <div id="s-carrera-grid" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
     <label class="modal-label">Semestre de carrera</label>
     <div class="sem-grid" id="s-sem-grid" style="margin-bottom:16px;"></div>
+    <label class="modal-label">Apariencia</label>
+    <div class="modo-grid" id="s-modo-grid" style="margin-bottom:16px;"></div>
     <button class="btn-primary" id="s-save-btn" onclick="saveSettings()" style="margin-bottom:10px;">Guardar cambios</button>
     <button onclick="confirmResetApp()" style="width:100%;padding:12px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Reiniciar app</button>
     <p style="text-align:center;margin:14px 0 0;font-size:12px;"><a href="/privacidad.html" target="_blank" rel="noopener" style="color:var(--fg3);text-decoration:none;">Política de privacidad</a></p>`;
@@ -1874,11 +1898,25 @@ function openSettings(){
   renderSettingsSemGrid();
   renderSettingsTenantGrid();
   renderSettingsCarreraGrid();
+  renderModoGrid();
   setTimeout(()=>{const inp=document.getElementById('s-name');inp.focus();inp.select();},100);
 
   function checkSave(){
     const btn=document.getElementById('s-save-btn');
     if(btn)btn.disabled=!document.getElementById('s-name').value.trim();
+  }
+  function renderModoGrid(){
+    const g=document.getElementById('s-modo-grid');if(!g)return;g.innerHTML='';
+    // 'sistema' primero: es el default y lo que la mayoría quiere.
+    [['sistema','Sistema','Sigue a tu teléfono'],['claro','Claro',''],['oscuro','Oscuro','']]
+      .forEach(([val,nom,sub])=>{
+        const b=document.createElement('button');
+        b.type='button';
+        b.className='modo-opt'+(modoColor()===val?' sel':'');
+        b.innerHTML=`<span class="modo-opt-name">${esc(nom)}</span>${sub?`<span class="modo-opt-sub">${esc(sub)}</span>`:''}`;
+        b.onclick=()=>setModo(val);
+        g.appendChild(b);
+      });
   }
   function renderSettingsSemGrid(){
     const g=document.getElementById('s-sem-grid');if(!g)return;g.innerHTML='';

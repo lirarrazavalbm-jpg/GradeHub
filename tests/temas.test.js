@@ -30,7 +30,7 @@ function ctxFor(dark) {
     window: { addEventListener() {}, matchMedia: () => ({ matches: dark, addEventListener() {}, addListener() {} }) },
     document: {
       getElementById: () => stub, createElement: () => stub, addEventListener() {},
-      documentElement: { style: { setProperty(k, v) { props[k] = v; }, removeProperty(k) { delete props[k]; } } },
+      documentElement: { style: { setProperty(k, v) { props[k] = v; }, removeProperty(k) { delete props[k]; } }, setAttribute() {}, removeAttribute() {}, getAttribute() { return null } },
       querySelector: () => stub, querySelectorAll: () => [], body: stub
     },
     localStorage: { getItem() { return null }, setItem() {}, removeItem() {} },

@@ -16,7 +16,7 @@ button:active{transform:scale(.97);}
   --shadow-lg:0 8px 30px -8px rgba(11,20,20,.16);
 }
 @media(prefers-color-scheme:dark){
-  :root{
+  :root:not([data-modo="claro"]){
     /* Fondo casi negro con un pelo de azul. Los grises suben en pasos parejos
        para que las cards se despeguen sin necesitar bordes fuertes. */
     --bg:#05070a;--bg2:#0a0d13;--card:#111620;--border:#1d2534;--border2:#2c3648;
@@ -31,6 +31,21 @@ button:active{transform:scale(.97);}
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
   }
 }
+/* Mismo bloque cuando el estudiante fuerza «oscuro» en Ajustes */
+  :root[data-modo="oscuro"]{
+    /* Fondo casi negro con un pelo de azul. Los grises suben en pasos parejos
+       para que las cards se despeguen sin necesitar bordes fuertes. */
+    --bg:#05070a;--bg2:#0a0d13;--card:#111620;--border:#1d2534;--border2:#2c3648;
+    --primary:#2dd4bf;--primary-fg:#04211c;--primary-light:#0d2b27;--accent:#67e8f9;--secondary:#67e8f9;
+    --fg:#eef3f8;--fg2:#94a3b8;--fg3:#61708a;
+    /* Notas: saturadas y luminosas contra el fondo oscuro */
+    --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
+    --yellow:#ffc94d;--yellow-bg:#231a06;
+    --red:#ff5f7a;--red-bg:#280d15;
+    --muted:#161d29;
+    --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
+    --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
+  }
 body{font-family:'Inter',sans-serif;background:var(--bg);background-image:radial-gradient(1100px 380px at 50% -120px,color-mix(in srgb,var(--primary),transparent 91%),transparent);color:var(--fg);min-height:100vh;min-height:100dvh;}
 /* Íconos de línea: heredan tamaño y color del contexto */
 .ic{width:1em;height:1em;display:inline-block;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
@@ -226,7 +241,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .btn-primary:disabled{opacity:.35;cursor:default;box-shadow:none;}
 .btn-primary:not(:disabled):hover{box-shadow:0 10px 26px -8px color-mix(in srgb,var(--primary),transparent 25%);}
 .btn-primary:not(:disabled):active{transform:scale(.98);}
-@media(prefers-color-scheme:light){.btn-primary{color:#fff;}}
+@media(prefers-color-scheme:light){:root:not([data-modo="oscuro"]) .btn-primary{color:#fff;}}
+/* Mismo bloque cuando el estudiante fuerza «claro» en Ajustes */
+:root[data-modo="claro"] .btn-primary{color:#fff;}
 .ob-note{font-size:13px;color:var(--fg3);text-align:center;margin-top:12px;letter-spacing:-.005em;}
 /* ONBOARDING POR PASOS */
 .ob-wrap-steps{justify-content:flex-start;padding-top:calc(28px + env(safe-area-inset-top,0px));}
@@ -265,10 +282,14 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .gpa-num.bad{background-image:linear-gradient(160deg,#ff3f63 10%,#ff7a8f 55%,#ffc4cf 100%);}
 .gpa-num.empty{background-image:none;-webkit-text-fill-color:var(--fg3);color:var(--fg3);font-size:40px;opacity:.4;cursor:default;line-height:1.6;}
 @media(prefers-color-scheme:light){
-  .gpa-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
-  .gpa-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
-  .gpa-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
+  :root:not([data-modo="oscuro"]) .gpa-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
+  :root:not([data-modo="oscuro"]) .gpa-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
+  :root:not([data-modo="oscuro"]) .gpa-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
 }
+/* Mismo bloque cuando el estudiante fuerza «claro» en Ajustes */
+  :root[data-modo="claro"] .gpa-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
+  :root[data-modo="claro"] .gpa-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
+  :root[data-modo="claro"] .gpa-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
 /* Decimal grande, mismo tamaño y gradient que el número. Solo se atenúa con opacity. */
 .gpa-num .gpa-decimal{
   background-image:inherit;-webkit-background-clip:text;background-clip:text;
@@ -356,10 +377,14 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .ramo-nota.bad{color:#ff7a8f;}  /* rosa vivo */
 .ramo-nota.neutral{color:var(--fg3);opacity:.45;font-weight:500;font-size:20px;}
 @media(prefers-color-scheme:light){
-  .ramo-nota.good{color:#0d9488;}
-  .ramo-nota.warn{color:#b45309;}
-  .ramo-nota.bad{color:#be123c;}
+  :root:not([data-modo="oscuro"]) .ramo-nota.good{color:#0d9488;}
+  :root:not([data-modo="oscuro"]) .ramo-nota.warn{color:#b45309;}
+  :root:not([data-modo="oscuro"]) .ramo-nota.bad{color:#be123c;}
 }
+/* Mismo bloque cuando el estudiante fuerza «claro» en Ajustes */
+  :root[data-modo="claro"] .ramo-nota.good{color:#0d9488;}
+  :root[data-modo="claro"] .ramo-nota.warn{color:#b45309;}
+  :root[data-modo="claro"] .ramo-nota.bad{color:#be123c;}
 .chevron-r{color:var(--fg3);font-size:14px;opacity:.5;margin-left:2px;}
 /* EMPTY */
 .empty{display:flex;flex-direction:column;align-items:center;padding:48px 20px;text-align:center;}
@@ -383,10 +408,14 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .ramo-num.bad{background-image:linear-gradient(160deg,#ff3f63 10%,#ff7a8f 55%,#ffc4cf 100%);}
 .ramo-num.empty{background-image:none;-webkit-text-fill-color:var(--fg3);color:var(--fg3);font-size:32px;font-weight:600;opacity:.7;letter-spacing:-.01em;}
 @media(prefers-color-scheme:light){
-  .ramo-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
-  .ramo-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
-  .ramo-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
+  :root:not([data-modo="oscuro"]) .ramo-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
+  :root:not([data-modo="oscuro"]) .ramo-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
+  :root:not([data-modo="oscuro"]) .ramo-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
 }
+/* Mismo bloque cuando el estudiante fuerza «claro» en Ajustes */
+  :root[data-modo="claro"] .ramo-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
+  :root[data-modo="claro"] .ramo-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
+  :root[data-modo="claro"] .ramo-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
 .ramo-num .ramo-decimal{
   background-image:inherit;-webkit-background-clip:text;background-clip:text;
   -webkit-text-fill-color:transparent;color:transparent;
@@ -536,8 +565,10 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-empty-cta:hover{box-shadow:0 8px 20px -6px color-mix(in srgb,var(--primary),transparent 55%);}
 .ag-empty-cta:active{transform:scale(.98);}
 @media(prefers-color-scheme:dark){
-  .ag-empty-cta{color:#0a1f1c;}
+  :root:not([data-modo="claro"]) .ag-empty-cta{color:#0a1f1c;}
 }
+/* Mismo bloque cuando el estudiante fuerza «oscuro» en Ajustes */
+  :root[data-modo="oscuro"] .ag-empty-cta{color:#0a1f1c;}
 /* SETTINGS */
 .settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border);}
 .settings-row:last-of-type{border-bottom:none;}
@@ -690,3 +721,13 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   /* El toast se centra sobre el contenido, no sobre la ventana */
   .toast{left:calc(50% + (var(--rail) / 2));bottom:28px;}
 }
+
+/* Selector de apariencia (Ajustes). «Sistema» es el default: sigue al SO.
+   Claro y oscuro escriben data-modo en :root y ganan sobre la media query. */
+.modo-grid{display:flex;gap:6px;}
+.modo-opt{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:11px 8px;background:var(--muted);border:1.5px solid transparent;border-radius:11px;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .15s,background .15s;}
+.modo-opt:hover{background:var(--border);}
+.modo-opt.sel{border-color:var(--primary);background:var(--primary-light);}
+.modo-opt-name{font-size:13.5px;font-weight:600;color:var(--fg);letter-spacing:-.01em;}
+.modo-opt.sel .modo-opt-name{color:var(--primary);}
+.modo-opt-sub{font-size:10.5px;color:var(--fg3);line-height:1.2;text-align:center;}
