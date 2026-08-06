@@ -38,6 +38,9 @@ function normalize(data) {
   data.historial = Array.isArray(data.historial) ? data.historial : [];
   data.carrera = data.carrera || null;
   data.tenant = data.tenant || 'fen';
+  // Las dos menciones de Ing. Comercial se fusionaron: se elige más adelante en
+  // la carrera, así que del 1º al 4º eran idénticas.
+  if(data.carrera==='IC-CE'||data.carrera==='IC-AE')data.carrera='IC';
   data.modo = ['claro','oscuro'].includes(data.modo) ? data.modo : 'sistema';
   data.sortMode = ['manual','avg','name'].includes(data.sortMode) ? data.sortMode : 'manual';
   return data;
@@ -1607,10 +1610,37 @@ function catalogRamos(tenant,carrera){
   return out;
 }
 
+// Todos los ramos de la universidad, no solo los de tu carrera. Un alumno de
+// Control de Gestión puede estar cursando un ramo que solo figura en la malla
+// de Comercial, y antes no había forma de encontrarlo. Incluye las mallas que
+// ya no se ofrecen al elegir carrera (Contador Auditor): dejaron la oferta,
+// no el catálogo.
+//
+// `propio` marca si el ramo está en la malla del estudiante — se usa para
+// ordenar, no para esconder.
+function catalogRamosUniversidad(tenant,carreraPropia){
+  const mallas=mallaFor(tenant)||{};
+  const propios=new Set(catalogRamos(tenant,carreraPropia).map(r=>normName(r.nombre)));
+  const out=[],vistos=new Set();
+  Object.keys(mallas).forEach(car=>{
+    const porSem=mallas[car]||{};
+    Object.keys(porSem).sort((a,b)=>Number(a)-Number(b)).forEach(sem=>{
+      (porSem[sem]||[]).forEach(nombre=>{
+        const k=normName(nombre);
+        if(vistos.has(k))return;
+        vistos.add(k);
+        out.push({nombre,semestre:Number(sem),propio:propios.has(k),
+                  tienePreset:!!findPresetName(nombre,tenant,carreraPropia)||!!findPresetName(nombre,tenant,car)});
+      });
+    });
+  });
+  return out;
+}
+
 // B\u00fasqueda tolerante a tildes. Ordena: exacto > empieza con > contiene;
 // a igualdad, primero los del semestre actual del estudiante.
 function searchCatalog(q,tenant,carrera,semActual){
-  const todos=catalogRamos(tenant,carrera);
+  const todos=catalogRamosUniversidad(tenant,carrera);
   const nq=normName(q);
   if(!nq)return todos.slice();
   const scored=[];
@@ -1629,6 +1659,9 @@ function searchCatalog(q,tenant,carrera,semActual){
   });
   scored.sort((a,b)=>{
     if(a._s!==b._s)return a._s-b._s;
+    // Los de tu propia malla primero: son los más probables. Los de otras
+    // carreras siguen apareciendo, solo más abajo.
+    if(a.propio!==b.propio)return a.propio?-1:1;
     const da=Math.abs(a.semestre-(semActual||0)),db=Math.abs(b.semestre-(semActual||0));
     if(da!==db)return da-db;
     return a.nombre.localeCompare(b.nombre);

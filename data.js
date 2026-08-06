@@ -72,10 +72,11 @@ const FAMILIAS_COLOR=[
 ];
 
 // ─── MALLAS FEN 2026 ─────────────────────────────────────────────────────────
+// Lo que se OFRECE al elegir carrera. Es más chico que MALLA a propósito: una
+// malla que sale de acá no se borra, solo deja de ofrecerse, y sus ramos siguen
+// apareciendo en la búsqueda. Volver a ofrecerla es agregar su línea.
 const CARRERAS={
-  'IC-CE':'Ing. Comercial · Ciencias Económicas',
-  'IC-AE':'Ing. Comercial · Administración de Empresas',
-  'CA':'Contador Auditor',
+  'IC':'Ing. Comercial',
   'IICG':'Ing. en Información y Control de Gestión',
 };
 // Ramos obligatorios por carrera y semestre. Electivos/Libres se agregan a mano.
@@ -86,18 +87,16 @@ const _COMUN={
   4:['Economía Aplicada','Finanzas','Razonamiento Basado en Datos','Estadística II','Métodos Matemáticos IV','Inglés III'],
 };
 const MALLA={
-  'IC-CE':{..._COMUN,
-    5:['Microeconomía I','Macroeconomía I','Métodos Cuantitativos I','Historia Económica','Inglés IV','Comunicación II'],
-    6:['Microeconomía II','Macroeconomía II','Métodos Cuantitativos II','Taller de Política Pública'],
-    7:['Microeconomía III','Macroeconomía III','Taller Práctico Profesional/Social I','Taller Práctico Profesional/Social II'],
-    8:['Microeconomía IV','Macroeconomía IV'],
-    9:['Práctica Profesional'],10:['Taller de Práctica Profesional'],
-  },
-  'IC-AE':{..._COMUN,
-    5:['Gestión de Personas I','Métodos Cuantitativos I','Economía para los Negocios','Contabilidad Empresarial I','Inglés IV','Comunicación II'],
-    6:['Marketing I','Taller de Negocios','Negocios I','Finanzas I','Contabilidad Empresarial II'],
-    7:['Taller Práctico Profesional/Social I','Taller Práctico Profesional/Social II','Negocios II'],
-    8:['Gestión de Personas II','Marketing II','Negocios III','Finanzas II'],
+  // Ing. Comercial. La mención (Ciencias Económicas o Administración) se elige
+  // más adelante en la carrera, así que del 1º al 4º es una sola malla. Del 5º
+  // en adelante va la UNIÓN de ambas menciones: son ramos POSIBLES, no todos
+  // los que cursa una persona. El historial de git conserva la separación
+  // original por si algún día se vuelven a ofrecer aparte.
+  'IC':{..._COMUN,
+    5:['Microeconomía I','Macroeconomía I','Métodos Cuantitativos I','Historia Económica','Inglés IV','Comunicación II','Gestión de Personas I','Economía para los Negocios','Contabilidad Empresarial I'],
+    6:['Microeconomía II','Macroeconomía II','Métodos Cuantitativos II','Taller de Política Pública','Marketing I','Taller de Negocios','Negocios I','Finanzas I','Contabilidad Empresarial II'],
+    7:['Microeconomía III','Macroeconomía III','Taller Práctico Profesional/Social I','Taller Práctico Profesional/Social II','Negocios II'],
+    8:['Microeconomía IV','Macroeconomía IV','Gestión de Personas II','Marketing II','Negocios III','Finanzas II'],
     9:['Práctica Profesional'],10:['Taller de Práctica Profesional'],
   },
   'CA':{
@@ -217,7 +216,7 @@ const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
 const THEME_FALLBACK=THEMES.fen;
 
 // Carreras y mallas por universidad. Presets verificados solo en ING-PC (1er sem).
-const CARRERAS_UC={'ING-PC':'Ingeniería · Plan Común','COM':'Ingeniería Comercial','DER':'Derecho','MED':'Medicina','OTRA':'Otra carrera'};
+const CARRERAS_UC={'ING-PC':'Ingeniería · Plan Común','COM':'Ingeniería Comercial','OTRA':'Otra carrera'};
 const MALLA_UC={
   'ING-PC':{1:['Cálculo I','Álgebra Lineal','Química para Ingeniería','Desafíos de la Ingeniería','Filosofía: ¿para qué?']},
   // Malla oficial Ing. Comercial UC (economiayadministracion.uc.cl). Sin ponderaciones aún: el usuario define sus secciones.
