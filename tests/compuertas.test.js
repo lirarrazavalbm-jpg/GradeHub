@@ -129,6 +129,11 @@ ramoSinNota.id = 'pendiente'; ramoSinNota.creditos = 12;
 eq('solo suma créditos de ramos con nota', ctx.creditosConNota([ramoConNota, ramoSinNota]), 6);
 eq('PPA ignora créditos de ramos pendientes', ctx.gpa([ramoConNota, ramoSinNota]), 5.0);
 
+console.log('\n=== Normalización de datos de la nube ===');
+const nubeAntigua=vm.runInContext("normalize({ramos:[{nombre:'Ramo legado',categorias:[{nombre:'Control',notas:[4.5]}]}]})", ctx);
+if(nubeAntigua.ramos[0].id && nubeAntigua.ramos[0].categorias[0].id && nubeAntigua.ramos[0].categorias[0].notas[0].id && nubeAntigua.ramos[0].categorias[0].notas[0].valor===4.5){ok++;console.log('  OK   completa IDs y conserva una nota legacy');}
+else {fail++;console.log('  FAIL normalización de datos de nube');}
+
 console.log('\n=== Edición segura de notas por slot ===');
 vm.runInContext(`
   save=()=>{};track=()=>{};renderRamo=()=>{};showToast=()=>{};

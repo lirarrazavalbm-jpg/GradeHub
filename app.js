@@ -538,7 +538,9 @@ async function afterLogin(){
   let cloud,ok=true;
   try{cloud=await loadFromCloud();}catch(e){ok=false;}
   if(ok){
-    S=cloud?{...freshState(),...cloud}:freshState();
+    // La nube puede contener una versión anterior o una edición interrumpida.
+    // Pásala por la misma migración defensiva que imports y localStorage.
+    S=cloud?normalize({...freshState(),...cloud}):freshState();
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
     setCacheOwner(uid);
   }else{
