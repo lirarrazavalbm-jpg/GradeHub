@@ -79,7 +79,7 @@
       <label class="field-label" id="auth-user-label">Correo electrónico</label>
       <input type="email" id="auth-user" placeholder="tu@correo.com" maxlength="60" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" onkeydown="if(event.key==='Enter')document.getElementById('auth-pass').focus()"/>
       <label class="field-label" style="margin-top:14px;">Contraseña</label>
-      <input type="password" id="auth-pass" placeholder="Mínimo 6 caracteres" maxlength="60" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()"/>
+      <input type="password" id="auth-pass" placeholder="Tu contraseña" maxlength="60" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()"/>
       <div id="auth-error" style="display:none;font-size:12px;color:var(--red);margin-top:10px;line-height:1.4;"></div>
     </div>
     <button class="btn-primary" id="auth-btn" onclick="submitAuth()">Iniciar sesión</button>
@@ -100,7 +100,7 @@
     <div class="ob-sub">Escribe una nueva contraseña para tu cuenta.</div>
     <div class="ob-card">
       <label class="field-label">Nueva contraseña</label>
-      <input type="password" id="reset-pass" placeholder="Mínimo 6 caracteres" maxlength="60" autocomplete="new-password"/>
+      <input type="password" id="reset-pass" placeholder="Mínimo 8 caracteres" maxlength="60" autocomplete="new-password"/>
       <label class="field-label" style="margin-top:14px;">Confirmar contraseña</label>
       <input type="password" id="reset-pass2" placeholder="Repite la contraseña" maxlength="60" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitNewPassword()"/>
       <div id="reset-error" style="display:none;font-size:12px;color:var(--red);margin-top:10px;line-height:1.4;"></div>

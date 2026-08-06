@@ -400,6 +400,11 @@ function greeting(){
 // ─── SUPABASE / AUTH ───────────────────────────────────────────────────────────
 // Credenciales del proyecto GradeHub. La publishable key es pública por diseño.
 // Nunca poner la sb_secret_... acá — esa solo se usa en servidores.
+// Largo mínimo de contraseña al CREAR o CAMBIAR una. Supabase trae 6 por
+// defecto; súbelo también en el panel (Auth → Policies) o el servidor sigue
+// aceptando 6 aunque el cliente no lo ofrezca.
+const PASS_MIN = 8;
+
 const SUPABASE_URL      = 'https://lsulsnswzesyekpsvlql.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
 
@@ -425,6 +430,9 @@ function toggleAuthMode(){
   document.getElementById('auth-btn').textContent=authMode==='login'?'Iniciar sesión':'Crear cuenta';
   document.getElementById('auth-toggle').textContent=authMode==='login'?'¿No tienes cuenta? Crea una':'¿Ya tienes cuenta? Inicia sesión';
   document.getElementById('auth-pass').setAttribute('autocomplete',authMode==='login'?'current-password':'new-password');
+  // Al iniciar sesión no se anuncia un mínimo: sería mentirle a quien creó su
+  // cuenta cuando el mínimo era otro.
+  document.getElementById('auth-pass').placeholder=authMode==='login'?'Tu contraseña':'Mínimo '+PASS_MIN+' caracteres';
   document.getElementById('auth-fp').style.display=authMode==='login'?'block':'none';
   authError('');
 }
@@ -465,7 +473,11 @@ async function submitAuth(){
   authError('');
   const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if(!emailRe.test(email)){authError('Ingresa un correo electrónico válido.');return;}
-  if(p.length<6){authError('La contraseña debe tener al menos 6 caracteres.');return;}
+  // El mínimo se exige SOLO al crear la cuenta. Al iniciar sesión no se valida
+  // el largo: quien se registró cuando el mínimo era 6 tiene que poder entrar,
+  // y validarlo acá lo dejaría fuera de su propia cuenta con un error engañoso.
+  if(authMode==='signup' && p.length<PASS_MIN){authError('La contraseña debe tener al menos '+PASS_MIN+' caracteres.');return;}
+  if(!p){authError('Escribe tu contraseña.');return;}
   if(!supabaseClient){authError('Falta configurar Supabase (URL y clave) en el código.');return;}
 
   const btn=document.getElementById('auth-btn');const orig=btn.textContent;
@@ -530,7 +542,7 @@ async function submitNewPassword(){
   const p2=document.getElementById('reset-pass2').value;
   const err=document.getElementById('reset-error');
   err.style.display='none';
-  if(p1.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres.';err.style.display='block';return;}
+  if(p1.length<PASS_MIN){err.textContent='La contraseña debe tener al menos '+PASS_MIN+' caracteres.';err.style.display='block';return;}
   if(p1!==p2){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
   if(!supabaseClient){err.textContent='Supabase no está configurado.';err.style.display='block';return;}
   const btn=document.getElementById('reset-btn');const orig=btn.textContent;
