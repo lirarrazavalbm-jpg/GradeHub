@@ -38,6 +38,7 @@ function normalize(data) {
   data.historial = Array.isArray(data.historial) ? data.historial : [];
   data.carrera = data.carrera || null;
   data.tenant = data.tenant || 'fen';
+  data.modo = ['claro','oscuro'].includes(data.modo) ? data.modo : 'sistema';
   data.sortMode = ['manual','avg','name'].includes(data.sortMode) ? data.sortMode : 'manual';
   return data;
 }
@@ -92,11 +93,32 @@ function tenantsVisibles(actual){
 // Escribe el tema como CSS custom properties en :root. Todos los componentes leen
 // de esas variables, así que no hay condicionales de tenant repartidos por el código.
 let _activeTheme='fen';
+// Modo de color: 'sistema' sigue al sistema operativo, 'claro' y 'oscuro' lo
+// fuerzan. El atributo data-modo en :root es lo que hace que el CSS forzado le
+// gane a la media query (ver el bloque de temas en styles.css).
+function modoColor(){
+  const m=S&&S.modo;
+  return m==='claro'||m==='oscuro'?m:'sistema';
+}
 function prefersDark(){
+  const m=modoColor();
+  if(m==='claro')return false;
+  if(m==='oscuro')return true;
   return !window.matchMedia || window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function aplicarModo(){
+  const m=modoColor();
+  const r=document.documentElement;
+  if(m==='sistema')r.removeAttribute('data-modo'); else r.setAttribute('data-modo',m);
+}
+function setModo(m){
+  S.modo=(m==='claro'||m==='oscuro')?m:'sistema';
+  save();aplicarModo();applyTheme(S.tenant);track('set_modo',{modo:S.modo});
+  const g=document.getElementById('s-modo-grid');if(g)renderModoGrid();
 }
 function applyTheme(t){
   _activeTheme=THEMES[t]?t:'fen';
+  aplicarModo();
   const th={...THEME_BASE,...themeFor(t)};
   const r=document.documentElement.style;
   // Acentos: valen en ambos modos
@@ -132,9 +154,33 @@ if(window.matchMedia){
 function chartColors(){return COLORS;}
 
 // Siguiente color sugerido: rota la paleta del tema evitando repetir si se puede
-function nextRamoColor(){
+// Color sugerido para un ramo. Primero su familia (ver FAMILIAS_COLOR en
+// data.js); si no calza, uno estable derivado del nombre, para que el mismo
+// ramo se vea igual en la app de dos compañeros. El estudiante puede cambiarlo
+// siempre — esto es solo el punto de partida.
+function colorDeFamilia(nombre){
+  const n=normName(nombre);
+  const f=FAMILIAS_COLOR.find(([re])=>re.test(n));
+  return f?f[1]:null;
+}
+function colorEstable(nombre){
+  const pal=chartColors();
+  const n=normName(nombre);
+  let h=0;
+  for(let i=0;i<n.length;i++)h=(h*31+n.charCodeAt(i))>>>0;
+  return pal[h%pal.length];
+}
+function nextRamoColor(nombre){
   const pal=chartColors();
   const usados=new Set((S&&S.ramos?S.ramos:[]).map(r=>r.color));
+  if(nombre){
+    // La familia manda aunque repita color: dos ramos de matemáticas del mismo
+    // lima es informativo, no un choque.
+    const fam=colorDeFamilia(nombre);
+    if(fam)return fam;
+    const est=colorEstable(nombre);
+    if(!usados.has(est))return est;
+  }
   const libre=pal.find(c=>!usados.has(c));
   return libre||pal[(S&&S.ramos?S.ramos.length:0)%pal.length];
 }
@@ -180,7 +226,7 @@ function renderTenantPick(){
 function portalFor(tenant){return tenant==='uc'?PORTAL_UC:PORTAL;}
 
 // ─── ESTADO ──────────────────────────────────────────────────────────────────
-let S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual'};
+let S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema'};
 let currentRamoId=null,openCats={},selectedSem=1,selectedCarrera=null,modalColor=COLORS[0];
 let openHist={};
 
@@ -378,7 +424,7 @@ try{
   }
 }catch(e){console.warn('Supabase no inicializado:',e);}
 
-function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual'};}
+function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema'};}
 
 function authError(msg,kind){
   // kind: 'error' (default, rojo) | 'info' (neutro, para mensajes tipo "revisa tu correo")
@@ -1332,7 +1378,7 @@ function confirmAddMalla(){
   if(!elegidos.length)return;
   elegidos.forEach(n=>{
     const preset=presetRamo(n,S.tenant,S.carrera);
-    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
   });
   save();track('add_malla_ramos',{count:elegidos.length,carrera:S.carrera,sem:S.careerSemestre});
   closeModal();
@@ -1341,6 +1387,7 @@ function confirmAddMalla(){
 }
 
 function openAddRamoModal(){
+  _colorElegidoAMano=false;
   modalColor=nextRamoColor();
   const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0;
   const uni=(TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'';
@@ -1352,7 +1399,7 @@ function openAddRamoModal(){
       <div id="m-ramo-results" class="cat-results"></div>
       <div class="oauth-divider" style="margin:14px 0;"><span>o créalo tú</span></div>`:''}
     <label class="modal-label">Nombre del ramo</label>
-    <div class="modal-input"><input type="text" id="m-ramo-name" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-ramo-name" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off" oninput="sugerirColorPorNombre(this.value)"/></div>
     <label class="modal-label">Créditos <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(SCT — opcional)</span></label>
     <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-creditos" placeholder="Ej: 10" maxlength="3" autocomplete="off"/></div>
     <label class="modal-label">Color</label>
@@ -1404,7 +1451,7 @@ function addFromCatalog(nombre){
   const presetName=findPresetName(nombre,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   S.ramos.push({
-    id:uid(),nombre:presetName||nombre,color:nextRamoColor(),
+    id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
     creditos:(preset&&preset.creditos)||null,origen:origenActual(),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],
   });
@@ -1412,12 +1459,20 @@ function addFromCatalog(nombre){
   closeModal();renderHome();
   showToast(preset?'Agregado con sus ponderaciones':'Ramo agregado');
 }
+let _colorElegidoAMano=false;
 function renderModalColors(){
   const c=document.getElementById('m-colors');if(!c)return;c.innerHTML='';
   chartColors().forEach(col=>{
     const d=document.createElement('div');d.className='color-dot'+(col===modalColor?' sel':'');d.style.background=col;
-    d.onclick=()=>{modalColor=col;renderModalColors();};c.appendChild(d);
+    d.onclick=()=>{modalColor=col;_colorElegidoAMano=true;renderModalColors();};c.appendChild(d);
   });
+}
+// Mientras el estudiante escribe el nombre, el color sigue a la familia del
+// ramo. Deja de seguirlo en cuanto elige uno a mano: su decisión gana.
+function sugerirColorPorNombre(nombre){
+  if(_colorElegidoAMano)return;
+  const sug=nextRamoColor(nombre);
+  if(sug!==modalColor){modalColor=sug;renderModalColors();}
 }
 // Matching tolerante: ignora tildes y mayúsculas para encontrar el preset.
 function normName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
@@ -1867,6 +1922,8 @@ function openSettings(){
     <div id="s-carrera-grid" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
     <label class="modal-label">Semestre de carrera</label>
     <div class="sem-grid" id="s-sem-grid" style="margin-bottom:16px;"></div>
+    <label class="modal-label">Apariencia</label>
+    <div class="modo-grid" id="s-modo-grid" style="margin-bottom:16px;"></div>
     <button class="btn-primary" id="s-save-btn" onclick="saveSettings()" style="margin-bottom:10px;">Guardar cambios</button>
     <button onclick="confirmResetApp()" style="width:100%;padding:12px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Reiniciar app</button>
     <p style="text-align:center;margin:14px 0 0;font-size:12px;"><a href="/privacidad.html" target="_blank" rel="noopener" style="color:var(--fg3);text-decoration:none;">Política de privacidad</a></p>`;
@@ -1874,11 +1931,25 @@ function openSettings(){
   renderSettingsSemGrid();
   renderSettingsTenantGrid();
   renderSettingsCarreraGrid();
+  renderModoGrid();
   setTimeout(()=>{const inp=document.getElementById('s-name');inp.focus();inp.select();},100);
 
   function checkSave(){
     const btn=document.getElementById('s-save-btn');
     if(btn)btn.disabled=!document.getElementById('s-name').value.trim();
+  }
+  function renderModoGrid(){
+    const g=document.getElementById('s-modo-grid');if(!g)return;g.innerHTML='';
+    // 'sistema' primero: es el default y lo que la mayoría quiere.
+    [['sistema','Sistema','Sigue a tu teléfono'],['claro','Claro',''],['oscuro','Oscuro','']]
+      .forEach(([val,nom,sub])=>{
+        const b=document.createElement('button');
+        b.type='button';
+        b.className='modo-opt'+(modoColor()===val?' sel':'');
+        b.innerHTML=`<span class="modo-opt-name">${esc(nom)}</span>${sub?`<span class="modo-opt-sub">${esc(sub)}</span>`:''}`;
+        b.onclick=()=>setModo(val);
+        g.appendChild(b);
+      });
   }
   function renderSettingsSemGrid(){
     const g=document.getElementById('s-sem-grid');if(!g)return;g.innerHTML='';
