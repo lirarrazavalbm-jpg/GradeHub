@@ -722,6 +722,94 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .toast{left:calc(50% + (var(--rail) / 2));bottom:28px;}
 }
 
+/* ═══ CARGA FLEXIBLE DE RAMOS ════════════════════════════════════════════
+   El semestre de la malla es una SUGERENCIA, no una restricción: hay gente
+   que repite, adelanta, se atrasa, o toma Inglés IV en segundo semestre
+   porque los idiomas van por nivel. Estas clases existen para que agregar un
+   ramo de otro semestre se vea como algo normal y no como un error.
+
+   Reutilizan el lenguaje de .cat-hit (búsqueda de catálogo) a propósito: es
+   la misma acción, y el estudiante ya la conoce de "Agregar ramo".
+   ══════════════════════════════════════════════════════════════════════ */
+
+.course-picker{display:flex;flex-direction:column;width:100%;max-width:340px;gap:4px;}
+
+/* Explica de entrada que la lista es sugerida. Va antes de los checkboxes:
+   si llega después, el estudiante ya asumió que la lista es cerrada. */
+.course-picker-intro{font-size:13px;line-height:1.5;color:var(--fg2);margin:0 0 14px;letter-spacing:-.005em;}
+
+/* Separa "Sugeridos para 2°" de la búsqueda. El borde superior es lo único
+   que los divide: dos cajas competirían por atención. */
+.course-picker-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--border);}
+.course-picker-section:first-child{margin-top:0;padding-top:0;border-top:0;}
+.course-picker-section > .modal-label{margin-bottom:8px;}
+
+/* 16px en el input evita que iOS haga zoom al enfocar — a menos de eso, el
+   teléfono salta y el estudiante pierde el contexto. */
+.course-picker-search{display:flex;align-items:center;gap:8px;padding:11px 13px;
+  border:1.5px solid var(--border);background:var(--bg2);border-radius:12px;
+  transition:border-color .15s;}
+.course-picker-search:focus-within{border-color:var(--primary);}
+.course-picker-search input{flex:1;min-width:0;border:none;background:none;outline:none;
+  font-family:'Inter',sans-serif;font-size:16px;color:var(--fg);letter-spacing:-.01em;}
+.course-picker-search input::placeholder{color:var(--fg3);}
+.course-picker-search .ic{width:16px;height:16px;color:var(--fg3);flex-shrink:0;}
+
+.course-picker-result{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:11px 13px;margin-top:6px;border:1px solid var(--border);background:var(--muted);
+  border-radius:12px;cursor:pointer;font-family:'Inter',sans-serif;
+  transition:border-color .15s,background .15s,transform .12s;}
+.course-picker-result:hover{border-color:color-mix(in srgb,var(--primary),transparent 55%);background:var(--primary-light);}
+.course-picker-result:active{transform:scale(.99);}
+.course-picker-result-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.course-picker-result-name{font-size:14.5px;font-weight:600;color:var(--fg);letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* "5° semestre" es contexto, no advertencia. Gris neutro a propósito: en
+   ámbar se leería como "ojo, esto está mal", que es lo contrario. */
+.course-picker-result-meta{font-size:12px;color:var(--fg3);letter-spacing:-.005em;}
+
+/* "Que sea de otro semestre está bien." Aparece solo cuando el resultado es
+   de otro semestre. Tono tranquilo — si gritara, confirmaría la sospecha. */
+.course-picker-reassurance{font-size:12px;line-height:1.45;color:var(--fg2);
+  margin:8px 0 0;padding-left:2px;letter-spacing:-.005em;}
+
+/* Crear un ramo a mano no es el plan B escondido: hay electivos y cursos de
+   formación general que no están en ninguna malla. Visible, sin competir. */
+.course-picker-manual{display:block;width:100%;margin-top:12px;padding:11px;
+  border:1px dashed var(--border2);background:none;border-radius:12px;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--fg2);
+  letter-spacing:-.005em;transition:border-color .15s,color .15s;}
+.course-picker-manual:hover{border-color:var(--primary);color:var(--primary);}
+
+/* ── Resumen posterior a cargar los ramos ───────────────────────────────── */
+.courses-loaded{display:flex;flex-direction:column;align-items:center;gap:6px;
+  width:100%;max-width:340px;text-align:center;}
+.courses-loaded-count{font-family:'Sora',sans-serif;font-size:26px;font-weight:800;
+  color:var(--fg);letter-spacing:-.03em;line-height:1.15;}
+
+/* Solo se renderiza si hay al menos una pauta oficial. Un "0 pautas oficiales"
+   como titular haría ver el producto vacío justo cuando recién se llenó. */
+.courses-official{display:flex;align-items:center;gap:8px;width:100%;
+  margin-top:14px;padding:11px 13px;border-radius:12px;
+  background:var(--green-bg);border:1px solid color-mix(in srgb,var(--green),transparent 70%);
+  font-size:13px;font-weight:600;color:var(--green);letter-spacing:-.005em;text-align:left;}
+.courses-official .ic{width:15px;height:15px;flex-shrink:0;}
+
+/* ── Aviso de pauta faltante, dentro del ramo ────────────────────────────
+   Aparece al ingresar la primera nota de un ramo sin ponderaciones: ese es
+   el momento en que el estudiante SÍ las sabe, porque acaba de rendir.
+   Ayuda, no bloquea: nunca impide guardar la nota. Ámbar, no rojo — falta un
+   dato, no hay un error. */
+.weight-setup-nudge{display:flex;align-items:flex-start;gap:9px;width:100%;
+  margin:12px 0;padding:12px 13px;border-radius:12px;
+  background:var(--yellow-bg);border:1px solid color-mix(in srgb,var(--yellow),transparent 72%);
+  font-size:12.5px;line-height:1.45;color:var(--fg2);letter-spacing:-.005em;text-align:left;}
+.weight-setup-nudge .ic{width:15px;height:15px;color:var(--yellow);flex-shrink:0;margin-top:1px;}
+.weight-setup-nudge b{color:var(--fg);font-weight:600;}
+.weight-setup-nudge button{margin-top:6px;padding:0;border:none;background:none;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;color:var(--primary);
+  letter-spacing:-.005em;}
 /* Selector de apariencia (Ajustes). «Sistema» es el default: sigue al SO.
    Claro y oscuro escriben data-modo en :root y ganan sobre la media query. */
 .modo-grid{display:flex;gap:6px;}
