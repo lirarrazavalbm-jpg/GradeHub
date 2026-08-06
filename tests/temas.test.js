@@ -2,8 +2,10 @@
 // distintas por universidad y semáforo constante.
 const fs = require('fs'), vm = require('vm');
 const h = fs.readFileSync(__dirname+'/../index.html', 'utf8');
+const DATA = fs.readFileSync(__dirname+'/../data.js', 'utf8');
 const APP = fs.readFileSync(__dirname+'/../app.js', 'utf8');
-const src = APP;
+// Mismo orden que index.html: data.js define los const que app.js consume.
+const src = DATA + '\n' + APP;
 new vm.Script(src);
 const css = fs.readFileSync(__dirname+'/../styles.css','utf8');
 const o = (css.match(/\{/g) || []).length, c = (css.match(/\}/g) || []).length;
