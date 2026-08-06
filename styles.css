@@ -226,7 +226,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .btn-primary:disabled{opacity:.35;cursor:default;box-shadow:none;}
 .btn-primary:not(:disabled):hover{box-shadow:0 10px 26px -8px color-mix(in srgb,var(--primary),transparent 25%);}
 .btn-primary:not(:disabled):active{transform:scale(.98);}
-@media(prefers-color-scheme:light){.btn-primary{color:#fff;}}
 .ob-note{font-size:13px;color:var(--fg3);text-align:center;margin-top:12px;letter-spacing:-.005em;}
 /* ONBOARDING POR PASOS */
 .ob-wrap-steps{justify-content:flex-start;padding-top:calc(28px + env(safe-area-inset-top,0px));}

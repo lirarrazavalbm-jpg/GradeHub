@@ -70,8 +70,8 @@ TEMAS.forEach(t => {
   const card = P['--card'], bg = P['--bg'];
   const rP = ratio(P['--primary'], bg), rC = ratio(P['--primary'], card);
   const rFg = ratio(P['--primary-fg'], P['--primary']);
-  chk(t + ' acento vs bg ≥3', rP >= 3);
-  chk(t + ' acento vs card ≥3', rC >= 3);
+  chk(t + ' acento vs bg ≥4.5', rP >= 4.5);
+  chk(t + ' acento vs card ≥4.5', rC >= 4.5);
   chk(t + ' texto sobre acento ≥4.5', rFg >= 4.5);
   // Texto principal legible sobre la card del tema
   const rTxt = ratio('#eef3f8', card);
@@ -93,6 +93,7 @@ TEMAS.forEach(t => {
   const sinSuperficies = ['--bg', '--card', '--border'].every(k => !(k in PL));
   chk(t + ' no fuerza superficies en claro', sinSuperficies);
   chk(t + ' sí aplica acento en claro', /^#[0-9a-f]{6}$/i.test(PL['--primary'] || ''));
+  chk(t + ' texto sobre acento en claro ≥4.5', ratio(PL['--primary-fg'], PL['--primary']) >= 4.5);
 });
 console.log('  los 4 dejan la base clara intacta y solo tiñen el acento');
 

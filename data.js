@@ -133,7 +133,7 @@ const THEMES={
   },
   // UC — académico. Azul limpio, desaturado; superficies con matiz frío marcado.
   uc:{
-    primary:'#3f7fd4', primaryFg:'#040d1c', primaryLight:'#0d1c30',
+    primary:'#3b82e6', primaryFg:'#040d1c', primaryLight:'#0d1c30',
     accent:'#8fc7f5', secondary:'#8fc7f5',
     chart:['#3f7fd4','#8fc7f5','#5b93dd','#2f5f9f','#7d94aa','#a8c4dd','#4a6d94','#6b8299'],
     dark:{bg:'#04060c',bg2:'#090d16',card:'#101725',border:'#1c273c',border2:'#2b3a57',muted:'#151e30'},
@@ -148,11 +148,9 @@ const THEMES={
   },
   // UANDES — lujo silencioso. Burdeo como acento, grises con matiz cálido.
   // El burdeo profundo puro (~#7A1E32) da 1.98:1 sobre este fondo: invisible.
-  // Se sube la luminosidad conservando el matiz vinoso.
+  // Se sube la luminosidad conservando el matiz vinoso y contraste AA en cards.
   uandes:{
-    // Único tema con texto blanco sobre el acento: el burdeo es un tono oscuro,
-    // el texto oscuro encima solo llega a 4.11:1. En blanco da 4.76:1.
-    primary:'#c04a63', primaryFg:'#ffffff', primaryLight:'#261015',
+    primary:'#c35b76', primaryFg:'#18090d', primaryLight:'#261015',
     accent:'#e08ea0', secondary:'#b9959c',
     chart:['#c04a63','#b9959c','#8f6b74','#e08ea0','#7a5c63','#c9b6bb','#9c8a90','#5e4a4f'],
     dark:{bg:'#070506',bg2:'#0d0a0b',card:'#161113',border:'#241c1f',border2:'#35292d',muted:'#1a1416'},
