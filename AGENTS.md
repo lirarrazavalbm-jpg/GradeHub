@@ -205,7 +205,14 @@ hablarías a un compañero, no como un manual.
 
 ## Pendientes conocidos
 
-- Mallas FEN 1° y 2° completas — hoy hay 4 ramos de ~46
+- **Ponderaciones oficiales: 4 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
+  están completas (177 ramos FEN, 88 únicos, los 10-11 semestres de las cuatro
+  carreras); lo que falta son las pautas de evaluación. A casi todos los
+  estudiantes la malla se les carga sola y las ponderaciones las escriben a
+  mano — ese es el camino real del 95%, y hay que hacerlo rápido
+- Los 4 presets FEN que existen son exactamente el tronco común de 2° semestre,
+  así que ese segmento es hoy el mejor cubierto del producto, junto con
+  Ingeniería UC plan común 1°
 - Notas de reemplazo y examen recuperativo (aparecen en 3 de 4 programas FEN)
 - Analítica: `track()` se llama 26 veces pero `gtag` no se carga, así que hoy son
   no-ops. La política de privacidad ya está publicada, así que está destrabado
