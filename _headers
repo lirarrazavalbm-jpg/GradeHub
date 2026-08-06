@@ -1,0 +1,26 @@
+# Cabeceras de Cloudflare Pages.
+#
+# Por defecto Pages cachea los estáticos 4 horas. Sin build ni hash en los
+# nombres de archivo, eso permite que un navegador combine un index.html nuevo
+# con un app.js viejo — y esa mezcla puede romper la app entera (pasó al
+# separar data.js: los dos archivos declaraban los mismos const).
+#
+# no-cache NO significa "no guardar": el navegador guarda la copia y revalida
+# en cada carga. Si no cambió, el servidor responde 304 sin cuerpo. Se pagan
+# unos milisegundos por carga a cambio de que los cuatro archivos vayan siempre
+# sincronizados entre sí. Sin build que ponga hashes en los nombres, es la
+# única forma de garantizarlo.
+/index.html
+  Cache-Control: no-cache
+/data.js
+  Cache-Control: no-cache
+/app.js
+  Cache-Control: no-cache
+/styles.css
+  Cache-Control: no-cache
+
+# El service worker aparte: si se cachea, el navegador ni se entera de que hay
+# una versión nueva, y el CACHE_NAME que subimos en cada deploy no sirve de nada
+# hasta que expire. Es el archivo que menos se puede cachear de todos.
+/sw.js
+  Cache-Control: no-cache

@@ -15,7 +15,11 @@ if ! git rev-parse --verify -q "$BASE" >/dev/null; then
   exit 1
 fi
 
-cambios=$(git diff --name-only "$BASE"...HEAD -- index.html app.js data.js styles.css)
+# Lo commiteado contra la base, MÁS lo que todavía está sin commitear. Sin esto
+# la guarda da un falso OK justo cuando más se usa: a mano, antes de commitear.
+cambios=$( { git diff --name-only "$BASE"...HEAD -- index.html app.js data.js styles.css
+             git diff --name-only HEAD          -- index.html app.js data.js styles.css
+           } | sort -u )
 if [ -z "$cambios" ]; then
   echo "Sin cambios en la app: no hace falta subir el CACHE_NAME."
   exit 0
