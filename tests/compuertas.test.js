@@ -164,6 +164,19 @@ else {fail++;console.log('  FAIL validación de pasos del onboarding');}
 if(!ctx.obStepValid(1,{tenant:'fen'})&&!ctx.obStepValid(2,{nombre:'Antonia'})&&!ctx.obStepValid(3,{tenant:'fen'})&&!ctx.obStepValid(4,{carrera:'ING'})&&ctx.obStepValid(5,{})){ok++;console.log('  OK   ramos sugeridos no son obligatorios');}
 else {fail++;console.log('  FAIL cada paso debería ser independiente');}
 
+console.log('\n=== Pauta manual y reglas no calculadas ===');
+const pautaParcial=ctx.estadoPauta([{peso:30},{peso:40}]);
+if(pautaParcial.total===70&&pautaParcial.diferencia===30&&!pautaParcial.lista){ok++;console.log('  OK   una pauta parcial se puede identificar sin bloquearla');}
+else {fail++;console.log('  FAIL estado de pauta parcial → '+JSON.stringify(pautaParcial));}
+const pautaLista=ctx.estadoPauta([{peso:60},{peso:40}]);
+if(pautaLista.total===100&&pautaLista.lista){ok++;console.log('  OK   reconoce una pauta completa');}
+else {fail++;console.log('  FAIL pauta completa → '+JSON.stringify(pautaLista));}
+const reglasGp=ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:{tenant:'fen'}});
+if(reglasGp.length===2&&reglasGp[0].includes('Eximición')){ok++;console.log('  OK   muestra reglas oficiales que el motor no calcula');}
+else {fail++;console.log('  FAIL reglas no calculadas → '+JSON.stringify(reglasGp));}
+if(ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:null}).length===0){ok++;console.log('  OK   no inventa reglas para ramos manuales');}
+else {fail++;console.log('  FAIL inventó reglas para un ramo manual');}
+
 console.log('\n=== Agenda · guía y foco ===');
 vm.runInContext("S={ramos:[{id:'agenda',nombre:'Ramo agenda',color:'#2563eb',categorias:[{id:'sin-fecha',nombre:'Control sin fecha',peso:20,notas:[]},{id:'rendida',nombre:'Control rendido',peso:20,notas:[{id:'n',valor:5,peso:1}]}]}]};", ctx);
 if(ctx.agendaSinFecha().length===1&&ctx.agendaSinFecha()[0].cat.id==='sin-fecha'){ok++;console.log('  OK   guía solo evaluaciones pendientes sin fecha');}
