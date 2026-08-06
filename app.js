@@ -1266,6 +1266,15 @@ function renderRamo(){
     pw.style.display='flex';pw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Las evaluaciones suman <b style="margin:0 3px;">${r2(tp)}%</b> — ajústalas para que sumen 100%`;
   } else {pw.style.display='none';}
 
+  // Algunas reglas del programa no caben aún en el motor. El promedio no está
+  // "malo": simplemente no incorpora esas excepciones oficiales.
+  const ncw=document.getElementById('no-calcula-warning');
+  const noCalcula=reglasNoCalculadas(r);
+  if(noCalcula.length){
+    ncw.style.display='flex';ncw.className='weight-setup-nudge';
+    ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>Tu programa tiene reglas que todavía no calculamos.</b><br>El promedio que ves no considera:<ul style="margin:6px 0 0;padding-left:17px;">${noCalcula.map(regla=>`<li>${esc(regla)}</li>`).join('')}</ul><span style="display:block;margin-top:6px;">Úsalo como referencia y compáralo con la pauta del curso.</span></div>`;
+  }else{ncw.style.display='none';ncw.innerHTML='';}
+
   const cl=document.getElementById('cat-list');cl.innerHTML='';
   if(r.categorias.length===0){
     cl.innerHTML=`<div class="empty" style="padding:32px 20px;">
@@ -1762,6 +1771,19 @@ function findPresetName(nombre,tenant,carrera){
   for(const k in PRESETS_UC){if(normName(k)===target)return k;}
   return null;
 }
+// Reglas oficiales informativas que todavía no podemos representar en el
+// cálculo. Se recuperan por el origen del ramo para no inventarlas en manuales.
+function reglasNoCalculadas(ramo){
+  const origen=ramo&&ramo.origen;
+  if(!ramo||!origen||origen.tenant!=='fen')return [];
+  const nombre=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(ramo.nombre));
+  return nombre&&Array.isArray(PRESETS_FEN[nombre].noCalcula)?PRESETS_FEN[nombre].noCalcula:[];
+}
+function estadoPauta(categorias){
+  const total=(categorias||[]).reduce((s,c)=>s+(Number(c.peso)||0),0);
+  const diferencia=Math.round((100-total)*10)/10;
+  return {total,diferencia,lista:Math.abs(diferencia)<0.05};
+}
 // ─── CONTROL DE PONDERACIÓN ──────────────────────────────────────────────────
 // Input numérico + slider que se sincronizan. El slider salta de 5 en 5 (valores
 // redondos, que es lo normal en una pauta); el input acepta cualquier entero.
@@ -1896,10 +1918,85 @@ function confirmAddCat(){
   save();track('add_categoria',{nombre:name,peso,tiene_fecha:!!fecha});closeModal();renderRamo();
 }
 
+// ─── PAUTA MANUAL ───────────────────────────────────────────────────────────
+// El borrador vive solo mientras el modal está abierto: cancelar no toca la
+// pauta real. Los pesos pueden quedar incompletos porque en semana 1 muchas
+// veces todavía no está toda la información.
+let pautaDraft=[];
+function openPautaManualModal(){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0}));
+  if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false});
+  renderPautaManualModal();openModal();
+  setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-0');if(i)i.focus();},100);
+}
+function pautaResumen(){
+  const e=estadoPauta(pautaDraft);
+  if(e.lista)return`✓ ${r2(e.total)} / 100% · pauta lista`;
+  return e.diferencia>0?`${r2(e.total)} / 100% · faltan ${r2(e.diferencia)}%`:`${r2(e.total)} / 100% · te pasas por ${r2(Math.abs(e.diferencia))}%`;
+}
+function renderPautaManualModal(){
+  const filas=pautaDraft.map((fila,i)=>`
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 32px;gap:8px;align-items:center;margin:8px 0;">
+      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: Solemne ${i+1}" maxlength="40" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
+      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:13px;pointer-events:none;">%</span></div>
+      <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
+    </div>`).join('');
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Configurar pauta</div>
+    <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Agrega tus evaluaciones y su porcentaje. Puedes guardar aunque te falte parte de la pauta.</p>
+    <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:13px;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
+    <div>${filas}</div>
+    <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Inter',sans-serif;cursor:pointer;">+ Otra evaluación</button>
+    <div class="modal-btns" style="margin-top:14px;">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="guardarPautaManual()">Guardar pauta</button>
+    </div>`;
+}
+function actualizarPautaNombre(i,valor){if(pautaDraft[i])pautaDraft[i].nombre=valor;}
+function actualizarPautaPeso(i,valor){
+  if(!pautaDraft[i])return;
+  const limpio=String(valor||'').replace(/[^0-9]/g,'');
+  const peso=Math.min(100,parseInt(limpio,10)||0);
+  pautaDraft[i].peso=peso;
+  const input=document.getElementById('m-pauta-peso-'+i);if(input&&input.value!==limpio)input.value=limpio;
+  const total=document.getElementById('m-pauta-total');if(total)total.textContent=pautaResumen();
+}
+function agregarPautaFila(){
+  pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false});renderPautaManualModal();
+  setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-'+(pautaDraft.length-1));if(i)i.focus();},0);
+}
+function quitarPautaFila(i){
+  if(!pautaDraft[i]||pautaDraft[i].tieneNotas)return;
+  pautaDraft.splice(i,1);if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false});renderPautaManualModal();
+}
+function pautaTecla(e,i,campo){
+  if(e.key!=='Enter')return;e.preventDefault();
+  if(campo==='nombre'){const p=document.getElementById('m-pauta-peso-'+i);if(p)p.focus();return;}
+  const siguiente=document.getElementById('m-pauta-nombre-'+(i+1));
+  if(siguiente)siguiente.focus();else agregarPautaFila();
+}
+function guardarPautaManual(){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  const filas=pautaDraft.filter(f=>f.nombre.trim());
+  const ids=new Set(filas.filter(f=>f.id).map(f=>f.id));
+  r.categorias=r.categorias.filter(c=>ids.has(c.id)||(c.notas||[]).length>0);
+  filas.forEach(f=>{
+    const existente=f.id&&r.categorias.find(c=>c.id===f.id);
+    if(existente){existente.nombre=f.nombre.trim();existente.peso=f.peso;}
+    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,notas:[]});
+  });
+  const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
+  showToast(estado.lista?'✓ Pauta lista para calcular':'Pauta guardada · puedes completarla después');
+}
+function abrirPautaDesdeNota(){closeModal();setTimeout(openPautaManualModal,120);}
+
 function openAddNotaModal(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
+  const pauta=estadoPauta(r.categorias);
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Nueva nota — ${esc(cat.nombre)}</div>
+    ${pauta.lista?'':`<div class="weight-setup-nudge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M3 8h18"/><path d="M4 8l2 10h12l2-10"/></svg><div><b>Tu pauta suma ${r2(pauta.total)}%.</b><br>Esta nota se guarda igual. Completa el resto cuando tengas la pauta.<br><button type="button" onclick="abrirPautaDesdeNota()">Editar pauta</button></div></div>`}
     <label class="modal-label">Nombre</label>
     <div class="modal-input"><input type="text" id="m-nota-name" placeholder="Ej: Prueba 1" maxlength="40" autocomplete="off"/></div>
     <label class="modal-label">Nota (1.0 – 7.0)</label>
