@@ -42,4 +42,15 @@ if (sucio.length) {
   process.exit(1);
 }
 
-console.log('JS OK · CSS ' + abre + '/' + cierra + ' OK · HTML enlaza bien · data.js sin lógica');
+// Un solo archivo de instrucciones con tres nombres. Si alguno deja de ser
+// symlink (hay editores que los reemplazan al guardar), cada agente empieza a
+// leer una versión distinta y nadie se entera hasta que ya divergieron.
+['CLAUDE.md', 'GEMINI.md'].forEach(f => {
+  const p = path.join(raiz, f);
+  if (!fs.existsSync(p) || !fs.lstatSync(p).isSymbolicLink() || fs.readlinkSync(p) !== 'AGENTS.md') {
+    console.error(f + ' tiene que ser un symlink a AGENTS.md');
+    process.exit(1);
+  }
+});
+
+console.log('JS OK · CSS ' + abre + '/' + cierra + ' OK · HTML enlaza bien · data.js sin lógica · instrucciones enlazadas');
