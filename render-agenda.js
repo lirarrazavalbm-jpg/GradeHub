@@ -1,9 +1,26 @@
 // ─── RENDER · AGENDA ────────────────────────────────────────────────────────
 // La agenda depende del estado y helpers globales de app.js, pero vive aparte
 // para que sus cambios de producto no agranden el núcleo de la aplicación.
+// Solo se sugieren evaluaciones sin fecha que todavía no se han rendido: una
+// nota histórica sin fecha no necesita volver a aparecer como pendiente.
+function agendaSinFecha(){
+  const out=[];
+  S.ramos.forEach(r=>(r.categorias||[]).forEach(c=>{
+    if(!c.fecha&&avgPond(c.notas)===null)out.push({ramo:r,cat:c});
+  }));
+  return out;
+}
+
+function abrirFechaAgenda(item){
+  if(!item)return;
+  openRamo(item.ramo.id);
+  setTimeout(()=>openEditCatModal(item.cat.id),320);
+}
+
 function renderAgenda(){
   const body=document.getElementById("agenda-body");if(!body)return;
   const events=agendaEvents();
+  const sinFecha=agendaSinFecha();
 
   const expBtn=document.getElementById("agenda-export-btn");
   if(expBtn)expBtn.style.display=events.length?"block":"none";
@@ -11,12 +28,15 @@ function renderAgenda(){
   if(events.length===0){
     const hayRamos=S.ramos.length>0;
     const primerRamo=hayRamos?S.ramos[0]:null;
-    const title=hayRamos?"Organiza tu semestre.":"Empecemos por lo primero.";
-    const desc=hayRamos
+    const primeraSinFecha=sinFecha[0];
+    const title=primeraSinFecha?"Tu agenda está a un paso.":hayRamos?"Organiza tu semestre.":"Empecemos por lo primero.";
+    const desc=primeraSinFecha
+      ? `Tienes ${sinFecha.length} evaluación${sinFecha.length!==1?'es':''} pendiente${sinFecha.length!==1?'s':''} de agendar. Parte por ${esc(primeraSinFecha.cat.nombre)}.`
+      : hayRamos
       ? "Agrega la fecha de tus pruebas, entregas y exámenes. Van a aparecer acá ordenadas por lo que más te conviene atender primero."
       : "Necesitas al menos un ramo con evaluaciones para empezar a llenar la agenda.";
-    const ctaLabel=hayRamos?"Agregar evaluación":"Agregar mi primer ramo";
-    const ctaAction=hayRamos?"openRamo(\u0027"+esc(primerRamo.id)+"\u0027);setTimeout(openAddCatModal,320);":"openAddRamoModal();";
+    const ctaLabel=primeraSinFecha?"Poner primera fecha":hayRamos?"Agregar evaluación":"Agregar mi primer ramo";
+    const ctaAction=primeraSinFecha?"abrirFechaAgenda(agendaSinFecha()[0])":hayRamos?"openRamo(\u0027"+esc(primerRamo.id)+"\u0027);setTimeout(openAddCatModal,320);":"openAddRamoModal();";
     body.innerHTML=`
       <div class="ag-empty">
         <div class="ag-empty-icon" aria-hidden="true">
@@ -53,6 +73,14 @@ function renderAgenda(){
   }
 
   let html="";
+  if(sinFecha.length){
+    const primera=sinFecha[0];
+    html+=`<button class="ag-missing-dates" onclick="abrirFechaAgenda(agendaSinFecha()[0])">
+      <span class="ag-missing-dates-icon" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></span>
+      <span class="ag-missing-dates-copy"><strong>${sinFecha.length} evaluación${sinFecha.length!==1?'es':''} sin fecha</strong><small>Parte por ${esc(primera.cat.nombre)} · ${esc(primera.ramo.nombre)}</small></span>
+      <span class="ag-missing-dates-action">Agendar</span>
+    </button>`;
+  }
   if(pendientes.length>0){
     const ramosVistos=new Set();
     pendientes.forEach(e=>{

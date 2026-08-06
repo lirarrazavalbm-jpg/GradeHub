@@ -166,6 +166,18 @@ eq('sin cambios coincide con el PPA ponderado', ctx.simGlobalAvg(), 5.5);
 vm.runInContext("simGlobalState={b:7.0};", ctx);
 eq('proyección pondera la nota hipotética por créditos', ctx.simGlobalAvg(), 6.25);
 
+console.log('\n=== Agenda · fechas que faltan ===');
+vm.runInContext(`
+  S={ramos:[{id:'agenda',nombre:'Agenda',categorias:[
+    {id:'sin-fecha',nombre:'Prueba sin fecha',notas:[]},
+    {id:'con-fecha',nombre:'Prueba agendada',fecha:'2026-08-20',notas:[]},
+    {id:'rendida',nombre:'Prueba rendida',notas:[{id:'n',valor:5.0,peso:1}]}
+  ]}]};
+`, ctx);
+const pendientesFecha=ctx.agendaSinFecha();
+if(pendientesFecha.length===1&&pendientesFecha[0].cat.id==='sin-fecha'){ok++;console.log('  OK   sugiere solo evaluaciones pendientes sin fecha');}
+else {fail++;console.log('  FAIL agendaSinFecha → '+JSON.stringify(pendientesFecha));}
+
 console.log('\n=== gatesActivas describe la compuerta incumplida ===');
 const act = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 3.0));
 if (act.length === 1 && act[0].grupo === true && Math.abs(act[0].actual - 3.0) < 0.01) { ok++; console.log('  OK   detecta el grupal en 3.0'); }

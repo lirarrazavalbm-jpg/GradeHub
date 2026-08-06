@@ -536,6 +536,17 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 @media(prefers-color-scheme:dark){
   .ag-empty-cta{color:#0a1f1c;}
 }
+/* Fecha faltante: una nudge accionable, no un aviso pasivo perdido en la lista. */
+.ag-missing-dates{width:100%;display:flex;align-items:center;gap:11px;margin:0 0 12px;padding:12px 13px;background:color-mix(in srgb,var(--primary),transparent 90%);border:1px solid color-mix(in srgb,var(--primary),transparent 72%);border-radius:14px;color:var(--fg);font-family:'Inter',sans-serif;text-align:left;cursor:pointer;transition:transform .12s,border-color .18s,background .18s;}
+.ag-missing-dates:hover{transform:translateY(-1px);background:color-mix(in srgb,var(--primary),transparent 85%);border-color:color-mix(in srgb,var(--primary),transparent 48%);}
+.ag-missing-dates:active{transform:scale(.99);}
+.ag-missing-dates:focus-visible{outline:3px solid color-mix(in srgb,var(--primary),transparent 35%);outline-offset:3px;}
+.ag-missing-dates-icon{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:10px;background:color-mix(in srgb,var(--primary),transparent 80%);color:var(--primary);}
+.ag-missing-dates-icon .ic{width:18px;height:18px;}
+.ag-missing-dates-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;}
+.ag-missing-dates-copy strong{font-size:13px;font-weight:700;letter-spacing:-.01em;}
+.ag-missing-dates-copy small{font-size:11.5px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ag-missing-dates-action{font-size:12px;font-weight:700;color:var(--primary);}
 /* SETTINGS */
 .settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border);}
 .settings-row:last-of-type{border-bottom:none;}
