@@ -11,27 +11,39 @@ function getCacheOwner(){try{return localStorage.getItem(CACHE_OWNER_KEY);}catch
 
 function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
-  data.ramos = (data.ramos || []).map(r => ({
-    ...r,
-    id: r.id || uid(),
-    color: r.color || '#2563eb',
-    // Créditos SCT — opcional. Si todos los ramos lo tienen, el promedio se pondera.
-    creditos: (typeof r.creditos === 'number' && r.creditos > 0) ? r.creditos : null,
-    // De qué catálogo (universidad + carrera) salió este ramo. null = creado a mano.
-    origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
-    categorias: (r.categorias || []).map(c => ({
-      ...c,
-      id: c.id || uid(),
-      ponderaNotas: c.ponderaNotas ?? false,
-      fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
-      notas: (c.notas || []).map(n => ({
-        id: n.id || uid(),
-        nombre: n.nombre || 'Nota',
-        valor: n.valor ?? (typeof n === 'number' ? n : null),
-        peso: n.peso || 1,
-      }))
-    }))
-  }));
+  // Un backup dañado no debe impedir que el usuario entre a su cuenta.
+  data=(data&&typeof data==='object'&&!Array.isArray(data))?data:{};
+  data.ramos = (Array.isArray(data.ramos)?data.ramos:[]).map(rawR => {
+    const r=(rawR&&typeof rawR==='object'&&!Array.isArray(rawR))?rawR:{};
+    return {
+      ...r,
+      id: r.id || uid(),
+      color: r.color || '#2563eb',
+      // Créditos SCT — opcional. Si todos los ramos lo tienen, el promedio se pondera.
+      creditos: (typeof r.creditos === 'number' && r.creditos > 0) ? r.creditos : null,
+      // De qué catálogo (universidad + carrera) salió este ramo. null = creado a mano.
+      origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
+      categorias: (Array.isArray(r.categorias)?r.categorias:[]).map(rawC => {
+      const c=(rawC&&typeof rawC==='object'&&!Array.isArray(rawC))?rawC:{};
+        return {
+          ...c,
+          id: c.id || uid(),
+          ponderaNotas: c.ponderaNotas ?? false,
+          fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
+          notas: (Array.isArray(c.notas)?c.notas:[]).map(rawN => {
+            const n=(rawN&&typeof rawN==='object'&&!Array.isArray(rawN))?rawN:{};
+            return {
+              ...n,
+              id: n.id || uid(),
+              nombre: n.nombre || 'Nota',
+              valor: n.valor ?? (typeof rawN === 'number' ? rawN : null),
+              peso: n.peso || 1,
+            };
+          })
+        };
+      })
+    };
+  });
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
   data.userName = data.userName || '';
