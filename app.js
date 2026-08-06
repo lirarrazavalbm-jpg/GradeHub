@@ -1195,6 +1195,7 @@ function setSlotNota(catId,slot,raw){
     if(!isNaN(val))cat.notas.push({id:uid(),nombre:cat.nombre+' '+(slot+1),valor:val,peso:1,slot});
   }
   save();track('set_nota_slot');renderRamo();
+  if(txt&&!isNaN(parseNota(txt)))showToast(lecturaDespuesDeNota(r));
 }
 // Nota directa para secciones de preset: crea/actualiza/borra la única nota.
 function setDirectNota(catId,raw){
@@ -1207,6 +1208,7 @@ function setDirectNota(catId,raw){
     if(!isNaN(val))cat.notas=[{id:(cat.notas[0]&&cat.notas[0].id)||uid(),nombre:cat.nombre,valor:val,peso:1}];
   }
   save();track('set_nota_directa');renderRamo();
+  if(txt&&!isNaN(parseNota(txt)))showToast(lecturaDespuesDeNota(r));
 }
 function confirmDeleteRamo(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
@@ -1758,7 +1760,7 @@ function confirmAddNota(catId){
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
   cat.notas.push({id:uid(),nombre:name,valor:val,peso});
-  openCats[catId]=true;save();track('add_nota',{valor:val,ponderada:usaPond});closeModal();renderRamo();
+  openCats[catId]=true;save();track('add_nota',{valor:val,ponderada:usaPond});closeModal();renderRamo();showToast(lecturaDespuesDeNota(r));
 }
 
 // ─── MENÚ DE USUARIO ─────────────────────────────────────────────────────────
@@ -2325,7 +2327,7 @@ function confirmEditNota(catId,notaId){
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
   n.nombre=name;n.valor=Math.round(val*10)/10;n.peso=peso;
-  save();track('edit_nota');closeModal();renderRamo();
+  save();track('edit_nota');closeModal();renderRamo();showToast(lecturaDespuesDeNota(r));
 }
 
 // ─── CALCULADORA NOTA MÍNIMA ─────────────────────────────────────────────────
@@ -2798,6 +2800,21 @@ function notaNecesaria(ramo){
   const pesoSin=total-pesoCon;
   if(pesoSin<=0)return null;
   return (4.0*total-suma)/pesoSin;
+}
+
+// Convierte una nota recién ingresada en una consecuencia académica concreta.
+// El cálculo habla solo de lo que queda pendiente y respeta compuertas activas.
+function lecturaDespuesDeNota(ramo){
+  const avg=ramoAvg(ramo);
+  if(avg===null)return 'Nota guardada';
+  const gate=gatesActivas(ramo)[0];
+  if(gate)return `${gate.nombre} quedó en ${fmt(gate.actual)} · nota topada en ${fmt(gate.cap)}`;
+  const necesita=notaNecesaria(ramo);
+  if(necesita===null)return `Vas ${fmt(avg)} · ramo completamente evaluado`;
+  if(necesita>7.05)return `Vas ${fmt(avg)} · ya no alcanza sólo con lo pendiente`;
+  if(necesita<=1.0)return `Vas ${fmt(avg)} · tienes margen para aprobar`;
+  if(r2(avg)>=5.0&&necesita<=4.0)return `Vas ${fmt(avg)} · buen margen en lo pendiente`;
+  return `Vas ${fmt(avg)} · necesitas ${nf(necesita)} en lo pendiente para aprobar`;
 }
 
 function withPriority(e){
