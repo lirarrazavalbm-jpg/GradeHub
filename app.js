@@ -934,7 +934,9 @@ function renderHome(){
 
   // Delta vs último semestre archivado (si existe)
   if(deltaEl){
-    const last=S.historial&&S.historial.length?S.historial[S.historial.length-1]:null;
+    // El archivo se guarda con lo más reciente al inicio (unshift). Compartir
+    // este helper con Estadísticas evita que Inicio compare contra el más antiguo.
+    const last=ultimoHistorialConGpa(S.historial);
     const lastGpa=last&&typeof last.gpa==='number'?last.gpa:null;
     if(g!==null && lastGpa!==null){
       const diff=g-lastGpa;const abs=Math.abs(diff);
