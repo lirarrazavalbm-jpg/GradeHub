@@ -2027,9 +2027,13 @@ function confirmArchiveSemester(){
   );
 }
 // ─── EXPORTAR / IMPORTAR ─────────────────────────────────────────────────────
+function datosParaExportar(){return JSON.stringify(S);}
 function exportarDatos(){
-  const json=localStorage.getItem(STORAGE_KEY);
-  if(!json){showToast('No hay datos para exportar');return;}
+  // S es la fuente vigente: localStorage puede estar bloqueado, lleno o tener
+  // una escritura aún pendiente, y aun así el estudiante debe poder respaldar.
+  let json;
+  try{json=datosParaExportar();}catch(e){showToast('No pudimos preparar el respaldo',true);return;}
+  if(!S.onboardingDone&&!S.ramos.length&&!S.historial.length){showToast('No hay datos para exportar');return;}
   if(navigator.clipboard&&navigator.clipboard.writeText){
     navigator.clipboard.writeText(json)
       .then(()=>showToast('✓ Datos copiados al portapapeles'))

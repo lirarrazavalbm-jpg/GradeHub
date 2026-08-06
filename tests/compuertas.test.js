@@ -137,6 +137,11 @@ const nubeDanada=vm.runInContext("normalize({ramos:{invalido:true},historial:'no
 if(Array.isArray(nubeDanada.ramos)&&nubeDanada.ramos.length===0&&Array.isArray(nubeDanada.historial)){ok++;console.log('  OK   descarta estructuras corruptas sin romper el inicio');}
 else {fail++;console.log('  FAIL recuperación ante datos corruptos');}
 
+console.log('\n=== Respaldo desde el estado vigente ===');
+vm.runInContext("S={ramos:[{id:'respaldo'}],onboardingDone:true,historial:[]};", ctx);
+if(JSON.parse(ctx.datosParaExportar()).ramos[0].id==='respaldo'){ok++;console.log('  OK   exporta la copia actual aunque localStorage no responda');}
+else {fail++;console.log('  FAIL respaldo desde memoria');}
+
 console.log('\n=== Edición segura de notas por slot ===');
 vm.runInContext(`
   save=()=>{};track=()=>{};renderRamo=()=>{};showToast=()=>{};
