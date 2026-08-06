@@ -1874,7 +1874,8 @@ function openSettings(){
     <label class="modal-label">Semestre de carrera</label>
     <div class="sem-grid" id="s-sem-grid" style="margin-bottom:16px;"></div>
     <button class="btn-primary" id="s-save-btn" onclick="saveSettings()" style="margin-bottom:10px;">Guardar cambios</button>
-    <button onclick="confirmResetApp()" style="width:100%;padding:12px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Reiniciar app</button>`;
+    <button onclick="confirmResetApp()" style="width:100%;padding:12px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Reiniciar app</button>
+    <p style="text-align:center;margin:14px 0 0;font-size:12px;"><a href="/privacidad.html" target="_blank" rel="noopener" style="color:var(--fg3);text-decoration:none;">Política de privacidad</a></p>`;
   openModal();
   renderSettingsSemGrid();
   renderSettingsTenantGrid();
