@@ -357,6 +357,12 @@ function gpa(ramos){
 function creditosConNota(ramos){
   return ramos.reduce((s,r)=>s+(ramoAvg(r)!==null&&typeof r.creditos==='number'&&r.creditos>0?r.creditos:0),0);
 }
+// Un PPA solo puede ponderarse si cada ramo que ya aporta una nota tiene sus
+// créditos cargados. Se expone como helper para orientar al estudiante, no para
+// mezclar silenciosamente ponderaciones parciales.
+function ramosSinCreditosParaPpa(ramos){
+  return ramos.filter(r=>ramoAvg(r)!==null&&!(typeof r.creditos==='number'&&r.creditos>0));
+}
 function semester(){
   const now=new Date(),m=now.getMonth(),y=now.getFullYear();
   // Ene-Feb = cierre del semestre anterior → año-1 S2
@@ -979,6 +985,20 @@ function renderHome(){
             <div class="insight-label">Ramo en riesgo</div>
             <div class="insight-title">${esc(risky.ramo.nombre)}</div>
             <div class="insight-meta">Necesitas <span class="strong">${nf(risky.needed)}</span> promedio en lo pendiente para aprobar</div>
+          </div>
+          <span class="chevron-r">›</span>
+      </div>`);
+    }
+    const sinCreditos=ramosSinCreditosParaPpa(S.ramos);
+    if(g!==null&&sinCreditos.length>0&&cards.length<2){
+      const primero=sinCreditos[0];
+      cards.push(`
+        <div class="insight-card" style="--insight-color:var(--primary)" onclick="openRamo('${esc(primero.id)}');setTimeout(openEditRamoModal,320)">
+          <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M9 19V9"/><path d="M14 19V3"/><path d="M19 19v-6"/></svg></div>
+          <div class="insight-body">
+            <div class="insight-label">PPA más preciso</div>
+            <div class="insight-title">Agrega créditos a ${sinCreditos.length===1?esc(primero.nombre):`${sinCreditos.length} ramos`}</div>
+            <div class="insight-meta">Ahora tu promedio es simple · <span class="strong">toca para corregirlo</span></div>
           </div>
           <span class="chevron-r">›</span>
         </div>`);

@@ -129,6 +129,10 @@ const ramoSinNota = gestion(null, null, null, null);
 ramoSinNota.id = 'pendiente'; ramoSinNota.creditos = 12;
 eq('solo suma créditos de ramos con nota', ctx.creditosConNota([ramoConNota, ramoSinNota]), 6);
 eq('PPA ignora créditos de ramos pendientes', ctx.gpa([ramoConNota, ramoSinNota]), 5.0);
+const ramoSinCreditos=gestion(4.0,4.0,4.0,4.0);
+ramoSinCreditos.creditos=null;
+if(ctx.ramosSinCreditosParaPpa([ramoConNota,ramoSinNota,ramoSinCreditos]).length===1){ok++;console.log('  OK   identifica créditos faltantes solo en ramos que aportan al PPA');}
+else {fail++;console.log('  FAIL créditos faltantes para PPA');}
 
 console.log('\n=== Normalización de datos de la nube ===');
 const nubeAntigua=vm.runInContext("normalize({ramos:[{nombre:'Ramo legado',categorias:[{nombre:'Control',notas:[4.5]}]}]})", ctx);
