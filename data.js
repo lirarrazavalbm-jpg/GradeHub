@@ -280,17 +280,32 @@ const PRESETS_UC={
 // Información y Control de Gestión). Transcritos de los programas oficiales
 // Primavera 2026. `grupo` define una compuerta sobre un CONJUNTO de
 // evaluaciones: con cap 'self' el tope es el promedio del propio grupo.
+//
+// `noCalcula` lista reglas que SÍ están en el programa oficial y que el motor
+// NO sabe representar: eximiciones, exámenes recuperativos, "se elimina la peor
+// nota", mínimos de asistencia. No es documentación interna — se le muestra al
+// estudiante, porque su promedio real puede diferir del que ve acá y tiene
+// derecho a saber por qué. Callarlo es peor que no tener el preset.
 const PRESETS_FEN={
   'Métodos Matemáticos II':{
     creditos:6,
+    noCalcula:['Examen de Segunda Fecha para quien saque bajo 3,0 en el examen pero tenga promedio ≥ 3,95'],
     evals:[['Solemnes',60,{slots:3}],['Examen Final',40,{min:3.0,cap:3.9}]],
   },
   'Introducción a la Microeconomía':{
     creditos:6,
+    noCalcula:[
+      'Examen Recuperativo: con promedio entre 3,6 y 3,9 puedes aprobar con 4,0',
+      'Inasistencias justificadas: el porcentaje pasa a otra evaluación',
+    ],
     evals:[['Solemne',30],['Examen',35],['Controles parciales',30,{slots:3}],['Pruebas sorpresa',5,{slots:5}]],
   },
   'Gestión de Personas':{
     creditos:6,
+    noCalcula:[
+      'Eximición del examen con promedio ≥ 5,5 en Casos: la nota del examen pasa a ser el promedio individual',
+      'La nota del trabajo grupal se ajusta ±10 décimas según la evaluación entre compañeros',
+    ],
     evals:[['Casos y ensayos',40,{slots:5}],['Trabajo en grupo',30],['Participación',20],['Examen Integrativo',10]],
     // "Si alguno de los requisitos no se cumple, la nota final será la más baja
     //  entre los dos" → dos compuertas de grupo con tope en su propio promedio.
@@ -301,10 +316,17 @@ const PRESETS_FEN={
   },
   'Contabilidad':{
     creditos:6,
+    noCalcula:[
+      'Se elimina el 25% de los controles sorpresa rendidos',
+      'Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9',
+    ],
     evals:[
       ['Controles de Lectura',10,{slots:3,min:1.5,cap:3.9}],
       ['Controles Ejercicios',40,{slots:4,min:1.5,cap:3.9}],
-      ['Controles Sorpresa',5,{slots:4,min:1.5,cap:3.9}],
+      // El programa dice "entre 4 y 6 durante el semestre": el número exacto NO
+      // está. Sin slots, el estudiante agrega los que realmente le tomaron.
+      // Antes decía slots:4 — un dato plausible pero inventado.
+      ['Controles Sorpresa',5,{min:1.5,cap:3.9}],
       ['Solemne',20,{min:1.5,cap:3.9}],
       ['Examen',25,{min:3.0,cap:3.4}],
     ],

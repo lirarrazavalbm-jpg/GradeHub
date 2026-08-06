@@ -6,8 +6,9 @@
     "test:sintaxis": "node tests/sintaxis.test.js",
     "test:temas": "node tests/temas.test.js",
     "test:compuertas": "node tests/compuertas.test.js",
-    "test": "npm run test:sintaxis && npm run test:temas && npm run test:compuertas && npm run test:importar",
-    "deploy": "npx wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true",
-    "test:importar": "node tests/importar.test.js"
+    "test:importar": "node tests/importar.test.js",
+    "test:presets": "node tests/presets.test.js",
+    "test": "npm run test:sintaxis && npm run test:temas && npm run test:compuertas && npm run test:importar && npm run test:presets",
+    "deploy": "npx wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true"
   }
 }
