@@ -2128,25 +2128,81 @@ function abrirImportar(){
     <div class="modal-btns" style="margin-top:12px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="confirmarImportar()">Importar</button>
-    </div>`;
+    </div>
+    ${hayRespaldoPreImport()?`<p style="text-align:center;margin:14px 0 0;font-size:12.5px;">
+      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
   openModal();
   setTimeout(()=>document.getElementById('import-text').focus(),100);
 }
+// Clave del respaldo automático previo a un import. Existe porque importar es
+// la única acción de la app que destruye datos sin posible deshacer: reemplaza
+// el estado local Y lo sube a la nube, así que también se lleva el respaldo.
+const PRE_IMPORT_KEY='gradehub_v1_pre_import';
+
+// Un export válido SIEMPRE trae la lista de ramos, aunque esté vacía. Exigirla
+// es lo que distingue un export real de cualquier JSON que ande dando vueltas.
+// Sin esto, pegar {"userName":"Ana"} borraba todos los ramos y la app decía
+// "importado correctamente".
+function esExportValido(o){
+  return !!o && typeof o==='object' && !Array.isArray(o) && Array.isArray(o.ramos);
+}
+function contarNotas(ramos){
+  return (ramos||[]).reduce((a,r)=>a+(r.categorias||[]).reduce((b,c)=>b+((c.notas||[]).length),0),0);
+}
+
 function confirmarImportar(){
   const text=(document.getElementById('import-text').value||'').trim();
   if(!text){showToast('Pega los datos primero',true);return;}
-  try{
-    const parsed=JSON.parse(text);
-    const data=normalize(parsed);
-    if(!data.onboardingDone&&!data.userName){showToast('Datos inválidos',true);return;}
-    S={...S,...data};
-    save();track('import_data');
-    closeModal();
-    showToast('✓ Datos importados correctamente');
-    setTimeout(()=>location.reload(),1200);
-  }catch(e){
-    showToast('Error: el texto no es válido',true);
+
+  let parsed;
+  try{ parsed=JSON.parse(text); }
+  catch(e){ showToast('Ese texto no es un respaldo de GradeHub',true); return; }
+
+  if(!esExportValido(parsed)){
+    showToast('Ese texto no es un respaldo de GradeHub',true);
+    return;
   }
+
+  const data=normalize(parsed);
+  const actualR=S.ramos?S.ramos.length:0, actualN=contarNotas(S.ramos);
+  const nuevoR=data.ramos.length, nuevoN=contarNotas(data.ramos);
+
+  // Decir qué se pierde ANTES, con números. "Esto reemplazará tus datos" no
+  // dimensiona nada; "vas a perder 3 ramos con 12 notas" sí.
+  const detalle=actualR
+    ? `Vas a reemplazar tus ${actualR} ramo${actualR!==1?'s':''} (${actualN} nota${actualN!==1?'s':''}) por ${nuevoR} ramo${nuevoR!==1?'s':''} (${nuevoN} nota${nuevoN!==1?'s':''}).\n\nGuardamos una copia de lo actual por si te arrepientes.`
+    : `Se cargarán ${nuevoR} ramo${nuevoR!==1?'s':''} con ${nuevoN} nota${nuevoN!==1?'s':''}.`;
+
+  showConfirm('Importar datos',detalle,()=>{
+    // Respaldo antes de tocar nada. Si el import resulta ser el archivo
+    // equivocado, esto es lo único que queda.
+    try{ if(actualR) localStorage.setItem(PRE_IMPORT_KEY,JSON.stringify(S)); }catch(e){}
+    S={...S,...data};
+    save();track('import_data',{ramos:nuevoR});
+    closeModal();
+    showToast('✓ Datos importados');
+    setTimeout(()=>location.reload(),1200);
+  },{label:'Importar'});
+}
+
+// Deshacer el último import. La copia vive solo en este dispositivo.
+function hayRespaldoPreImport(){
+  try{ return !!localStorage.getItem(PRE_IMPORT_KEY); }catch(e){ return false; }
+}
+function deshacerImport(){
+  let prev;
+  try{ prev=JSON.parse(localStorage.getItem(PRE_IMPORT_KEY)||'null'); }catch(e){ prev=null; }
+  if(!esExportValido(prev)){ showToast('No hay copia para restaurar',true); return; }
+  const r=prev.ramos.length, n=contarNotas(prev.ramos);
+  showConfirm('Deshacer importación',
+    `Se restauran tus ${r} ramo${r!==1?'s':''} (${n} nota${n!==1?'s':''}) de antes de importar.`,()=>{
+      S={...S,...normalize(prev)};
+      try{ localStorage.removeItem(PRE_IMPORT_KEY); }catch(e){}
+      save();track('undo_import');
+      closeModal();
+      showToast('✓ Datos restaurados');
+      setTimeout(()=>location.reload(),1200);
+    },{label:'Restaurar'});
 }
 
 function confirmResetApp(){
