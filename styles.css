@@ -562,6 +562,11 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 /* Tab-mode: los 3 tab-screens siempre presentes en un carrusel horizontal.
    showTab / drag controlan translateX vía JS. Los otros screens (auth, onboard,
    reset, ramo) se comportan como overlays fullscreen encima con z-index. */
+/* Los tres tabs están uno al lado del otro y se desplazan con translateX. Eso
+   cuenta con que el viewport mida lo mismo que la app: en cualquier pantalla
+   más ancha (una tablet en vertical, un monitor) los vecinos asomaban por los
+   costados. En teléfono quedaban fuera de pantalla y no se notaba. */
+.app.tab-mode{overflow-x:hidden;}
 .app.tab-mode #screen-stats,
 .app.tab-mode #screen-home,
 .app.tab-mode #screen-agenda{
@@ -624,3 +629,64 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .sim-add{display:flex;gap:6px;}
 .sim-add input{flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:16px;font-family:'Inter',sans-serif;color:var(--fg);background:var(--bg2);outline:none;}
 .sim-add button{padding:7px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+
+/* ═══ PANTALLAS GRANDES ══════════════════════════════════════════════════
+   La app se diseñó como columna de teléfono (430px) y hasta acá no tenía
+   NINGUNA media query de ancho: en un monitor quedaba una franja angosta al
+   medio entre dos bandas negras. Esto la adapta sin tocar app.js — es solo
+   CSS, así que el motor de cálculo y los gestos de swipe quedan intactos.
+
+   768px  → la columna se ensancha. La navegación sigue abajo: a ese ancho
+            todavía se usa con el pulgar.
+   1024px → la navegación pasa a un rail lateral. Una barra pegada al borde
+            inferior de un monitor de 27" se lee como un teléfono estirado,
+            y además queda lejísimos del contenido. Los ramos pasan a dos
+            columnas y los modales dejan de subir desde abajo para
+            comportarse como diálogos centrados, que es lo que espera
+            alguien con mouse.
+   ═════════════════════════════════════════════════════════════════════ */
+
+@media(min-width:768px){
+  .app{max-width:600px;}
+  .bottom-nav{max-width:600px;}
+  .modal-sheet{max-width:600px;}
+}
+
+@media(min-width:1024px){
+  :root{--rail:224px;}
+
+  /* El rail toma la izquierda; la app se centra en lo que sobra. */
+  body{padding-left:var(--rail);}
+  .app{max-width:940px;border-left:1px solid var(--border);border-right:1px solid var(--border);}
+
+  /* Barra inferior → rail vertical */
+  .bottom-nav{
+    top:0;bottom:0;left:0;transform:none;
+    width:var(--rail);max-width:none;height:100vh;height:100dvh;
+    flex-direction:column;justify-content:flex-start;gap:4px;
+    padding:24px 12px;
+    border-top:none;border-right:1px solid var(--border);
+  }
+  .nav-item{
+    flex:0 0 auto;flex-direction:row;justify-content:flex-start;
+    gap:12px;padding:12px 14px;font-size:14px;
+  }
+  .nav-item:hover{color:var(--fg);background:var(--muted);}
+  .nav-item.active{color:var(--primary);background:color-mix(in srgb,var(--primary),transparent 90%);}
+  .nav-item .nav-icon{height:22px;}
+  .nav-item.active .nav-icon{transform:none;}
+
+  /* Con el rail al lado ya no hay que reservar el alto de la barra */
+  .scroll{padding-bottom:32px;}
+
+  /* Los ramos aprovechan el ancho en vez de apilarse en una columna */
+  #home-ramos{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;}
+  #home-ramos .ramo-row{margin:0;}
+
+  /* Modales: diálogo centrado, no hoja que sube desde el borde */
+  .modal-overlay{align-items:center;padding:24px;}
+  .modal-sheet{max-width:540px;border-radius:20px;max-height:82vh;}
+
+  /* El toast se centra sobre el contenido, no sobre la ventana */
+  .toast{left:calc(50% + (var(--rail) / 2));bottom:28px;}
+}
