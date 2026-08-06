@@ -31,10 +31,11 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 | promedio general (GPA, créditos) | `app.js` | `grep -n "function gpa\|totalCreditos"` |
 | compuertas | `app.js` | `grep -n "function gatesActivas\|group_min"` |
 | "¿qué nota necesito?" | `app.js` | `grep -n "function solveForTarget"` |
-| motor de estructura/pesos | `app.js` | `grep -n "function calculateFinalGrade"` |
+| motor de estructura/pesos | `engine.js` | `grep -n "function calculateFinalGrade"` |
 | pantalla principal | `app.js` | `grep -n "function renderHome"` |
 | ficha de un ramo | `app.js` | `grep -n "function renderRamo"` |
-| estadísticas / agenda | `app.js` | `grep -n "function renderStats\|function renderAgenda"` |
+| estadísticas | `app.js` | `grep -n "function renderStats"` |
+| agenda | `render-agenda.js` | léelo completo; depende de helpers globales de `app.js` |
 | aplicar un tema | `app.js` | `grep -n "function applyTheme"` |
 | cargar preset del catálogo | `app.js` | `grep -n "function presetRamo"` |
 | auth y sync a Supabase | `app.js` | `grep -n "supabaseClient\|function syncToCloud"` |
@@ -42,13 +43,15 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 
 ## Arquitectura
 
-Sin build, sin frameworks. Cuatro archivos que se despliegan tal cual:
+Sin build, sin frameworks. Archivos estáticos que se despliegan tal cual:
 
 | Archivo | Qué tiene |
 |---|---|
 | `index.html` | Estructura, logo en base64, metadatos |
 | `data.js` | Mallas, carreras, presets, temas, portales — solo literales |
-| `app.js` | Motor de cálculo, render, auth |
+| `engine.js` | Motor puro de cálculo y resolución de nota objetivo |
+| `app.js` | Estado, adaptadores, auth, sync y render aún no extraído |
+| `render-agenda.js` | Render de Agenda; patrón para separar las demás pantallas |
 | `styles.css` | Estilos y la base neutra compartida |
 
 `data.js` se carga **antes** que `app.js`: son `<script>` clásicos, así que sus
