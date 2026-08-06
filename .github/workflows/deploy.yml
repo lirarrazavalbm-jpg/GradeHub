@@ -13,6 +13,10 @@ concurrency:
   group: deploy-produccion
   cancel-in-progress: false
 
+# El deploy no escribe en el repo: solo lee el código y publica en Cloudflare.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
