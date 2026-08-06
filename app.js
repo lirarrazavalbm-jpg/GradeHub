@@ -3283,7 +3283,41 @@ function agendaItemHTML(e){
 }
 
 // ─── SERVICE WORKER ──────────────────────────────────────────────────────────
+// El SW guarda copias de los archivos para que la app abra al instante y sirva
+// sin internet. El costo: después de un deploy el estudiante sigue con la
+// versión anterior hasta que el SW nuevo toma el control, y la página que ya
+// está abierta conserva el JS viejo aunque eso pase.
+//
+// Sin aviso, la única forma de ver una versión nueva es recargar DOS veces —
+// la primera instala el SW, la segunda sirve los archivos nuevos. Nadie hace
+// eso. Por eso acá se detecta el relevo y se ofrece recargar de una.
+//
+// No recargamos solos a propósito: el estudiante puede estar escribiendo una
+// nota, y perdérsela por una actualización es peor que ver la versión vieja un
+// rato más.
+function avisarActualizacion(){
+  const t=document.getElementById('toast-update');
+  if(t){t.classList.add('show');return;}
+  const d=document.createElement('div');
+  d.id='toast-update';
+  d.className='update-toast show';
+  d.setAttribute('role','status');
+  d.innerHTML=`<span>Hay una versión nueva.</span>`;
+  const b=document.createElement('button');
+  b.textContent='Actualizar';
+  b.onclick=()=>{try{track('sw_update_accept');}catch(e){} location.reload();};
+  d.appendChild(b);
+  document.body.appendChild(d);
+}
+
 if('serviceWorker' in navigator){
+  // Guardado ANTES de registrar: si ya había un controlador, un relevo posterior
+  // es una actualización de verdad. En la primera visita no hay ninguno y el
+  // relevo es solo la instalación inicial — ahí no hay nada que avisar.
+  const habiaControlador = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(habiaControlador) avisarActualizacion();
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .catch(err => console.warn('SW no registrado:', err));
