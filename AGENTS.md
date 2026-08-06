@@ -1,0 +1,185 @@
+# GradeHub
+
+App de notas para estudiantes universitarios chilenos. En producción: **gradehub.cl**
+
+Calcula el promedio ponderado, simula escenarios y responde la pregunta que
+importa: *¿qué nota necesito para aprobar?*
+
+## Arranca acá
+
+```bash
+bash bin/estado.sh
+```
+
+**Antes de leer ningún archivo.** Te dice en qué rama estás, qué dejó el otro a
+medias, qué PRs hay abiertos y si los tests pasan. Un tool call en vez de diez.
+
+Después usa el mapa de abajo para ir directo a lo que necesitas. Leer el
+proyecto entero cuesta ~80k tokens y casi nunca hace falta.
+
+> Este archivo es el mismo para todos los agentes: `CLAUDE.md` y `GEMINI.md` son
+> symlinks a `AGENTS.md`. Edita `AGENTS.md` — los otros dos siguen solos.
+
+## Dónde está cada cosa
+
+**No leas `app.js` entero: son ~40k tokens.** Ubica por `grep -n` y lee el trozo.
+
+| Vas a tocar | Archivo | Cómo llegar |
+|---|---|---|
+| malla, carrera, preset, tema, portal | `data.js` | léelo completo, son 17 KB |
+| promedio de un ramo | `app.js` | `grep -n "function ramoAvg"` |
+| promedio general (GPA, créditos) | `app.js` | `grep -n "function gpa\|totalCreditos"` |
+| compuertas | `app.js` | `grep -n "function gatesActivas\|group_min"` |
+| "¿qué nota necesito?" | `app.js` | `grep -n "function solveForTarget"` |
+| motor de estructura/pesos | `app.js` | `grep -n "function calculateFinalGrade"` |
+| pantalla principal | `app.js` | `grep -n "function renderHome"` |
+| ficha de un ramo | `app.js` | `grep -n "function renderRamo"` |
+| estadísticas / agenda | `app.js` | `grep -n "function renderStats\|function renderAgenda"` |
+| aplicar un tema | `app.js` | `grep -n "function applyTheme"` |
+| cargar preset del catálogo | `app.js` | `grep -n "function presetRamo"` |
+| auth y sync a Supabase | `app.js` | `grep -n "supabaseClient\|function syncToCloud"` |
+| estilos | `styles.css` | `grep -n "^\.<clase>"` |
+
+## Arquitectura
+
+Sin build, sin frameworks. Cuatro archivos que se despliegan tal cual:
+
+| Archivo | Qué tiene |
+|---|---|
+| `index.html` | Estructura, logo en base64, metadatos |
+| `data.js` | Mallas, carreras, presets, temas, portales — solo literales |
+| `app.js` | Motor de cálculo, render, auth |
+| `styles.css` | Estilos y la base neutra compartida |
+
+`data.js` se carga **antes** que `app.js`: son `<script>` clásicos, así que sus
+`const` quedan en el ámbito léxico global y `app.js` los ve sin imports. Si
+inviertes el orden, `ReferenceError` en el primer render.
+
+**Contenido va en `data.js`, comportamiento en `app.js`.** Agregar una malla, una
+carrera o un preset no debería tocar `app.js`. Si tienes que escribir un `if` de
+tenant en `app.js` para que un dato nuevo funcione, el dato está mal modelado.
+
+Backend: **Supabase** (auth email + Google, RLS activo). Hosting: **Cloudflare Pages**.
+
+## Reglas que no se rompen
+
+**El motor de cálculo es la razón de existir de la app.** Si tocas `ramoAvg`,
+`gpa`, `calculateFinalGrade` o las compuertas, corre los tests antes de entregar.
+Un promedio mal calculado destruye la confianza más rápido que cualquier bug visual.
+
+**Nunca inventes ponderaciones.** Los presets salen de programas oficiales. Si un
+dato no está en el documento, se marca como faltante — no se rellena con lo
+plausible.
+
+**El semáforo es semántico.** Verde/ámbar/rojo significan aprobado / al borde /
+reprobado. No se tiñen por tema ni por decoración.
+
+**`gradehub_v1` es la clave de localStorage.** No se renombra sin migración.
+
+**La `sb_secret_*` de Supabase nunca va en el código.** Solo la `sb_publishable_*`,
+que es pública por diseño y está protegida por RLS.
+
+## Antes de entregar cualquier cambio
+
+```bash
+# 1. Sintaxis
+node -e 'const vm=require("vm"),fs=require("fs");["data.js","app.js"].forEach(f=>new vm.Script(fs.readFileSync(f,"utf8")));console.log("JS OK")'
+
+# 2. CSS balanceado
+node -e 'const c=require("fs").readFileSync("styles.css","utf8");const o=(c.match(/\{/g)||[]).length,x=(c.match(/\}/g)||[]).length;console.log("CSS "+o+"/"+x+(o===x?" OK":" MISMATCH"))'
+
+# 3. Tests de lógica (si tocaste el motor o los temas)
+npm test
+```
+
+Si tocas cálculo, escribe un test que compruebe casos concretos — incluyendo los
+de compuerta que topan la nota.
+
+## Desplegar
+
+```bash
+npx wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true
+```
+
+**Sube el `CACHE_NAME` en `sw.js`** (va en `gradehub-vN`) en cada deploy, o los
+usuarios con la PWA instalada no reciben la actualización.
+
+## Modelo de datos
+
+```js
+S = { ramos, userName, careerSemestre, carrera, tenant, onboardingDone, historial, sortMode }
+
+ramo = {
+  id, nombre, color,
+  creditos,          // SCT — si TODOS los ramos lo tienen, el promedio se pondera
+  origen,            // {tenant, carrera} si vino del catálogo; null si es manual
+  categorias: [{ id, nombre, peso, fecha, slots, directNota, notas: [] }],
+  gates: []
+}
+```
+
+### Compuertas
+
+```js
+// Una evaluación bajo su mínimo topa la nota final
+{ type:'min_grade_required', catId, min: 3.0, cap: 3.9 }
+
+// El promedio de un CONJUNTO bajo su mínimo topa la final.
+// cap:'self' → el tope es el promedio del propio grupo.
+// Modela la regla FEN "la nota final es la más baja entre los dos requisitos".
+{ type:'group_min', catIds: [...], min: 4.0, cap: 'self' }
+```
+
+### Promedio general
+
+Se pondera por créditos **solo si todos los ramos con nota los tienen**. Si alguno
+falta, cae a promedio simple. Mezclar daría un número engañoso.
+
+## Temas
+
+Un registro `THEMES` en `data.js` con una entrada por universidad. Agregar una es
+agregar una entrada — no hay condicionales de tenant repartidos por el código.
+
+Cada tema define acento (`primary`, `accent`, `secondary`) y superficies
+(`bg`, `card`, `border`…). Las superficies solo se aplican en modo oscuro.
+
+`oculto:true` en `TENANTS` saca una universidad del selector sin borrar nada.
+Hoy UAI y UANDES están ocultas: se lanza con FEN y UC.
+
+## Cómo trabajamos en paralelo
+
+Dos personas y sus agentes sobre este repo. Para no chocar:
+
+- **Nadie trabaja en `main`.** Rama por tarea, PR, merge.
+- **Ramas con prefijo de iniciales**: `li/mallas-fen`, `sk/render-split`. Así se
+  ve de quién es cada rama sin preguntar.
+- `bash bin/estado.sh` antes de empezar cualquier cosa (incluye el `git fetch`).
+- Repartición: uno en contenido (presets, mallas), otro en producto (UI, motor).
+
+**El estado del trabajo vive en git, no en un archivo.** Qué se hizo → mensajes
+de commit. Qué falta y por qué se decidió así → descripción del PR. No hay
+`ESTADO.md` a propósito: un archivo de estado mantenido a mano se desactualiza y
+entonces es peor que nada, porque el agente le cree.
+
+## Tono
+
+Español chileno, informal pero no forzado. Los textos de la app hablan como le
+hablarías a un compañero, no como un manual.
+
+## Pendientes conocidos
+
+- Notas de reemplazo y examen recuperativo (aparecen en 3 de 4 programas FEN)
+- Mallas FEN 1° y 2° completas — hoy hay 4 ramos de ~46
+- Consumir el consenso de reportes para sugerir actualizaciones del catálogo
+- Analítica (no hay ninguna) y política de privacidad (Ley 19.628)
+- `app.js` sigue en 150 KB tras sacar los datos: el próximo corte natural es
+  separar el render (`renderHome`, `renderRamo`, stats) del motor de cálculo
+- Deploy manual desde la Mac de Lucas: pasa a GitHub Actions para que cualquiera
+  de los dos pueda publicar mergeando
+
+## En vuelo
+
+Solo para intención en curso que git no puede saber. Se borra al mergear. Si
+esto pasa de 5 líneas, está mal usado — lo demás va en el PR.
+
+- (nada en vuelo)
