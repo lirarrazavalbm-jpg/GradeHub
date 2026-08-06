@@ -126,9 +126,10 @@ if(window.matchMedia){
   else if(mq.addListener)mq.addListener(onChange);
 }
 
-// Paleta de ramos del tema activo (solo aplica a ramos NUEVOS; los existentes
-// conservan el color que el usuario ya eligió).
-function chartColors(){return themeFor(S&&S.tenant?S.tenant:selectedTenant).chart;}
+// Paleta de colores de ramo. Es UNA sola para los cuatro temas: el color
+// identifica al ramo, no decora la universidad (ver el comentario en data.js).
+// Solo aplica a ramos NUEVOS — los existentes conservan el que ya tienen.
+function chartColors(){return COLORS;}
 
 // Siguiente color sugerido: rota la paleta del tema evitando repetir si se puede
 function nextRamoColor(){

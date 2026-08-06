@@ -7,10 +7,33 @@
 // Se carga como <script> normal ANTES de app.js — los const quedan en el ámbito
 // léxico global compartido, así que app.js los ve sin imports.
 
-// ─── PALETA ──────────────────────────────────────────────────────────────────
-// Paleta cohesive: tonos frescos con saturación pareja, todos armonizan con el teal del brand.
-// Paleta base (fallback). La paleta real por tema vive en THEMES[].chart
-const COLORS=['#0d9488','#0369a1','#4f46e5','#7c3aed','#be185d','#c2410c','#a16207','#475569'];
+// ─── COLORES DE RAMO ─────────────────────────────────────────────────────────
+// El color de un ramo es un IDENTIFICADOR, no decoración. Su único trabajo es
+// que el estudiante distinga un ramo de otro de un vistazo. Por eso es UNA sola
+// paleta para los cuatro temas, con el mismo criterio que el semáforo: si el
+// color comunica algo, no se tiñe por universidad.
+//
+// Antes había una paleta por tema, teñida para armonizar con su acento: FEN
+// tenía cuatro azules y tres dorados, UC ocho variaciones del mismo azul. Se
+// veía elegante y era inservible — con seis ramos en pantalla, ninguno se
+// distinguía del de al lado.
+//
+// Los matices están repartidos por la rueda de color, a 21° o más uno de otro,
+// y ninguno cae cerca del semáforo (verde #2ee6c8, ámbar #ffc94d, rojo #ff5f7a)
+// para que nadie confunda "este ramo es rojo" con "este ramo va reprobado".
+// Por eso no hay rojo ni amarillo acá: esos matices ya significan otra cosa.
+// Al agregar uno nuevo, respeta la separación — el test la verifica.
+const COLORS=[
+  '#ea580c', // naranjo
+  '#a3e635', // lima
+  '#22c55e', // verde
+  '#06b6d4', // cian
+  '#3b82f6', // azul
+  '#6366f1', // índigo
+  '#a855f7', // violeta
+  '#d946ef', // fucsia
+  '#ec4899', // rosa
+];
 
 // ─── MALLAS FEN 2026 ─────────────────────────────────────────────────────────
 const CARRERAS={
@@ -108,7 +131,6 @@ const TENANT_GLYPHS={
 //   primaryLight  tinte muy suave del acento (fondos de chips/íconos)
 //   accent        segundo tono para gradientes del acento
 //   success/warning/danger  — ver nota abajo
-//   chart[]       colores por defecto para ramos nuevos
 const THEME_BASE={
   // Semáforo de notas. Se deja IGUAL en todos los temas a propósito: verde/ámbar/
   // rojo son semánticos (aprobado / al borde / reprobado), no decorativos. Teñirlos
@@ -128,14 +150,12 @@ const THEMES={
   fen:{
     primary:'#3b82f6', primaryFg:'#04101f', primaryLight:'#0e1e33',
     accent:'#f5c451', secondary:'#f5c451',
-    chart:['#3b82f6','#f5c451','#60a5fa','#b98d2b','#818cf8','#38bdf8','#d4a53c','#94a3b8'],
     dark:{bg:'#05070a',bg2:'#0a0d13',card:'#111620',border:'#1d2534',border2:'#2c3648',muted:'#161d29'},
   },
   // UC — académico. Azul limpio, desaturado; superficies con matiz frío marcado.
   uc:{
     primary:'#3f7fd4', primaryFg:'#040d1c', primaryLight:'#0d1c30',
     accent:'#8fc7f5', secondary:'#8fc7f5',
-    chart:['#3f7fd4','#8fc7f5','#5b93dd','#2f5f9f','#7d94aa','#a8c4dd','#4a6d94','#6b8299'],
     dark:{bg:'#04060c',bg2:'#090d16',card:'#101725',border:'#1c273c',border2:'#2b3a57',muted:'#151e30'},
   },
   // UAI — premium/minimal. Casi monocromo: grises puros, bordes casi invisibles,
@@ -143,7 +163,6 @@ const THEMES={
   uai:{
     primary:'#5aa3b0', primaryFg:'#03110f', primaryLight:'#0d1e21',
     accent:'#9fc4cb', secondary:'#8a9aa5',
-    chart:['#5aa3b0','#8a9aa5','#c3ced4','#5f7d88','#6e8a94','#a8b8c0','#3d757f','#4a5560'],
     dark:{bg:'#050506',bg2:'#0a0a0c',card:'#131316',border:'#1b1b1f',border2:'#292930',muted:'#161619'},
   },
   // UANDES — lujo silencioso. Burdeo como acento, grises con matiz cálido.
@@ -154,7 +173,6 @@ const THEMES={
     // el texto oscuro encima solo llega a 4.11:1. En blanco da 4.76:1.
     primary:'#c04a63', primaryFg:'#ffffff', primaryLight:'#261015',
     accent:'#e08ea0', secondary:'#b9959c',
-    chart:['#c04a63','#b9959c','#8f6b74','#e08ea0','#7a5c63','#c9b6bb','#9c8a90','#5e4a4f'],
     dark:{bg:'#070506',bg2:'#0d0a0b',card:'#161113',border:'#241c1f',border2:'#35292d',muted:'#1a1416'},
   },
 };

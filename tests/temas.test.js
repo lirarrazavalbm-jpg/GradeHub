@@ -98,15 +98,38 @@ TEMAS.forEach(t => {
 });
 console.log('  los 4 dejan la base clara intacta y solo tiñen el acento');
 
-console.log('\n=== Paletas de gráficos distintas entre temas ===');
-const pals = {};
-TEMAS.forEach(t => {
-  const pal = vm.runInContext('THEMES["' + t + '"].chart', dark);
-  chk(t + ' 8 colores únicos', pal.length === 8 && new Set(pal).size === 8);
-  pals[t] = pal.join('|');
+console.log('\n=== Colores de ramo: identificadores, no decoración ===');
+// La paleta anterior estaba teñida por tema (FEN: cuatro azules y tres dorados)
+// y con seis ramos en pantalla ninguno se distinguía del de al lado. Esto
+// verifica lo que aquella no cumplía: matices realmente separados.
+function hue(hex) {
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.substr(i + 1, 2), 16) / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if (d === 0) return 0;
+  const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+const pal = vm.runInContext('COLORS', dark);
+chk('la paleta es una sola, compartida por los 4 temas',
+  TEMAS.every(t => vm.runInContext('THEMES["' + t + '"].chart', dark) === undefined));
+chk('al menos 8 colores', pal.length >= 8);
+chk('sin repetidos', new Set(pal).size === pal.length);
+
+let minSep = 360, par = '';
+const hues = pal.map(hue).sort((a, b) => a - b);
+hues.forEach((h, i) => {
+  const sig = hues[(i + 1) % hues.length];
+  const sep = Math.min(Math.abs(sig - h), 360 - Math.abs(sig - h));
+  if (sep < minSep) { minSep = sep; par = h.toFixed(0) + '° / ' + sig.toFixed(0) + '°'; }
 });
-chk('las 4 paletas son distintas', new Set(Object.values(pals)).size === 4);
-console.log('  4 paletas, 8 colores cada una, sin repetir');
+chk('ningún par de colores a menos de 18° de matiz', minSep >= 18);
+console.log('  ' + pal.length + ' colores, separación mínima ' + minSep.toFixed(0) + '° (' + par + ')');
+
+// El semáforo es semántico: un ramo no debe teñirse de un color que se lea
+// como "aprobado" o "reprobado".
+const SEM = ['#2ee6c8', '#ffc94d', '#ff5f7a'];
+chk('ningún color de ramo choca con el semáforo',
+  pal.every(c => SEM.every(s => Math.min(Math.abs(hue(c) - hue(s)), 360 - Math.abs(hue(c) - hue(s))) >= 10)));
 
 console.log('\n=== Glifos: sin SVG registrado cae a la sigla ===');
 const glyphs = vm.runInContext('TENANT_GLYPHS', dark);
