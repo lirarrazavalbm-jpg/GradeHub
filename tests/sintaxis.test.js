@@ -42,6 +42,24 @@ if (sucio.length) {
   process.exit(1);
 }
 
+// Política de contraseñas: un mínimo suelto por el código se desincroniza del
+// resto. Y el largo NO puede exigirse al iniciar sesión — quien creó su cuenta
+// con el mínimo anterior tiene que poder entrar.
+const app = fs.readFileSync(path.join(raiz, 'app.js'), 'utf8');
+const min = (app.match(/const PASS_MIN\s*=\s*(\d+)/) || [])[1];
+if (!min || Number(min) < 8) {
+  console.error('PASS_MIN tiene que existir y ser >= 8 (es ' + min + ')');
+  process.exit(1);
+}
+if (/length\s*<\s*[0-9]/.test(app)) {
+  console.error('quedó un mínimo de contraseña hardcodeado: usa PASS_MIN');
+  process.exit(1);
+}
+if (!/authMode\s*===\s*'signup'\s*&&\s*p\.length\s*<\s*PASS_MIN/.test(app)) {
+  console.error('el mínimo de contraseña debe exigirse SOLO en registro, no al iniciar sesión');
+  process.exit(1);
+}
+
 // Un solo archivo de instrucciones con tres nombres. Si alguno deja de ser
 // symlink (hay editores que los reemplazan al guardar), cada agente empieza a
 // leer una versión distinta y nadie se entera hasta que ya divergieron.
