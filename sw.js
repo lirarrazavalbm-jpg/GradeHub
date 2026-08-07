@@ -4,9 +4,9 @@
 // Los datos del usuario viven en localStorage + Supabase — el SW solo maneja la app shell.
 
 <<<<<<< HEAD
-const CACHE_NAME = 'gradehub-v69';
+const CACHE_NAME = 'gradehub-v70';
 =======
-const CACHE_NAME = 'gradehub-v69';
+const CACHE_NAME = 'gradehub-v70';
 >>>>>>> origin/main
 const SHELL = [
   '/',
