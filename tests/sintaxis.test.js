@@ -44,6 +44,35 @@ if (sucio.length) {
   process.exit(1);
 }
 
+// sw.js no lo parseaba NADIE. Un merge mal resuelto dejó marcadores de conflicto
+// commiteados y llegaron a producción: el service worker no instalaba, y con él
+// se cayeron la caché, el modo offline y el aviso de versión nueva. No lanza
+// error visible — la app sigue andando, solo pierde todo lo que el SW aporta.
+new vm.Script(fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8'));
+
+// Marcadores de conflicto en cualquier archivo que se despliega. Con varias
+// ramas en paralelo esto pasa, y lo caro es que llegue a producción.
+['sw.js', 'app.js', 'data.js', 'engine.js', 'render-agenda.js', 'styles.css', 'index.html', 'privacidad.html', 'package.json']
+  .forEach(f => {
+    const src = fs.readFileSync(path.join(raiz, f), 'utf8');
+    if (/^(<{7}|={7}|>{7})/m.test(src)) {
+      console.error(f + ' tiene marcadores de conflicto sin resolver');
+      process.exit(1);
+    }
+  });
+
+// El SHELL del service worker tiene que apuntar a archivos que existan: uno que
+// falte hace que la instalación entera falle y el SW quede inservible.
+const swSrc = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
+(swSrc.match(/'\/([a-zA-Z0-9._-]+)'/g) || []).forEach(m => {
+  const f = m.replace(/'/g, '').replace(/^\//, '');
+  if (!f || f === '') return;
+  if (!fs.existsSync(path.join(raiz, f))) {
+    console.error('sw.js precachea ' + f + ', que no existe');
+    process.exit(1);
+  }
+});
+
 // Política de contraseñas: un mínimo suelto por el código se desincroniza del
 // resto. Y el largo NO puede exigirse al iniciar sesión — quien creó su cuenta
 // con el mínimo anterior tiene que poder entrar.
