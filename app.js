@@ -2000,11 +2000,40 @@ function aplicarPlantillaPauta(tipo){
   renderPautaManualModal();
   setTimeout(()=>{const i=document.getElementById('m-pauta-peso-0');if(i)i.focus();},0);
 }
+// Una pauta de otro ramo sirve de referencia, no de copia de datos: se llevan
+// solo los nombres y porcentajes, nunca notas, fechas, IDs ni reglas.
+function ramosParaDuplicarPauta(ramos,ramoActualId){
+  return (ramos||[]).filter(r=>r.id!==ramoActualId&&(r.categorias||[]).some(c=>String(c.nombre||'').trim()))
+    .map(r=>({id:r.id,nombre:r.nombre,cantidad:r.categorias.filter(c=>String(c.nombre||'').trim()).length}));
+}
+function pautaDuplicada(ramo){
+  return ((ramo&&ramo.categorias)||[]).filter(c=>String(c.nombre||'').trim())
+    .map(c=>({id:null,nombre:String(c.nombre).trim(),peso:Number(c.peso)||0,tieneNotas:false}));
+}
+function textoConfirmarPautaDuplicada(origen,copia){
+  const cantidad=copia.length;
+  return `Vas a copiar ${cantidad} evaluaci${cantidad===1?'ón':'ones'} y sus porcentajes desde ${origen.nombre}. No se copian notas ni fechas. Podrás ajustarla antes de guardar.`;
+}
+function duplicarPautaDesdeRamo(){
+  const origenId=(document.getElementById('m-pauta-origen')||{}).value;
+  const origen=S.ramos.find(r=>r.id===origenId);const copia=pautaDuplicada(origen);
+  if(!copia.length){showToast('Elige un ramo con evaluaciones',true);return;}
+  showConfirm(`Usar la pauta de ${origen.nombre}`,textoConfirmarPautaDuplicada(origen,copia),()=>{
+    pautaDraft=copia;renderPautaManualModal();
+    setTimeout(()=>{const i=document.getElementById('m-pauta-peso-0');if(i)i.focus();},0);
+  },{label:'Usar pauta'});
+}
 function renderPautaManualModal(){
+  const fuentes=puedeUsarPlantillaPauta()?ramosParaDuplicarPauta(S.ramos,currentRamoId):[];
   const plantillas=puedeUsarPlantillaPauta()?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
     <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;"><button type="button" onclick="aplicarPlantillaPauta('tres-solemnes')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">3 solemnes + examen</button><button type="button" onclick="aplicarPlantillaPauta('dos-pruebas')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">2 pruebas + examen</button></div>
     <div style="font-size:12px;color:var(--fg2);line-height:1.4;margin-top:8px;">Los pesos quedan en 0%. Confírmalos con el programa del curso.</div>
+  </div>`:'';
+  const duplicar=fuentes.length?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);">
+    <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:4px;">¿Ya la tienes armada en otro ramo?</div>
+    <div style="font-size:12px;color:var(--fg2);line-height:1.4;margin-bottom:8px;">Copia evaluaciones y porcentajes. Tus notas y fechas no se copian.</div>
+    <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px 'Inter',sans-serif;cursor:pointer;">Usar pauta</button></div>
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>`
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 32px;gap:8px;align-items:center;margin:8px 0;">
@@ -2016,6 +2045,7 @@ function renderPautaManualModal(){
     <div class="modal-title">Configurar pauta</div>
     <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Agrega tus evaluaciones y su porcentaje. Puedes guardar aunque te falte parte de la pauta.</p>
     ${plantillas}
+    ${duplicar}
     <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:13px;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
     <div>${filas}</div>
     <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Inter',sans-serif;cursor:pointer;">+ Otra evaluación</button>
