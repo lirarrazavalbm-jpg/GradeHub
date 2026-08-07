@@ -177,7 +177,6 @@ else {fail++;console.log('  FAIL plantilla de solemnes → '+JSON.stringify(plan
 const plantillaPruebas=ctx.plantillaPauta('dos-pruebas');
 if(plantillaPruebas.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Examen'&&plantillaPruebas.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de pruebas no inventa ponderaciones');}
 else {fail++;console.log('  FAIL plantilla de pruebas → '+JSON.stringify(plantillaPruebas));}
-<<<<<<< HEAD
 const ramosParaCopiar=[
   {id:'origen',nombre:'Microeconomía',categorias:[{id:'a',nombre:'Prueba 1',peso:35,fecha:'2026-03-01',notas:[{valor:6}]},{id:'b',nombre:'Examen',peso:65,notas:[]}]},
   {id:'actual',nombre:'Macroeconomía',categorias:[]},
@@ -192,7 +191,6 @@ else {fail++;console.log('  FAIL pauta duplicada → '+JSON.stringify(pautaCopia
 const confirmacionCopia=ctx.textoConfirmarPautaDuplicada(ramosParaCopiar[0],pautaCopiada);
 if(confirmacionCopia.includes('2 evaluaciones')&&confirmacionCopia.includes('No se copian notas ni fechas')&&confirmacionCopia.includes('ajustarla antes de guardar')){ok++;console.log('  OK   confirma la copia antes de dejarla editable');}
 else {fail++;console.log('  FAIL texto de confirmación → '+confirmacionCopia);}
-=======
 const pautaNodes={
   'modal-content':{innerHTML:'',style:{},focus(){}},
   modal:{style:{},classList:{open:false,add(c){if(c==='open')this.open=true;},remove(c){if(c==='open')this.open=false;}}},
@@ -207,12 +205,20 @@ try{ctx.openPautaManualModal();
   else {fail++;console.log('  FAIL el editor no abrió para ramo sin preset');}
 }catch(e){fail++;console.log('  FAIL ramo sin preset lanzó → '+e.message);}
 ctx.document.getElementById=getBeforePauta;ctx.document.querySelector=queryBeforePauta;
->>>>>>> origin/main
 const reglasGp=ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:{tenant:'fen'}});
 if(reglasGp.length===2&&reglasGp[0].includes('Eximición')){ok++;console.log('  OK   muestra reglas oficiales que el motor no calcula');}
 else {fail++;console.log('  FAIL reglas no calculadas → '+JSON.stringify(reglasGp));}
 if(ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:null}).length===0){ok++;console.log('  OK   no inventa reglas para ramos manuales');}
 else {fail++;console.log('  FAIL inventó reglas para un ramo manual');}
+
+console.log('\n=== Ajustes por secciones ===');
+const ajustesSrc=APP.slice(APP.indexOf('function openSettings()'),APP.indexOf('// Marca que hay un preview de tema activo'));
+if(['Perfil','Información académica','Apariencia','Datos y cuenta'].every(t=>ajustesSrc.includes(t))){ok++;console.log('  OK   organiza Ajustes en las cuatro secciones');}
+else {fail++;console.log('  FAIL faltan secciones en Ajustes');}
+if(ajustesSrc.includes('exportarDatos()')&&ajustesSrc.includes('abrirImportar()')&&!ajustesSrc.includes('importarDatos')&&ajustesSrc.includes('Eliminar mi cuenta · Próximamente')){ok++;console.log('  OK   expone datos reales y deja hueco para borrar cuenta');}
+else {fail++;console.log('  FAIL acciones de Datos y cuenta');}
+if(!h.includes('onclick="umGo(exportarDatos)"')&&!h.includes('onclick="umGo(abrirImportar)"')&&h.includes('onclick="umGo(signOut)"')){ok++;console.log('  OK   datos salen del menú y cerrar sesión se mantiene');}
+else {fail++;console.log('  FAIL menú de usuario no quedó coherente');}
 
 console.log('\n=== Agenda · guía y foco ===');
 vm.runInContext("S={ramos:[{id:'agenda',nombre:'Ramo agenda',color:'#2563eb',categorias:[{id:'sin-fecha',nombre:'Control sin fecha',peso:20,notas:[]},{id:'rendida',nombre:'Control rendido',peso:20,notas:[{id:'n',valor:5,peso:1}]}]}]};", ctx);
