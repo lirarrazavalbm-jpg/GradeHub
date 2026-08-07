@@ -177,6 +177,7 @@ else {fail++;console.log('  FAIL plantilla de solemnes → '+JSON.stringify(plan
 const plantillaPruebas=ctx.plantillaPauta('dos-pruebas');
 if(plantillaPruebas.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Examen'&&plantillaPruebas.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de pruebas no inventa ponderaciones');}
 else {fail++;console.log('  FAIL plantilla de pruebas → '+JSON.stringify(plantillaPruebas));}
+<<<<<<< HEAD
 const ramosParaCopiar=[
   {id:'origen',nombre:'Microeconomía',categorias:[{id:'a',nombre:'Prueba 1',peso:35,fecha:'2026-03-01',notas:[{valor:6}]},{id:'b',nombre:'Examen',peso:65,notas:[]}]},
   {id:'actual',nombre:'Macroeconomía',categorias:[]},
@@ -191,6 +192,22 @@ else {fail++;console.log('  FAIL pauta duplicada → '+JSON.stringify(pautaCopia
 const confirmacionCopia=ctx.textoConfirmarPautaDuplicada(ramosParaCopiar[0],pautaCopiada);
 if(confirmacionCopia.includes('2 evaluaciones')&&confirmacionCopia.includes('No se copian notas ni fechas')&&confirmacionCopia.includes('ajustarla antes de guardar')){ok++;console.log('  OK   confirma la copia antes de dejarla editable');}
 else {fail++;console.log('  FAIL texto de confirmación → '+confirmacionCopia);}
+=======
+const pautaNodes={
+  'modal-content':{innerHTML:'',style:{},focus(){}},
+  modal:{style:{},classList:{open:false,add(c){if(c==='open')this.open=true;},remove(c){if(c==='open')this.open=false;}}},
+  sheet:{style:{},scrollTop:0,addEventListener(){}}
+};
+const getBeforePauta=ctx.document.getElementById,queryBeforePauta=ctx.document.querySelector;
+ctx.document.getElementById=id=>pautaNodes[id]||stub;
+ctx.document.querySelector=sel=>sel==='.modal-sheet'?pautaNodes.sheet:stub;
+vm.runInContext("S={ramos:[{id:'sin-preset',nombre:'Economía I',origen:{tenant:'fen'},gates:[]}]};currentRamoId='sin-preset';",ctx);
+try{ctx.openPautaManualModal();
+  if(pautaNodes.modal.classList.open&&pautaNodes['modal-content'].innerHTML.includes('Configurar pauta')){ok++;console.log('  OK   ramo FEN sin preset abre el editor de pauta');}
+  else {fail++;console.log('  FAIL el editor no abrió para ramo sin preset');}
+}catch(e){fail++;console.log('  FAIL ramo sin preset lanzó → '+e.message);}
+ctx.document.getElementById=getBeforePauta;ctx.document.querySelector=queryBeforePauta;
+>>>>>>> origin/main
 const reglasGp=ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:{tenant:'fen'}});
 if(reglasGp.length===2&&reglasGp[0].includes('Eximición')){ok++;console.log('  OK   muestra reglas oficiales que el motor no calcula');}
 else {fail++;console.log('  FAIL reglas no calculadas → '+JSON.stringify(reglasGp));}
