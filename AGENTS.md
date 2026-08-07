@@ -229,7 +229,46 @@ hablarías a un compañero, no como un manual.
 
 ## En vuelo
 
-Solo para intención en curso que git no puede saber. Se borra al mergear. Si
-esto pasa de 5 líneas, está mal usado — lo demás va en el PR.
+Lo que está tomado ahora mismo. Se borra cuando se mergea. Si tu tarea no está
+acá, pregunta antes de empezar — hay tres agentes sobre cuatro archivos.
 
-- (nada en vuelo)
+### Con qué parte cada uno
+
+**Codex — el momento de la nota.** Es su PR 2 de la revisión estética. Cuando el
+estudiante ingresa una nota y el promedio cambia: hoy es un número que se
+actualiza, y debería ser lo que lo hace volver. El PR 1 (tokens de movimiento)
+ya está mergeado y es la base. Después vienen jerarquía de Home, estadísticas,
+vacíos y Agenda. Su carril es `app.js` y, durante la revisión estética,
+`styles.css`.
+
+**Claude de Lucas — que eliminar cuenta funcione de verdad.** El botón, la doble
+confirmación y la política están en producción, pero el borrado NO funciona: se
+probó con una cuenta real y no se eliminó. Descartado que sea permisos
+(`postgres` sí puede borrar de `auth.users`, verificado). Falta el error exacto:
+está en la consola del navegador, línea que empieza con `eliminarCuenta:`. **Hoy
+la política promete algo que la app no cumple** — eso lo vuelve lo primero.
+
+**Claude de Martín — el consenso de reportes.** Es lo único que puede llevar el
+catálogo de 4 pautas oficiales a 88, y sin más programas oficiales no hay otra
+vía. Ojo: `catalog_reports` solo deja leer las filas propias, así que ningún
+cliente puede calcular un consenso — necesita una vista agregada o una función
+`security definer` que exponga el conteo sin exponer quién reportó qué. Antes de
+eso, algo chico: separar los tres solemnes de Métodos Matemáticos II en filas
+propias (Solemne 1, 2 y 3 al 20%), que el programa oficial los lista separados.
+
+### Decisión pendiente, y condiciona el resto
+
+**Monetización.** No es una tarea, es una decisión de producto. Si va a haber
+plan pago afecta qué se construye ahora, qué dice la política de privacidad y
+hasta el onboarding. Conviene resolverla antes de seguir agregando features.
+
+### Lo que quedó sin dueño
+
+- El `CACHE_NAME` de `sw.js` es un contador global de una línea: seis conflictos
+  entre ramas van, y uno terminó publicando un service worker roto. Automatizarlo
+  con cuidado — si se rompe, se rompen las actualizaciones de la PWA.
+- Devolver el check `test` a la protección de `main`. Hoy `main` acepta merges
+  sin verificación automática, y eso ya costó caro.
+- Que la política de privacidad y la app no se desalineen: hay tests que las
+  atan, pero solo para eliminar cuenta y analítica.
+
