@@ -14,6 +14,10 @@ button:active{transform:scale(.97);}
   --muted:#eff3f3;--radius:14px;
   --shadow:0 1px 2px rgba(11,20,20,.04),0 4px 16px -4px rgba(11,20,20,.08);
   --shadow-lg:0 8px 30px -8px rgba(11,20,20,.16);
+  /* Un ritmo compartido evita que cada pantalla "invente" su propia
+     transición. Corto a propósito: orienta la interacción, no la retrasa. */
+  --motion-press:120ms;--motion-fast:160ms;--motion-base:220ms;
+  --ease-out:cubic-bezier(.22,1,.36,1);--ease-standard:cubic-bezier(.2,.8,.2,1);
 }
 @media(prefers-color-scheme:dark){
   :root:not([data-modo="claro"]){
@@ -840,4 +844,61 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;letter-spacing:-.005em;}
 @media(min-width:1024px){
   .update-toast{bottom:24px;left:calc(50% + (var(--rail) / 2));}
+}
+
+/* ── Fundación de ritmo y movimiento ────────────────────────────────────
+   El movimiento confirma una acción o un cambio de contexto; nunca es una
+   espera para ver información. Los colores semánticos y los de cada ramo
+   quedan fuera de este bloque deliberadamente. */
+.screen.active{animation:screen-rise var(--motion-fast) var(--ease-out);}
+@keyframes screen-rise{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+
+/* Todas las superficies tocables comparten una respuesta breve. En móvil el
+   gesto es el feedback; el hover solo se habilita para puntero preciso. */
+.icon-btn,.back-btn,.avatar-btn,.topbar-link,.nav-item,.ramo-row,.insight-card,
+.stat-card,.ag-row,.eval-row,.eval-group,.cat-card,.cat-hit,.course-picker-result,
+.course-picker-manual,.tenant-opt,.s-tenant-btn,.carrera-opt,.sem-btn,.modo-opt,
+.btn-primary,.btn-outline,.btn-cancel,.btn-confirm,.btn-danger,.btn-prim-sm,
+.ramo-action,.gpa-start-btn,.ag-empty-cta,.add-nota-btn,.add-cat-btn,.user-menu-item{
+  transition:transform var(--motion-press) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),opacity var(--motion-fast) var(--ease-standard);
+}
+
+.icon-btn:active,.back-btn:active,.avatar-btn:active,.topbar-link:active,.nav-item:active,
+.ramo-row:active,.insight-card:active,.stat-card:active,.ag-row:active,.eval-row:active,
+.eval-group:active,.cat-card:active,.cat-hit:active,.course-picker-result:active,
+.course-picker-manual:active,.tenant-opt:active,.s-tenant-btn:active,.carrera-opt:active,
+.sem-btn:active,.modo-opt:active,.btn-primary:active,.btn-outline:active,.btn-cancel:active,
+.btn-confirm:active,.btn-danger:active,.btn-prim-sm:active,.ramo-action:active,
+.gpa-start-btn:active,.ag-empty-cta:active,.add-nota-btn:active,.add-cat-btn:active,
+.user-menu-item:active{transform:scale(.985);}
+
+@media(hover:hover) and (pointer:fine){
+  .ramo-row:hover,.insight-card:hover,.stat-card:hover,.ag-row:hover,.eval-row:hover,
+  .eval-group:hover,.cat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+  .icon-btn:hover,.back-btn:hover,.avatar-btn:hover,.topbar-link:hover,.nav-item:hover,
+  .course-picker-result:hover,.course-picker-manual:hover,.tenant-opt:hover,.s-tenant-btn:hover,
+  .carrera-opt:hover,.sem-btn:hover,.modo-opt:hover,.user-menu-item:hover{transform:translateY(-1px);}
+  .btn-primary:hover,.btn-outline:hover,.btn-cancel:hover,.btn-confirm:hover,.btn-danger:hover,
+  .btn-prim-sm:hover,.ramo-action:hover,.gpa-start-btn:hover,.ag-empty-cta:hover,
+  .add-nota-btn:hover,.add-cat-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow);}
+}
+
+/* Los bloques se leen como parte de una misma página gracias a un ritmo de
+   borde y elevación, no con más gradientes ni colores decorativos. */
+.ramo-row,.insight-card,.stat-card,.ag-row,.eval-row,.eval-group,.cat-card{
+  will-change:transform;}
+.topbar{transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard);}
+.bottom-nav{transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard);}
+@media(min-width:1024px){
+  .bottom-nav .nav-item{border-radius:10px;}
+  .bottom-nav .nav-item:hover{background:var(--muted);}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .screen.active{animation:none;}
+  .ramo-row,.insight-card,.stat-card,.ag-row,.eval-row,.eval-group,.cat-card{will-change:auto;}
 }
