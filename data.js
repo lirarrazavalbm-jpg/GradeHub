@@ -293,7 +293,17 @@ const PRESETS_FEN={
   'Métodos Matemáticos II':{
     creditos:6,
     noCalcula:['Examen de Segunda Fecha para quien saque bajo 3,0 en el examen pero tenga promedio ≥ 3,95'],
-    evals:[['Solemnes',60,{slots:3}],['Examen Final',40,{min:3.0,cap:3.9}]],
+    // El programa lista los tres solemnes por separado: van como filas propias,
+    // y así cada uno lleva su fecha a la agenda.
+    //
+    // OJO, esto NO es solo cosmético. Antes eran una casilla al 60% con slots:3.
+    // Con los tres rendidos da lo mismo, pero si falta alguno Y el examen ya está
+    // puesto, el número cambia: la casilla agrupada asumía que los solemnes que
+    // faltan van a salir como los rendidos, y en filas separadas el que falta se
+    // descarta y se repondera sobre lo evaluado — que es lo que hace el motor con
+    // cualquier otra categoría vacía. Con un solo solemne rendido la diferencia
+    // llega a más de un punto. Se eligió la forma consistente con el resto.
+    evals:[['Solemne 1',20],['Solemne 2',20],['Solemne 3',20],['Examen Final',40,{min:3.0,cap:3.9}]],
   },
   'Introducción a la Microeconomía':{
     creditos:6,
