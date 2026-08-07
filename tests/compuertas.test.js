@@ -183,6 +183,15 @@ else {fail++;console.log('  FAIL reglas no calculadas → '+JSON.stringify(regla
 if(ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:null}).length===0){ok++;console.log('  OK   no inventa reglas para ramos manuales');}
 else {fail++;console.log('  FAIL inventó reglas para un ramo manual');}
 
+console.log('\n=== Ajustes por secciones ===');
+const ajustesSrc=APP.slice(APP.indexOf('function openSettings()'),APP.indexOf('// Marca que hay un preview de tema activo'));
+if(['Perfil','Información académica','Apariencia','Datos y cuenta'].every(t=>ajustesSrc.includes(t))){ok++;console.log('  OK   organiza Ajustes en las cuatro secciones');}
+else {fail++;console.log('  FAIL faltan secciones en Ajustes');}
+if(ajustesSrc.includes('exportarDatos()')&&ajustesSrc.includes('abrirImportar()')&&!ajustesSrc.includes('importarDatos')&&ajustesSrc.includes('Eliminar mi cuenta · Próximamente')){ok++;console.log('  OK   expone datos reales y deja hueco para borrar cuenta');}
+else {fail++;console.log('  FAIL acciones de Datos y cuenta');}
+if(!h.includes('onclick="umGo(exportarDatos)"')&&!h.includes('onclick="umGo(abrirImportar)"')&&h.includes('onclick="umGo(signOut)"')){ok++;console.log('  OK   datos salen del menú y cerrar sesión se mantiene');}
+else {fail++;console.log('  FAIL menú de usuario no quedó coherente');}
+
 console.log('\n=== Agenda · guía y foco ===');
 vm.runInContext("S={ramos:[{id:'agenda',nombre:'Ramo agenda',color:'#2563eb',categorias:[{id:'sin-fecha',nombre:'Control sin fecha',peso:20,notas:[]},{id:'rendida',nombre:'Control rendido',peso:20,notas:[{id:'n',valor:5,peso:1}]}]}]};", ctx);
 if(ctx.agendaSinFecha().length===1&&ctx.agendaSinFecha()[0].cat.id==='sin-fecha'){ok++;console.log('  OK   guía solo evaluaciones pendientes sin fecha');}

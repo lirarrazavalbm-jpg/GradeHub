@@ -2173,22 +2173,40 @@ function openSettings(){
   let settingsTenant=S.tenant||'fen';
   const nombreHint=`<p style="font-size:11px;color:var(--fg3);margin:-8px 0 14px;">Aparece en el saludo de inicio.</p>`;
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Configuración</div>
-    <label class="modal-label">Nombre para mostrar</label>
-    <div class="modal-input" style="${currentUser?'margin-bottom:0;':''}"><input type="text" id="s-name" value="${esc(S.userName)}" maxlength="30" autocomplete="off"/></div>
-    ${nombreHint}
-    <label class="modal-label">Universidad</label>
-    <div id="s-tenant-grid" class="s-tenant-grid"></div>
-    <p style="font-size:11.5px;color:var(--fg3);margin:8px 0 16px;line-height:1.4;">Cambia los colores de la app. Tus ramos y notas no se tocan.</p>
-    <label class="modal-label">Carrera</label>
-    <div id="s-carrera-grid" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
-    <label class="modal-label">Semestre de carrera</label>
-    <div class="sem-grid" id="s-sem-grid" style="margin-bottom:16px;"></div>
-    <label class="modal-label">Apariencia</label>
-    <div class="modo-grid" id="s-modo-grid" style="margin-bottom:16px;"></div>
-    <button class="btn-primary" id="s-save-btn" onclick="saveSettings()" style="margin-bottom:10px;">Guardar cambios</button>
-    <button onclick="confirmResetApp()" style="width:100%;padding:12px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Reiniciar app</button>
-    <p style="text-align:center;margin:14px 0 0;font-size:12px;"><a href="/privacidad.html" target="_blank" rel="noopener" style="color:var(--fg3);text-decoration:none;">Política de privacidad</a></p>`;
+    <div class="modal-title">Ajustes</div>
+    <section style="padding:0 0 16px;margin-bottom:16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:12px;">Perfil</div>
+      <label class="modal-label">Nombre para mostrar</label>
+      <div class="modal-input" style="${currentUser?'margin-bottom:0;':''}"><input type="text" id="s-name" value="${esc(S.userName)}" maxlength="30" autocomplete="off"/></div>
+      ${nombreHint}
+    </section>
+    <section style="padding:0 0 16px;margin-bottom:16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:12px;">Información académica</div>
+      <label class="modal-label">Universidad</label>
+      <div id="s-tenant-grid" class="s-tenant-grid"></div>
+      <p style="font-size:11.5px;color:var(--fg3);margin:8px 0 16px;line-height:1.4;">Cambia los colores de la app. Tus ramos y notas no se tocan.</p>
+      <label class="modal-label">Carrera</label>
+      <div id="s-carrera-grid" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+      <label class="modal-label">Semestre de carrera</label>
+      <div class="sem-grid" id="s-sem-grid"></div>
+    </section>
+    <section style="padding:0 0 16px;margin-bottom:16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:12px;">Apariencia</div>
+      <div class="modo-grid" id="s-modo-grid"></div>
+    </section>
+    <button class="btn-primary" id="s-save-btn" onclick="saveSettings()" style="margin-bottom:20px;">Guardar cambios</button>
+    <section>
+      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px;">Datos y cuenta</div>
+      <p style="font-size:12px;color:var(--fg2);line-height:1.45;margin:0 0 10px;">Guarda una copia antes de cambiar de dispositivo.</p>
+      <div style="display:grid;gap:8px;margin-bottom:16px;">
+        <button type="button" onclick="exportarDatos()" style="width:100%;padding:11px;background:var(--muted);color:var(--fg);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Exportar mis datos</button>
+        <button type="button" onclick="abrirImportar()" style="width:100%;padding:11px;background:var(--muted);color:var(--fg);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Importar datos</button>
+      </div>
+      <button type="button" disabled aria-disabled="true" title="Próximamente" style="width:100%;padding:11px;background:var(--muted);color:var(--fg3);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;">Eliminar mi cuenta · Próximamente</button>
+      <p style="font-size:11.5px;color:var(--fg3);line-height:1.4;margin:7px 0 16px;">Por ahora, si necesitas eliminar tu cuenta escríbenos desde la política de privacidad.</p>
+      <button onclick="confirmResetApp()" style="width:100%;padding:12px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Reiniciar app</button>
+      <p style="text-align:center;margin:14px 0 0;font-size:12px;"><a href="/privacidad.html" target="_blank" rel="noopener" style="color:var(--fg3);text-decoration:none;">Política de privacidad</a></p>
+    </section>`;
   openModal();
   renderSettingsSemGrid();
   renderSettingsTenantGrid();
