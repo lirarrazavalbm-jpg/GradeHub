@@ -30,6 +30,23 @@ chk('un arreglo NO pasa', valido([1, 2]) === false);
 chk('ramos que no es arreglo NO pasa', valido({ ramos: 'muchos' }) === false);
 chk('un número NO pasa', valido(42) === false);
 
+console.log('\n=== Eliminar cuenta: la política y la app deben coincidir ===');
+// La política de privacidad promete que borrar la cuenta no deja copias. Si el
+// botón desaparece o la política vuelve a decir "escríbenos", quedan
+// desalineados y le estamos mintiendo al estudiante.
+const appSrc = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+const pol = fs.readFileSync(__dirname + '/../privacidad.html', 'utf8');
+chk('la app llama a la función de la base, no borra desde el cliente',
+  /rpc\(\s*['"]eliminar_mi_cuenta['"]/.test(appSrc));
+chk('la función se invoca sin parámetros (usa auth.uid del token)',
+  !/rpc\(\s*['"]eliminar_mi_cuenta['"]\s*,/.test(appSrc));
+chk('lo local se limpia DESPUÉS de que la nube confirme',
+  appSrc.indexOf("rpc('eliminar_mi_cuenta')") < appSrc.indexOf('localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(PRE_IMPORT_KEY)'));
+chk('hay doble confirmación', (appSrc.match(/showConfirm\(/g) || []).length >= 2 && /¿Seguro\?/.test(appSrc));
+chk('la política ya no manda a escribir un correo para borrar',
+  !/hoy no hay un botón en la app/.test(pol));
+chk('la política apunta al botón real', /Eliminar mi cuenta/.test(pol));
+
 console.log('\n=== Contar lo que está en juego antes de reemplazarlo ===');
 const conNotas = [
   { categorias: [{ notas: [1, 2] }, { notas: [3] }] },

@@ -2238,8 +2238,8 @@ function openSettings(){
         <button type="button" onclick="exportarDatos()" style="width:100%;padding:11px;background:var(--muted);color:var(--fg);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Exportar mis datos</button>
         <button type="button" onclick="abrirImportar()" style="width:100%;padding:11px;background:var(--muted);color:var(--fg);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Importar datos</button>
       </div>
-      <button type="button" disabled aria-disabled="true" title="Próximamente" style="width:100%;padding:11px;background:var(--muted);color:var(--fg3);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;">Eliminar mi cuenta · Próximamente</button>
-      <p style="font-size:11.5px;color:var(--fg3);line-height:1.4;margin:7px 0 16px;">Por ahora, si necesitas eliminar tu cuenta escríbenos desde la política de privacidad.</p>
+      <button type="button" onclick="confirmarEliminarCuenta()" style="width:100%;padding:11px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Eliminar mi cuenta</button>
+      <p style="font-size:11.5px;color:var(--fg3);line-height:1.4;margin:7px 0 16px;">Borra tu cuenta y todas tus notas, en este dispositivo y en la nube. No se puede deshacer.</p>
       <button onclick="confirmResetApp()" style="width:100%;padding:12px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Reiniciar app</button>
       <p style="text-align:center;margin:14px 0 0;font-size:12px;"><a href="/privacidad.html" target="_blank" rel="noopener" style="color:var(--fg3);text-decoration:none;">Política de privacidad</a></p>
     </section>`;
@@ -2519,6 +2519,50 @@ function deshacerImport(){
       showToast('✓ Datos restaurados');
       setTimeout(()=>location.reload(),1200);
     },{label:'Restaurar'});
+}
+
+// Eliminar la cuenta. Lo hace una función SECURITY DEFINER en la base
+// (eliminar_mi_cuenta), no el cliente: borrar un usuario requiere privilegios
+// que la sb_publishable_* no tiene y que no pueden vivir en el navegador.
+//
+// La función no recibe parámetros: usa auth.uid() del token de sesión, así que
+// nadie puede borrar la cuenta de otro. Las tres tablas están en CASCADE, así
+// que al irse el usuario se van sus notas, su perfil y sus reportes — la
+// política de privacidad promete que no quedan copias y esto lo cumple.
+//
+// Doble confirmación a propósito: es la única acción de la app que destruye
+// datos en el dispositivo Y en la nube a la vez. Reiniciar app, en comparación,
+// conserva la nube.
+function confirmarEliminarCuenta(){
+  if(!currentUser){showToast('Primero inicia sesión',true);return;}
+  const nRamos=(S.ramos||[]).length;
+  const nNotas=contarNotas(S.ramos);
+  const detalle=nRamos
+    ? `Se borran tus ${nRamos} ramo${nRamos!==1?'s':''} con ${nNotas} nota${nNotas!==1?'s':''}, tu perfil y tu cuenta. En este dispositivo y en la nube.`
+    : 'Se borra tu cuenta y todo lo asociado, en este dispositivo y en la nube.';
+  showConfirm('Eliminar tu cuenta',detalle+'\n\nEsto no se puede deshacer.',()=>{
+    // Segunda confirmación: la primera se aprieta sin leer.
+    showConfirm('¿Seguro?','No hay forma de recuperar tus notas después de esto.\n\nSi solo quieres empezar de nuevo en este dispositivo, usa «Reiniciar app»: eso conserva tus notas en la nube.',eliminarCuenta,{label:'Sí, eliminar mi cuenta'});
+  },{label:'Continuar'});
+}
+
+async function eliminarCuenta(){
+  if(!supabaseClient||!currentUser){showToast('Primero inicia sesión',true);return;}
+  showToast('Eliminando tu cuenta…');
+  try{
+    const {error}=await supabaseClient.rpc('eliminar_mi_cuenta');
+    if(error)throw error;
+    track('delete_account');
+    // Recién acá se limpia lo local: si el borrado en la nube falló, el
+    // estudiante conserva sus notas en el dispositivo y puede reintentar.
+    try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(PRE_IMPORT_KEY);}catch(e){}
+    try{await supabaseClient.auth.signOut();}catch(e){}
+    showToast('Tu cuenta fue eliminada');
+    setTimeout(()=>location.reload(),1400);
+  }catch(e){
+    console.warn('eliminarCuenta:',e);
+    showToast('No pudimos eliminar tu cuenta. Escríbenos a gradehub.app@gmail.com',true);
+  }
 }
 
 function confirmResetApp(){

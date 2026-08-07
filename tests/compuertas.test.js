@@ -215,7 +215,7 @@ console.log('\n=== Ajustes por secciones ===');
 const ajustesSrc=APP.slice(APP.indexOf('function openSettings()'),APP.indexOf('// Marca que hay un preview de tema activo'));
 if(['Perfil','Información académica','Apariencia','Datos y cuenta'].every(t=>ajustesSrc.includes(t))){ok++;console.log('  OK   organiza Ajustes en las cuatro secciones');}
 else {fail++;console.log('  FAIL faltan secciones en Ajustes');}
-if(ajustesSrc.includes('exportarDatos()')&&ajustesSrc.includes('abrirImportar()')&&!ajustesSrc.includes('importarDatos')&&ajustesSrc.includes('Eliminar mi cuenta · Próximamente')){ok++;console.log('  OK   expone datos reales y deja hueco para borrar cuenta');}
+if(ajustesSrc.includes('exportarDatos()')&&ajustesSrc.includes('abrirImportar()')&&!ajustesSrc.includes('importarDatos')&&ajustesSrc.includes('confirmarEliminarCuenta()')&&!ajustesSrc.includes('Próximamente')){ok++;console.log('  OK   expone datos reales y deja hueco para borrar cuenta');}
 else {fail++;console.log('  FAIL acciones de Datos y cuenta');}
 if(!h.includes('onclick="umGo(exportarDatos)"')&&!h.includes('onclick="umGo(abrirImportar)"')&&h.includes('onclick="umGo(signOut)"')){ok++;console.log('  OK   datos salen del menú y cerrar sesión se mantiene');}
 else {fail++;console.log('  FAIL menú de usuario no quedó coherente');}
