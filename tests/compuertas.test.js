@@ -177,6 +177,17 @@ else {fail++;console.log('  FAIL plantilla de solemnes → '+JSON.stringify(plan
 const plantillaPruebas=ctx.plantillaPauta('dos-pruebas');
 if(plantillaPruebas.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Examen'&&plantillaPruebas.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de pruebas no inventa ponderaciones');}
 else {fail++;console.log('  FAIL plantilla de pruebas → '+JSON.stringify(plantillaPruebas));}
+const ramosParaCopiar=[
+  {id:'origen',nombre:'Microeconomía',categorias:[{id:'a',nombre:'Prueba 1',peso:35,fecha:'2026-03-01',notas:[{valor:6}]},{id:'b',nombre:'Examen',peso:65,notas:[]}]},
+  {id:'actual',nombre:'Macroeconomía',categorias:[]},
+  {id:'vacio',nombre:'Electivo',categorias:[{id:'c',nombre:'',peso:0,notas:[]}]}
+];
+const fuentesPauta=ctx.ramosParaDuplicarPauta(ramosParaCopiar,'actual');
+if(fuentesPauta.length===1&&fuentesPauta[0].id==='origen'&&fuentesPauta[0].cantidad===2){ok++;console.log('  OK   ofrece solo otros ramos con pauta');}
+else {fail++;console.log('  FAIL fuentes para duplicar → '+JSON.stringify(fuentesPauta));}
+const pautaCopiada=ctx.pautaDuplicada(ramosParaCopiar[0]);
+if(pautaCopiada.map(f=>f.nombre+'-'+f.peso).join('|')==='Prueba 1-35|Examen-65'&&pautaCopiada.every(f=>f.id===null&&!('notas' in f)&&!('fecha' in f))){ok++;console.log('  OK   duplica estructura sin copiar notas ni fechas');}
+else {fail++;console.log('  FAIL pauta duplicada → '+JSON.stringify(pautaCopiada));}
 const reglasGp=ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:{tenant:'fen'}});
 if(reglasGp.length===2&&reglasGp[0].includes('Eximición')){ok++;console.log('  OK   muestra reglas oficiales que el motor no calcula');}
 else {fail++;console.log('  FAIL reglas no calculadas → '+JSON.stringify(reglasGp));}
