@@ -607,7 +607,10 @@ async function afterLogin(){
   let cloud,ok=true;
   try{cloud=await loadFromCloud();}catch(e){ok=false;}
   if(ok){
-    S=cloud?{...freshState(),...cloud}:freshState();
+    // La nube puede contener ramos creados con versiones anteriores. Pásalos
+    // siempre por normalize(): un ramo sin preset necesita categorias:[] para
+    // que el editor de pauta pueda abrirse igual que uno con pauta oficial.
+    S=normalize(cloud?{...freshState(),...cloud}:freshState());
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
     setCacheOwner(uid);
   }else{
@@ -1966,6 +1969,9 @@ function confirmAddCat(){
 let pautaDraft=[];
 function openPautaManualModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  // Además de normalizar al cargar, el editor tolera un ramo legado incompleto.
+  // Es el camino mayoritario: los ramos sin preset parten sin evaluaciones.
+  if(!Array.isArray(r.categorias))r.categorias=[];
   pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0}));
   if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false});
   renderPautaManualModal();openModal();
