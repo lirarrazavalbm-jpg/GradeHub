@@ -1,49 +1,59 @@
 #!/usr/bin/env bash
-# Falla si cambió la app pero no subió el CACHE_NAME del service worker.
+# Revisa que el sellado del CACHE_NAME siga en pie.
 #
-# Sin ese bump, quien tenga la PWA instalada se queda con la versión vieja
-# cacheada y no se entera de que salió una nueva. Es un bug invisible desde el
-# navegador —donde todo se ve bien— y por eso se olvida siempre.
+# ANTES esta guarda exigía subir a mano un contador ('gradehub-vN') cuando
+# cambiaba la app. Funcionaba mal por diseño: una sola línea que TODAS las ramas
+# querían escribir. Seis conflictos, uno publicó un service worker con
+# marcadores de conflicto adentro —no parseaba, así que no instalaba— y la
+# última vez tres PRs reclamaron 'gradehub-v73' a la vez. La guarda los dejó
+# pasar a los tres: comparaba contra la base del PR, no contra el main del
+# momento del merge, así que el segundo y el tercero habrían publicado cambios
+# de app sin cambiar el cache.
 #
-# Uso: bash bin/check-cache-name.sh [base]     (base por defecto: origin/main)
+# AHORA el número no está en el repo. sw.js lleva el marcador 'gradehub-dev' y
+# el deploy lo reemplaza por el SHA del commit
+# (.github/workflows/deploy.yml → «Sellar el CACHE_NAME con el commit»).
+# Ninguna rama escribe esa línea, así que no hay nada que colisione.
+#
+# Lo que queda por vigilar son las dos mitades del mecanismo, porque ninguna
+# falla de forma visible:
+#   - sin el marcador en sw.js, el deploy no tiene qué sellar;
+#   - sin el sed en deploy.yml, se publica 'gradehub-dev' para siempre, el
+#     cache nunca cambia y nadie recibe una actualización más.
+#
+# El mismo chequeo vive en tests/sintaxis.test.js, así que corre en todo `npm
+# test`. Este script se queda porque AGENTS.md lo nombra y porque da el
+# diagnóstico completo de una, sin correr la suite entera.
+#
+# Uso: bash bin/check-cache-name.sh     (ignora argumentos: ya no compara bases)
 set -uo pipefail
 cd "$(dirname "$0")/.."
-BASE="${1:-origin/main}"
 
-if ! git rev-parse --verify -q "$BASE" >/dev/null; then
-  echo "No encuentro la base '$BASE' — corre 'git fetch origin' primero."
-  exit 1
+fallo=0
+
+if grep -q "const CACHE_NAME = 'gradehub-dev';" sw.js; then
+  echo "OK  sw.js tiene el marcador que el deploy va a sellar."
+else
+  echo "FALLA  sw.js perdió el marcador 'gradehub-dev'."
+  echo "       Dice: $(grep -o "CACHE_NAME = 'gradehub-[a-z0-9]*'" sw.js | head -1)"
+  echo "       Si volviste a poner un contador a mano, sácalo: el número lo pone"
+  echo "       el deploy desde el SHA del commit."
+  fallo=1
 fi
 
-# Lo commiteado contra la base, MÁS lo que todavía está sin commitear. Sin esto
-# la guarda da un falso OK justo cuando más se usa: a mano, antes de commitear.
-# La lista de archivos sale del SHELL de sw.js, no de una lista aparte: cuando
-# el refactor agregó engine.js y render-agenda.js, una lista fija se quedó
-# atrás en silencio y dejó pasar un cambio sin bump.
-VIGILADOS=$(grep -oE "'/[a-zA-Z0-9._-]+\.(js|css|html)'" sw.js | tr -d "'/" | grep -v '^sw\.js$' | sort -u | tr '\n' ' ')
-
-cambios=$( { git diff --name-only "$BASE"...HEAD -- $VIGILADOS
-             git diff --name-only HEAD          -- $VIGILADOS
-           } | sort -u )
-if [ -z "$cambios" ]; then
-  echo "Sin cambios en la app: no hace falta subir el CACHE_NAME."
-  exit 0
+if grep -q 'sed -i .*gradehub-dev.*GITHUB_SHA' .github/workflows/deploy.yml; then
+  echo "OK  deploy.yml sella el CACHE_NAME con el commit."
+else
+  echo "FALLA  deploy.yml ya no sella el CACHE_NAME."
+  echo "       Cada deploy publicaría 'gradehub-dev' y el service worker se"
+  echo "       quedaría con el mismo cache para siempre."
+  fallo=1
 fi
 
-antes=$(git show "$BASE":sw.js 2>/dev/null | grep -o 'gradehub-v[0-9]*' | head -1)
-ahora=$(grep -o 'gradehub-v[0-9]*' sw.js | head -1)
-
-if [ -z "$ahora" ]; then
-  echo "No encuentro el CACHE_NAME en sw.js — ¿cambió el formato 'gradehub-vN'?"
-  exit 1
+if [ "$fallo" = 0 ]; then
+  echo
+  echo "El CACHE_NAME ya no se toca a mano. Si tu PR cambia sw.js solo para"
+  echo "subir un número, bórralo del diff."
 fi
 
-if [ "$antes" = "$ahora" ]; then
-  echo "Cambió la app pero el CACHE_NAME sigue en $ahora."
-  echo "Súbelo en sw.js (gradehub-vN) o los usuarios con la PWA no reciben la actualización."
-  echo "Archivos que cambiaron:"
-  echo "$cambios" | sed 's/^/  /'
-  exit 1
-fi
-
-echo "CACHE_NAME $antes → $ahora  OK"
+exit "$fallo"
