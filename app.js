@@ -308,6 +308,10 @@ function ramoToStructure(r){
   return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
     id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
     children:(r.categorias||[]).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
+      // dropLowest viene del preset ("se elimina el 25% de los controles
+      // rendidos"). Sin la clave el motor no descarta nada, así que los ramos
+      // manuales y los presets que no la declaran calculan igual que siempre.
+      drop_lowest:c.dropLowest||null,
       children:(c.notas||[]).map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}))}))};
 }
 function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
@@ -1474,6 +1478,7 @@ function presetRamo(nombre,tenant,carrera){
       const id=uid();
       const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
       if(extra&&extra.slots)cat.slots=extra.slots;
+      if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
       categorias.push(cat);porNombre[nom]=id;
       if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
     });
