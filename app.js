@@ -3029,6 +3029,11 @@ function openCalculadoraModal(){
     const target=parseFloat(document.getElementById('m-calc-target').value.replace(',','.'));
     const el=document.getElementById('calc-result');
     if(isNaN(target)||target<1||target>7){el.innerHTML='';return;}
+    const descarteAbierto=reglaDescarteConCantidadAbierta(r);
+    if(descarteAbierto){
+      el.innerHTML=`<span style="color:var(--fg2)">No calculamos una nota mínima exacta mientras falte saber cuántas evaluaciones de <b>${esc(descarteAbierto.nombre)}</b> habrá. El programa descarta la peor nota, así que su efecto depende de las notas que todavía no existen.</span>`;
+      return;
+    }
     // Compuertas: si una sección con piso ya quedó bajo su mínimo, ninguna meta ≥4.0 es alcanzable.
     const gateHit=gatesActivas(r)[0]||null;
     if(gateHit&&target>gateHit.cap){
@@ -3467,6 +3472,9 @@ function diasHasta(iso){
 }
 
 // Cuánto necesita el estudiante en lo que le queda para aprobar el ramo (o null)
+function reglaDescarteConCantidadAbierta(ramo){
+  return (ramo.categorias||[]).find(c=>c.dropLowest&&!Number.isInteger(c.slots))||null;
+}
 function notaNecesaria(ramo){
   const total=ramo.categorias.reduce((s,c)=>s+c.peso,0);
   if(total<=0)return null;
@@ -3484,6 +3492,8 @@ function lecturaDespuesDeNota(ramo){
   if(avg===null)return 'Nota guardada';
   const gate=gatesActivas(ramo)[0];
   if(gate)return `${gate.nombre} quedó en ${fmt(gate.actual)} · nota topada en ${fmt(gate.cap)}`;
+  const descarteAbierto=reglaDescarteConCantidadAbierta(ramo);
+  if(descarteAbierto)return `Vas ${fmt(avg)} · la nota mínima depende de los próximos ${descarteAbierto.nombre.toLowerCase()}`;
   const necesita=notaNecesaria(ramo);
   if(necesita===null)return `Vas ${fmt(avg)} · ramo completamente evaluado`;
   if(necesita>7.05)return `Vas ${fmt(avg)} · ya no alcanza sólo con lo pendiente`;

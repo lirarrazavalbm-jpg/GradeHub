@@ -41,6 +41,16 @@ const grupo = (valores, drop) => {
   };
   return vm.runInContext('calculateFinalGrade', ctx)(structure, grades);
 };
+const estructuraGrupo = (valores, drop) => ({
+  __meta: { grade_scale: { min: 1, max: 7 }, rounding: { decimals: 2 } },
+  id: 'final', name: 'Ramo', type: 'group', aggregation_rule: 'weighted_average',
+  children: [{
+    id: 'cat', name: 'Controles', weight: 100, type: 'group',
+    aggregation_rule: 'weighted_average', drop_lowest: drop,
+    children: valores.map((v, i) => ({ id: 'n' + i, name: 'C' + (i + 1), weight: 1, type: 'leaf' })),
+  }],
+});
+const notasGrupo = valores => Object.fromEntries(valores.flatMap((v,i)=>v===null?[]:[['n'+i,v]]));
 
 console.log('\n=== Se elimina la peor nota ===');
 eq('cuatro notas, se elimina una: (5+6+7)/3', grupo([2, 5, 6, 7], { count: 1 }).raw, 6);
@@ -69,6 +79,18 @@ chk('el resultado dice CUÁL nota se eliminó',
   grupo([2, 5, 6, 7], { count: 1 }).drops[0].dropped[0].value === 2);
 chk('y cuántas había rendidas', grupo([2, 5, 6, 7], { count: 1 }).drops[0].rendidas === 4);
 chk('sin la regla no hay descartes que mostrar', grupo([2, 5, 6, 7], null).drops.length === 0);
+
+console.log('\n=== Nota necesaria cuando una futura puede descartarse ===');
+const solve = vm.runInContext('solveForTarget', ctx);
+const conDescartePendiente = solve(estructuraGrupo([2, 6, 6, null], {count:1}), notasGrupo([2, 6, 6, null]), 6.33);
+eq('para llegar a 6.33, la cuarta debe ser 6.99 y no 11.32', conDescartePendiente.requiredAverage, 6.99);
+chk('explica el supuesto de misma nota y el descarte futuro',
+  conDescartePendiente.dropAware === true && conDescartePendiente.conditions.some(c=>/misma nota/.test(c)) && conDescartePendiente.conditions.some(c=>/descarta/.test(c)));
+const sinDescartePendiente = solve(estructuraGrupo([2, 6, null, null], null), notasGrupo([2, 6, null, null]), 5);
+eq('sin descarte conserva el despeje normal', sinDescartePendiente.requiredAverage, 6);
+const reglaAbierta=vm.runInContext('reglaDescarteConCantidadAbierta', ctx);
+chk('la interfaz no inventa una nota mínima si el programa no fija cuántos controles quedan',
+  reglaAbierta({categorias:[{nombre:'Controles Sorpresa',dropLowest:{fraction:.25},notas:[]}]})?.nombre === 'Controles Sorpresa');
 
 console.log('\n=== Contabilidad: del programa oficial al número ===');
 // Los `const` de data.js no quedan en el objeto de contexto: se leen evaluando
