@@ -50,6 +50,16 @@ if (sucio.length) {
 // error visible — la app sigue andando, solo pierde todo lo que el SW aporta.
 new vm.Script(fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8'));
 
+// Cache.put rechaza POST. La guarda tiene que estar al comienzo del handler,
+// antes de que cualquier ruta pueda llegar a una escritura de caché.
+const fetchStart = sw.indexOf("self.addEventListener('fetch'");
+const nonGetGuard = sw.indexOf("if (request.method !== 'GET') return;", fetchStart);
+const firstFetchRoute = sw.indexOf('const url = new URL(request.url);', fetchStart);
+if (fetchStart < 0 || nonGetGuard < 0 || nonGetGuard > firstFetchRoute) {
+  console.error('sw.js debe dejar pasar requests que no sean GET antes de cachear');
+  process.exit(1);
+}
+
 // Marcadores de conflicto en cualquier archivo que se despliega. Con varias
 // ramas en paralelo esto pasa, y lo caro es que llegue a producción.
 ['sw.js', 'app.js', 'data.js', 'engine.js', 'render-agenda.js', 'styles.css', 'index.html', 'privacidad.html', 'package.json']

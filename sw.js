@@ -3,7 +3,7 @@
 // cache-first para assets estáticos (íconos, fuentes).
 // Los datos del usuario viven en localStorage + Supabase — el SW solo maneja la app shell.
 
-const CACHE_NAME = 'gradehub-v72';
+const CACHE_NAME = 'gradehub-v74';
 const SHELL = [
   '/',
   '/index.html',
@@ -44,6 +44,9 @@ self.addEventListener('activate', event => {
 // ── FETCH: lógica de respuesta ────────────────────────────────────────────────
 self.addEventListener('fetch', event => {
   const { request } = event;
+  // Cache API solo admite GET. POST (sync, auth, reportes) debe seguir su
+  // camino normal: el service worker no lo inspecciona ni intenta cachearlo.
+  if (request.method !== 'GET') return;
   const url = new URL(request.url);
 
   // Requests externos
