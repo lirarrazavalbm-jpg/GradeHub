@@ -4,11 +4,22 @@
 -- eso necesita privilegios que el cliente no tiene ni debe tener. La función es
 -- `security definer` con owner `postgres` justamente por eso.
 --
--- POR QUÉ ESTÁ ACÁ. Durante dos días se creyó que el borrado no funcionaba, y
+-- POR QUÉ ESTÁ ACÁ. Durante dos días se creyó que ESTA función no funcionaba, y
 -- nadie pudo revisarlo: era la única pieza del sistema sin representación en el
--- repo. El borrado sí funciona (verificado el 2026-08-07, ver abajo). Este
--- archivo existe para que la próxima duda se conteste leyendo un PR y no
+-- repo. Esta función siempre estuvo bien (verificado el 2026-08-07, ver abajo).
+-- Este archivo existe para que la próxima duda se conteste leyendo un PR y no
 -- abriendo el panel de Supabase.
+--
+-- LA CULPA ERA DE LA INTERFAZ, y vale la pena que quede escrito acá porque es
+-- donde se va a buscar la próxima vez. `showConfirm` en app.js corría el
+-- callback ANTES de `closeConfirm`, así que la segunda confirmación se abría y
+-- se cerraba en el mismo tick: el estudiante nunca la veía y `eliminarCuenta`
+-- nunca llegaba a llamar a esta función. Lo arregla el PR #47.
+--
+-- El diagnóstico se demoró porque se probó el RPC desde la consola del
+-- navegador y funcionó. Eso verifica el backend, no el feature: se saltó justo
+-- la capa que estaba rota. Si mañana alguien reporta que borrar cuenta no
+-- funciona, la primera prueba es APRETANDO EL BOTÓN, no llamando al RPC.
 --
 -- ESTE ARCHIVO NO SE APLICA SOLO. No hay migraciones automáticas: si lo editas,
 -- corre el SQL en Supabase a mano y déjalo dicho en el PR. Un archivo que

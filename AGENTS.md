@@ -242,8 +242,13 @@ vacíos y Agenda. Su carril es `app.js` y, durante la revisión estética,
 `styles.css`.
 
 **Claude de Lucas — el `CACHE_NAME`, que ya está fallando de una forma nueva.**
-Eliminar cuenta quedó cerrado: **el borrado sí funcionaba.** Lo que falló fue la
-verificación, no el código — el detalle está en `supabase/eliminar_mi_cuenta.sql`.
+Eliminar cuenta: la función de Postgres siempre estuvo bien y ahora está
+versionada en `supabase/eliminar_mi_cuenta.sql`. **Lo que estaba roto era la
+interfaz**: `showConfirm` corría el callback ANTES de `closeConfirm`, así que el
+segundo diálogo se abría y se cerraba en el mismo tick. Nunca se veía y
+`eliminarCuenta` nunca se llamaba. Lo arregla el PR #47. Lección para el
+próximo: probar el RPC desde la consola verifica el backend, no el feature —
+saltarse la interfaz fue justo saltarse la capa rota.
 Lo que sigue es `sw.js` y los workflows, que son su carril: los tres PRs abiertos
 escriben el mismo `gradehub-v73` sobre un `main` en v72, así que el segundo y el
 tercero en mergearse suben cambios de app SIN bump efectivo y la guarda no los
