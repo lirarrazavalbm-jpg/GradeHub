@@ -29,6 +29,22 @@ jobs:
       - name: Tests
         run: npm test
 
+      # El CACHE_NAME sale de acá, no del repo. Si esto no corre, todos los
+      # deploys publican 'gradehub-dev', el service worker nunca cambia de cache
+      # y nadie recibe una actualización nunca más — sin que falle nada visible.
+      # Por eso el sed va con `grep -q` antes: preferimos romper el deploy a
+      # publicar una app que se congela en la versión instalada.
+      - name: Sellar el CACHE_NAME con el commit
+        run: |
+          grep -q "'gradehub-dev'" sw.js || {
+            echo "sw.js no tiene el marcador 'gradehub-dev'."
+            echo "Alguien volvió a escribir el CACHE_NAME a mano. Sin marcador no hay"
+            echo "nada que sellar y el deploy publicaría un cache que no cambia."
+            exit 1
+          }
+          sed -i "s/'gradehub-dev'/'gradehub-${GITHUB_SHA::7}'/" sw.js
+          grep -n 'CACHE_NAME' sw.js | head -1
+
       - name: Publicar en Cloudflare Pages
         run: npx wrangler pages deploy . --project-name gradehub --branch=main
         env:
