@@ -413,6 +413,21 @@ function ramoAvg(r){
   return v;
 }
 
+// Los descartes vienen del motor, pero se explican en la evaluación donde
+// ocurren. La nota sigue visible: solo no participa en ese promedio.
+function textoDescarte(cat,descarte){
+  const notas=descarte.dropped||[];
+  const cantidad=notas.length;
+  const lista=notas.map(n=>`${n.name} (${fmt(n.value)})`).join(', ');
+  const regla=cat.dropLowest||{};
+  let redondeo='';
+  if(typeof regla.fraction==='number'){
+    const porcentaje=Math.round(regla.fraction*100);
+    redondeo=` Con ${descarte.rendidas} evaluaciones rendidas, el ${porcentaje}% equivale a ${cantidad} ${cantidad===1?'nota':'notas'}: se redondea hacia abajo.`;
+  }
+  return `El programa descarta ${cantidad===1?'la nota más baja':'las notas más bajas'} de esta evaluación. ${lista} ${cantidad===1?'no cuenta':'no cuentan'} en este promedio.${redondeo}`;
+}
+
 // Compuertas incumplidas, para explicarlas en la UI
 function gatesActivas(r){
   const out=[];
@@ -1308,6 +1323,8 @@ function renderRamo(){
   document.getElementById('grade-gpa-echo')?.remove();
   document.getElementById('ramo-title').textContent=r.nombre;
   const avg=ramoAvg(r);
+  const calculo=calculateFinalGrade(ramoToStructure(r),gradesOf(r));
+  const descartes=calculo.drops||[];
   const avgEl=document.getElementById('ramo-hero-avg');
   if(avg!==null){
     const s=nf(avg);const dot=s.indexOf('.');
@@ -1431,17 +1448,26 @@ function renderRamo(){
       cl.appendChild(row);
       return;
     }
-    const catAvg=avgPond(cat.notas);const isOpen=openCats[cat.id];
+    const descarte=descartes.find(d=>d.nodeId===cat.id);
+    const calculoCategoria=calculo.breakdown.find(b=>b.id===cat.id);
+    const catAvg=calculoCategoria?.value??avgPond(cat.notas);
+    const isOpen=openCats[cat.id]===undefined?!!descarte:openCats[cat.id];
+    const notasDescartadas=new Set((descarte?.dropped||[]).map(n=>n.id));
+    const explicacionDescarte=descarte?`<div class="drop-rule-note">${esc(textoDescarte(cat,descarte))}</div>`:'';
     const card=document.createElement('div');card.className='cat-card';
     const notasHTML=cat.notas.length===0?
       `<p style="font-size:13px;color:var(--fg3);text-align:center;padding:10px 0;">Sin notas aún</p>`:
-      cat.notas.map(n=>`
-        <div class="nota-row">
+      cat.notas.map(n=>{
+        const descartada=notasDescartadas.has(n.id);
+        return `
+        <div class="nota-row${descartada?' nota-row-dropped':''}">
           <button class="nota-row-name" aria-label="Editar nota ${esc(n.nombre)}" onclick="openEditNotaModal('${cat.id}','${n.id}');event.stopPropagation();" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;font-size:14px;color:var(--fg2);flex:1;">${esc(n.nombre)}</button>
           ${n.peso!==1?`<span class="nota-row-pond">${n.peso}%</span>`:''}
+          ${descartada?'<span class="nota-row-drop-tag">No cuenta</span>':''}
           <span class="nota-row-val" style="color:${getColor(n.valor)}">${fmt(n.valor)}</span>
           <button class="nota-row-del" aria-label="Eliminar nota ${esc(n.nombre)}" onclick="deleteNota('${cat.id}','${n.id}');event.stopPropagation();">✕</button>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     card.innerHTML=`
       <div class="cat-header">
         <div class="cat-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" onkeydown="if(event.key==='Enter'){openEditCatModal('${cat.id}')}" style="cursor:pointer;">
@@ -1453,6 +1479,7 @@ function renderRamo(){
         <button aria-label="${isOpen?'Colapsar':'Expandir'} ${esc(cat.nombre)}" aria-expanded="${isOpen?'true':'false'}" style="background:var(--muted);border:none;border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--fg2);font-size:11px;" onclick="toggleCat('${cat.id}');event.stopPropagation();">${isOpen?'▲':'▼'}</button>
       </div>
       <div class="cat-body${isOpen?' open':''}">
+        ${explicacionDescarte}
         ${notasHTML}
         <button class="add-nota-btn" onclick="openAddNotaModal('${cat.id}');event.stopPropagation();">+ Agregar nota</button>
       </div>`;

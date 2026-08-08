@@ -443,13 +443,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .cat-body.open{display:block;}
 .nota-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
 .nota-row:last-of-type{border-bottom:none;}
+.nota-row-dropped{opacity:.68;}
 .nota-row-name{flex:1;font-size:14px;color:var(--fg2);}
 .nota-row-pond{font-size:11px;color:var(--fg3);background:var(--muted);border-radius:6px;padding:2px 7px;}
+.nota-row-drop-tag{font-size:10px;font-weight:700;color:var(--fg2);background:var(--muted);border-radius:999px;padding:3px 7px;white-space:nowrap;}
 .nota-row-val{font-size:14px;font-weight:700;}
 .nota-row-del{background:none;border:none;cursor:pointer;color:var(--fg3);font-size:15px;padding:2px 4px;border-radius:6px;}
 .nota-row-del:hover{background:var(--red-bg);color:var(--red);}
 .add-nota-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:8px;padding:9px;border:1.5px dashed var(--border2);border-radius:10px;background:none;font-size:13px;color:var(--primary);font-weight:600;cursor:pointer;}
 .add-nota-btn:hover{background:var(--primary-light);}
+.drop-rule-note{font-size:12px;line-height:1.45;color:var(--fg2);background:var(--muted);border-radius:9px;padding:9px 10px;margin:0 0 9px;}
 .add-cat-btn{display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 16px 12px;padding:13px;border:1.5px dashed var(--border2);border-radius:var(--radius);background:none;font-size:14px;color:var(--primary);font-weight:600;cursor:pointer;}
 .add-cat-btn:hover{background:var(--primary-light);}
 /* MODAL */
