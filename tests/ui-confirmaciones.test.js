@@ -1,7 +1,7 @@
 // Flujos de interfaz que pueden fallar sin lanzar una excepción. No pretende
 // emular un navegador completo: modela solo el DOM que cada flujo toca y permite
 // hacer clic, observar visibilidad y leer el siguiente estado.
-const fs=require('fs'),vm=require('vm'),child=require('child_process');
+const fs=require('fs'),vm=require('vm');
 const raiz=__dirname+'/../';
 
 function elemento(){
@@ -26,9 +26,21 @@ function arnes(src){
   };
   vm.createContext(ctx);vm.runInContext(src,ctx);return {ctx,ids,action};
 }
-function fuente(ref){
-  const leer=f=>ref?child.execFileSync('git',['show',`${ref}:${f}`],{cwd:raiz,encoding:'utf8'}):fs.readFileSync(raiz+f,'utf8');
-  return ['data.js','engine.js','app.js','render-agenda.js'].map(leer).join('\n');
+function fuente(){
+  return ['data.js','engine.js','app.js','render-agenda.js'].map(f=>fs.readFileSync(raiz+f,'utf8')).join('\n');
+}
+// El arnés solo sirve si falla cuando el bug vuelve. En vez de traerse un commit
+// viejo con `git show` —que además revienta en CI, donde el clon es shallow—,
+// revierte el arreglo EN MEMORIA: cambia el orden de closeConfirm y el callback
+// por el que tenía en producción, y comprueba que el arnés lo caza.
+const ARREGLO=`const confirmar=_confirmFn;
+    closeConfirm();
+    if(confirmar)confirmar();`;
+const ROTO='if(_confirmFn)_confirmFn();closeConfirm();';
+function fuenteConElBugDeVuelta(){
+  const src=fuente();
+  if(!src.includes(ARREGLO))throw new Error('showConfirm cambió de forma: este test ya no sabe revertir el arreglo. Actualízalo — sin esto el arnés no está probado.');
+  return src.replace(ARREGLO,ROTO);
 }
 function segundoDialogoVisible(kit){
   kit.ctx.showConfirm('Primero','',()=>kit.ctx.showConfirm('Segundo','',()=>{}, {label:'Seguir'}),{label:'Continuar'});
@@ -38,9 +50,7 @@ function segundoDialogoVisible(kit){
 let ok=0,fail=0;const chk=(n,c)=>{if(c){ok++;console.log('  OK   '+n)}else{fail++;console.log('  FAIL '+n)}};
 
 console.log('\n=== Confirmaciones encadenadas ===');
-chk('el segundo diálogo queda visible después del clic',segundoDialogoVisible(arnes(fuente(null))));
-// 071e86b es el arreglo; d24f16a es el commit anterior donde closeConfirm se
-// ejecutaba después del callback y ocultaba el siguiente diálogo.
-chk('el arnés habría detectado el bug antes del arreglo',!segundoDialogoVisible(arnes(fuente('d24f16a'))));
+chk('el segundo diálogo queda visible después del clic',segundoDialogoVisible(arnes(fuente())));
+chk('y el arnés lo caza si alguien devuelve el orden viejo',!segundoDialogoVisible(arnes(fuenteConElBugDeVuelta())));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);
