@@ -83,6 +83,26 @@ const swSrc = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
   }
 });
 
+// El CACHE_NAME lo sella el deploy con el SHA del commit. Los dos extremos del
+// mecanismo tienen que estar puestos: si falta el marcador en sw.js, no hay qué
+// sellar; si falta el sed en deploy.yml, se publica 'gradehub-dev' en cada
+// deploy, el cache nunca cambia y NADIE recibe una actualización más. Ninguna de
+// las dos mitades falla de forma visible — por eso se revisan acá.
+if (!/const CACHE_NAME = 'gradehub-dev';/.test(swSrc)) {
+  console.error("sw.js perdió el marcador: el CACHE_NAME tiene que ser 'gradehub-dev'");
+  console.error('Lo sella el deploy. No es un contador y no se edita a mano.');
+  process.exit(1);
+}
+const deployYml = fs.readFileSync(path.join(raiz, '.github/workflows/deploy.yml'), 'utf8');
+if (!/sed -i .*gradehub-dev.*GITHUB_SHA/.test(deployYml)) {
+  console.error('deploy.yml ya no sella el CACHE_NAME: cada deploy publicaría el mismo cache');
+  process.exit(1);
+}
+if (!/grep -q "'gradehub-dev'" sw\.js/.test(deployYml)) {
+  console.error('deploy.yml sella sin verificar el marcador: un sed que no calza no falla, solo no hace nada');
+  process.exit(1);
+}
+
 // Política de contraseñas: un mínimo suelto por el código se desincroniza del
 // resto. Y el largo NO puede exigirse al iniciar sesión — quien creó su cuenta
 // con el mínimo anterior tiene que poder entrar.
