@@ -284,6 +284,61 @@ function getColor(n){const c=colorClass(n);return c==='good'?'var(--green)':c===
 function fmt(n){return n===null?'·':n.toFixed(1);}
 // Formato numérico con 1 decimal por defecto (usa punto, no coma)
 function nf(n,dec){return n.toFixed(dec==null?1:dec);}
+
+// ─── MOMENTO DE LA NOTA ──────────────────────────────────────────────────────
+// El cálculo ya ocurrió antes de llegar acá. Estas funciones solo representan
+// visualmente el cambio para que el resultado no aparezca como un reemplazo
+// silencioso. Mientras el número se mueve, su color corresponde al valor que
+// se está mostrando; así el semáforo nunca comunica un estado falso.
+let pendingGpaFeedback=null;
+function movimientoReducido(){return !!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);}
+function duracionMovimiento(token){
+  const raw=getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  const n=parseFloat(raw);
+  if(!Number.isFinite(n))return 0;
+  return raw.endsWith('ms')?n:raw.endsWith('s')?n*1000:0;
+}
+function promedioMarkup(valor,tipo){
+  const s=nf(valor);const dot=s.indexOf('.');
+  const decimal=tipo==='ramo'?'ramo-decimal':'gpa-decimal';
+  return `${s.slice(0,dot)}<span class="${decimal}">${s.slice(dot)}</span>`;
+}
+function pintarPromedio(el,valor,tipo,efecto){
+  el.innerHTML=promedioMarkup(valor,tipo);
+  el.className=`${tipo==='ramo'?'ramo-num':'gpa-num'} ${colorClass(valor)}${efecto?' '+efecto:''}`;
+}
+function cambioDeUmbral(antes,despues){return antes!==null&&despues!==null&&colorClass(antes)!==colorClass(despues);}
+function cambioDePromedio(antes,despues){return antes!==null&&despues!==null&&Math.abs(antes-despues)>.0001;}
+function animarPromedio(el,antes,despues,tipo){
+  if(!el||despues===null)return;
+  const cruzaUmbral=cambioDeUmbral(antes,despues);
+  const duracion=duracionMovimiento('--motion-base');
+  if(!cambioDePromedio(antes,despues)||movimientoReducido()||!duracion){
+    pintarPromedio(el,despues,tipo,antes===null&&!movimientoReducido()?'grade-value-arrival':'');
+    return;
+  }
+  const inicio=performance.now();
+  const paso=ahora=>{
+    const progreso=Math.min((ahora-inicio)/duracion,1);
+    // ease-out: se siente inmediato al escribir, sin convertir la nota en espera.
+    const eased=1-Math.pow(1-progreso,3);
+    const valor=antes+(despues-antes)*eased;
+    pintarPromedio(el,valor,tipo,'grade-value-changing');
+    if(progreso<1){requestAnimationFrame(paso);return;}
+    pintarPromedio(el,despues,tipo,cruzaUmbral?'grade-threshold-crossed':'');
+    if(cruzaUmbral)window.setTimeout(()=>el.classList.remove('grade-threshold-crossed'),duracion);
+  };
+  requestAnimationFrame(paso);
+}
+function mostrarEcoGpa(antes,despues){
+  if(!cambioDePromedio(antes,despues))return;
+  document.getElementById('grade-gpa-echo')?.remove();
+  const fila=document.querySelector('.ramo-hero-num-row');if(!fila)return;
+  const eco=document.createElement('span');
+  eco.id='grade-gpa-echo';eco.className='grade-gpa-echo';eco.setAttribute('role','status');
+  eco.textContent=`Promedio general ${nf(antes)} → ${nf(despues)}`;
+  fila.appendChild(eco);
+}
 // Parser de notas: acepta "6.5", "6,5", "65" (autocorrige a 6.5), "70" → 7.0.
 // Devuelve un número con 1 decimal en rango [1.0, 7.0], o NaN si inválido.
 function parseNota(raw){
@@ -308,6 +363,10 @@ function ramoToStructure(r){
   return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
     id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
     children:(r.categorias||[]).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
+      // dropLowest viene del preset ("se elimina el 25% de los controles
+      // rendidos"). Sin la clave el motor no descarta nada, así que los ramos
+      // manuales y los presets que no la declaran calculan igual que siempre.
+      drop_lowest:c.dropLowest||null,
       children:(c.notas||[]).map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}))}))};
 }
 function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
@@ -878,13 +937,40 @@ function completeOnboarding(){
   mostrarRamosCargados(obRamos.length,oficiales);
 }
 function mostrarRamosCargados(cantidad,oficiales){
-  const count=cantidad?`${cantidad} ramo${cantidad!==1?'s':''} agregado${cantidad!==1?'s':''}`:'Partiste sin ramos';
-  document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Tu semestre está cargado</div>
+  const modal=document.getElementById('modal-content');
+  if(!cantidad){
+    modal.innerHTML=`
+      <div class="modal-title">Sin ramos por ahora</div>
+      <div class="courses-loaded">
+        <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">Cuando tengas tu carga, agrégala desde la malla o busca cada ramo.</p>
+      </div>
+      <div class="modal-btns"><button class="btn-confirm" onclick="closeModal();openAddRamoModal()">Agregar ramo</button></div>`;
+    openModal();return;
+  }
+
+  const ramosTxt=`${cantidad} ramo${cantidad!==1?'s':''} agregado${cantidad!==1?'s':''}`;
+  const oficialesTxt=`${oficiales} ramo${oficiales!==1?'s':''} con pauta oficial`;
+  const pendientes=cantidad-oficiales;
+  let titulo,principal,detalle;
+  if(oficiales===cantidad){
+    titulo='Pautas oficiales listas';
+    principal=oficialesTxt;
+    detalle='Los porcentajes ya están configurados. Cuando tengas una nota, ingrésala en el ramo.';
+  }else if(oficiales>0){
+    titulo='Pautas oficiales listas';
+    principal=oficialesTxt;
+    detalle=`En esos ramos, los porcentajes ya están configurados. En los otros ${pendientes}, agrega evaluaciones y sus porcentajes antes de ingresar notas.`;
+  }else{
+    titulo='Tus ramos están agregados';
+    principal=ramosTxt;
+    detalle='Antes de ingresar una nota, agrega las evaluaciones y sus porcentajes en cada ramo.';
+  }
+  modal.innerHTML=`
+    <div class="modal-title">${titulo}</div>
     <div class="courses-loaded">
-      <div class="courses-loaded-count">${count}</div>
-      <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">Cuando tengas una nota, agrega su evaluación y su peso en el ramo.</p>
-      ${oficiales?`<div class="courses-official"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>${oficiales} pauta${oficiales!==1?'s':''} oficial${oficiales!==1?'es':''} cargada${oficiales!==1?'s':''}</div>`:''}
+      <div class="courses-loaded-count">${principal}</div>
+      <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">${detalle}</p>
+      ${oficiales?`<p style="font-size:12px;color:var(--fg3);margin:2px 0 0;">${ramosTxt}</p>`:''}
     </div>
     <div class="modal-btns"><button class="btn-confirm" onclick="closeModal()">Ver mis ramos</button></div>`;
   openModal();
@@ -1063,6 +1149,10 @@ function renderHome(){
       msg+=gpaMode(S.ramos)==='creditos'?'\nPonderado por créditos':'\nPromedio simple · agrega créditos para ponderar';
       showToast(msg);
     };
+    if(pendingGpaFeedback&&Math.abs(pendingGpaFeedback.despues-g)<.0001){
+      animarPromedio(gpael,pendingGpaFeedback.antes,pendingGpaFeedback.despues,'gpa');
+      pendingGpaFeedback=null;
+    }
   }else{
     gpael.textContent='·';gpael.className='gpa-num empty';gpael.onclick=null;
   }
@@ -1215,6 +1305,7 @@ function openRamo(id){
 }
 function renderRamo(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r){goHome();return;}
+  document.getElementById('grade-gpa-echo')?.remove();
   document.getElementById('ramo-title').textContent=r.nombre;
   const avg=ramoAvg(r);
   const avgEl=document.getElementById('ramo-hero-avg');
@@ -1380,6 +1471,7 @@ function toggleCat(id){openCats[id]=!openCats[id];renderRamo();}
 function setSlotNota(catId,slot,raw){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const cat=r.categorias.find(c=>c.id===catId);if(!cat)return;
+  const promedioAntes=ramoAvg(r);const gpaAntes=gpa(S.ramos);
   const txt=String(raw||'').trim();
   cat.notas=cat.notas.filter(n=>n.slot!==slot);
   if(txt!==''){
@@ -1387,12 +1479,22 @@ function setSlotNota(catId,slot,raw){
     if(!isNaN(val))cat.notas.push({id:uid(),nombre:cat.nombre+' '+(slot+1),valor:val,peso:1,slot});
   }
   save();track('set_nota_slot');renderRamo();
-  if(txt&&!isNaN(parseNota(txt)))showToast(lecturaDespuesDeNota(r));
+  const notaValida=txt!==''&&!isNaN(parseNota(txt));
+  if(notaValida){
+    const promedioDespues=ramoAvg(r);const gpaDespues=gpa(S.ramos);
+    animarPromedio(document.getElementById('ramo-hero-avg'),promedioAntes,promedioDespues,'ramo');
+    if(cambioDePromedio(gpaAntes,gpaDespues)){
+      pendingGpaFeedback={antes:gpaAntes,despues:gpaDespues};
+      mostrarEcoGpa(gpaAntes,gpaDespues);
+    }
+    showToast(lecturaDespuesDeNota(r));
+  }
 }
 // Nota directa para secciones de preset: crea/actualiza/borra la única nota.
 function setDirectNota(catId,raw){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const cat=r.categorias.find(c=>c.id===catId);if(!cat)return;
+  const promedioAntes=ramoAvg(r);const gpaAntes=gpa(S.ramos);
   const txt=String(raw||'').trim();
   if(txt===''){cat.notas=[];}
   else{
@@ -1400,7 +1502,16 @@ function setDirectNota(catId,raw){
     if(!isNaN(val))cat.notas=[{id:(cat.notas[0]&&cat.notas[0].id)||uid(),nombre:cat.nombre,valor:val,peso:1}];
   }
   save();track('set_nota_directa');renderRamo();
-  if(txt&&!isNaN(parseNota(txt)))showToast(lecturaDespuesDeNota(r));
+  const notaValida=txt!==''&&!isNaN(parseNota(txt));
+  if(notaValida){
+    const promedioDespues=ramoAvg(r);const gpaDespues=gpa(S.ramos);
+    animarPromedio(document.getElementById('ramo-hero-avg'),promedioAntes,promedioDespues,'ramo');
+    if(cambioDePromedio(gpaAntes,gpaDespues)){
+      pendingGpaFeedback={antes:gpaAntes,despues:gpaDespues};
+      mostrarEcoGpa(gpaAntes,gpaDespues);
+    }
+    showToast(lecturaDespuesDeNota(r));
+  }
 }
 function confirmDeleteRamo(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
@@ -1474,6 +1585,7 @@ function presetRamo(nombre,tenant,carrera){
       const id=uid();
       const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
       if(extra&&extra.slots)cat.slots=extra.slots;
+      if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
       categorias.push(cat);porNombre[nom]=id;
       if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
     });
@@ -2530,7 +2642,7 @@ function deshacerImport(){
 // que al irse el usuario se van sus notas, su perfil y sus reportes — la
 // política de privacidad promete que no quedan copias y esto lo cumple.
 //
-// Doble confirmación a propósito: es la única acción de la app que destruye
+// Tres confirmaciones a propósito: es la única acción de la app que destruye
 // datos en el dispositivo Y en la nube a la vez. Reiniciar app, en comparación,
 // conserva la nube.
 function confirmarEliminarCuenta(){
@@ -2542,7 +2654,14 @@ function confirmarEliminarCuenta(){
     : 'Se borra tu cuenta y todo lo asociado, en este dispositivo y en la nube.';
   showConfirm('Eliminar tu cuenta',detalle+'\n\nEsto no se puede deshacer.',()=>{
     // Segunda confirmación: la primera se aprieta sin leer.
-    showConfirm('¿Seguro?','No hay forma de recuperar tus notas después de esto.\n\nSi solo quieres empezar de nuevo en este dispositivo, usa «Reiniciar app»: eso conserva tus notas en la nube.',eliminarCuenta,{label:'Sí, eliminar mi cuenta'});
+    showConfirm('¿Seguro?','No hay forma de recuperar tus notas después de esto.\n\nSi solo quieres empezar de nuevo en este dispositivo, usa «Reiniciar app»: eso conserva tus notas en la nube.',()=>{
+      // Esta última no repite el mismo gesto: vuelve a mostrar lo que se pierde,
+      // deja Cancelar bajo el foco y mueve la acción destructiva a la izquierda.
+      const impacto=nRamos
+        ? `Vas a borrar ${nRamos} ramo${nRamos!==1?'s':''} y ${nNotas} nota${nNotas!==1?'s':''}, además de tu perfil y tu cuenta.`
+        : 'Vas a borrar tu perfil y tu cuenta.';
+      showConfirm('Última confirmación',impacto+'\n\nSe eliminarán de este dispositivo y de la nube. No se puede deshacer.',eliminarCuenta,{label:'Eliminar definitivamente',actionFirst:true,focusCancel:true});
+    },{label:'Sí, eliminar mi cuenta'});
   },{label:'Continuar'});
 }
 
@@ -2626,9 +2745,18 @@ function showConfirm(title,desc,fn,opts){
   const btn=document.getElementById('confirm-action');
   btn.textContent=opts.label||'Eliminar';
   btn.className=opts.danger===false?'btn-prim-sm':'btn-danger';
-  btn.onclick=()=>{if(_confirmFn)_confirmFn();closeConfirm();};
+  btn.onclick=()=>{
+    const confirmar=_confirmFn;
+    closeConfirm();
+    if(confirmar)confirmar();
+  };
+  const btns=btn.parentElement;
+  btns.style.flexDirection=opts.actionFirst?'row-reverse':'row';
   document.getElementById('confirm-overlay').classList.add('open');
-  setTimeout(()=>btn.focus(),50);
+  setTimeout(()=>{
+    const cancelar=btns.querySelector('.btn-cancel-sm');
+    (opts.focusCancel&&cancelar?cancelar:btn).focus();
+  },50);
 }
 function closeConfirm(){document.getElementById('confirm-overlay').classList.remove('open');}
 

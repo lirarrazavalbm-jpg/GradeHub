@@ -319,8 +319,11 @@ const PRESETS_FEN={
   },
   'Contabilidad':{
     creditos:6,
+    // "Se elimina el 25% de los controles sorpresa rendidos" salió de noCalcula:
+    // el motor ya lo aplica vía `dropLowest`. El 75% de asistencia NO se puede
+    // calcular y se queda: el programa dice "entre 4 y 6 controles", así que no
+    // existe el denominador contra el cual medir el 75%.
     noCalcula:[
-      'Se elimina el 25% de los controles sorpresa rendidos',
       'Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9',
     ],
     evals:[
@@ -329,7 +332,7 @@ const PRESETS_FEN={
       // El programa dice "entre 4 y 6 durante el semestre": el número exacto NO
       // está. Sin slots, el estudiante agrega los que realmente le tomaron.
       // Antes decía slots:4 — un dato plausible pero inventado.
-      ['Controles Sorpresa',5,{min:1.5,cap:3.9}],
+      ['Controles Sorpresa',5,{min:1.5,cap:3.9,dropLowest:{fraction:0.25}}],
       ['Solemne',20,{min:1.5,cap:3.9}],
       ['Examen',25,{min:3.0,cap:3.4}],
     ],

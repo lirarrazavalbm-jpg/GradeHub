@@ -902,3 +902,21 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .screen.active{animation:none;}
   .ramo-row,.insight-card,.stat-card,.ag-row,.eval-row,.eval-group,.cat-card{will-change:auto;}
 }
+
+/* ── El momento de la nota ───────────────────────────────────────────────
+   El valor usa siempre su propia clase semántica (good/warn/bad). El pulso
+   solo confirma que cambió; no agrega un color ajeno al estado real. */
+.ramo-num.grade-value-changing,.gpa-num.grade-value-changing{will-change:transform;}
+.ramo-num.grade-value-arrival,.gpa-num.grade-value-arrival{animation:grade-arrival var(--motion-base) var(--ease-out);}
+.ramo-num.grade-threshold-crossed,.gpa-num.grade-threshold-crossed{animation:grade-threshold var(--motion-base) var(--ease-out);}
+@keyframes grade-arrival{0%{opacity:.45;transform:translateY(5px) scale(.96);}100%{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes grade-threshold{0%{transform:scale(1);}45%{transform:scale(1.045);}100%{transform:scale(1);}}
+.grade-gpa-echo{align-self:center;max-width:170px;padding:5px 9px;border:1px solid var(--border);
+  border-radius:999px;background:var(--muted);color:var(--fg2);font-size:11.5px;font-weight:700;
+  letter-spacing:-.01em;line-height:1.2;animation:grade-echo-in var(--motion-fast) var(--ease-out);}
+@keyframes grade-echo-in{from{opacity:0;transform:translateX(-5px);}to{opacity:1;transform:translateX(0);}}
+@media(prefers-reduced-motion:reduce){
+  .ramo-num.grade-value-arrival,.gpa-num.grade-value-arrival,.ramo-num.grade-threshold-crossed,
+  .gpa-num.grade-threshold-crossed,.grade-gpa-echo{animation:none;}
+  .ramo-num.grade-value-changing,.gpa-num.grade-value-changing{will-change:auto;}
+}
