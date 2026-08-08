@@ -3,7 +3,14 @@
 // cache-first para assets estáticos (íconos, fuentes).
 // Los datos del usuario viven en localStorage + Supabase — el SW solo maneja la app shell.
 
-const CACHE_NAME = 'gradehub-v72';
+// Lo sella el deploy con el SHA del commit (.github/workflows/deploy.yml).
+// NO lo edites a mano y NO lo vuelvas a convertir en un contador: era una línea
+// que todas las ramas escribían a la vez. Seis conflictos, uno publicó un
+// service worker con marcadores de conflicto adentro, y la última vez tres PRs
+// reclamaron 'gradehub-v73' al mismo tiempo — el segundo y el tercero en
+// mergearse habrían publicado sin cambiar el cache, en silencio.
+// En local se queda en 'dev': no hay nada que invalidar sirviendo archivos.
+const CACHE_NAME = 'gradehub-dev';
 const SHELL = [
   '/',
   '/index.html',
