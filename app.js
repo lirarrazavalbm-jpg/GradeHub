@@ -882,13 +882,40 @@ function completeOnboarding(){
   mostrarRamosCargados(obRamos.length,oficiales);
 }
 function mostrarRamosCargados(cantidad,oficiales){
-  const count=cantidad?`${cantidad} ramo${cantidad!==1?'s':''} agregado${cantidad!==1?'s':''}`:'Partiste sin ramos';
-  document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Tu semestre está cargado</div>
+  const modal=document.getElementById('modal-content');
+  if(!cantidad){
+    modal.innerHTML=`
+      <div class="modal-title">Sin ramos por ahora</div>
+      <div class="courses-loaded">
+        <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">Cuando tengas tu carga, agrégala desde la malla o busca cada ramo.</p>
+      </div>
+      <div class="modal-btns"><button class="btn-confirm" onclick="closeModal();openAddRamoModal()">Agregar ramo</button></div>`;
+    openModal();return;
+  }
+
+  const ramosTxt=`${cantidad} ramo${cantidad!==1?'s':''} agregado${cantidad!==1?'s':''}`;
+  const oficialesTxt=`${oficiales} ramo${oficiales!==1?'s':''} con pauta oficial`;
+  const pendientes=cantidad-oficiales;
+  let titulo,principal,detalle;
+  if(oficiales===cantidad){
+    titulo='Pautas oficiales listas';
+    principal=oficialesTxt;
+    detalle='Los porcentajes ya están configurados. Cuando tengas una nota, ingrésala en el ramo.';
+  }else if(oficiales>0){
+    titulo='Pautas oficiales listas';
+    principal=oficialesTxt;
+    detalle=`En esos ramos, los porcentajes ya están configurados. En los otros ${pendientes}, agrega evaluaciones y sus porcentajes antes de ingresar notas.`;
+  }else{
+    titulo='Tus ramos están agregados';
+    principal=ramosTxt;
+    detalle='Antes de ingresar una nota, agrega las evaluaciones y sus porcentajes en cada ramo.';
+  }
+  modal.innerHTML=`
+    <div class="modal-title">${titulo}</div>
     <div class="courses-loaded">
-      <div class="courses-loaded-count">${count}</div>
-      <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">Cuando tengas una nota, agrega su evaluación y su peso en el ramo.</p>
-      ${oficiales?`<div class="courses-official"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>${oficiales} pauta${oficiales!==1?'s':''} oficial${oficiales!==1?'es':''} cargada${oficiales!==1?'s':''}</div>`:''}
+      <div class="courses-loaded-count">${principal}</div>
+      <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">${detalle}</p>
+      ${oficiales?`<p style="font-size:12px;color:var(--fg3);margin:2px 0 0;">${ramosTxt}</p>`:''}
     </div>
     <div class="modal-btns"><button class="btn-confirm" onclick="closeModal()">Ver mis ramos</button></div>`;
   openModal();
