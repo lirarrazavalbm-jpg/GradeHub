@@ -1021,7 +1021,7 @@ function renderHome(){
 
   const sortBtn=document.getElementById('sort-btn');
   if(sortBtn){
-    const labels={manual:'Manual ↕',avg:'Por nota ↓',name:'A-Z'};
+    const labels={manual:'Prioridad',avg:'Por nota ↓',name:'A-Z'};
     sortBtn.textContent=labels[S.sortMode]||labels.manual;
   }
 
@@ -1101,29 +1101,16 @@ function renderHome(){
     }
   }
 
-  // Insight cards (arriba de la lista de ramos): próxima prueba, riesgo, última nota
+  // Inicio se lee por consecuencia: riesgo primero, datos faltantes después y
+  // contexto al final. Las cards ya existían; solo cambia su orden.
   const insightsEl=document.getElementById('home-insights');
   if(insightsEl){
     const cards=[];
-    const ne=nextExam();
-    if(ne){
-      const daysLabel=ne.daysUntil===0?'hoy':ne.daysUntil===1?'mañana':`en ${ne.daysUntil} días`;
-      cards.push(`
-        <div class="insight-card" style="--insight-color:${esc(ne.ramo.color)}" onclick="openRamo('${esc(ne.ramo.id)}')">
-          <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></div>
-          <div class="insight-body">
-            <div class="insight-label">Próxima evaluación</div>
-            <div class="insight-title">${esc(ne.cat.nombre)} · ${esc(ne.ramo.nombre)}</div>
-            <div class="insight-meta"><span class="strong">${daysLabel}</span></div>
-          </div>
-          <span class="chevron-r">›</span>
-        </div>`);
-    }
     const risky=mostRiskyRamo();
     if(risky){
       const warnColor=r2(risky.avg)<4.0?'#ff7a8f':'#ffcf5c';
       cards.push(`
-        <div class="insight-card" style="--insight-color:${warnColor}" onclick="openRamo('${esc(risky.ramo.id)}')">
+        <div class="insight-card home-priority-insight" style="--insight-color:${warnColor}" onclick="openRamo('${esc(risky.ramo.id)}')">
           <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg></div>
           <div class="insight-body">
             <div class="insight-label">Ramo en riesgo</div>
@@ -1133,8 +1120,8 @@ function renderHome(){
           <span class="chevron-r">›</span>
         </div>`);
     }
-    // Si falta SCT en ramos ya evaluados, el promedio visible es simple. Llevo
-    // directo al editor del primer ramo pendiente para completar el dato.
+    // Datos faltantes van después del riesgo: la acción sigue siendo útil, pero
+    // no compite con un ramo que puede reprobarse.
     const sinCreditos=ramosSinCreditosParaPpa(S.ramos);
     const maxInsights=2;
     if(g!==null&&sinCreditos.length>0&&cards.length<maxInsights){
@@ -1146,6 +1133,20 @@ function renderHome(){
             <div class="insight-label">PPA más preciso</div>
             <div class="insight-title">Agrega créditos a ${sinCreditos.length===1?esc(primero.nombre):`${sinCreditos.length} ramos`}</div>
             <div class="insight-meta">Ahora tu promedio es simple · toca para corregirlo</div>
+          </div>
+          <span class="chevron-r">›</span>
+        </div>`);
+    }
+    const ne=nextExam();
+    if(ne&&cards.length<maxInsights){
+      const daysLabel=ne.daysUntil===0?'hoy':ne.daysUntil===1?'mañana':`en ${ne.daysUntil} días`;
+      cards.push(`
+        <div class="insight-card" style="--insight-color:${esc(ne.ramo.color)}" onclick="openRamo('${esc(ne.ramo.id)}')">
+          <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></div>
+          <div class="insight-body">
+            <div class="insight-label">Próxima evaluación</div>
+            <div class="insight-title">${esc(ne.cat.nombre)} · ${esc(ne.ramo.nombre)}</div>
+            <div class="insight-meta"><span class="strong">${daysLabel}</span></div>
           </div>
           <span class="chevron-r">›</span>
         </div>`);
@@ -1172,12 +1173,24 @@ function renderHome(){
     insightsEl.style.display=cards.length?'block':'none';
   }
 
-  let ramos=[...S.ramos];
-  if(S.sortMode==='avg') ramos.sort((a,b)=>{const da=ramoAvg(a)??-1,db=ramoAvg(b)??-1;return db-da;});
-  else if(S.sortMode==='name') ramos.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  // El orden elegido opera dentro de la prioridad, no al revés: con siete
+  // ramos la pantalla debe mostrar primero lo que puede cambiar hoy.
+  const prioridadHome=r=>{
+    const avg=ramoAvg(r);
+    if(avg!==null&&r2(avg)<5)return 0; // rojo o ámbar: requiere atención
+    if(avg===null)return 1;             // todavía falta ingresar información
+    return 2;                           // el resto, ya encaminado
+  };
+  let ramos=S.ramos.map((ramo,indice)=>({ramo,indice,prioridad:prioridadHome(ramo)}));
+  ramos.sort((a,b)=>{
+    if(a.prioridad!==b.prioridad)return a.prioridad-b.prioridad;
+    if(S.sortMode==='avg')return (ramoAvg(b.ramo)??-1)-(ramoAvg(a.ramo)??-1);
+    if(S.sortMode==='name')return a.ramo.nombre.localeCompare(b.ramo.nombre);
+    return a.indice-b.indice;
+  });
 
   const c=document.getElementById('home-ramos');c.innerHTML='';
-  ramos.forEach(r=>{
+  ramos.forEach(({ramo:r,prioridad})=>{
     const avg=ramoAvg(r);const nc=r.categorias.length;
     const nn=r.categorias.reduce((a,c)=>a+c.notas.length,0);
     const prog=ramoProgress(r);
@@ -1190,7 +1203,8 @@ function renderHome(){
       const pctLabel=prog.pct===100?'completo':`${prog.pct}% evaluado`;
       metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="width:${prog.pct}%"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
     }
-    const div=document.createElement('div');div.className='ramo-row';div.onclick=()=>openRamo(r.id);
+    const priorityClass=prioridad===0?' home-priority-risk':prioridad===1?' home-priority-pending':'';
+    const div=document.createElement('div');div.className='ramo-row'+priorityClass;div.onclick=()=>openRamo(r.id);
     div.style.setProperty('--ramo-tint',r.color);
     div.innerHTML=`
       <div class="ramo-band" style="background:${esc(r.color)}"></div>
