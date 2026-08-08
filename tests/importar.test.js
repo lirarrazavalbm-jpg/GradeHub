@@ -43,6 +43,12 @@ chk('la función se invoca sin parámetros (usa auth.uid del token)',
 chk('lo local se limpia DESPUÉS de que la nube confirme',
   appSrc.indexOf("rpc('eliminar_mi_cuenta')") < appSrc.indexOf('localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(PRE_IMPORT_KEY)'));
 chk('hay doble confirmación', (appSrc.match(/showConfirm\(/g) || []).length >= 2 && /¿Seguro\?/.test(appSrc));
+const flujoEliminar=appSrc.slice(appSrc.indexOf('function confirmarEliminarCuenta'),appSrc.indexOf('async function eliminarCuenta'));
+chk('la tercera confirmación muestra el impacto y rompe el automatismo',
+  (flujoEliminar.match(/showConfirm\(/g) || []).length === 3 && /Última confirmación/.test(flujoEliminar) && /nRamos/.test(flujoEliminar) && /nNotas/.test(flujoEliminar) && /actionFirst:true/.test(flujoEliminar) && /focusCancel:true/.test(flujoEliminar));
+const showConfirmSrc=appSrc.slice(appSrc.indexOf('function showConfirm'),appSrc.indexOf('function closeConfirm'));
+chk('las confirmaciones encadenadas no se cierran entre sí',
+  showConfirmSrc.indexOf('closeConfirm();') < showConfirmSrc.indexOf('if(confirmar)confirmar();'));
 chk('la política ya no manda a escribir un correo para borrar',
   !/hoy no hay un botón en la app/.test(pol));
 chk('la política apunta al botón real', /Eliminar mi cuenta/.test(pol));
