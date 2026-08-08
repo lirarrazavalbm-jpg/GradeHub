@@ -43,9 +43,31 @@ chk('la función se invoca sin parámetros (usa auth.uid del token)',
 chk('lo local se limpia DESPUÉS de que la nube confirme',
   appSrc.indexOf("rpc('eliminar_mi_cuenta')") < appSrc.indexOf('localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(PRE_IMPORT_KEY)'));
 chk('hay doble confirmación', (appSrc.match(/showConfirm\(/g) || []).length >= 2 && /¿Seguro\?/.test(appSrc));
+const flujoEliminar=appSrc.slice(appSrc.indexOf('function confirmarEliminarCuenta'),appSrc.indexOf('async function eliminarCuenta'));
+chk('la tercera confirmación muestra el impacto y rompe el automatismo',
+  (flujoEliminar.match(/showConfirm\(/g) || []).length === 3 && /Última confirmación/.test(flujoEliminar) && /nRamos/.test(flujoEliminar) && /nNotas/.test(flujoEliminar) && /actionFirst:true/.test(flujoEliminar) && /focusCancel:true/.test(flujoEliminar));
+const showConfirmSrc=appSrc.slice(appSrc.indexOf('function showConfirm'),appSrc.indexOf('function closeConfirm'));
+chk('las confirmaciones encadenadas no se cierran entre sí',
+  showConfirmSrc.indexOf('closeConfirm();') < showConfirmSrc.indexOf('if(confirmar)confirmar();'));
 chk('la política ya no manda a escribir un correo para borrar',
   !/hoy no hay un botón en la app/.test(pol));
 chk('la política apunta al botón real', /Eliminar mi cuenta/.test(pol));
+
+// La función de Postgres estuvo dos días bajo sospecha sin que nadie pudiera
+// leerla: era la única pieza del borrado que no existía en el repo. Ahora está
+// versionada, y estos chequeos son para que no vuelva a desaparecer ni a
+// mutar en algo inseguro sin que se note en el diff.
+const sqlPath = __dirname + '/../supabase/eliminar_mi_cuenta.sql';
+chk('la función de la base está versionada en el repo', fs.existsSync(sqlPath));
+const sql = fs.existsSync(sqlPath) ? fs.readFileSync(sqlPath, 'utf8') : '';
+chk('borra de auth.users, que es lo que dispara las cascadas',
+  /delete\s+from\s+auth\.users/i.test(sql));
+chk('el id sale del token, no de un parámetro: con parámetro cualquiera podría borrarle la cuenta a otro',
+  /auth\.uid\(\)/.test(sql) && /create\s+or\s+replace\s+function\s+public\.eliminar_mi_cuenta\s*\(\s*\)/i.test(sql));
+chk('es security definer: el cliente no tiene permiso sobre auth.users',
+  /security\s+definer/i.test(sql));
+chk('sin sesión activa no borra nada', /raise\s+exception/i.test(sql));
+chk('anon no puede ejecutarla', /revoke\s+all\s+on\s+function\s+public\.eliminar_mi_cuenta/i.test(sql));
 
 console.log('\n=== Contar lo que está en juego antes de reemplazarlo ===');
 const conNotas = [

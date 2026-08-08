@@ -51,6 +51,8 @@ self.addEventListener('activate', event => {
 // ── FETCH: lógica de respuesta ────────────────────────────────────────────────
 self.addEventListener('fetch', event => {
   const { request } = event;
+  // cache.put solo acepta GET: un POST reventaba el handler en cada request.
+  if (request.method !== 'GET') return;
   const url = new URL(request.url);
 
   // Requests externos

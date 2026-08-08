@@ -2535,7 +2535,7 @@ function deshacerImport(){
 // que al irse el usuario se van sus notas, su perfil y sus reportes — la
 // política de privacidad promete que no quedan copias y esto lo cumple.
 //
-// Doble confirmación a propósito: es la única acción de la app que destruye
+// Tres confirmaciones a propósito: es la única acción de la app que destruye
 // datos en el dispositivo Y en la nube a la vez. Reiniciar app, en comparación,
 // conserva la nube.
 function confirmarEliminarCuenta(){
@@ -2547,7 +2547,14 @@ function confirmarEliminarCuenta(){
     : 'Se borra tu cuenta y todo lo asociado, en este dispositivo y en la nube.';
   showConfirm('Eliminar tu cuenta',detalle+'\n\nEsto no se puede deshacer.',()=>{
     // Segunda confirmación: la primera se aprieta sin leer.
-    showConfirm('¿Seguro?','No hay forma de recuperar tus notas después de esto.\n\nSi solo quieres empezar de nuevo en este dispositivo, usa «Reiniciar app»: eso conserva tus notas en la nube.',eliminarCuenta,{label:'Sí, eliminar mi cuenta'});
+    showConfirm('¿Seguro?','No hay forma de recuperar tus notas después de esto.\n\nSi solo quieres empezar de nuevo en este dispositivo, usa «Reiniciar app»: eso conserva tus notas en la nube.',()=>{
+      // Esta última no repite el mismo gesto: vuelve a mostrar lo que se pierde,
+      // deja Cancelar bajo el foco y mueve la acción destructiva a la izquierda.
+      const impacto=nRamos
+        ? `Vas a borrar ${nRamos} ramo${nRamos!==1?'s':''} y ${nNotas} nota${nNotas!==1?'s':''}, además de tu perfil y tu cuenta.`
+        : 'Vas a borrar tu perfil y tu cuenta.';
+      showConfirm('Última confirmación',impacto+'\n\nSe eliminarán de este dispositivo y de la nube. No se puede deshacer.',eliminarCuenta,{label:'Eliminar definitivamente',actionFirst:true,focusCancel:true});
+    },{label:'Sí, eliminar mi cuenta'});
   },{label:'Continuar'});
 }
 
@@ -2631,9 +2638,18 @@ function showConfirm(title,desc,fn,opts){
   const btn=document.getElementById('confirm-action');
   btn.textContent=opts.label||'Eliminar';
   btn.className=opts.danger===false?'btn-prim-sm':'btn-danger';
-  btn.onclick=()=>{if(_confirmFn)_confirmFn();closeConfirm();};
+  btn.onclick=()=>{
+    const confirmar=_confirmFn;
+    closeConfirm();
+    if(confirmar)confirmar();
+  };
+  const btns=btn.parentElement;
+  btns.style.flexDirection=opts.actionFirst?'row-reverse':'row';
   document.getElementById('confirm-overlay').classList.add('open');
-  setTimeout(()=>btn.focus(),50);
+  setTimeout(()=>{
+    const cancelar=btns.querySelector('.btn-cancel-sm');
+    (opts.focusCancel&&cancelar?cancelar:btn).focus();
+  },50);
 }
 function closeConfirm(){document.getElementById('confirm-overlay').classList.remove('open');}
 
