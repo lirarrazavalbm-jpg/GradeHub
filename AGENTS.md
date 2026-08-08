@@ -104,10 +104,15 @@ Wrangler autenticado en su máquina.
 Para republicar sin un commit nuevo (reintentar un deploy caído): pestaña
 Actions → `deploy` → *Run workflow*.
 
-**Sube el `CACHE_NAME` en `sw.js`** (va en `gradehub-vN`) cuando toques
-`index.html`, `app.js`, `data.js` o `styles.css`, o los usuarios con la PWA
-instalada se quedan con la versión vieja. El CI te lo exige — corre
-`bash bin/check-cache-name.sh` antes de abrir el PR y te lo dice al tiro.
+**El `CACHE_NAME` de `sw.js` ya no se toca.** Lo sella el deploy con el SHA del
+commit; en el repo dice `gradehub-dev` y así se queda. Si tu PR cambia `sw.js`
+solo para subir un número, sácalo del diff.
+
+Era un contador de una línea que todas las ramas querían escribir a la vez:
+seis conflictos, uno publicó un service worker con marcadores de conflicto
+adentro, y la última vez tres PRs reclamaron `gradehub-v73` en paralelo. La
+guarda los dejó pasar a los tres porque comparaba contra la base del PR, no
+contra el `main` del momento del merge.
 
 El deploy manual sigue existiendo por si el CI está caído (`npm run deploy`),
 pero necesita Wrangler autenticado y solo Lucas lo tiene.

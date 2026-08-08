@@ -14,18 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          # El chequeo de CACHE_NAME compara contra la base: necesita historial.
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - run: npm test
 
-      - name: CACHE_NAME del service worker
-        if: github.event_name == 'pull_request'
-        run: bash bin/check-cache-name.sh origin/${{ github.base_ref }}
+      # Ya no compara contra la base —el número lo pone el deploy, no el PR—,
+      # solo revisa que las dos mitades del sellado sigan puestas. Corre siempre,
+      # también en push a main: el mecanismo se puede romper sin pasar por un PR.
+      - name: Sellado del CACHE_NAME
+        run: bash bin/check-cache-name.sh
 
   # Avisa que el token de Cloudflare sirve ANTES de mergear, en vez de
   # descubrirlo cuando el deploy ya falló. No publica nada: solo lista proyectos.
