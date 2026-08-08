@@ -337,4 +337,41 @@ const PRESETS_FEN={
       ['Examen',25,{min:3.0,cap:3.4}],
     ],
   },
+  // Marketing · ENMKT205 · programa oficial Primavera 2026 (Ing. Comercial).
+  // Cuatro evaluaciones de 25% parejo, sin sorpresas en las ponderaciones.
+  //
+  // Dos cosas quedaron sin `slots` a propósito:
+  //   Controles — "al terminar cada unidad del curso", y nunca dice cuántas
+  //     unidades son. La agenda del programa lista 9 sesiones pero se declara
+  //     "tentativa", así que 9 sería un número plausible e inventado.
+  //   Trabajo Práctico — dice que son 2 entregas, pero no dice cuánto vale cada
+  //     una ni si se califican por separado. Repartir 12,5 y 12,5 sería
+  //     inventarlo. Sin slots el estudiante ingresa las notas que le pongan.
+  'Marketing':{
+    creditos:6,
+    noCalcula:[
+      'Si tu promedio en las evaluaciones individuales (Solemne, Controles y Examen) queda bajo 4,0, las notas grupales no se consideran y tu nota final pasa a ser ese promedio individual',
+      'La nota del trabajo grupal se ajusta con un modificador por evaluación de pares, normalmente entre -0,9 y +0,9, aunque el rango cambia cada semestre',
+      'Las evaluaciones no se repiten. Con prueba recuperativa autorizada se recupera solo una, Solemne o Examen, y nunca los controles',
+    ],
+    evals:[
+      ['Solemne',25],
+      ['Controles',25],
+      ['Trabajo Práctico',25],
+      ['Examen Final',25,{min:3.0,cap:3.9}],
+    ],
+    // "Para aprobar se requiere un promedio ponderado ≥ 4,0 en las evaluaciones
+    //  individuales. Las notas grupales sólo se consideran si se cumple eso."
+    //
+    // No es exactamente cap:'self'. La regla dice que bajo 4,0 el trabajo grupal
+    // deja de contar (final = promedio individual); cap:'self' topa la final en
+    // el promedio individual, que es un pelo más abajo cuando el trabajo grupal
+    // salió malo. Barrí las 6561 combinaciones: difieren en el número en 1171,
+    // hasta 0,74 — pero el veredicto aprobado/reprobado coincide en TODAS, y
+    // siempre estando ya reprobado. Por eso se usa igual, y la regla textual va
+    // arriba en noCalcula para que el estudiante sepa de dónde sale su número.
+    grupos:[
+      {nombre:'Evaluaciones individuales',evals:['Solemne','Controles','Examen Final'],min:4.0,cap:'self'},
+    ],
+  },
 };
