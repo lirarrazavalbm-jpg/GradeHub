@@ -97,6 +97,10 @@ const catCS = res.breakdown.find(b => b.id === cs.id);
 eq('el 2,0 no arrastra: (6+6+7)/3', catCS.value, 6.3333);
 chk('el descarte queda registrado para mostrárselo al estudiante',
   res.drops.some(d => d.nodeId === cs.id && d.dropped[0].value === 2.0));
+const resumenDescarte=vm.runInContext('textoDescarte', ctx);
+const resumenSeis=resumenDescarte({dropLowest:{fraction:.25}},{rendidas:6,dropped:[{id:'a',name:'Control 1',value:2}]});
+chk('la explicación del descarte muestra la nota y el redondeo conservador',
+  /Control 1 \(2\.0\)/.test(resumenSeis) && /25%/.test(resumenSeis) && /6 evaluaciones rendidas/.test(resumenSeis) && /equivale a 1 nota/.test(resumenSeis) && /redondea hacia abajo/.test(resumenSeis));
 
 console.log('\n=== Los ramos que no declaran la regla calculan igual que antes ===');
 const micro = vm.runInContext('presetRamo', ctx)('Introducción a la Microeconomía', 'fen', null);
