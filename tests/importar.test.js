@@ -47,6 +47,22 @@ chk('la política ya no manda a escribir un correo para borrar',
   !/hoy no hay un botón en la app/.test(pol));
 chk('la política apunta al botón real', /Eliminar mi cuenta/.test(pol));
 
+// La función de Postgres estuvo dos días bajo sospecha sin que nadie pudiera
+// leerla: era la única pieza del borrado que no existía en el repo. Ahora está
+// versionada, y estos chequeos son para que no vuelva a desaparecer ni a
+// mutar en algo inseguro sin que se note en el diff.
+const sqlPath = __dirname + '/../supabase/eliminar_mi_cuenta.sql';
+chk('la función de la base está versionada en el repo', fs.existsSync(sqlPath));
+const sql = fs.existsSync(sqlPath) ? fs.readFileSync(sqlPath, 'utf8') : '';
+chk('borra de auth.users, que es lo que dispara las cascadas',
+  /delete\s+from\s+auth\.users/i.test(sql));
+chk('el id sale del token, no de un parámetro: con parámetro cualquiera podría borrarle la cuenta a otro',
+  /auth\.uid\(\)/.test(sql) && /create\s+or\s+replace\s+function\s+public\.eliminar_mi_cuenta\s*\(\s*\)/i.test(sql));
+chk('es security definer: el cliente no tiene permiso sobre auth.users',
+  /security\s+definer/i.test(sql));
+chk('sin sesión activa no borra nada', /raise\s+exception/i.test(sql));
+chk('anon no puede ejecutarla', /revoke\s+all\s+on\s+function\s+public\.eliminar_mi_cuenta/i.test(sql));
+
 console.log('\n=== Contar lo que está en juego antes de reemplazarlo ===');
 const conNotas = [
   { categorias: [{ notas: [1, 2] }, { notas: [3] }] },

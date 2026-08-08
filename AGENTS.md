@@ -216,10 +216,10 @@ hablarías a un compañero, no como un manual.
 - Notas de reemplazo y examen recuperativo (aparecen en 3 de 4 programas FEN)
 - Analítica: `track()` se llama 26 veces pero `gtag` no se carga, así que hoy son
   no-ops. La política de privacidad ya está publicada, así que está destrabado
-- Borrar cuenta desde la app. Hoy la política lo ofrece por correo porque
-  `confirmResetApp` limpia el dispositivo y conserva la nube a propósito.
-  Necesita una Edge Function: borrar un usuario requiere la `sb_secret_*`, que
-  no puede vivir en el cliente
+- Cualquier tabla nueva con datos de usuario tiene que referenciar
+  `auth.users` con `ON DELETE CASCADE`. Sin eso, esos datos sobreviven al
+  borrado de cuenta y la política de privacidad pasa a ser mentira sin que
+  falle nada. Ver `supabase/eliminar_mi_cuenta.sql`
 - Consumir el consenso de reportes para sugerir actualizaciones del catálogo.
   Ojo: `catalog_reports` solo deja leer las filas propias, así que ningún cliente
   puede calcular un consenso — va a necesitar una vista agregada o una función
@@ -241,12 +241,14 @@ ya está mergeado y es la base. Después vienen jerarquía de Home, estadística
 vacíos y Agenda. Su carril es `app.js` y, durante la revisión estética,
 `styles.css`.
 
-**Claude de Lucas — que eliminar cuenta funcione de verdad.** El botón, la doble
-confirmación y la política están en producción, pero el borrado NO funciona: se
-probó con una cuenta real y no se eliminó. Descartado que sea permisos
-(`postgres` sí puede borrar de `auth.users`, verificado). Falta el error exacto:
-está en la consola del navegador, línea que empieza con `eliminarCuenta:`. **Hoy
-la política promete algo que la app no cumple** — eso lo vuelve lo primero.
+**Claude de Lucas — el `CACHE_NAME`, que ya está fallando de una forma nueva.**
+Eliminar cuenta quedó cerrado: **el borrado sí funcionaba.** Lo que falló fue la
+verificación, no el código — el detalle está en `supabase/eliminar_mi_cuenta.sql`.
+Lo que sigue es `sw.js` y los workflows, que son su carril: los tres PRs abiertos
+escriben el mismo `gradehub-v73` sobre un `main` en v72, así que el segundo y el
+tercero en mergearse suben cambios de app SIN bump efectivo y la guarda no los
+atrapa (ya corrió en verde contra la base vieja). Más el `cache.put` sobre POST
+que revienta en producción en cada request no-GET.
 
 **Claude de Martín — el consenso de reportes.** Es lo único que puede llevar el
 catálogo de 4 pautas oficiales a 88, y sin más programas oficiales no hay otra
