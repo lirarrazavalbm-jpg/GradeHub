@@ -308,6 +308,10 @@ function ramoToStructure(r){
   return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
     id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
     children:(r.categorias||[]).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
+      // dropLowest viene del preset ("se elimina el 25% de los controles
+      // rendidos"). Sin la clave el motor no descarta nada, así que los ramos
+      // manuales y los presets que no la declaran calculan igual que siempre.
+      drop_lowest:c.dropLowest||null,
       children:(c.notas||[]).map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}))}))};
 }
 function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
@@ -1501,6 +1505,7 @@ function presetRamo(nombre,tenant,carrera){
       const id=uid();
       const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
       if(extra&&extra.slots)cat.slots=extra.slots;
+      if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
       categorias.push(cat);porNombre[nom]=id;
       if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
     });
@@ -2557,7 +2562,7 @@ function deshacerImport(){
 // que al irse el usuario se van sus notas, su perfil y sus reportes — la
 // política de privacidad promete que no quedan copias y esto lo cumple.
 //
-// Doble confirmación a propósito: es la única acción de la app que destruye
+// Tres confirmaciones a propósito: es la única acción de la app que destruye
 // datos en el dispositivo Y en la nube a la vez. Reiniciar app, en comparación,
 // conserva la nube.
 function confirmarEliminarCuenta(){
@@ -2569,7 +2574,14 @@ function confirmarEliminarCuenta(){
     : 'Se borra tu cuenta y todo lo asociado, en este dispositivo y en la nube.';
   showConfirm('Eliminar tu cuenta',detalle+'\n\nEsto no se puede deshacer.',()=>{
     // Segunda confirmación: la primera se aprieta sin leer.
-    showConfirm('¿Seguro?','No hay forma de recuperar tus notas después de esto.\n\nSi solo quieres empezar de nuevo en este dispositivo, usa «Reiniciar app»: eso conserva tus notas en la nube.',eliminarCuenta,{label:'Sí, eliminar mi cuenta'});
+    showConfirm('¿Seguro?','No hay forma de recuperar tus notas después de esto.\n\nSi solo quieres empezar de nuevo en este dispositivo, usa «Reiniciar app»: eso conserva tus notas en la nube.',()=>{
+      // Esta última no repite el mismo gesto: vuelve a mostrar lo que se pierde,
+      // deja Cancelar bajo el foco y mueve la acción destructiva a la izquierda.
+      const impacto=nRamos
+        ? `Vas a borrar ${nRamos} ramo${nRamos!==1?'s':''} y ${nNotas} nota${nNotas!==1?'s':''}, además de tu perfil y tu cuenta.`
+        : 'Vas a borrar tu perfil y tu cuenta.';
+      showConfirm('Última confirmación',impacto+'\n\nSe eliminarán de este dispositivo y de la nube. No se puede deshacer.',eliminarCuenta,{label:'Eliminar definitivamente',actionFirst:true,focusCancel:true});
+    },{label:'Sí, eliminar mi cuenta'});
   },{label:'Continuar'});
 }
 
@@ -2653,9 +2665,18 @@ function showConfirm(title,desc,fn,opts){
   const btn=document.getElementById('confirm-action');
   btn.textContent=opts.label||'Eliminar';
   btn.className=opts.danger===false?'btn-prim-sm':'btn-danger';
-  btn.onclick=()=>{if(_confirmFn)_confirmFn();closeConfirm();};
+  btn.onclick=()=>{
+    const confirmar=_confirmFn;
+    closeConfirm();
+    if(confirmar)confirmar();
+  };
+  const btns=btn.parentElement;
+  btns.style.flexDirection=opts.actionFirst?'row-reverse':'row';
   document.getElementById('confirm-overlay').classList.add('open');
-  setTimeout(()=>btn.focus(),50);
+  setTimeout(()=>{
+    const cancelar=btns.querySelector('.btn-cancel-sm');
+    (opts.focusCancel&&cancelar?cancelar:btn).focus();
+  },50);
 }
 function closeConfirm(){document.getElementById('confirm-overlay').classList.remove('open');}
 

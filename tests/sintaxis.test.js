@@ -50,6 +50,16 @@ if (sucio.length) {
 // error visible — la app sigue andando, solo pierde todo lo que el SW aporta.
 new vm.Script(fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8'));
 
+// Cache.put rechaza POST. La guarda tiene que estar al comienzo del handler,
+// antes de que cualquier ruta pueda llegar a una escritura de caché.
+const fetchStart = sw.indexOf("self.addEventListener('fetch'");
+const nonGetGuard = sw.indexOf("if (request.method !== 'GET') return;", fetchStart);
+const firstFetchRoute = sw.indexOf('const url = new URL(request.url);', fetchStart);
+if (fetchStart < 0 || nonGetGuard < 0 || nonGetGuard > firstFetchRoute) {
+  console.error('sw.js debe dejar pasar requests que no sean GET antes de cachear');
+  process.exit(1);
+}
+
 // Marcadores de conflicto en cualquier archivo que se despliega. Con varias
 // ramas en paralelo esto pasa, y lo caro es que llegue a producción.
 ['sw.js', 'app.js', 'data.js', 'engine.js', 'render-agenda.js', 'styles.css', 'index.html', 'privacidad.html', 'package.json']
@@ -72,6 +82,26 @@ const swSrc = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
     process.exit(1);
   }
 });
+
+// El CACHE_NAME lo sella el deploy con el SHA del commit. Los dos extremos del
+// mecanismo tienen que estar puestos: si falta el marcador en sw.js, no hay qué
+// sellar; si falta el sed en deploy.yml, se publica 'gradehub-dev' en cada
+// deploy, el cache nunca cambia y NADIE recibe una actualización más. Ninguna de
+// las dos mitades falla de forma visible — por eso se revisan acá.
+if (!/const CACHE_NAME = 'gradehub-dev';/.test(swSrc)) {
+  console.error("sw.js perdió el marcador: el CACHE_NAME tiene que ser 'gradehub-dev'");
+  console.error('Lo sella el deploy. No es un contador y no se edita a mano.');
+  process.exit(1);
+}
+const deployYml = fs.readFileSync(path.join(raiz, '.github/workflows/deploy.yml'), 'utf8');
+if (!/sed -i .*gradehub-dev.*GITHUB_SHA/.test(deployYml)) {
+  console.error('deploy.yml ya no sella el CACHE_NAME: cada deploy publicaría el mismo cache');
+  process.exit(1);
+}
+if (!/grep -q "'gradehub-dev'" sw\.js/.test(deployYml)) {
+  console.error('deploy.yml sella sin verificar el marcador: un sed que no calza no falla, solo no hace nada');
+  process.exit(1);
+}
 
 // Política de contraseñas: un mínimo suelto por el código se desincroniza del
 // resto. Y el largo NO puede exigirse al iniciar sesión — quien creó su cuenta
