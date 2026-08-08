@@ -210,14 +210,15 @@ hablarías a un compañero, no como un manual.
 
 ## Pendientes conocidos
 
-- **Ponderaciones oficiales: 4 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
+- **Ponderaciones oficiales: 5 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
   están completas (177 ramos FEN, 88 únicos, los 10-11 semestres de las cuatro
   carreras); lo que falta son las pautas de evaluación. A casi todos los
   estudiantes la malla se les carga sola y las ponderaciones las escriben a
   mano — ese es el camino real del 95%, y hay que hacerlo rápido
-- Los 4 presets FEN que existen son exactamente el tronco común de 2° semestre,
+- Cuatro de los 5 presets FEN son exactamente el tronco común de 2° semestre,
   así que ese segmento es hoy el mejor cubierto del producto, junto con
-  Ingeniería UC plan común 1°
+  Ingeniería UC plan común 1°. El quinto (Marketing, ENMKT205) es el primero
+  que salió del pipeline de extracción
 - Notas de reemplazo y examen recuperativo (aparecen en 3 de 4 programas FEN)
 - Analítica: `track()` se llama 26 veces pero `gtag` no se carga, así que hoy son
   no-ops. La política de privacidad ya está publicada, así que está destrabado
@@ -239,48 +240,52 @@ acá, pregunta antes de empezar — hay tres agentes sobre cuatro archivos.
 
 ### Con qué parte cada uno
 
-**Codex — el momento de la nota.** Es su PR 2 de la revisión estética. Cuando el
-estudiante ingresa una nota y el promedio cambia: hoy es un número que se
-actualiza, y debería ser lo que lo hace volver. El PR 1 (tokens de movimiento)
-ya está mergeado y es la base. Después vienen jerarquía de Home, estadísticas,
-vacíos y Agenda. Su carril es `app.js` y, durante la revisión estética,
-`styles.css`.
+**Codex — la revisión estética, PR 3 en adelante.** Los PR 1 (tokens de
+movimiento) y 2 (el momento de la nota) ya están en producción. Sigue jerarquía
+de Home, después los vacíos, estadísticas y Agenda. Su carril es `app.js` y,
+durante la revisión estética, `styles.css`.
 
-**Claude de Lucas — el `CACHE_NAME`, que ya está fallando de una forma nueva.**
-Eliminar cuenta: la función de Postgres siempre estuvo bien y ahora está
-versionada en `supabase/eliminar_mi_cuenta.sql`. **Lo que estaba roto era la
-interfaz**: `showConfirm` corría el callback ANTES de `closeConfirm`, así que el
-segundo diálogo se abría y se cerraba en el mismo tick. Nunca se veía y
-`eliminarCuenta` nunca se llamaba. Lo arregla el PR #47. Lección para el
-próximo: probar el RPC desde la consola verifica el backend, no el feature —
-saltarse la interfaz fue justo saltarse la capa rota.
-Lo que sigue es `sw.js` y los workflows, que son su carril: los tres PRs abiertos
-escriben el mismo `gradehub-v73` sobre un `main` en v72, así que el segundo y el
-tercero en mergearse suben cambios de app SIN bump efectivo y la guarda no los
-atrapa (ya corrió en verde contra la base vieja). Más el `cache.put` sobre POST
-que revienta en producción en cada request no-GET.
+**Claude de Lucas — mostrar los descartes y arreglar el "¿qué nota necesito?".**
+El motor ya elimina la peor nota cuando el programa lo dice (`drop_lowest`), pero
+la ficha del ramo todavía no muestra CUÁL se eliminó: el estudiante ingresa
+2,0/6,0/6,0/7,0 y ve 6,3 sin explicación. El resultado trae `drops` justamente
+para eso. Y `solveForTarget` no sabe de descartes: sus pesos efectivos salen de
+la estructura declarada, así que si te faltan controles por rendir la respuesta
+ignora que el peor se va a eliminar — hoy le pedimos al estudiante una nota más
+alta de la que necesita.
 
 **Claude de Martín — el consenso de reportes.** Es lo único que puede llevar el
-catálogo de 4 pautas oficiales a 88, y sin más programas oficiales no hay otra
+catálogo de 5 pautas oficiales a 88, y sin más programas oficiales no hay otra
 vía. Ojo: `catalog_reports` solo deja leer las filas propias, así que ningún
 cliente puede calcular un consenso — necesita una vista agregada o una función
-`security definer` que exponga el conteo sin exponer quién reportó qué. Antes de
-eso, algo chico: separar los tres solemnes de Métodos Matemáticos II en filas
-propias (Solemne 1, 2 y 3 al 20%), que el programa oficial los lista separados.
+`security definer` que exponga el conteo sin exponer quién reportó qué.
 
-### Decisión pendiente, y condiciona el resto
+### Lo que espera una decisión, no un agente
+
+**#39 — los tres solemnes de Métodos Matemáticos II como filas separadas.** Está
+en borrador a propósito: **mueve el número**. Con un solo solemne rendido en 2,0
+y el examen en 6,8, antes 3,92 y ahora 5,20 — de reprobado a aprobado. El
+criterio (filas propias cuando el programa dice cuántas evaluaciones son) es
+consistente con el resto del motor, pero es un criterio y no un hecho. Lo
+deciden Lucas y Martín, no se mergea solo.
 
 **Monetización.** No es una tarea, es una decisión de producto. Si va a haber
 plan pago afecta qué se construye ahora, qué dice la política de privacidad y
 hasta el onboarding. Conviene resolverla antes de seguir agregando features.
 
-### Lo que quedó sin dueño
+### Las cinco reglas que el motor todavía no calcula
 
-- El `CACHE_NAME` de `sw.js` es un contador global de una línea: seis conflictos
-  entre ramas van, y uno terminó publicando un service worker roto. Automatizarlo
-  con cuidado — si se rompe, se rompen las actualizaciones de la PWA.
-- Devolver el check `test` a la protección de `main`. Hoy `main` acepta merges
-  sin verificación automática, y eso ya costó caro.
-- Que la política de privacidad y la app no se desalineen: hay tests que las
-  atan, pero solo para eliminar cuenta y analítica.
+`drop_lowest` fue la primera de `noCalcula` que pasó a calcularse. Quedan, en
+orden de dificultad:
 
+| Regla | Qué falta |
+|---|---|
+| Eximición del examen con Casos ≥ 5,5 (Gestión de Personas) | Nada: es determinista con las notas que ya hay. Ojo con la circularidad — el promedio individual incluye el examen |
+| Examen recuperativo 3,6–3,9 → 4,0 (Micro) | Que el estudiante pueda decir que lo rindió: entrada nueva |
+| Examen de Segunda Fecha (Métodos) | Lo mismo |
+| ±10 décimas por evaluación entre compañeros | El dato no existe en la app |
+| Inasistencias justificadas: el % pasa a otra evaluación | El programa no dice a cuál |
+
+Y una que **no es calculable y no lo va a ser**: el 75% de asistencia a los
+controles sorpresa de Contabilidad. El programa dice "entre 4 y 6 controles", así
+que no existe el denominador. Esa se queda declarada para siempre.
