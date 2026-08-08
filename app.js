@@ -359,6 +359,19 @@ function initials(s){return s.split(' ').slice(0,2).map(w=>w[0]||'').join('').to
 // ─── ADAPTADOR FENnotas → árbol del motor ────────────────────────────────────
 // Convierte un ramo (categorias→notas) en la estructura del motor. Resultado de
 // ramoAvg idéntico al cálculo histórico: no migra datos ni cambia números.
+function hojasCategoria(c){
+  const notas=c.notas||[];
+  const slots=Number.isInteger(c.slots)&&c.slots>0?c.slots:null;
+  if(!slots){
+    return notas.length?notas.map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'})):[{id:`pendiente-${c.id}-0`,name:c.nombre,weight:1,type:'leaf'}];
+  }
+  const porSlot=new Map();
+  notas.forEach((n,i)=>porSlot.set(Number.isInteger(n.slot)?n.slot:i,n));
+  return Array.from({length:slots},(_,i)=>{
+    const n=porSlot.get(i);
+    return n?{id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}:{id:`pendiente-${c.id}-${i}`,name:`${c.nombre} ${i+1}`,weight:1,type:'leaf'};
+  });
+}
 function ramoToStructure(r){
   return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
     id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
@@ -367,7 +380,7 @@ function ramoToStructure(r){
       // rendidos"). Sin la clave el motor no descarta nada, así que los ramos
       // manuales y los presets que no la declaran calculan igual que siempre.
       drop_lowest:c.dropLowest||null,
-      children:(c.notas||[]).map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}))}))};
+      children:hojasCategoria(c)}))};
 }
 function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
 
@@ -3035,10 +3048,6 @@ function confirmEditNota(catId,notaId){
 // ─── CALCULADORA NOTA MÍNIMA ─────────────────────────────────────────────────
 function openCalculadoraModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
-  const totalPeso=r.categorias.reduce((a,c)=>a+c.peso,0);
-  let pesoConNotas=0,sumaPonderada=0;
-  r.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
-  const pesoSinNotas=totalPeso-pesoConNotas;
 
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2"/><path d="M8 7h8"/><path d="M8 12h3"/><path d="M8 16h3"/><path d="M15 12v5"/></svg> Calculadora</div>
@@ -3056,18 +3065,12 @@ function openCalculadoraModal(){
     const target=parseFloat(document.getElementById('m-calc-target').value.replace(',','.'));
     const el=document.getElementById('calc-result');
     if(isNaN(target)||target<1||target>7){el.innerHTML='';return;}
-    const descarteAbierto=reglaDescarteConCantidadAbierta(r);
-    if(descarteAbierto){
-      el.innerHTML=`<span style="color:var(--fg2)">No calculamos una nota mínima exacta mientras falte saber cuántas evaluaciones de <b>${esc(descarteAbierto.nombre)}</b> habrá. El programa descarta la peor nota, así que su efecto depende de las notas que todavía no existen.</span>`;
+    const proyeccion=notaNecesaria(r,target);
+    if(proyeccion.indeterminada){
+      el.innerHTML=`<span style="color:var(--fg2)">No calculamos una nota mínima exacta mientras falte saber cuántas evaluaciones de <b>${esc(proyeccion.categoria.nombre)}</b> habrá. El programa descarta la peor nota, así que su efecto depende de las notas que todavía no existen.</span>`;
       return;
     }
-    // Compuertas: si una sección con piso ya quedó bajo su mínimo, ninguna meta ≥4.0 es alcanzable.
-    const gateHit=gatesActivas(r)[0]||null;
-    if(gateHit&&target>gateHit.cap){
-      el.innerHTML=`<span style="color:var(--red)"><b>${esc(gateHit.nombre)}</b> está bajo ${gateHit.min.toFixed(1)}: la nota queda topada en ${gateHit.cap.toFixed(1)}. Para llegar a ${target.toFixed(1)} primero debes subir esa evaluación.</span>`;
-      return;
-    }
-    if(pesoSinNotas===0){
+    if(proyeccion.requiredAverage===null){
       const avg=ramoAvg(r);
       if(avg!==null){
         const ok=avg>=target;
@@ -3075,21 +3078,15 @@ function openCalculadoraModal(){
       } else {el.innerHTML=`<span style="color:var(--fg3)">No hay notas ingresadas aún.</span>`;}
       return;
     }
-    if(totalPeso===0||pesoSinNotas<=0){el.innerHTML='';return;}
-    const needed=(target*totalPeso-sumaPonderada)/pesoSinNotas;
-    const neededR=r2(needed);
-    // Si falta una sola sección, nombrarla (más útil que "las secciones sin notas").
-    const vacias=r.categorias.filter(c=>avgPond(c.notas)===null);
-    const dondeTxt=vacias.length===1?`en <b>${esc(vacias[0].nombre)}</b>`:`en las secciones sin notas (${r2(pesoSinNotas)}% del ramo)`;
-    // Condición pendiente de piso (ej: Podcast sin nota aún)
-    const condPend=(r.gates||[]).filter(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);return c&&avgPond(c.notas)===null;}).map(g=>`<div style="font-size:12px;color:var(--yellow);margin-top:8px;">Además, ${esc(g.nombre)} debe ser ≥ ${g.min.toFixed(1)} o repruebas pese al promedio.</div>`).join('');
-    if(neededR>7){
-      el.innerHTML=`<span style="color:var(--red)">Necesitarías un <b>${neededR.toFixed(1)}</b> — ya no es posible llegar a ${target.toFixed(1)}.</span>`;
-    } else if(neededR<1){
-      el.innerHTML=`<span style="color:var(--green)">Con cualquier nota llegas a ${target.toFixed(1)}.</span>${condPend}`;
+    const neededR=proyeccion.requiredAverage;
+    const condiciones=proyeccion.conditions.map(c=>`<div style="font-size:12px;color:var(--yellow);margin-top:8px;">${esc(c)}</div>`).join('');
+    if(!proyeccion.feasible||neededR>proyeccion.scaleMax){
+      el.innerHTML=`<span style="color:var(--red)">Ya no es posible llegar a ${target.toFixed(1)} con lo pendiente.</span>${condiciones}`;
+    } else if(neededR<=proyeccion.scaleMin){
+      el.innerHTML=`<span style="color:var(--green)">Con cualquier nota llegas a ${target.toFixed(1)}.</span>${condiciones}`;
     } else {
       const col=neededR>=5.5?'var(--yellow)':'var(--green)';
-      el.innerHTML=`<div style="margin-top:4px;">Necesitas un promedio de<br/><b style="font-size:32px;color:${col}">${neededR.toFixed(1)}</b><br/><span style="font-size:12px;color:var(--fg3)">${dondeTxt}</span>${condPend}</div>`;
+      el.innerHTML=`<div style="margin-top:4px;">Necesitas un promedio de<br/><b style="font-size:32px;color:${col}">${neededR.toFixed(1)}</b><br/><span style="font-size:12px;color:var(--fg3)">en las evaluaciones pendientes</span>${condiciones}</div>`;
     }
   };
 }
@@ -3498,18 +3495,33 @@ function diasHasta(iso){
   return Math.round((d-hoy)/86400000);
 }
 
-// Cuánto necesita el estudiante en lo que le queda para aprobar el ramo (o null)
+// Cuánto necesita el estudiante según el mismo motor que calcula el ramo.
+// Si el programa no fija cuántas evaluaciones quedan en un grupo con descarte,
+// no existe una respuesta precisa y se declara en vez de inventarla.
 function reglaDescarteConCantidadAbierta(ramo){
   return (ramo.categorias||[]).find(c=>c.dropLowest&&!Number.isInteger(c.slots))||null;
 }
-function notaNecesaria(ramo){
-  const total=ramo.categorias.reduce((s,c)=>s+c.peso,0);
-  if(total<=0)return null;
-  let pesoCon=0,suma=0;
-  ramo.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoCon+=c.peso;suma+=a*c.peso;}});
-  const pesoSin=total-pesoCon;
-  if(pesoSin<=0)return null;
-  return (4.0*total-suma)/pesoSin;
+function notaNecesaria(ramo,target){
+  const categoria=reglaDescarteConCantidadAbierta(ramo);
+  if(categoria)return {indeterminada:true,categoria};
+  const structure=ramoToStructure(ramo);
+  const meta=structure.__meta||{};
+  const metaFinal=target??meta.passing_grade??4.0;
+  const proyeccion=solveForTarget(structure,gradesOf(ramo),metaFinal);
+  const activas=gatesActivas(ramo);
+  const pendientes=(ramo.gates||[]).filter(g=>g.type==='min_grade_required').filter(g=>{
+    const cat=(ramo.categorias||[]).find(c=>c.id===g.catId);
+    return cat&&avgPond(cat.notas)===null;
+  });
+  const gateWarnings=[];
+  const conditions=[...proyeccion.conditions];
+  activas.forEach(g=>{
+    const texto=`${g.nombre} quedó en ${fmt(g.actual)}: nota topada en ${fmt(g.cap)}.`;
+    gateWarnings.push(texto);conditions.push(texto);
+  });
+  pendientes.forEach(g=>conditions.push(`${g.nombre} debe ser ≥ ${fmt(g.min)} o repruebas pese al promedio.`));
+  const topeActivo=activas.reduce((min,g)=>Math.min(min,g.cap),Infinity);
+  return {...proyeccion,feasible:proyeccion.feasible&&metaFinal<=topeActivo,conditions,gateWarnings};
 }
 
 // Convierte una nota recién ingresada en una consecuencia académica concreta.
@@ -3517,23 +3529,22 @@ function notaNecesaria(ramo){
 function lecturaDespuesDeNota(ramo){
   const avg=ramoAvg(ramo);
   if(avg===null)return 'Nota guardada';
-  const gate=gatesActivas(ramo)[0];
-  if(gate)return `${gate.nombre} quedó en ${fmt(gate.actual)} · nota topada en ${fmt(gate.cap)}`;
-  const descarteAbierto=reglaDescarteConCantidadAbierta(ramo);
-  if(descarteAbierto)return `Vas ${fmt(avg)} · la nota mínima depende de los próximos ${descarteAbierto.nombre.toLowerCase()}`;
   const necesita=notaNecesaria(ramo);
-  if(necesita===null)return `Vas ${fmt(avg)} · ramo completamente evaluado`;
-  if(necesita>7.05)return `Vas ${fmt(avg)} · ya no alcanza sólo con lo pendiente`;
-  if(necesita<=1.0)return `Vas ${fmt(avg)} · tienes margen para aprobar`;
-  if(r2(avg)>=5.0&&necesita<=4.0)return `Vas ${fmt(avg)} · buen margen en lo pendiente`;
-  return `Vas ${fmt(avg)} · necesitas ${nf(necesita)} en lo pendiente para aprobar`;
+  if(necesita.indeterminada)return `Vas ${fmt(avg)} · la nota mínima depende de los próximos ${necesita.categoria.nombre.toLowerCase()}`;
+  if(necesita.gateWarnings.length)return `Vas ${fmt(avg)} · ${necesita.gateWarnings[0]}`;
+  if(necesita.requiredAverage===null)return `Vas ${fmt(avg)} · ramo completamente evaluado`;
+  if(!necesita.feasible)return `Vas ${fmt(avg)} · ya no alcanza sólo con lo pendiente`;
+  if(necesita.requiredAverage<=necesita.scaleMin)return `Vas ${fmt(avg)} · tienes margen para aprobar`;
+  if(r2(avg)>=5.0&&necesita.requiredAverage<=4.0)return `Vas ${fmt(avg)} · buen margen en lo pendiente`;
+  return `Vas ${fmt(avg)} · necesitas ${nf(necesita.requiredAverage)} en lo pendiente para aprobar`;
 }
 
 function withPriority(e){
   const dias=diasHasta(e.fecha);
   const peso=e.cat.peso||0;
   const avg=ramoAvg(e.ramo);
-  const necesita=notaNecesaria(e.ramo);
+  const proyeccion=notaNecesaria(e.ramo);
+  const necesita=proyeccion.indeterminada||!proyeccion.feasible?null:proyeccion.requiredAverage;
 
   // Urgencia: decae con los días. Lo vencido pesa más que todo.
   let urgencia;

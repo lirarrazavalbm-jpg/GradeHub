@@ -133,6 +133,13 @@ const lecturaConTope={id:'tope',categorias:[
 ],gates:[{type:'min_grade_required',catId:'ex',min:3.0,cap:3.9,nombre:'Examen'}]};
 if(ctx.lecturaDespuesDeNota(lecturaConTope).includes('nota topada en 3.9')){ok++;console.log('  OK   explica una compuerta activa');}
 else {fail++;console.log('  FAIL lectura con tope → '+ctx.lecturaDespuesDeNota(lecturaConTope));}
+const solemnesParciales={id:'solemnes',categorias:[
+  {id:'sol',nombre:'Solemne',peso:100,directNota:true,slots:3,notas:[{id:'s1',slot:0,valor:2,peso:1},{id:'s2',slot:1,valor:6,peso:1}]}
+],gates:[]};
+const proySolemnes=ctx.notaNecesaria(solemnesParciales);
+eq('dos de tres solemnes no hacen desaparecer el tercero',proySolemnes.requiredAverage,4);
+if(proySolemnes.emptyLeaves.length===1){ok++;console.log('  OK   el motor recibe el solemne pendiente');}
+else {fail++;console.log('  FAIL hojas pendientes → '+proySolemnes.emptyLeaves.length);}
 
 console.log('\n=== Estadísticas · avance y tendencia ===');
 const cobertura=ctx.avanceEvaluaciones([{categorias:[

@@ -30,8 +30,8 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 | promedio de un ramo | `app.js` | `grep -n "function ramoAvg"` |
 | promedio general (GPA, créditos) | `app.js` | `grep -n "function gpa\|totalCreditos"` |
 | compuertas | `app.js` | `grep -n "function gatesActivas\|group_min"` |
-| "¿qué nota necesito?" | `app.js` | `grep -n "function solveForTarget"` |
-| motor de estructura/pesos | `app.js` | `grep -n "function calculateFinalGrade"` |
+| "¿qué nota necesito?" | `engine.js` + `app.js` | `grep -n "function solveForTarget" engine.js` |
+| motor de estructura/pesos | `engine.js` + `app.js` | `grep -n "function calculateFinalGrade" engine.js` |
 | pantalla principal | `app.js` | `grep -n "function renderHome"` |
 | ficha de un ramo | `app.js` | `grep -n "function renderRamo"` |
 | estadísticas / agenda | `app.js` | `grep -n "function renderStats\|function renderAgenda"` |
@@ -230,7 +230,7 @@ hablarías a un compañero, no como un manual.
   Ojo: `catalog_reports` solo deja leer las filas propias, así que ningún cliente
   puede calcular un consenso — va a necesitar una vista agregada o una función
   `security definer` que exponga el conteo sin exponer quién reportó qué
-- `app.js` sigue en 150 KB tras sacar los datos: el próximo corte natural es
+- `app.js` sigue en ~190 KB tras sacar los datos: el próximo corte natural es
   separar el render (`renderHome`, `renderRamo`, stats) del motor de cálculo
 
 ## En vuelo
