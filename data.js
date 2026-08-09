@@ -305,13 +305,31 @@ const PRESETS_FEN={
     // llega a más de un punto. Se eligió la forma consistente con el resto.
     evals:[['Solemne 1',20],['Solemne 2',20],['Solemne 3',20],['Examen Final',40,{min:3.0,cap:3.9}]],
   },
+  // Introducción a la Microeconomía · ENMIC155 · programa oficial actualizado
+  // julio 2026. Los tres controles van en filas propias porque el programa los
+  // enumera uno por uno, con fecha cada uno (21 de agosto, 16 de octubre y 6 de
+  // noviembre) y con reglas de reemplazo DISTINTAS: si faltas al 1 te ponen la
+  // Solemne, si faltas al 2 o al 3 te ponen el Examen. No son intercambiables.
+  // Las pruebas sorpresa sí se quedan agrupadas: el programa dice que son cinco
+  // pero no las identifica ni las fecha — son sorpresa, no hay agenda que poner.
   'Introducción a la Microeconomía':{
     creditos:6,
     noCalcula:[
-      'Examen Recuperativo: con promedio entre 3,6 y 3,9 puedes aprobar con 4,0',
-      'Inasistencias justificadas: el porcentaje pasa a otra evaluación',
+      'Si tu promedio final queda entre 3,6 y 3,9 tienes derecho al examen recuperativo: si lo apruebas, el ramo queda en 4,0; si no, repruebas con el promedio que traías',
+      'Si faltas al Control 1 con justificativo aprobado, esa nota se reemplaza por la de la Solemne',
+      'Si faltas a la Solemne, al Control 2 o al Control 3 con justificativo aprobado, esa nota se reemplaza por la del Examen',
+      'Si faltas al Examen tienes que dar el recuperativo',
+      'Si faltas a una prueba sorpresa con justificativo, ese 5% se suma al Examen',
+      'Copiar o plagiar reprueba el ramo de inmediato con 1,0',
     ],
-    evals:[['Solemne',30],['Examen',35],['Controles parciales',30,{slots:3}],['Pruebas sorpresa',5,{slots:5}]],
+    evals:[
+      ['Solemne',30],
+      ['Control 1',10],
+      ['Control 2',10],
+      ['Control 3',10],
+      ['Pruebas sorpresa',5,{slots:5}],
+      ['Examen',35],
+    ],
   },
   'Gestión de Personas':{
     creditos:6,
