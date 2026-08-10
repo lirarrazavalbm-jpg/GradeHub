@@ -2202,12 +2202,26 @@ function plantillaPauta(tipo){
       :[];
   return nombres.map(nombre=>({id:null,nombre,peso:0,tieneNotas:false}));
 }
-function plantillaPrincipalPauta(tenant){
-  // En UC las evaluaciones se llaman pruebas, no solemnes. FEN conserva el
-  // término porque aparece así en sus programas oficiales.
+// En UC las evaluaciones se llaman pruebas, no solemnes. FEN conserva el
+// término porque aparece así en sus programas oficiales. Solo alimenta el
+// placeholder del campo: no arma ninguna estructura.
+function ejemploEvaluacion(tenant){return tenant==='uc'?'Prueba':'Solemne';}
+
+// Plantillas de estructura, POR TENANT — y FEN no tiene.
+//
+// El plan común de Ingeniería UC sí tiene una forma estable: tres
+// interrogaciones y un examen, y así están sus cuatro presets. Ahí la plantilla
+// ahorra tipeo real.
+//
+// En FEN no existe esa forma. De los diez programas oficiales transcritos, cada
+// uno mezcla distinto solemnes, controles de lectura, controles de ejercicios,
+// controles sorpresa, trabajos grupales y participación — y ninguno es "3
+// solemnes + examen". Ofrecer esa plantilla empujaba a la mayoría a una
+// estructura que después tenían que deshacer a mano.
+function plantillasPauta(tenant){
   return tenant==='uc'
-    ?{tipo:'tres-pruebas',label:'3 pruebas + examen',ejemplo:'Prueba'}
-    :{tipo:'tres-solemnes',label:'3 solemnes + examen',ejemplo:'Solemne'};
+    ?[{tipo:'tres-pruebas',label:'3 pruebas + examen'},{tipo:'dos-pruebas',label:'2 pruebas + examen'}]
+    :[];
 }
 // Son atajos de escritura, no una pauta sugerida: el estudiante elige el
 // nombre y siempre define sus propios pesos. UC y FEN usan vocabularios
@@ -2254,11 +2268,12 @@ function duplicarPautaDesdeRamo(){
 }
 function renderPautaManualModal(){
   const fuentes=puedeUsarPlantillaPauta()?ramosParaDuplicarPauta(S.ramos,currentRamoId):[];
-  const principal=plantillaPrincipalPauta(S.tenant);
+  const ejemplo=ejemploEvaluacion(S.tenant);
   const sugerencias=opcionesSugerenciasEvaluacion(S.tenant);
-  const plantillas=puedeUsarPlantillaPauta()?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
+  const disponibles=plantillasPauta(S.tenant);
+  const plantillas=(puedeUsarPlantillaPauta()&&disponibles.length)?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
     <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;"><button type="button" onclick="aplicarPlantillaPauta('${principal.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">${principal.label}</button><button type="button" onclick="aplicarPlantillaPauta('dos-pruebas')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">2 pruebas + examen</button></div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">${p.label}</button>`).join('')}</div>
     <div style="font-size:12px;color:var(--fg2);line-height:1.4;margin-top:8px;">Los pesos quedan en 0%. Confírmalos con el programa del curso.</div>
   </div>`:'';
   const duplicar=fuentes.length?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);">
@@ -2268,7 +2283,7 @@ function renderPautaManualModal(){
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>`
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 32px;gap:8px;align-items:center;margin:8px 0;">
-      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${principal.ejemplo} ${i+1}" maxlength="40" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
+      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="40" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
       <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:13px;pointer-events:none;">%</span></div>
       <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
     </div>`).join('');
