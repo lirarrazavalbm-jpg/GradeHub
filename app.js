@@ -21,7 +21,7 @@ function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
   data.ramos = (data.ramos || []).map(r => ({
     ...r,
-    id: r.id || uid(),
+    id: idSeguro(r.id),
     color: r.color || '#2563eb',
     // Créditos SCT — opcional. Si todos los ramos lo tienen, el promedio se pondera.
     creditos: (typeof r.creditos === 'number' && r.creditos > 0) ? r.creditos : null,
@@ -29,7 +29,7 @@ function normalize(data) {
     origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
     categorias: (r.categorias || []).map(c => ({
       ...c,
-      id: c.id || uid(),
+      id: idSeguro(c.id),
       ponderaNotas: c.ponderaNotas ?? false,
       // Las evaluaciones creadas a mano antes de esto quedaron sin `directNota`
       // y se dibujaban como una lista en la que había que entrar. Se convierten
@@ -38,7 +38,7 @@ function normalize(data) {
       directNota: c.directNota ?? (!c.slots && (c.notas || []).length <= 1),
       fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
       notas: (c.notas || []).map(n => ({
-        id: n.id || uid(),
+        id: idSeguro(n.id),
         nombre: n.nombre || 'Nota',
         valor: n.valor ?? (typeof n === 'number' ? n : null),
         peso: n.peso || 1,
@@ -48,7 +48,22 @@ function normalize(data) {
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
   data.userName = data.userName || '';
-  data.historial = Array.isArray(data.historial) ? data.historial : [];
+  // El historial guarda ramos completos y sus ids llegan a los mismos atributos
+  // onclick (`toggleHist('<id>')`), así que necesita el mismo saneo. Antes se
+  // aceptaba tal cual: un respaldo importado con historial era el mismo agujero.
+  data.historial = (Array.isArray(data.historial) ? data.historial : []).map(h => ({
+    ...h,
+    id: idSeguro(h.id),
+    ramos: (h.ramos || []).map(r => ({
+      ...r,
+      id: idSeguro(r.id),
+      categorias: (r.categorias || []).map(c => ({
+        ...c,
+        id: idSeguro(c.id),
+        notas: (c.notas || []).map(n => ({...n, id: idSeguro(n.id)})),
+      })),
+    })),
+  }));
   data.carrera = data.carrera || null;
   data.tenant = data.tenant || 'fen';
   // Las dos menciones de Ing. Comercial se fusionaron: se elige más adelante en
@@ -276,6 +291,20 @@ function save(){
   syncToCloud();
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+// Los ids se interpolan dentro de atributos onclick ("toggleCat('<id>')"), así
+// que un id con comillas se sale de la llamada y el resto se ejecuta como JS.
+// `uid()` solo produce [a-z0-9], pero un id NO siempre lo genera la app: al
+// importar un respaldo se conserva el que venga en el JSON, y `esExportValido`
+// solo comprueba que `ramos` sea un arreglo. Pegar un respaldo ajeno bastaba
+// para ejecutar código con la sesión de Supabase en localStorage.
+//
+// Se saneia en la frontera: un id que no calce se reemplaza por uno nuevo. Es
+// preferible a escapar en cada uno de los 30 sitios de render, porque olvidar
+// uno vuelve a abrir el agujero entero.
+// La expresión va adentro a propósito: `normalize` se ejecuta al cargar los
+// datos, antes de que este trozo del archivo se haya evaluado, y un `const`
+// externo estaría en zona muerta temporal. Reventaría el arranque de la app.
+function idSeguro(v){return (typeof v==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(v))?v:uid();}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Redondea a 2 decimales para evitar errores de punto flotante en comparaciones
 function r2(n){return Math.round(n*100)/100;}
