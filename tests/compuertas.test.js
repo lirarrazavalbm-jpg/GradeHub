@@ -177,13 +177,16 @@ else {fail++;console.log('  FAIL plantilla de solemnes → '+JSON.stringify(plan
 const plantillaPruebas=ctx.plantillaPauta('dos-pruebas');
 if(plantillaPruebas.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Examen'&&plantillaPruebas.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de pruebas no inventa ponderaciones');}
 else {fail++;console.log('  FAIL plantilla de pruebas → '+JSON.stringify(plantillaPruebas));}
-const principalUC=ctx.plantillaPrincipalPauta('uc');
-const plantillaUC=ctx.plantillaPauta(principalUC.tipo);
-if(principalUC.label==='3 pruebas + examen'&&principalUC.ejemplo==='Prueba'&&plantillaUC.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Prueba 3|Examen'){ok++;console.log('  OK   UC usa pruebas, no solemnes, en la pauta manual');}
-else {fail++;console.log('  FAIL plantilla UC → '+JSON.stringify({principalUC,plantillaUC}));}
-const principalFEN=ctx.plantillaPrincipalPauta('fen');
-if(principalFEN.label==='3 solemnes + examen'&&principalFEN.ejemplo==='Solemne'){ok++;console.log('  OK   FEN conserva el nombre oficial de sus solemnes');}
-else {fail++;console.log('  FAIL plantilla FEN → '+JSON.stringify(principalFEN));}
+const plantillasUC=ctx.plantillasPauta('uc');
+const plantillaUC=ctx.plantillaPauta(plantillasUC[0].tipo);
+if(plantillasUC[0].label==='3 pruebas + examen'&&ctx.ejemploEvaluacion('uc')==='Prueba'&&plantillaUC.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Prueba 3|Examen'){ok++;console.log('  OK   UC usa pruebas, no solemnes, en la pauta manual');}
+else {fail++;console.log('  FAIL plantilla UC → '+JSON.stringify({plantillasUC,plantillaUC}));}
+// FEN no ofrece plantillas de estructura: ninguno de sus diez programas
+// oficiales es "3 solemnes + examen", así que la plantilla empujaba a una forma
+// equivocada. El placeholder sí conserva el vocabulario de la FEN.
+const plantillasFEN=ctx.plantillasPauta('fen');
+if(plantillasFEN.length===0&&ctx.ejemploEvaluacion('fen')==='Solemne'){ok++;console.log('  OK   FEN no ofrece plantillas de estructura, pero conserva su vocabulario');}
+else {fail++;console.log('  FAIL plantillas FEN → '+JSON.stringify(plantillasFEN));}
 const sugerenciasUC=ctx.sugerenciasEvaluacion('uc');
 if(sugerenciasUC.includes('Interrogación 1')&&sugerenciasUC.includes('Laboratorio')&&sugerenciasUC.includes('Examen')&&!sugerenciasUC.some(nombre=>nombre.startsWith('Solemne'))){ok++;console.log('  OK   UC sugiere interrogaciones y no solemnes');}
 else {fail++;console.log('  FAIL sugerencias UC → '+JSON.stringify(sugerenciasUC));}
