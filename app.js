@@ -31,6 +31,11 @@ function normalize(data) {
       ...c,
       id: c.id || uid(),
       ponderaNotas: c.ponderaNotas ?? false,
+      // Las evaluaciones creadas a mano antes de esto quedaron sin `directNota`
+      // y se dibujaban como una lista en la que había que entrar. Se convierten
+      // a fila simple SOLO si tienen 0 o 1 nota: con dos o más, la fila simple
+      // mostraría una y escondería el resto, así que esas se dejan como están.
+      directNota: c.directNota ?? (!c.slots && (c.notas || []).length <= 1),
       fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
       notas: (c.notas || []).map(n => ({
         id: n.id || uid(),
@@ -1402,6 +1407,19 @@ function renderRamo(){
     ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
 
+  // Reportar la pauta vivía escondido al fondo del modal de "Editar ramo",
+  // debajo de Guardar y Cancelar. Nadie entra a editar el nombre de un ramo para
+  // avisar que su pauta está mal. Va acá, al pie de las evaluaciones, que es
+  // donde el estudiante se da cuenta.
+  const rep=document.getElementById('ramo-report');
+  if(rep){
+    // Sin evaluaciones no hay nada que enviar: el reporte ES la estructura.
+    if(r.categorias.length){
+      rep.style.display='flex';
+      rep.onclick=()=>openReportModal(r.id);
+    }else{rep.style.display='none';rep.onclick=null;}
+  }
+
   const cl=document.getElementById('cat-list');cl.innerHTML='';
   if(r.categorias.length===0){
     // Un ramo del catálogo sin pauta oficial NO es lo mismo que uno que el
@@ -1411,7 +1429,7 @@ function renderRamo(){
     const delCatalogo=!!(r.origen&&r.origen.tenant)&&!presetRamo(r.nombre,r.origen.tenant,r.origen.carrera);
     const titulo=delCatalogo?'Todavía no tenemos la pauta de este ramo':'Sin evaluaciones';
     const sub=delCatalogo
-      ? 'Disculpa: el ramo está en la malla pero su pauta oficial todavía no. Agrega tus evaluaciones con su porcentaje y el promedio funciona igual. Si tienes el programa del curso, repórtalo y lo sumamos al catálogo.'
+      ? 'Disculpa: el ramo está en la malla pero su pauta oficial todavía no. Agrega tus evaluaciones con su porcentaje y el promedio funciona igual — y después puedes reportárnosla para que la tengan los demás.'
       : 'Agrega tus pruebas, controles o tareas con su porcentaje del ramo. Puedes incluir la fecha para que aparezcan en la Agenda.';
     cl.innerHTML=`<div class="empty" style="padding:32px 20px;">
       <div class="empty-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
@@ -2119,7 +2137,11 @@ function confirmAddCat(){
   const fechaInput=document.getElementById('m-cat-fecha');
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;
   const r=S.ramos.find(x=>x.id===currentRamoId);
-  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,notas:[]});
+  // directNota: una evaluación es UNA nota que se escribe en su fila, igual que
+  // en las pautas oficiales. Sin esto quedaba como una lista a la que había que
+  // entrar para agregar notas adentro — una "Prueba 1" no tiene notas adentro,
+  // tiene una nota.
+  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,directNota:true,notas:[]});
   save();track('add_categoria',{peso,tiene_fecha:!!fecha});closeModal();renderRamo();
 }
 
@@ -2203,8 +2225,8 @@ function renderPautaManualModal(){
       <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Configurar pauta</div>
-    <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Agrega tus evaluaciones y su porcentaje. Puedes guardar aunque te falte parte de la pauta.</p>
+    <div class="modal-title">Agregar evaluaciones</div>
+    <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas.</p>
     ${plantillas}
     ${duplicar}
     <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:13px;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
@@ -2212,7 +2234,7 @@ function renderPautaManualModal(){
     <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Inter',sans-serif;cursor:pointer;">+ Otra evaluación</button>
     <div class="modal-btns" style="margin-top:14px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-confirm" onclick="guardarPautaManual()">Guardar pauta</button>
+      <button class="btn-confirm" onclick="guardarPautaManual()">Guardar</button>
     </div>`;
 }
 function actualizarPautaNombre(i,valor){if(pautaDraft[i])pautaDraft[i].nombre=valor;}
@@ -2246,10 +2268,10 @@ function guardarPautaManual(){
   filas.forEach(f=>{
     const existente=f.id&&r.categorias.find(c=>c.id===f.id);
     if(existente){existente.nombre=f.nombre.trim();existente.peso=f.peso;}
-    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,notas:[]});
+    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:true,notas:[]});
   });
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
-  showToast(estado.lista?'✓ Pauta lista para calcular':'Pauta guardada · puedes completarla después');
+  showToast(estado.lista?'✓ Listo, ya suma 100%':'Guardado · puedes completar el resto después');
 }
 function abrirPautaDesdeNota(){closeModal();setTimeout(openPautaManualModal,120);}
 
@@ -2957,11 +2979,7 @@ function openEditRamoModal(){
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="confirmEditRamo()">Guardar</button>
-    </div>
-    <button class="rep-link" onclick="openReportModal('${esc(r.id)}')">
-      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15V4h16l-3 4 3 4H4"/><path d="M4 21v-6"/></svg>
-      ¿Le cambiaron las ponderaciones? Repórtalo
-    </button>`;
+    </div>`;
   renderModalColors();openModal();
   setTimeout(()=>{const i=document.getElementById('m-ramo-name');i.focus();i.select();},100);
   document.getElementById('m-ramo-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditRamo();});
