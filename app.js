@@ -308,9 +308,16 @@ function idSeguro(v){return (typeof v==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(v
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Redondea a 2 decimales para evitar errores de punto flotante en comparaciones
 function r2(n){return Math.round(n*100)/100;}
-// Semáforo de 3 estados: verde ≥5.0 (sólido) · amarillo 4.0–5.0 (aprobando, pero justo) · rojo <4.0
+// Las etiquetas siguen siendo semánticas, pero el color de una nota no salta
+// entre tres bloques. La escala recorre rojo urgente (1.0), ámbar (4.0) y verde
+// excelente (7.0), para que cada décima tenga una señal visual propia.
 function colorClass(n){if(n===null||isNaN(n))return'neutral';const v=r2(n);return v>=5.0?'good':v>=4.0?'warn':'bad';}
-function getColor(n){const c=colorClass(n);return c==='good'?'var(--green)':c==='warn'?'var(--yellow)':c==='bad'?'var(--red)':'var(--fg3)';}
+function notaHue(n){
+  const v=Math.max(1,Math.min(7,Number(n)));
+  // 1.0→0° rojo, 4.0→44° ámbar, 7.0→142° verde brillante.
+  return v<=4?(v-1)*44/3:44+(v-4)*98/3;
+}
+function getColor(n){return n===null||isNaN(n)?'var(--fg3)':`hsl(${notaHue(n).toFixed(1)} 78% var(--grade-light))`;}
 function fmt(n){return n===null?'·':n.toFixed(1);}
 // Formato numérico con 1 decimal por defecto (usa punto, no coma)
 function nf(n,dec){return n.toFixed(dec==null?1:dec);}
@@ -336,6 +343,7 @@ function promedioMarkup(valor,tipo){
 function pintarPromedio(el,valor,tipo,efecto){
   el.innerHTML=promedioMarkup(valor,tipo);
   el.className=`${tipo==='ramo'?'ramo-num':'gpa-num'} ${colorClass(valor)}${efecto?' '+efecto:''}`;
+  el.style.setProperty('--grade-color',getColor(valor));
 }
 function cambioDeUmbral(antes,despues){return antes!==null&&despues!==null&&colorClass(antes)!==colorClass(despues);}
 function cambioDePromedio(antes,despues){return antes!==null&&despues!==null&&Math.abs(antes-despues)>.0001;}
@@ -1180,6 +1188,7 @@ function renderHome(){
     const decimal=rounded.slice(sep);
     gpael.innerHTML=`${entera}<span class="gpa-decimal">${decimal}</span>`;
     gpael.className='gpa-num '+colorClass(g);
+    gpael.style.setProperty('--grade-color',getColor(g));
     gpael.onclick=()=>{
       const exacto=nf(g,2);
       const umbrales=[4.0,5.0,6.0,7.0];
@@ -1289,8 +1298,7 @@ function renderHome(){
     if(cards.length===0){
       const lg=latestGrade();
       if(lg){
-        const cls=colorClass(lg.nota.valor);
-        const noteColor=cls==='good'?'#5ff5d8':cls==='warn'?'#ffcf5c':cls==='bad'?'#ff7a8f':'var(--fg3)';
+        const noteColor=getColor(lg.nota.valor);
         cards.push(`
           <div class="insight-card" style="--insight-color:${noteColor}" onclick="openRamo('${esc(lg.ramo.id)}')">
             <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
@@ -1330,7 +1338,7 @@ function renderHome(){
     div.innerHTML=`
       <div class="ramo-band" style="background:${esc(r.color)}"></div>
       <div class="ramo-info"><div class="ramo-name">${esc(r.nombre)}</div><div class="ramo-meta">${metaHtml}</div></div>
-      <div class="ramo-nota ${colorClass(avg)}">${fmt(avg)}</div><span class="chevron-r">›</span>`;
+      <div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div><span class="chevron-r">›</span>`;
     c.appendChild(div);
   });
 }
@@ -1360,6 +1368,7 @@ function renderRamo(){
     const s=nf(avg);const dot=s.indexOf('.');
     avgEl.innerHTML=`${s.slice(0,dot)}<span class="ramo-decimal">${s.slice(dot)}</span>`;
     avgEl.className='ramo-num '+colorClass(avg);
+    avgEl.style.setProperty('--grade-color',getColor(avg));
   } else {
     avgEl.textContent='Sin notas';avgEl.className='ramo-num empty';
   }
@@ -1486,7 +1495,7 @@ function renderRamo(){
               <div class="eval-row-name">${esc(cat.nombre)}</div>
               <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}</div>
             </div>
-            <div class="ramo-nota ${colorClass(av)}" style="min-width:auto;font-size:19px;">${fmt(av)}</div>
+            <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:19px;">${fmt(av)}</div>
             <span aria-hidden="true" style="color:var(--fg3);font-size:11px;margin-left:6px;">${isOpen?'▲':'▼'}</span>
           </div>
           <div class="eval-group-body${isOpen?' open':''}">${rows}</div>`;

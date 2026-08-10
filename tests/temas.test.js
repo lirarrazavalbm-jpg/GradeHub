@@ -101,6 +101,17 @@ const sem = TENANT_CODES.map(code => { reset(); dark.applyTheme(code); return [P
 chk('semáforo idéntico en todos los tenants', new Set(sem).size === 1);
 console.log('  ' + sem[0]);
 
+console.log('\n=== Escala de notas continua, sin saltos por umbral ===');
+const gradeHue = n => Number(vm.runInContext('notaHue(' + n + ')', dark).toFixed(1));
+const gradeHues = [1, 2, 3, 4, 5, 6, 7].map(gradeHue);
+chk('1.0 es rojo urgente', gradeHues[0] === 0);
+chk('4.0 cae en ámbar', gradeHues[3] === 44);
+chk('7.0 es verde brillante', gradeHues[6] === 142);
+chk('cada nota sube de color sin retroceder', gradeHues.every((h, i) => i === 0 || h > gradeHues[i - 1]));
+chk('las etiquetas siguen siendo semánticas', vm.runInContext('colorClass(3.9)+"|"+colorClass(4.0)+"|"+colorClass(5.0)', dark) === 'bad|warn|good');
+chk('el número usa un color calculado, no tres valores fijos', vm.runInContext('getColor(1.0)!==getColor(3.0)&&getColor(3.0)!==getColor(5.0)&&getColor(5.0)!==getColor(7.0)', dark));
+console.log('  ' + gradeHues.map((h, i) => (i + 1) + '.0=' + h + '°').join('  '));
+
 console.log('\n=== Colores de ramo: identificadores, no decoración ===');
 const pal = vm.runInContext('COLORS', dark);
 chk('al menos 8 colores', pal.length >= 8);
