@@ -177,6 +177,13 @@ else {fail++;console.log('  FAIL plantilla de solemnes → '+JSON.stringify(plan
 const plantillaPruebas=ctx.plantillaPauta('dos-pruebas');
 if(plantillaPruebas.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Examen'&&plantillaPruebas.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de pruebas no inventa ponderaciones');}
 else {fail++;console.log('  FAIL plantilla de pruebas → '+JSON.stringify(plantillaPruebas));}
+const principalUC=ctx.plantillaPrincipalPauta('uc');
+const plantillaUC=ctx.plantillaPauta(principalUC.tipo);
+if(principalUC.label==='3 pruebas + examen'&&principalUC.ejemplo==='Prueba'&&plantillaUC.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Prueba 3|Examen'){ok++;console.log('  OK   UC usa pruebas, no solemnes, en la pauta manual');}
+else {fail++;console.log('  FAIL plantilla UC → '+JSON.stringify({principalUC,plantillaUC}));}
+const principalFEN=ctx.plantillaPrincipalPauta('fen');
+if(principalFEN.label==='3 solemnes + examen'&&principalFEN.ejemplo==='Solemne'){ok++;console.log('  OK   FEN conserva el nombre oficial de sus solemnes');}
+else {fail++;console.log('  FAIL plantilla FEN → '+JSON.stringify(principalFEN));}
 const ramosParaCopiar=[
   {id:'origen',nombre:'Microeconomía',categorias:[{id:'a',nombre:'Prueba 1',peso:35,fecha:'2026-03-01',notas:[{valor:6}]},{id:'b',nombre:'Examen',peso:65,notas:[]}]},
   {id:'actual',nombre:'Macroeconomía',categorias:[]},
