@@ -184,6 +184,15 @@ else {fail++;console.log('  FAIL plantilla UC → '+JSON.stringify({principalUC,
 const principalFEN=ctx.plantillaPrincipalPauta('fen');
 if(principalFEN.label==='3 solemnes + examen'&&principalFEN.ejemplo==='Solemne'){ok++;console.log('  OK   FEN conserva el nombre oficial de sus solemnes');}
 else {fail++;console.log('  FAIL plantilla FEN → '+JSON.stringify(principalFEN));}
+const sugerenciasUC=ctx.sugerenciasEvaluacion('uc');
+if(sugerenciasUC.includes('Interrogación 1')&&sugerenciasUC.includes('Laboratorio')&&sugerenciasUC.includes('Examen')&&!sugerenciasUC.some(nombre=>nombre.startsWith('Solemne'))){ok++;console.log('  OK   UC sugiere interrogaciones y no solemnes');}
+else {fail++;console.log('  FAIL sugerencias UC → '+JSON.stringify(sugerenciasUC));}
+const sugerenciasFEN=ctx.sugerenciasEvaluacion('fen');
+if(sugerenciasFEN.includes('Solemne 1')&&sugerenciasFEN.includes('Control 1')&&sugerenciasFEN.includes('Examen')&&!sugerenciasFEN.some(nombre=>nombre.startsWith('Interrogación'))){ok++;console.log('  OK   FEN sugiere solemnes y controles propios');}
+else {fail++;console.log('  FAIL sugerencias FEN → '+JSON.stringify(sugerenciasFEN));}
+const opcionesUC=ctx.opcionesSugerenciasEvaluacion('uc');
+if(opcionesUC.includes('<option value="Interrogación 1"></option>')&&opcionesUC.includes('<option value="Laboratorio"></option>')){ok++;console.log('  OK   las sugerencias UC se entregan al input');}
+else {fail++;console.log('  FAIL opciones UC → '+opcionesUC);}
 const ramosParaCopiar=[
   {id:'origen',nombre:'Microeconomía',categorias:[{id:'a',nombre:'Prueba 1',peso:35,fecha:'2026-03-01',notas:[{valor:6}]},{id:'b',nombre:'Examen',peso:65,notas:[]}]},
   {id:'actual',nombre:'Macroeconomía',categorias:[]},
