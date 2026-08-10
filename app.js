@@ -3128,7 +3128,7 @@ function openSimGlobalModal(){
   simGlobalState={};
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Simular el semestre</div>
-    <p style="font-size:13px;color:var(--fg2);margin-bottom:16px;line-height:1.5;">Mueve la nota final de cada ramo y mira cómo queda tu promedio general. Nada de esto se guarda.</p>
+    <p style="font-size:13px;color:var(--fg2);margin-bottom:16px;line-height:1.5;">Ajusta la nota final de cada ramo y mira cómo queda tu promedio general. Puedes escribirla directo. Nada de esto se guarda.</p>
     <div class="simg-hero">
       <div class="simg-hero-label">Promedio proyectado</div>
       <div class="simg-hero-num" id="simg-avg">—</div>
@@ -3146,11 +3146,41 @@ function openSimGlobalModal(){
 
 function simGlobalReset(){simGlobalState={};renderSimGlobal();}
 
-function simGlobalSet(ramoId,raw){
-  const v=parseFloat(raw);
-  if(isNaN(v))delete simGlobalState[ramoId];
-  else simGlobalState[ramoId]=Math.round(v*10)/10;
+// El slider era imposible de apuntar: 60 pasos de 0,1 repartidos en el ancho de
+// un teléfono, y con el dedo encima tapando el número. Ahora son dos botones de
+// 0,1 y el número se escribe directo.
+const SIM_MIN=1.0, SIM_MAX=7.0;
+function simGlobalNormaliza(v){
+  if(isNaN(v))return null;
+  return Math.round(Math.min(SIM_MAX,Math.max(SIM_MIN,v))*10)/10;
+}
+// Punto de partida cuando el ramo no tiene nota todavía: el 4,0 es el número
+// desde el que el estudiante piensa, no el 1,0.
+function simGlobalBase(ramoId){
+  if(simGlobalState[ramoId]!==undefined)return simGlobalState[ramoId];
+  const r=S.ramos.find(x=>x.id===ramoId);
+  const real=r?ramoAvg(r):null;
+  return real!==null&&real!==undefined?real:4.0;
+}
+function simGlobalStep(ramoId,delta){
+  simGlobalState[ramoId]=simGlobalNormaliza(simGlobalBase(ramoId)+delta);
   renderSimGlobal();
+}
+function simGlobalSet(ramoId,raw){
+  // Acepta coma: en Chile la nota se escribe 5,5 y nadie va a cambiar el hábito
+  // porque el input espere un punto.
+  const v=simGlobalNormaliza(parseFloat(String(raw).replace(',','.')));
+  if(v===null)delete simGlobalState[ramoId];
+  else simGlobalState[ramoId]=v;
+  renderSimGlobal();
+}
+// Mientras escribe NO se vuelve a dibujar la lista: eso le arrancaría el foco
+// del campo en la primera tecla. Solo se actualiza el proyectado de arriba.
+function simGlobalTyping(ramoId,raw){
+  const v=simGlobalNormaliza(parseFloat(String(raw).replace(',','.')));
+  if(v===null)delete simGlobalState[ramoId];
+  else simGlobalState[ramoId]=v;
+  renderSimGlobalHero();
 }
 
 function simGlobalClear(ramoId){
@@ -3167,7 +3197,9 @@ function simGlobalAvg(){
   return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
 }
 
-function renderSimGlobal(){
+function renderSimGlobal(){renderSimGlobalHero();renderSimGlobalList();}
+
+function renderSimGlobalHero(){
   const real=gpa(S.ramos);
   const proj=simGlobalAvg();
   const hasSim=Object.keys(simGlobalState).length>0;
@@ -3192,6 +3224,9 @@ function renderSimGlobal(){
     }
   }
 
+}
+
+function renderSimGlobalList(){
   const list=document.getElementById('simg-list');
   if(!list)return;
   list.innerHTML=S.ramos.map(r=>{
@@ -3199,22 +3234,31 @@ function renderSimGlobal(){
     const hyp=simGlobalState[r.id];
     const shown=hyp!==undefined?hyp:realAvg;
     const isHyp=hyp!==undefined;
-    const sliderVal=shown!==null?shown:4.0;
     const prog=ramoProgress(r);
     const metaLeft=realAvg!==null
       ? `Actual ${nf(realAvg)} · ${prog.pct}% evaluado`
       : (r.categorias.length?'Sin notas aún':'Sin evaluaciones');
+    const id=esc(r.id);
+    const val=shown!==null?nf(shown):'';
+    const color=shown!==null?getColor(shown):'var(--fg3)';
+    const tope=shown!==null&&shown>=SIM_MAX, piso=shown!==null&&shown<=SIM_MIN;
     return `
       <div class="simg-row">
         <div class="simg-row-hd">
           <div class="simg-row-name"><span class="simg-dot" style="background:${esc(r.color)}"></span><span>${esc(r.nombre)}</span></div>
-          <div class="simg-row-val ${isHyp?'hyp':'real'}" style="color:${shown!==null?getColor(shown):'var(--fg3)'}">${shown!==null?nf(shown):'—'}</div>
         </div>
-        <input class="simg-slider" type="range" min="1" max="7" step="0.1" value="${sliderVal}"
-          oninput="simGlobalSet('${esc(r.id)}',this.value)" aria-label="Nota simulada de ${esc(r.nombre)}"/>
+        <div class="simg-stepper">
+          <button type="button" class="simg-step" ${piso?'disabled':''} onclick="simGlobalStep('${id}',-0.1)" aria-label="Bajar la nota de ${esc(r.nombre)}">−</button>
+          <input class="simg-val ${isHyp?'hyp':'real'}" style="color:${color}" value="${val}" placeholder="—"
+            inputmode="decimal" maxlength="4" aria-label="Nota simulada de ${esc(r.nombre)}"
+            oninput="simGlobalTyping('${id}',this.value)"
+            onchange="simGlobalSet('${id}',this.value)"
+            onfocus="this.select()"/>
+          <button type="button" class="simg-step" ${tope?'disabled':''} onclick="simGlobalStep('${id}',0.1)" aria-label="Subir la nota de ${esc(r.nombre)}">+</button>
+        </div>
         <div class="simg-row-meta">
           <span>${metaLeft}</span>
-          ${isHyp?`<button class="simg-reset" onclick="simGlobalClear('${esc(r.id)}')">Volver al real</button>`:'<span></span>'}
+          ${isHyp?`<button class="simg-reset" onclick="simGlobalClear('${id}')">Volver al real</button>`:'<span></span>'}
         </div>
       </div>`;
   }).join('');
