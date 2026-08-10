@@ -55,7 +55,7 @@ const FAMILIAS_COLOR=[
   // Lo específico va antes que lo general: 'Métodos Cuantitativos' tiene que
   // resolverse antes de que 'Métodos Matemáticos' se lo lleve.
   [/metodos cuantitativos|estadistica|probabil|investigacion operativa|juegos y estrategias|toma de decisiones|optimizacion/, '#a3e635'], // lima — cuantitativo
-  [/metodos matematicos|calculo|algebra/,        '#a3e635'], // lima — matemáticas
+  [/metodos matematicos|calculo|algebra|ecuaciones diferenciales/, '#a3e635'], // lima — matemáticas
   [/contabilidad|costos|contable|tributa|impuesto/, '#22c55e'], // verde — contable
   [/auditoria|control interno|riesgos/,          '#ea580c'], // naranjo — auditoría
   [/ingles|idioma/,                              '#ec4899'], // rosa — idiomas
@@ -67,7 +67,10 @@ const FAMILIAS_COLOR=[
   [/marketing|negocios|comercial/,               '#d946ef'], // fucsia — negocios
   [/programacion|machine learning|datos|sistemas|tecnologia|informatica|transformacion digital|ingenieria/, '#6366f1'], // índigo — tecnología
   [/derecho|legal|legisla|etica|filosof|pensamiento|historia/, '#ea580c'], // naranjo — humanidades y derecho
-  [/quimica|fisica|biolog/,                      '#06b6d4'], // cian — ciencias
+  // La física de Ingeniería UC no se llama "física": los ramos son Dinámica,
+  // Termodinámica y Electricidad y Magnetismo, y sus laboratorios heredan el
+  // matiz porque el nombre los contiene ("Laboratorio de Dinámica").
+  [/quimica|fisica|biolog|dinamica|electricidad|magnetismo|estatica|mecanica|ondas|optica/, '#06b6d4'], // cian — ciencias
   [/practica|taller|integracion|afe/,            '#d946ef'], // fucsia — práctica
 ];
 
@@ -217,8 +220,34 @@ const THEME_FALLBACK=THEMES.fen;
 
 // Carreras y mallas por universidad. Presets verificados solo en ING-PC (1er sem).
 const CARRERAS_UC={'ING-PC':'Ingeniería · Plan Común','COM':'Ingeniería Comercial','OTRA':'Otra carrera'};
+// Plan común de Ingeniería UC, currículum C2022. Los nombres y los créditos
+// salen del catálogo oficial vía la API de mallas.ing.uc.cl (la herramienta de
+// la propia Escuela), no de una imagen ni de memoria.
+//
+// QUÉ ENTRA Y QUÉ NO. Son los ramos que TODO estudiante de Ingeniería cursa,
+// sin importar su major. Se obtuvieron intersectando los planes generados para
+// seis majors distintos (Estructural, Computación, Construcción, Ambiental,
+// Transporte y Geotécnica): lo que aparece en los seis es plan común, lo que
+// difiere ya es del major.
+//
+// Del 4° semestre en adelante los majors divergen: EYP1113 y las tres Físicas
+// con su laboratorio son lo único que sigue siendo de todos. Por eso la malla
+// llega hasta ahí y no más — poner ramos de un major como si fueran de todos
+// sería exactamente el tipo de dato plausible e inventado que no va.
+//
+// Los optativos (de ciencias, de exploración de majors) y los minors tampoco
+// entran: son una elección, no un ramo. Mismo criterio que en FEN, donde los
+// electivos se agregan a mano.
+//
+// Los laboratorios van con nombre propio aunque valgan 0 créditos: llevan nota
+// y el estudiante los necesita en la app.
 const MALLA_UC={
-  'ING-PC':{1:['Cálculo I','Álgebra Lineal','Química para Ingeniería','Desafíos de la Ingeniería','Filosofía: ¿para qué?']},
+  'ING-PC':{
+    1:['Cálculo I','Álgebra Lineal','Química para Ingeniería','Desafíos de la Ingeniería','Filosofía: ¿Para Qué?'],
+    2:['Cálculo II','Dinámica','Laboratorio de Dinámica','Introducción a la Programación'],
+    3:['Cálculo III','Ecuaciones Diferenciales','Termodinámica','Laboratorio de Termodinámica','Introducción a la Economía','Práctica I'],
+    4:['Probabilidades y Estadística','Electricidad y Magnetismo','Laboratorio de Electricidad y Magnetismo'],
+  },
   // Malla oficial Ing. Comercial UC (economiayadministracion.uc.cl). Sin ponderaciones aún: el usuario define sus secciones.
   'COM':{1:['Cálculo I','Introducción a la Microeconomía','Contabilidad','Empresas y Legislación','Filosófico (FG)']},
 };
