@@ -31,6 +31,11 @@ function normalize(data) {
       ...c,
       id: c.id || uid(),
       ponderaNotas: c.ponderaNotas ?? false,
+      // Las evaluaciones creadas a mano antes de esto quedaron sin `directNota`
+      // y se dibujaban como una lista en la que había que entrar. Se convierten
+      // a fila simple SOLO si tienen 0 o 1 nota: con dos o más, la fila simple
+      // mostraría una y escondería el resto, así que esas se dejan como están.
+      directNota: c.directNota ?? (!c.slots && (c.notas || []).length <= 1),
       fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
       notas: (c.notas || []).map(n => ({
         id: n.id || uid(),
@@ -77,23 +82,21 @@ function tenantMark(code){
 // Con caja teñida — onboarding
 function tenantBadge(code,cls){
   if(!TENANTS[code])return '';
-  return `<span class="tenant-badge ${cls||''}" style="--tb:${esc(themeFor(code).primary)}" aria-hidden="true">`
+  return `<span class="tenant-badge ${cls||''}" style="--tb:${esc(GRADEHUB_THEME.primary)}" aria-hidden="true">`
     +tenantMark(code)+'</span>';
 }
 
 // Compacta — junto al wordmark de GradeHub en la topbar
 function tenantGlyphBare(code){
   if(!TENANTS[code])return '';
-  return `<span class="brand-tenant" style="--tb:${esc(themeFor(code).primary)}" aria-hidden="true">`
+  return `<span class="brand-tenant" style="--tb:${esc(GRADEHUB_THEME.primary)}" aria-hidden="true">`
     +tenantMark(code)+'</span>';
 }
 let selectedTenant='fen';
 
-// ─── TEMAS · APLICACIÓN ──────────────────────────────────────────────────────
-// La definición de cada tema (THEMES, THEME_BASE) está en data.js. Acá solo se
-// resuelve cuál rige y se escribe en :root.
-
-function themeFor(t){return THEMES[t]||THEME_FALLBACK;}
+// ─── IDENTIDAD VISUAL · APLICACIÓN ───────────────────────────────────────────
+// La universidad no altera la paleta. Su identidad vive en sus datos y en el
+// monograma; estos tokens son los mismos para toda persona que usa GradeHub.
 
 // Universidades que se ofrecen al elegir. Una oculta sigue apareciendo si el
 // estudiante ya la tiene seleccionada, para no dejarlo sin su opción actual.
@@ -101,9 +104,8 @@ function tenantsVisibles(actual){
   return Object.entries(TENANTS).filter(([code,cfg])=>!cfg.oculto||code===actual);
 }
 
-// Escribe el tema como CSS custom properties en :root. Todos los componentes leen
-// de esas variables, así que no hay condicionales de tenant repartidos por el código.
-let _activeTheme='fen';
+// Escribe la identidad como CSS custom properties en :root. Todos los
+// componentes leen estas variables, sin condicionales de universidad.
 // Modo de color: 'sistema' sigue al sistema operativo, 'claro' y 'oscuro' lo
 // fuerzan. El atributo data-modo en :root es lo que hace que el CSS forzado le
 // gane a la media query (ver el bloque de temas en styles.css).
@@ -124,18 +126,17 @@ function aplicarModo(){
 }
 function setModo(m){
   S.modo=(m==='claro'||m==='oscuro')?m:'sistema';
-  save();aplicarModo();applyTheme(S.tenant);track('set_modo',{modo:S.modo});
+  save();aplicarModo();applyTheme();track('set_modo',{modo:S.modo});
   const g=document.getElementById('s-modo-grid');if(g)renderModoGrid();
 }
-function applyTheme(t){
-  _activeTheme=THEMES[t]?t:'fen';
+function applyTheme(){
   aplicarModo();
-  const th={...THEME_BASE,...themeFor(t)};
+  const th={...THEME_BASE,...GRADEHUB_THEME};
   const r=document.documentElement.style;
   // Acentos: valen en ambos modos
   r.setProperty('--primary',th.primary);
   r.setProperty('--primary-fg',th.primaryFg);
-  r.setProperty('--primary-light',th.primaryLight);
+  r.setProperty('--primary-light',prefersDark()?th.darkPrimaryLight:th.primaryLight);
   r.setProperty('--accent',th.accent);
   r.setProperty('--secondary',th.secondary||th.accent);
   r.setProperty('--green',th.success);
@@ -154,7 +155,7 @@ function applyTheme(t){
 // Si el sistema cambia de claro a oscuro, recalcular las superficies del tema
 if(window.matchMedia){
   const mq=window.matchMedia('(prefers-color-scheme: dark)');
-  const onChange=()=>applyTheme(_activeTheme);
+  const onChange=()=>applyTheme();
   if(mq.addEventListener)mq.addEventListener('change',onChange);
   else if(mq.addListener)mq.addListener(onChange);
 }
@@ -214,7 +215,7 @@ function mallaFor(t){
   return MALLA;
 }
 function selectTenant(t){
-  selectedTenant=t;selectedCarrera=null;applyTheme(t);renderTenantPick();initCarreraGrid();checkOb();
+  selectedTenant=t;selectedCarrera=null;applyTheme();renderTenantPick();initCarreraGrid();checkOb();
   // En onboarding avanzamos solo: el usuario ve la selección y pasa al siguiente paso
   if(typeof obStep!=='undefined' && obStep===2 && document.getElementById('screen-onboard').classList.contains('active')){
     setTimeout(()=>{if(obStep===2)obNext();},260);
@@ -225,7 +226,7 @@ function renderTenantPick(){
   tenantsVisibles(selectedTenant).forEach(([code,cfg])=>{
     const b=document.createElement('button');
     b.className='tenant-opt'+(code===selectedTenant?' sel':'');
-    b.style.setProperty('--tb',themeFor(code).primary);
+    b.style.setProperty('--tb',GRADEHUB_THEME.primary);
     b.innerHTML=`${tenantBadge(code,'lg')}
       <span class="tenant-opt-info">
         <span class="tenant-opt-name">${esc(cfg.name)}</span>
@@ -780,7 +781,7 @@ async function boot(){
 // ─── INIT ────────────────────────────────────────────────────────────────────
 const {data:loaded} = loadData();
 if(loaded){S={...S,...loaded};}
-selectedTenant=S.tenant||'fen';applyTheme(selectedTenant);
+selectedTenant=S.tenant||'fen';applyTheme();
 // Estado del onboarding por pasos. Va acá y no junto a sus funciones porque
 // boot() lo usa al arrancar: con `let` más abajo caía en la zona muerta temporal
 // y la app crasheaba si Supabase no cargaba.
@@ -991,7 +992,7 @@ function mostrarRamosCargados(cantidad,oficiales){
   openModal();
 }
 function showMainApp(){
-  applyTheme(S.tenant);
+  applyTheme();
   document.getElementById('screen-onboard').classList.remove('active');
   document.getElementById('bottom-nav').style.display='flex';
   document.querySelector('.app').classList.add('tab-mode');
@@ -1402,6 +1403,19 @@ function renderRamo(){
     ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
 
+  // Reportar la pauta vivía escondido al fondo del modal de "Editar ramo",
+  // debajo de Guardar y Cancelar. Nadie entra a editar el nombre de un ramo para
+  // avisar que su pauta está mal. Va acá, al pie de las evaluaciones, que es
+  // donde el estudiante se da cuenta.
+  const rep=document.getElementById('ramo-report');
+  if(rep){
+    // Sin evaluaciones no hay nada que enviar: el reporte ES la estructura.
+    if(r.categorias.length){
+      rep.style.display='flex';
+      rep.onclick=()=>openReportModal(r.id);
+    }else{rep.style.display='none';rep.onclick=null;}
+  }
+
   const cl=document.getElementById('cat-list');cl.innerHTML='';
   if(r.categorias.length===0){
     // Un ramo del catálogo sin pauta oficial NO es lo mismo que uno que el
@@ -1411,7 +1425,7 @@ function renderRamo(){
     const delCatalogo=!!(r.origen&&r.origen.tenant)&&!presetRamo(r.nombre,r.origen.tenant,r.origen.carrera);
     const titulo=delCatalogo?'Todavía no tenemos la pauta de este ramo':'Sin evaluaciones';
     const sub=delCatalogo
-      ? 'Disculpa: el ramo está en la malla pero su pauta oficial todavía no. Agrega tus evaluaciones con su porcentaje y el promedio funciona igual. Si tienes el programa del curso, repórtalo y lo sumamos al catálogo.'
+      ? 'Disculpa: el ramo está en la malla pero su pauta oficial todavía no. Agrega tus evaluaciones con su porcentaje y el promedio funciona igual — y después puedes reportárnosla para que la tengan los demás.'
       : 'Agrega tus pruebas, controles o tareas con su porcentaje del ramo. Puedes incluir la fecha para que aparezcan en la Agenda.';
     cl.innerHTML=`<div class="empty" style="padding:32px 20px;">
       <div class="empty-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
@@ -2119,7 +2133,11 @@ function confirmAddCat(){
   const fechaInput=document.getElementById('m-cat-fecha');
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;
   const r=S.ramos.find(x=>x.id===currentRamoId);
-  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,notas:[]});
+  // directNota: una evaluación es UNA nota que se escribe en su fila, igual que
+  // en las pautas oficiales. Sin esto quedaba como una lista a la que había que
+  // entrar para agregar notas adentro — una "Prueba 1" no tiene notas adentro,
+  // tiene una nota.
+  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,directNota:true,notas:[]});
   save();track('add_categoria',{peso,tiene_fecha:!!fecha});closeModal();renderRamo();
 }
 
@@ -2213,8 +2231,8 @@ function renderPautaManualModal(){
       <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Configurar pauta</div>
-    <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Agrega tus evaluaciones y su porcentaje. Puedes guardar aunque te falte parte de la pauta.</p>
+    <div class="modal-title">Agregar evaluaciones</div>
+    <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas.</p>
     ${plantillas}
     ${duplicar}
     <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:13px;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
@@ -2222,7 +2240,7 @@ function renderPautaManualModal(){
     <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Inter',sans-serif;cursor:pointer;">+ Otra evaluación</button>
     <div class="modal-btns" style="margin-top:14px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-confirm" onclick="guardarPautaManual()">Guardar pauta</button>
+      <button class="btn-confirm" onclick="guardarPautaManual()">Guardar</button>
     </div>`;
 }
 function actualizarPautaNombre(i,valor){if(pautaDraft[i])pautaDraft[i].nombre=valor;}
@@ -2256,10 +2274,10 @@ function guardarPautaManual(){
   filas.forEach(f=>{
     const existente=f.id&&r.categorias.find(c=>c.id===f.id);
     if(existente){existente.nombre=f.nombre.trim();existente.peso=f.peso;}
-    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,notas:[]});
+    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:true,notas:[]});
   });
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
-  showToast(estado.lista?'✓ Pauta lista para calcular':'Pauta guardada · puedes completarla después');
+  showToast(estado.lista?'✓ Listo, ya suma 100%':'Guardado · puedes completar el resto después');
 }
 function abrirPautaDesdeNota(){closeModal();setTimeout(openPautaManualModal,120);}
 
@@ -2452,12 +2470,10 @@ function openSettings(){
     tenantsVisibles(settingsTenant).forEach(([code,cfg])=>{
       const b=document.createElement('button');
       b.className='s-tenant-btn'+(code===settingsTenant?' sel':'');
-      // Solo punto de color + sigla: el glifo acá sería redundante con el texto
-      b.innerHTML=`<span class="s-tenant-dot" style="background:${esc(themeFor(code).primary)}"></span><span class="s-tenant-name">${esc(cfg.short)}</span>`;
+      b.innerHTML=`<span class="s-tenant-name">${esc(cfg.short)}</span>`;
       b.title=cfg.name;
       b.onclick=()=>{
         settingsTenant=code;
-        applyTheme(code); // preview inmediato
         // La carrera elegida puede no existir en la universidad nueva
         if(!carrerasFor(code)[settingsCarrera])settingsCarrera=null;
         renderSettingsTenantGrid();renderSettingsCarreraGrid();
@@ -2484,16 +2500,12 @@ function openSettings(){
     const cambioUni=settingsTenant!==S.tenant;
     S.userName=name;S.careerSemestre=settingsSem;S.carrera=settingsCarrera;S.tenant=settingsTenant;
     selectedTenant=settingsTenant;
-    applyTheme(S.tenant);
+    applyTheme();
     save();syncProfile();track('settings_saved',{cambio_universidad:cambioUni});
-    _settingsThemeDirty=false;closeModal();renderHome();renderStats();renderAgenda();
+    closeModal();renderHome();renderStats();renderAgenda();
     showToast('Cambios guardados');
   };
-  // Si cierra sin guardar, el preview del tema se revierte (ver closeModal)
-  _settingsThemeDirty=true;
 }
-// Marca que hay un preview de tema activo en el modal de configuración
-let _settingsThemeDirty=false;
 
 // ─── HISTORIAL EDITABLE ──────────────────────────────────────────────────────
 // El promedio de un ramo archivado se puede corregir a mano (avgOverride) sin
@@ -2781,11 +2793,6 @@ function closeModal(){
   const sheet=document.querySelector('.modal-sheet');
   sheet.style.transform='';
   document.getElementById('modal').classList.remove('open');
-  // Si había un preview de universidad sin guardar, se vuelve al tema real
-  if(_settingsThemeDirty){
-    _settingsThemeDirty=false;
-    applyTheme(S.tenant);
-  }
 }
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 // Cerrar con tecla Escape (confirmación tiene prioridad sobre el modal)
@@ -2967,11 +2974,7 @@ function openEditRamoModal(){
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="confirmEditRamo()">Guardar</button>
-    </div>
-    <button class="rep-link" onclick="openReportModal('${esc(r.id)}')">
-      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15V4h16l-3 4 3 4H4"/><path d="M4 21v-6"/></svg>
-      ¿Le cambiaron las ponderaciones? Repórtalo
-    </button>`;
+    </div>`;
   renderModalColors();openModal();
   setTimeout(()=>{const i=document.getElementById('m-ramo-name');i.focus();i.select();},100);
   document.getElementById('m-ramo-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditRamo();});
