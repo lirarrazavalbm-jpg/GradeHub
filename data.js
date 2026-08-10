@@ -305,13 +305,31 @@ const PRESETS_FEN={
     // llega a más de un punto. Se eligió la forma consistente con el resto.
     evals:[['Solemne 1',20],['Solemne 2',20],['Solemne 3',20],['Examen Final',40,{min:3.0,cap:3.9}]],
   },
+  // Introducción a la Microeconomía · ENMIC155 · programa oficial actualizado
+  // julio 2026. Los tres controles van en filas propias porque el programa los
+  // enumera uno por uno, con fecha cada uno (21 de agosto, 16 de octubre y 6 de
+  // noviembre) y con reglas de reemplazo DISTINTAS: si faltas al 1 te ponen la
+  // Solemne, si faltas al 2 o al 3 te ponen el Examen. No son intercambiables.
+  // Las pruebas sorpresa sí se quedan agrupadas: el programa dice que son cinco
+  // pero no las identifica ni las fecha — son sorpresa, no hay agenda que poner.
   'Introducción a la Microeconomía':{
     creditos:6,
     noCalcula:[
-      'Examen Recuperativo: con promedio entre 3,6 y 3,9 puedes aprobar con 4,0',
-      'Inasistencias justificadas: el porcentaje pasa a otra evaluación',
+      'Si tu promedio final queda entre 3,6 y 3,9 tienes derecho al examen recuperativo: si lo apruebas, el ramo queda en 4,0; si no, repruebas con el promedio que traías',
+      'Si faltas al Control 1 con justificativo aprobado, esa nota se reemplaza por la de la Solemne',
+      'Si faltas a la Solemne, al Control 2 o al Control 3 con justificativo aprobado, esa nota se reemplaza por la del Examen',
+      'Si faltas al Examen tienes que dar el recuperativo',
+      'Si faltas a una prueba sorpresa con justificativo, ese 5% se suma al Examen',
+      'Copiar o plagiar reprueba el ramo de inmediato con 1,0',
     ],
-    evals:[['Solemne',30],['Examen',35],['Controles parciales',30,{slots:3}],['Pruebas sorpresa',5,{slots:5}]],
+    evals:[
+      ['Solemne',30],
+      ['Control 1',10],
+      ['Control 2',10],
+      ['Control 3',10],
+      ['Pruebas sorpresa',5,{slots:5}],
+      ['Examen',35],
+    ],
   },
   'Gestión de Personas':{
     creditos:6,
@@ -382,6 +400,112 @@ const PRESETS_FEN={
     // arriba en noCalcula para que el estudiante sepa de dónde sale su número.
     grupos:[
       {nombre:'Evaluaciones individuales',evals:['Solemne','Controles','Examen Final'],min:4.0,cap:'self'},
+    ],
+  },
+  // Introducción a la Economía · ENECO105 · programa oficial Otoño 2026, común a
+  // las nueve secciones. Es el mejor documentado de todos: da el peso de cada
+  // control por separado, y no son iguales entre sí (8, 8, 10, 10).
+  //
+  // Las evaluaciones extra (pruebas online + curso de Educación Financiera) NO
+  // están acá a propósito: no son parte del 100%, solo pueden subir la final y
+  // con una fórmula condicional que el motor no sabe representar. Va a noCalcula.
+  'Introducción a la Economía':{
+    creditos:6,
+    noCalcula:[
+      'Las evaluaciones extra (pruebas online semanales y el curso de Educación Financiera) solo suben la nota si apruebas las obligatorias con 4,0 o más, y solo si te va mejor en ellas: ahí la final pasa a ser 90% obligatorias más 10% extra',
+      'Si faltas a un control o a la Solemne con justificativo aprobado por la Escuela, ese porcentaje se acumula para el Examen',
+      'Solo puedes dar Examen Recuperativo si no pudiste rendir el Examen por causa justificada y aprobada por la Escuela de Pregrado',
+    ],
+    evals:[
+      ['Control 1',8],
+      ['Control 2',8],
+      ['Solemne',22],
+      ['Control 3',10],
+      ['Control 4',10],
+      ['Tarea Grupal',10],
+      ['Examen',32],
+    ],
+  },
+  // Métodos Matemáticos I · ENMEM1005 · programa oficial 2026, común a las nueve
+  // secciones. El programa da la fórmula explícita:
+  // C1*0,15 + C2*0,15 + C3*0,15 + S*0,25 + Exa*0,3.
+  'Métodos Matemáticos I':{
+    creditos:6,
+    noCalcula:[
+      'Cada evaluación que no rindas se califica con 1,0',
+      'Hay Examen de Segunda Fecha en dos casos: si la Secretaría de Estudios te justificó la inasistencia a un control, la solemne o el examen, o si sacaste bajo 3,0 en el examen pero tu promedio ponderado quedó en 3,95 o más',
+    ],
+    evals:[
+      ['Control 1',15],
+      ['Control 2',15],
+      ['Control 3',15],
+      ['Solemne',25],
+      ['Examen',30,{min:3.0,cap:3.9}],
+    ],
+  },
+  // Programación para Analítica de Datos · ENGIN105 · programa oficial.
+  // Los controles van sin `slots`: el programa dice que valen 30% pero nunca
+  // dice cuántos son, así que el estudiante agrega los que le tomen.
+  'Programación para Analítica de Datos':{
+    creditos:6,
+    noCalcula:[
+      'Si la Prueba Solemne II queda bajo 4,0, tu nota final pasa a ser la más baja entre tu promedio ponderado y la nota del Examen',
+      'El examen recuperativo puede reemplazar cada control o solemne que haya quedado bajo la nota que saques en él, salvo las notas puestas por medidas disciplinarias',
+      'Copiar en una tarea, solemne o examen deja la nota final del curso en 1,0',
+    ],
+    evals:[
+      ['Controles',30],
+      ['Prueba Solemne',30],
+      ['Examen',40],
+    ],
+  },
+  // Gestión y Empresas · programa 2026 de la sección 07 (profesora Andrea Triat).
+  // OJO: es el programa de UNA sección, no el común del ramo. Las otras secciones
+  // pueden ponderar distinto. Si aparece el programa común, este se reemplaza.
+  //
+  // Los controles de lectura van sin `slots`: el programa numera hasta el Control
+  // 7 pero el cronograma que tenemos salta las semanas 9 y 10, así que el total
+  // no está confirmado. `dropLowest` funciona igual con los que el estudiante
+  // agregue.
+  'Gestión y Empresas':{
+    noCalcula:[
+      'Para aprobar, el promedio de las evaluaciones individuales tiene que ser 4,0 o más. El programa no dice en cuánto queda tu nota final si no se cumple, así que la app no lo aplica',
+      'El aporte en clases suma décimas según tu participación',
+      'Toda ausencia a una exigencia del curso se califica con 1,0',
+      'Los controles parciales y el Plan de Negocios no son recuperables por ninguna causa',
+      'La Solemne y el Examen tienen fecha única. Avisando por escrito dentro de 24 horas por razones médicas, solo se puede recuperar una de las dos',
+    ],
+    evals:[
+      ['Solemne',25],
+      ['Controles de Lectura',20,{dropLowest:{count:1}}],
+      ['Proyecto Empresa',25,{min:3.0,cap:3.9}],
+      ['Examen Final',30,{min:3.0,cap:3.9}],
+    ],
+  },
+  // Inglés IV · sección IC 3506 · calendario oficial 2026. Los nombres quedan en
+  // inglés porque así aparecen en el calendario que recibe el estudiante.
+  //
+  // Quizzes (15%) y Labs (15%) vienen como bloque, pero cada uno tiene fecha
+  // propia en el calendario y el Quiz 1 es oral mientras el 2 es escrito, así que
+  // van en filas separadas. El reparto en partes iguales dentro de cada bloque
+  // es supuesto nuestro: el calendario no da el peso individual.
+  // El Entrepreneurship Project sí trae su reparto explícito, 40% Business Plan
+  // y 60% Business Pitch sobre su 15%, o sea 6 y 9 puntos.
+  'Inglés IV':{
+    noCalcula:[
+      'El Busuu es reprobatorio: hay que completar las 169 actividades del Complete English Intermediate B2, con un mínimo de 117, y su nota se arma con 70% actividades y 30% certificado',
+    ],
+    evals:[
+      ['Busuu',10],
+      ['Quiz 1',7.5],
+      ['Quiz 2',7.5],
+      ['Lab 1',5],
+      ['Lab 2',5],
+      ['Lab 3',5],
+      ['Business Plan',6],
+      ['Business Pitch',9],
+      ['Midterm',15],
+      ['Final Exam',30],
     ],
   },
 };
