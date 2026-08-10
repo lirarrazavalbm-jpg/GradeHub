@@ -2,7 +2,7 @@
 //
 // Catálogo (mallas, carreras, presets), temas y portales. Solo literales: acá no
 // hay DOM, no hay estado y no se llama a nada. Las funciones que leen estos datos
-// (themeFor, mallaFor, presetRamo…) viven en app.js.
+// (mallaFor, presetRamo…) viven en app.js.
 //
 // Se carga como <script> normal ANTES de app.js — los const quedan en el ámbito
 // léxico global compartido, así que app.js los ve sin imports.
@@ -155,20 +155,15 @@ const TENANT_GLYPHS={
   // uc:  '<path d="…"/>',
 };
 
-// ─── SISTEMA DE TEMAS ────────────────────────────────────────────────────────
-// Un tema = solo una familia de acento. Toda la base neutra (fondo, superficies,
-// cards, bordes, tipografía, espaciados, componentes) es COMPARTIDA: esa es la
-// identidad de GradeHub y no cambia nunca. Los temas no son la paleta oficial de
-// ninguna universidad — son una reinterpretación cromática para modo oscuro.
+// ─── IDENTIDAD VISUAL ÚNICA ──────────────────────────────────────────────────
+// GradeHub tiene una sola voz visual, independiente de la universidad. TENANTS
+// sigue decidiendo mallas, carreras, presets y portales; acá solo viven los
+// tokens que debe compartir toda la app. Agregar una universidad es puro dato,
+// no la creación de otra paleta.
 //
-// Agregar una universidad = agregar una entrada acá. Nada más.
-//
-// Tokens:
-//   primary       acento principal (botones, links, activos, foco, progreso)
-//   primaryFg     texto sobre el acento (contraste AA)
-//   primaryLight  tinte muy suave del acento (fondos de chips/íconos)
-//   accent        segundo tono para gradientes del acento
-//   success/warning/danger  — ver nota abajo
+// Verde mineral: cercano a una libreta y a una herramienta de estudio, pero
+// separado del verde brillante del semáforo y de los colores identificadores de
+// ramo. El acento secundario es casi neutro para que no compita con ellos.
 const THEME_BASE={
   // Semáforo de notas. Se deja IGUAL en todos los temas a propósito: verde/ámbar/
   // rojo son semánticos (aprobado / al borde / reprobado), no decorativos. Teñirlos
@@ -176,47 +171,12 @@ const THEME_BASE={
   success:'#2ee6c8', warning:'#ffc94d', danger:'#ff5f7a',
 };
 
-// Cada tema define, además del acento:
-//   secondary  → color con rol funcional propio (pesos, %, chips analíticos)
-//   dark{}     → matiz de las superficies. SOLO se aplica en modo oscuro; en claro
-//                se deja la base para no romper el contraste.
-// Las superficies son lo que hace que un tema se sienta distinto y no solo
-// "el mismo tema pintado de otro color".
-const THEMES={
-  // FEN — business school. Azul dominante, dorado como color analítico constante.
-  // Superficies frías neutras, tipo terminal financiero.
-  fen:{
-    primary:'#3b82f6', primaryFg:'#04101f', primaryLight:'#0e1e33',
-    accent:'#f5c451', secondary:'#f5c451',
-    dark:{bg:'#05070a',bg2:'#0a0d13',card:'#111620',border:'#1d2534',border2:'#2c3648',muted:'#161d29'},
-  },
-  // UC — académico. Azul limpio, desaturado; superficies con matiz frío marcado.
-  uc:{
-    primary:'#3f7fd4', primaryFg:'#040d1c', primaryLight:'#0d1c30',
-    accent:'#8fc7f5', secondary:'#8fc7f5',
-    dark:{bg:'#04060c',bg2:'#090d16',card:'#101725',border:'#1c273c',border2:'#2b3a57',muted:'#151e30'},
-  },
-  // UAI — premium/minimal. Casi monocromo: grises puros, bordes casi invisibles,
-  // las cards se despegan por elevación y no por color.
-  uai:{
-    primary:'#5aa3b0', primaryFg:'#03110f', primaryLight:'#0d1e21',
-    accent:'#9fc4cb', secondary:'#8a9aa5',
-    dark:{bg:'#050506',bg2:'#0a0a0c',card:'#131316',border:'#1b1b1f',border2:'#292930',muted:'#161619'},
-  },
-  // UANDES — lujo silencioso. Burdeo como acento, grises con matiz cálido.
-  // El burdeo profundo puro (~#7A1E32) da 1.98:1 sobre este fondo: invisible.
-  // Se sube la luminosidad conservando el matiz vinoso.
-  uandes:{
-    // Único tema con texto blanco sobre el acento: el burdeo es un tono oscuro,
-    // el texto oscuro encima solo llega a 4.11:1. En blanco da 4.76:1.
-    primary:'#c04a63', primaryFg:'#ffffff', primaryLight:'#261015',
-    accent:'#e08ea0', secondary:'#b9959c',
-    dark:{bg:'#070506',bg2:'#0d0a0b',card:'#161113',border:'#241c1f',border2:'#35292d',muted:'#1a1416'},
-  },
+const GRADEHUB_THEME={
+  primary:'#3f7a30', primaryFg:'#ffffff', primaryLight:'#e9f2e5',
+  darkPrimaryLight:'#172313', accent:'#aab4a5', secondary:'#3f7a30',
+  dark:{bg:'#090b08',bg2:'#10130e',card:'#171b15',border:'#272d23',border2:'#3b4435',muted:'#1d221a'},
 };
 const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
-// Tema por defecto si el tenant no tiene uno definido
-const THEME_FALLBACK=THEMES.fen;
 
 // Carreras y mallas por universidad. Presets verificados solo en ING-PC (1er sem).
 const CARRERAS_UC={'ING-PC':'Ingeniería · Plan Común','COM':'Ingeniería Comercial','OTRA':'Otra carrera'};
