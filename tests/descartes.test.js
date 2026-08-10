@@ -98,12 +98,16 @@ console.log('\n=== Contabilidad: del programa oficial al número ===');
 const conta = vm.runInContext('PRESETS_FEN', ctx)['Contabilidad'];
 const sorpresa = conta.evals.find(e => e[0] === 'Controles Sorpresa');
 chk('el preset declara la regla', !!(sorpresa[2] && sorpresa[2].dropLowest));
-chk('ya no está declarada como no calculada',
-  !conta.noCalcula.some(r => /elimina el 25%/.test(r)));
+const reglasConta = [...(conta.noCalcula || []), ...(conta.reglasDelCurso || [])];
+chk('ya no se declara al estudiante: el motor la calcula',
+  !reglasConta.some(r => /elimina el 25%/.test(r)));
 // La otra regla SÍ se queda: el programa dice "entre 4 y 6 controles", así que
 // no existe denominador contra el cual medir el 75% de asistencia.
-chk('el 75% de asistencia sigue declarado como no calculado',
-  conta.noCalcula.some(r => /75%/.test(r)));
+// Va en `reglasDelCurso`, no en `noCalcula`: sin el número de controles no
+// existe el denominador, así que decir "todavía no la calculamos" sería
+// prometerle al estudiante algo que no va a pasar nunca.
+chk('el 75% de asistencia se declara como regla del curso, no como deuda',
+  (conta.reglasDelCurso || []).some(r => /75%/.test(r)) && !(conta.noCalcula || []).some(r => /75%/.test(r)));
 
 const ramo = vm.runInContext('presetRamo', ctx)('Contabilidad', 'fen', null);
 const cs = ramo.categorias.find(c => c.nombre === 'Controles Sorpresa');

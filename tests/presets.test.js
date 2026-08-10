@@ -43,6 +43,15 @@ console.log('\n=== Reglas que el motor no calcula ===');
 // real puede diferir del que ve en la app.
 let conAviso = 0;
 Object.entries(FEN).forEach(([nombre, def]) => {
+  if (Array.isArray(def.reglasDelCurso)) {
+    chk(nombre + ' · reglasDelCurso es una lista de textos',
+      def.reglasDelCurso.every(r => typeof r === 'string' && r.length > 10));
+    // Una regla no puede estar en las dos listas: o es deuda nuestra o es del
+    // curso. Si está en ambas, el estudiante ve el mismo texto dos veces con dos
+    // promesas distintas.
+    chk(nombre + ' · ninguna regla está en las dos listas',
+      !(def.noCalcula || []).some(r => def.reglasDelCurso.includes(r)));
+  }
   if (!def.noCalcula) return;
   conAviso++;
   chk(nombre + ' · noCalcula es una lista de textos',

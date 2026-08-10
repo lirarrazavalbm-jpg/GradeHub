@@ -1392,9 +1392,14 @@ function renderRamo(){
   // "malo": simplemente no incorpora esas excepciones oficiales.
   const ncw=document.getElementById('no-calcula-warning');
   const noCalcula=reglasNoCalculadas(r);
-  if(noCalcula.length){
+  const delCurso=reglasDelCurso(r);
+  if(noCalcula.length||delCurso.length){
     ncw.style.display='flex';ncw.className='weight-setup-nudge';
-    ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>Tu programa tiene reglas que todavía no calculamos.</b><br>El promedio que ves no considera:<ul style="margin:6px 0 0;padding-left:17px;">${noCalcula.map(regla=>`<li>${esc(regla)}</li>`).join('')}</ul><span style="display:block;margin-top:6px;">Úsalo como referencia y compáralo con la pauta del curso.</span></div>`;
+    const items=lista=>`<ul style="margin:6px 0 0;padding-left:17px;">${lista.map(regla=>`<li>${esc(regla)}</li>`).join('')}</ul>`;
+    const bloques=[];
+    if(delCurso.length)bloques.push(`<b>Reglas de tu curso que el promedio no incluye.</b><br>Están en el programa, pero dependen de información que la app no puede tener:${items(delCurso)}`);
+    if(noCalcula.length)bloques.push(`<b>Reglas que todavía no calculamos.</b><br>Las vamos a incorporar. Por ahora el promedio no considera:${items(noCalcula)}`);
+    ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
 
   const cl=document.getElementById('cat-list');cl.innerHTML='';
@@ -1956,12 +1961,20 @@ function findPresetName(nombre,tenant,carrera){
 }
 // Reglas oficiales informativas que todavía no podemos representar en el
 // cálculo. Se recuperan por el origen del ramo para no inventarlas en manuales.
-function reglasNoCalculadas(ramo){
+function reglasDelPreset(ramo,campo){
   const origen=ramo&&ramo.origen;
   if(!ramo||!origen||origen.tenant!=='fen')return [];
   const nombre=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(ramo.nombre));
-  return nombre&&Array.isArray(PRESETS_FEN[nombre].noCalcula)?PRESETS_FEN[nombre].noCalcula:[];
+  const lista=nombre&&PRESETS_FEN[nombre][campo];
+  return Array.isArray(lista)?lista:[];
 }
+// Reglas que el motor todavía no sabe calcular: deuda nuestra, se van a ir.
+function reglasNoCalculadas(ramo){return reglasDelPreset(ramo,'noCalcula');}
+// Reglas del curso que el promedio NUNCA va a incluir. Decirle al estudiante
+// "todavía no las calculamos" sería prometerle algo que no va a pasar: dependen
+// de un dato que el programa no da, de algo que decide el profesor caso a caso,
+// o son una aproximación deliberada del motor. No son una falta de la app.
+function reglasDelCurso(ramo){return reglasDelPreset(ramo,'reglasDelCurso');}
 function estadoPauta(categorias){
   const total=(categorias||[]).reduce((s,c)=>s+(Number(c.peso)||0),0);
   const diferencia=Math.round((100-total)*10)/10;

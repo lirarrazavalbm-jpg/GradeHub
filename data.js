@@ -284,11 +284,26 @@ const PRESETS_UC={
 // Primavera 2026. `grupo` define una compuerta sobre un CONJUNTO de
 // evaluaciones: con cap 'self' el tope es el promedio del propio grupo.
 //
-// `noCalcula` lista reglas que SÍ están en el programa oficial y que el motor
-// NO sabe representar: eximiciones, exámenes recuperativos, "se elimina la peor
-// nota", mínimos de asistencia. No es documentación interna — se le muestra al
-// estudiante, porque su promedio real puede diferir del que ve acá y tiene
-// derecho a saber por qué. Callarlo es peor que no tener el preset.
+// Dos listas para dos cosas distintas, y la diferencia le importa al estudiante:
+//
+// `noCalcula` — reglas que el motor TODAVÍA no sabe representar y que sí va a
+// saber. Es una deuda nuestra con fecha de vencimiento. Cuando se implementan,
+// salen de acá (así salió "se elimina el 25% de los controles", que hoy calcula
+// `dropLowest`).
+//
+// `reglasDelCurso` — reglas del programa que el promedio NUNCA va a incluir,
+// porque dependen de información que la app no puede tener: un dato que el
+// programa no da (¿cuántos controles sorpresa son?), algo que decide el profesor
+// caso a caso (una recuperativa autorizada), o una aproximación deliberada del
+// motor. No son una deuda: son cómo funciona el curso.
+//
+// Ninguna de las dos es documentación interna: las dos se le muestran al
+// estudiante, porque su promedio real puede diferir del que ve y tiene derecho a
+// saber por qué. Callarlo es peor que no tener el preset.
+//
+// Al transcribir un programa, la pregunta para decidir dónde va una regla es:
+// ¿con la información que el estudiante puede darnos, esto se podría calcular
+// algún día? Si sí, `noCalcula`. Si no, `reglasDelCurso`.
 const PRESETS_FEN={
   'Métodos Matemáticos II':{
     creditos:6,
@@ -318,8 +333,12 @@ const PRESETS_FEN={
       'Si tu promedio final queda entre 3,6 y 3,9 tienes derecho al examen recuperativo: si lo apruebas, el ramo queda en 4,0; si no, repruebas con el promedio que traías',
       'Si faltas al Control 1 con justificativo aprobado, esa nota se reemplaza por la de la Solemne',
       'Si faltas a la Solemne, al Control 2 o al Control 3 con justificativo aprobado, esa nota se reemplaza por la del Examen',
-      'Si faltas al Examen tienes que dar el recuperativo',
       'Si faltas a una prueba sorpresa con justificativo, ese 5% se suma al Examen',
+    ],
+    // Las dos que nunca van a ser cálculo: la primera es procedimiento del curso
+    // —te dice qué hacer, no cómo sale tu número— y la segunda es disciplinaria.
+    reglasDelCurso:[
+      'Si faltas al Examen tienes que dar el recuperativo',
       'Copiar o plagiar reprueba el ramo de inmediato con 1,0',
     ],
     evals:[
@@ -333,10 +352,10 @@ const PRESETS_FEN={
   },
   'Gestión de Personas':{
     creditos:6,
-    noCalcula:[
-      'Eximición del examen con promedio ≥ 5,5 en Casos: la nota del examen pasa a ser el promedio individual',
-      'La nota del trabajo grupal se ajusta ±10 décimas según la evaluación entre compañeros',
-    ],
+    noCalcula:['Eximición del examen con promedio ≥ 5,5 en Casos: la nota del examen pasa a ser el promedio individual'],
+    // El ajuste sale de cómo te evalúan tus compañeros: es un dato que solo
+    // existe cuando el curso lo entrega. La app no puede anticiparlo.
+    reglasDelCurso:['La nota del trabajo grupal se ajusta ±10 décimas según la evaluación entre compañeros'],
     evals:[['Casos y ensayos',40,{slots:5}],['Trabajo en grupo',30],['Participación',20],['Examen Integrativo',10]],
     // "Si alguno de los requisitos no se cumple, la nota final será la más baja
     //  entre los dos" → dos compuertas de grupo con tope en su propio promedio.
@@ -351,9 +370,8 @@ const PRESETS_FEN={
     // el motor ya lo aplica vía `dropLowest`. El 75% de asistencia NO se puede
     // calcular y se queda: el programa dice "entre 4 y 6 controles", así que no
     // existe el denominador contra el cual medir el 75%.
-    noCalcula:[
-      'Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9',
-    ],
+    // Sin noCalcula: no queda ninguna regla pendiente de implementar.
+    reglasDelCurso:['Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9'],
     evals:[
       ['Controles de Lectura',10,{slots:3,min:1.5,cap:3.9}],
       ['Controles Ejercicios',40,{slots:4,min:1.5,cap:3.9}],
@@ -377,7 +395,12 @@ const PRESETS_FEN={
   //     inventarlo. Sin slots el estudiante ingresa las notas que le pongan.
   'Marketing':{
     creditos:6,
-    noCalcula:[
+    // Las tres son permanentes, cada una por su motivo. La primera el motor sí la
+    // modela, con `group_min` y cap 'self': el veredicto aprobado/reprobado
+    // coincide siempre (barrido de las 6561 combinaciones), y el número solo
+    // difiere cuando ya estás reprobado por los dos caminos. Es una aproximación
+    // deliberada y por eso se declara, no una deuda.
+    reglasDelCurso:[
       'Si tu promedio en las evaluaciones individuales (Solemne, Controles y Examen) queda bajo 4,0, las notas grupales no se consideran y tu nota final pasa a ser ese promedio individual',
       'La nota del trabajo grupal se ajusta con un modificador por evaluación de pares, normalmente entre -0,9 y +0,9, aunque el rango cambia cada semestre',
       'Las evaluaciones no se repiten. Con prueba recuperativa autorizada se recupera solo una, Solemne o Examen, y nunca los controles',
@@ -414,6 +437,9 @@ const PRESETS_FEN={
     noCalcula:[
       'Las evaluaciones extra (pruebas online semanales y el curso de Educación Financiera) solo suben la nota si apruebas las obligatorias con 4,0 o más, y solo si te va mejor en ellas: ahí la final pasa a ser 90% obligatorias más 10% extra',
       'Si faltas a un control o a la Solemne con justificativo aprobado por la Escuela, ese porcentaje se acumula para el Examen',
+    ],
+    // Quién puede dar el recuperativo lo decide la Escuela, no un cálculo.
+    reglasDelCurso:[
       'Solo puedes dar Examen Recuperativo si no pudiste rendir el Examen por causa justificada y aprobada por la Escuela de Pregrado',
     ],
     evals:[
@@ -451,6 +477,9 @@ const PRESETS_FEN={
     noCalcula:[
       'Si la Prueba Solemne II queda bajo 4,0, tu nota final pasa a ser la más baja entre tu promedio ponderado y la nota del Examen',
       'El examen recuperativo puede reemplazar cada control o solemne que haya quedado bajo la nota que saques en él, salvo las notas puestas por medidas disciplinarias',
+    ],
+    // Sanción disciplinaria: no sale de las notas.
+    reglasDelCurso:[
       'Copiar en una tarea, solemne o examen deja la nota final del curso en 1,0',
     ],
     evals:[
@@ -469,11 +498,15 @@ const PRESETS_FEN={
   // agregue.
   'Gestión y Empresas':{
     noCalcula:[
-      'Para aprobar, el promedio de las evaluaciones individuales tiene que ser 4,0 o más. El programa no dice en cuánto queda tu nota final si no se cumple, así que la app no lo aplica',
-      'El aporte en clases suma décimas según tu participación',
       'Toda ausencia a una exigencia del curso se califica con 1,0',
-      'Los controles parciales y el Plan de Negocios no son recuperables por ninguna causa',
+    ],
+    // El propio programa no da el número, y ese es justamente el motivo por el
+    // que esta no se puede calcular nunca — no es que falte implementarla.
+    reglasDelCurso:[
       'La Solemne y el Examen tienen fecha única. Avisando por escrito dentro de 24 horas por razones médicas, solo se puede recuperar una de las dos',
+      'Los controles parciales y el Plan de Negocios no son recuperables por ninguna causa',
+      'El aporte en clases suma décimas según tu participación',
+      'Para aprobar, el promedio de las evaluaciones individuales tiene que ser 4,0 o más. El programa no dice en cuánto queda tu nota final si no se cumple, así que la app no lo aplica',
     ],
     evals:[
       ['Solemne',25],
