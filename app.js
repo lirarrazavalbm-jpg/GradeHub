@@ -1705,41 +1705,33 @@ function confirmAddMalla(){
   showToast(`✓ ${elegidos.length} ramo${elegidos.length!==1?'s':''} agregado${elegidos.length!==1?'s':''}`);
 }
 
+// Un solo campo: lo que el estudiante escribe es a la vez la búsqueda en su
+// malla y el nombre del ramo si no está ahí. Créditos y color se editan
+// después en la ficha del ramo — pedirlos acá era pedir una decisión en el
+// peor momento, cuando todavía no tiene el ramo.
 function openAddRamoModal(){
-  _colorElegidoAMano=false;
-  modalColor=nextRamoColor();
   const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0;
   const uni=(TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Agregar ramo</div>
-    ${hayCatalogo?`
-      <label class="modal-label">Buscar en tu malla${uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· ${esc(uni)}</span>`:''}</label>
-      <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="Escribe para buscar…" maxlength="40" autocomplete="off" autocapitalize="none"/></div>
-      <div id="m-ramo-results" class="cat-results"></div>
-      <div class="oauth-divider" style="margin:14px 0;"><span>o créalo tú</span></div>`:''}
-    <label class="modal-label">Nombre del ramo</label>
-    <div class="modal-input"><input type="text" id="m-ramo-name" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off" oninput="sugerirColorPorNombre(this.value)"/></div>
-    <label class="modal-label">Créditos <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(SCT — opcional)</span></label>
-    <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-creditos" placeholder="Ej: 10" maxlength="3" autocomplete="off"/></div>
-    <label class="modal-label">Color</label>
-    <div class="color-row" id="m-colors"></div>
+    <label class="modal-label">Nombre del ramo${hayCatalogo&&uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· lo buscamos en la malla ${esc(uni)}</span>`:''}</label>
+    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off" autocapitalize="none"/></div>
+    ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()" disabled>Agregar ramo</button>
     </div>`;
-  renderModalColors();openModal();
+  openModal();
 
-  const nameInput=document.getElementById('m-ramo-name');
-  const searchInput=document.getElementById('m-ramo-search');
-  setTimeout(()=>{(searchInput||nameInput).focus();},100);
-  nameInput.addEventListener('input',()=>{document.getElementById('m-add-ramo-btn').disabled=!nameInput.value.trim();});
-  nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddRamo();});
-
-  if(searchInput){
-    const pintar=()=>renderCatalogResults(searchInput.value);
-    searchInput.addEventListener('input',pintar);
-    pintar();
-  }
+  const input=document.getElementById('m-ramo-search');
+  setTimeout(()=>{input.focus();},100);
+  const pintar=()=>{
+    document.getElementById('m-add-ramo-btn').disabled=!input.value.trim();
+    if(hayCatalogo)renderCatalogResults(input.value);
+  };
+  input.addEventListener('input',pintar);
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddRamo();});
+  pintar();
 }
 
 // Resultados de búsqueda del catálogo. Solo ramos de la universidad y carrera
@@ -1749,7 +1741,7 @@ function renderCatalogResults(q){
   const yaTengo=new Set(S.ramos.map(r=>normName(r.nombre)));
   const res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre).slice(0,6);
   if(res.length===0){
-    box.innerHTML=`<div class="cat-empty">${q&&q.trim()?'No está en tu malla. Créalo abajo.':'Sin ramos en el catálogo.'}</div>`;
+    box.innerHTML=`<div class="cat-empty">${q&&q.trim()?'No está en tu malla — lo agregamos como ramo tuyo.':'Sin ramos en el catálogo.'}</div>`;
     return;
   }
   box.innerHTML=res.map(r=>{
@@ -1778,20 +1770,12 @@ function addFromCatalog(nombre){
   closeModal();renderHome();
   showToast(preset?'Agregado con sus ponderaciones':'Ramo agregado');
 }
-let _colorElegidoAMano=false;
 function renderModalColors(){
   const c=document.getElementById('m-colors');if(!c)return;c.innerHTML='';
   chartColors().forEach(col=>{
     const d=document.createElement('div');d.className='color-dot'+(col===modalColor?' sel':'');d.style.background=col;
-    d.onclick=()=>{modalColor=col;_colorElegidoAMano=true;renderModalColors();};c.appendChild(d);
+    d.onclick=()=>{modalColor=col;renderModalColors();};c.appendChild(d);
   });
-}
-// Mientras el estudiante escribe el nombre, el color sigue a la familia del
-// ramo. Deja de seguirlo en cuanto elige uno a mano: su decisión gana.
-function sugerirColorPorNombre(nombre){
-  if(_colorElegidoAMano)return;
-  const sug=nextRamoColor(nombre);
-  if(sug!==modalColor){modalColor=sug;renderModalColors();}
 }
 // Matching tolerante: ignora tildes y mayúsculas para encontrar el preset.
 function normName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
@@ -2129,14 +2113,14 @@ function parseCreditos(raw){
   return (!isNaN(n)&&n>0&&n<=60)?n:null;
 }
 function confirmAddRamo(){
-  const name=document.getElementById('m-ramo-name').value.trim();if(!name)return;
-  const cr=parseCreditos((document.getElementById('m-ramo-creditos')||{}).value);
+  const name=document.getElementById('m-ramo-search').value.trim();if(!name)return;
   // Si el nombre coincide con un ramo del catálogo del tenant, carga sus ponderaciones oficiales.
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-  S.ramos.push({id:uid(),nombre:presetName||name,color:modalColor,creditos:cr||(preset&&preset.creditos)||null,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+  const cr=(preset&&preset.creditos)||null;
+  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
-  if(preset)showToast('Ponderaciones oficiales cargadas');
+  showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
 }
 
 function openAddCatModal(prefillDate){
