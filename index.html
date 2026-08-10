@@ -177,7 +177,6 @@
       <span class="brand-word" style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--fg);">GradeHub</span>
       <span class="brand-glyph-slot" id="brand-glyph" title=""></span>
     </span>
-    <button class="icon-btn" onclick="openAddRamoModal()" aria-label="Agregar ramo" title="Agregar ramo" style="background:var(--primary);color:var(--primary-fg,#fff);border:none;"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
     <button class="avatar-btn" id="user-avatar" onclick="toggleUserMenu(event)" aria-label="Menú de usuario" aria-haspopup="menu" aria-expanded="false">?</button>
   </div>
   <div class="scroll">
@@ -201,6 +200,7 @@
     <div id="home-insights" style="margin:6px 20px 4px;display:none;"></div>
     <div class="section-hd" id="ramos-hd" style="display:none;">
       <span class="section-hd-title">Mis ramos</span>
+      <button class="section-hd-action" onclick="openAddRamoModal()" aria-label="Agregar ramo">+ Agregar</button>
       <button class="section-hd-action" id="sort-btn" onclick="cycleSortMode()" aria-label="Ordenar ramos">Manual ↕</button>
     </div>
     <div id="home-ramos"></div>
