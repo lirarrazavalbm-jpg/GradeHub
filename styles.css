@@ -940,3 +940,20 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .gpa-num.grade-threshold-crossed,.grade-gpa-echo{animation:none;}
   .ramo-num.grade-value-changing,.gpa-num.grade-value-changing{will-change:auto;}
 }
+
+/* ═══ PANTALLAS ANCHAS ═══════════════════════════════════════════════════
+   En un monitor de 1920 la app quedaba en 940px con el rail de 224 a la
+   izquierda: 378px muertos a cada lado del contenido. Se veía como una app
+   de teléfono pegada al medio de la pantalla.
+
+   Ensancha, pero NO a pantalla completa. Esto es texto y números en filas:
+   una tarjeta de 1900px de ancho deja el nombre del ramo pegado a un borde y
+   la nota al otro, y el ojo pierde el renglón. 1180px es lo más ancho que
+   aguanta sin que eso pase, y el espacio que sobra se aprovecha poniendo los
+   ramos en tres columnas en vez de dos.
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media(min-width:1440px){
+  .app{max-width:1180px;}
+  #home-ramos{grid-template-columns:1fr 1fr 1fr;}
+}
