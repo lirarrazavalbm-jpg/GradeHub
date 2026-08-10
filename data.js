@@ -2,7 +2,7 @@
 //
 // Catálogo (mallas, carreras, presets), temas y portales. Solo literales: acá no
 // hay DOM, no hay estado y no se llama a nada. Las funciones que leen estos datos
-// (themeFor, mallaFor, presetRamo…) viven en app.js.
+// (mallaFor, presetRamo…) viven en app.js.
 //
 // Se carga como <script> normal ANTES de app.js — los const quedan en el ámbito
 // léxico global compartido, así que app.js los ve sin imports.
@@ -55,7 +55,7 @@ const FAMILIAS_COLOR=[
   // Lo específico va antes que lo general: 'Métodos Cuantitativos' tiene que
   // resolverse antes de que 'Métodos Matemáticos' se lo lleve.
   [/metodos cuantitativos|estadistica|probabil|investigacion operativa|juegos y estrategias|toma de decisiones|optimizacion/, '#a3e635'], // lima — cuantitativo
-  [/metodos matematicos|calculo|algebra/,        '#a3e635'], // lima — matemáticas
+  [/metodos matematicos|calculo|algebra|ecuaciones diferenciales/, '#a3e635'], // lima — matemáticas
   [/contabilidad|costos|contable|tributa|impuesto/, '#22c55e'], // verde — contable
   [/auditoria|control interno|riesgos/,          '#ea580c'], // naranjo — auditoría
   [/ingles|idioma/,                              '#ec4899'], // rosa — idiomas
@@ -64,10 +64,13 @@ const FAMILIAS_COLOR=[
   [/gestion de personas|personas|organizacional/,'#3b82f6'], // azul — personas
   [/finanzas|inversion|financier|presupuesto/,   '#06b6d4'], // cian — finanzas
   [/control de gestion|estrategia|gestion y empresas|gestion de procesos/, '#3b82f6'], // azul — gestión
-  [/marketing|negocios|comercial/,               '#d946ef'], // fucsia — negocios
+  [/marketing|negocios|comercial|competencia y mercado|mercados/, '#d946ef'], // fucsia — negocios
   [/programacion|machine learning|datos|sistemas|tecnologia|informatica|transformacion digital|ingenieria/, '#6366f1'], // índigo — tecnología
   [/derecho|legal|legisla|etica|filosof|pensamiento|historia/, '#ea580c'], // naranjo — humanidades y derecho
-  [/quimica|fisica|biolog/,                      '#06b6d4'], // cian — ciencias
+  // La física de Ingeniería UC no se llama "física": los ramos son Dinámica,
+  // Termodinámica y Electricidad y Magnetismo, y sus laboratorios heredan el
+  // matiz porque el nombre los contiene ("Laboratorio de Dinámica").
+  [/quimica|fisica|biolog|dinamica|electricidad|magnetismo|estatica|mecanica|ondas|optica/, '#06b6d4'], // cian — ciencias
   [/practica|taller|integracion|afe/,            '#d946ef'], // fucsia — práctica
 ];
 
@@ -152,20 +155,15 @@ const TENANT_GLYPHS={
   // uc:  '<path d="…"/>',
 };
 
-// ─── SISTEMA DE TEMAS ────────────────────────────────────────────────────────
-// Un tema = solo una familia de acento. Toda la base neutra (fondo, superficies,
-// cards, bordes, tipografía, espaciados, componentes) es COMPARTIDA: esa es la
-// identidad de GradeHub y no cambia nunca. Los temas no son la paleta oficial de
-// ninguna universidad — son una reinterpretación cromática para modo oscuro.
+// ─── IDENTIDAD VISUAL ÚNICA ──────────────────────────────────────────────────
+// GradeHub tiene una sola voz visual, independiente de la universidad. TENANTS
+// sigue decidiendo mallas, carreras, presets y portales; acá solo viven los
+// tokens que debe compartir toda la app. Agregar una universidad es puro dato,
+// no la creación de otra paleta.
 //
-// Agregar una universidad = agregar una entrada acá. Nada más.
-//
-// Tokens:
-//   primary       acento principal (botones, links, activos, foco, progreso)
-//   primaryFg     texto sobre el acento (contraste AA)
-//   primaryLight  tinte muy suave del acento (fondos de chips/íconos)
-//   accent        segundo tono para gradientes del acento
-//   success/warning/danger  — ver nota abajo
+// Verde mineral: cercano a una libreta y a una herramienta de estudio, pero
+// separado del verde brillante del semáforo y de los colores identificadores de
+// ramo. El acento secundario es casi neutro para que no compita con ellos.
 const THEME_BASE={
   // Semáforo de notas. Se deja IGUAL en todos los temas a propósito: verde/ámbar/
   // rojo son semánticos (aprobado / al borde / reprobado), no decorativos. Teñirlos
@@ -173,54 +171,66 @@ const THEME_BASE={
   success:'#2ee6c8', warning:'#ffc94d', danger:'#ff5f7a',
 };
 
-// Cada tema define, además del acento:
-//   secondary  → color con rol funcional propio (pesos, %, chips analíticos)
-//   dark{}     → matiz de las superficies. SOLO se aplica en modo oscuro; en claro
-//                se deja la base para no romper el contraste.
-// Las superficies son lo que hace que un tema se sienta distinto y no solo
-// "el mismo tema pintado de otro color".
-const THEMES={
-  // FEN — business school. Azul dominante, dorado como color analítico constante.
-  // Superficies frías neutras, tipo terminal financiero.
-  fen:{
-    primary:'#3b82f6', primaryFg:'#04101f', primaryLight:'#0e1e33',
-    accent:'#f5c451', secondary:'#f5c451',
-    dark:{bg:'#05070a',bg2:'#0a0d13',card:'#111620',border:'#1d2534',border2:'#2c3648',muted:'#161d29'},
-  },
-  // UC — académico. Azul limpio, desaturado; superficies con matiz frío marcado.
-  uc:{
-    primary:'#3f7fd4', primaryFg:'#040d1c', primaryLight:'#0d1c30',
-    accent:'#8fc7f5', secondary:'#8fc7f5',
-    dark:{bg:'#04060c',bg2:'#090d16',card:'#101725',border:'#1c273c',border2:'#2b3a57',muted:'#151e30'},
-  },
-  // UAI — premium/minimal. Casi monocromo: grises puros, bordes casi invisibles,
-  // las cards se despegan por elevación y no por color.
-  uai:{
-    primary:'#5aa3b0', primaryFg:'#03110f', primaryLight:'#0d1e21',
-    accent:'#9fc4cb', secondary:'#8a9aa5',
-    dark:{bg:'#050506',bg2:'#0a0a0c',card:'#131316',border:'#1b1b1f',border2:'#292930',muted:'#161619'},
-  },
-  // UANDES — lujo silencioso. Burdeo como acento, grises con matiz cálido.
-  // El burdeo profundo puro (~#7A1E32) da 1.98:1 sobre este fondo: invisible.
-  // Se sube la luminosidad conservando el matiz vinoso.
-  uandes:{
-    // Único tema con texto blanco sobre el acento: el burdeo es un tono oscuro,
-    // el texto oscuro encima solo llega a 4.11:1. En blanco da 4.76:1.
-    primary:'#c04a63', primaryFg:'#ffffff', primaryLight:'#261015',
-    accent:'#e08ea0', secondary:'#b9959c',
-    dark:{bg:'#070506',bg2:'#0d0a0b',card:'#161113',border:'#241c1f',border2:'#35292d',muted:'#1a1416'},
-  },
+const GRADEHUB_THEME={
+  primary:'#3f7a30', primaryFg:'#ffffff', primaryLight:'#e9f2e5',
+  darkPrimaryLight:'#172313', accent:'#aab4a5', secondary:'#3f7a30',
+  dark:{bg:'#090b08',bg2:'#10130e',card:'#171b15',border:'#272d23',border2:'#3b4435',muted:'#1d221a'},
 };
 const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
-// Tema por defecto si el tenant no tiene uno definido
-const THEME_FALLBACK=THEMES.fen;
 
 // Carreras y mallas por universidad. Presets verificados solo en ING-PC (1er sem).
 const CARRERAS_UC={'ING-PC':'Ingeniería · Plan Común','COM':'Ingeniería Comercial','OTRA':'Otra carrera'};
+// Plan común de Ingeniería UC, currículum C2022. Los nombres y los créditos
+// salen del catálogo oficial vía la API de mallas.ing.uc.cl (la herramienta de
+// la propia Escuela), no de una imagen ni de memoria.
+//
+// QUÉ ENTRA Y QUÉ NO. Son los ramos que TODO estudiante de Ingeniería cursa,
+// sin importar su major. Se obtuvieron intersectando los planes generados para
+// seis majors distintos (Estructural, Computación, Construcción, Ambiental,
+// Transporte y Geotécnica): lo que aparece en los seis es plan común, lo que
+// difiere ya es del major.
+//
+// Del 4° semestre en adelante los majors divergen: EYP1113 y las tres Físicas
+// con su laboratorio son lo único que sigue siendo de todos. Por eso la malla
+// llega hasta ahí y no más — poner ramos de un major como si fueran de todos
+// sería exactamente el tipo de dato plausible e inventado que no va.
+//
+// Los optativos (de ciencias, de exploración de majors) y los minors tampoco
+// entran: son una elección, no un ramo. Mismo criterio que en FEN, donde los
+// electivos se agregan a mano.
+//
+// Los laboratorios van con nombre propio aunque valgan 0 créditos: llevan nota
+// y el estudiante los necesita en la app.
 const MALLA_UC={
-  'ING-PC':{1:['Cálculo I','Álgebra Lineal','Química para Ingeniería','Desafíos de la Ingeniería','Filosofía: ¿para qué?']},
-  // Malla oficial Ing. Comercial UC (economiayadministracion.uc.cl). Sin ponderaciones aún: el usuario define sus secciones.
-  'COM':{1:['Cálculo I','Introducción a la Microeconomía','Contabilidad','Empresas y Legislación','Filosófico (FG)']},
+  'ING-PC':{
+    1:['Cálculo I','Álgebra Lineal','Química para Ingeniería','Desafíos de la Ingeniería','Filosofía: ¿Para Qué?'],
+    2:['Cálculo II','Dinámica','Laboratorio de Dinámica','Introducción a la Programación'],
+    3:['Cálculo III','Ecuaciones Diferenciales','Termodinámica','Laboratorio de Termodinámica','Introducción a la Economía','Práctica I'],
+    4:['Probabilidades y Estadística','Electricidad y Magnetismo','Laboratorio de Electricidad y Magnetismo'],
+  },
+  // Ing. Comercial UC, malla 2025 oficial (economiayadministracion.uc.cl,
+  // assets/uploads/2025/07/malla-2025-1.pdf). Los ocho primeros semestres son
+  // comunes: la mención —Economía o Administración— recién separa la malla en
+  // IX y X, así que hasta 8° todos cursan lo mismo.
+  //
+  // La entrada anterior tenía un solo semestre y con errores: ponía Empresas y
+  // Legislación y el curso Filosófico en 1°, cuando el oficial los tiene en 7° y
+  // en 2°.
+  //
+  // Fuera quedan los que son una ELECCIÓN, no un ramo: los OPR (optativos de
+  // profundización), los electivos en otra disciplina y el curso Teológico, que
+  // es un área con muchos cursos posibles. El Filosófico sí entra con nombre
+  // propio porque el plan fija FIL2001, no deja elegir.
+  'COM':{
+    1:['Cálculo I','Introducción a la Microeconomía','Contabilidad','Comportamiento Organizacional'],
+    2:['Probabilidad y Estadística','Introducción al Álgebra Lineal','Cálculo II','Introducción a la Macroeconomía','Filosofía: ¿Para Qué?'],
+    3:['Inferencia Estadística','Aplicaciones Matemáticas para Economía y Negocios','Análisis Económico: La Experiencia Chilena','Fundamentos de Finanzas'],
+    4:['Econometría','Microeconomía I','Estrategia de la Organización','Fundamentos de Marketing'],
+    5:['Introducción a la Programación','Microeconomía II','Macroeconomía I','Teoría Financiera'],
+    6:['Estrategia Competitiva','Competencia y Mercado','Contabilidad de Costos','Ética, Economía y Empresa','Marketing Analytics'],
+    7:['Empresas y Legislación','Macroeconomía II','Contabilidad Gerencial','Dirección de Personas'],
+    8:['Práctica Social'],
+  },
 };
 // Carreras UAI — sin mallas verificadas todavía, el estudiante arma sus ramos
 const CARRERAS_UAI={'ING':'Ingeniería Civil','COM-UAI':'Ingeniería Comercial','DER-UAI':'Derecho','PSI':'Psicología','OTRA':'Otra carrera'};
