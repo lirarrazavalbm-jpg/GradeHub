@@ -1,3 +1,27 @@
+
+# ─── SEGURIDAD ───────────────────────────────────────────────────────────────
+# Estas cabeceras van sobre TODO el sitio.
+#
+# La CSP no puede prohibir el script inline: la app usa atributos onclick y
+# estilos en línea por todas partes, y quitarlos es un refactor grande. Lo que
+# sí hace, y es lo que más vale acá, es `connect-src`: aunque alguien consiga
+# ejecutar JavaScript en el origen, el navegador le impide mandar los datos a
+# otro servidor. La sesión de Supabase vive en localStorage, así que ese es
+# exactamente el paso que hay que cortar.
+#
+# `frame-ancestors 'none'` impide que la app se cargue en un iframe ajeno, que
+# es como se monta un clickjacking sobre botones que borran datos.
+#
+# Al agregar un servicio externo hay que sumarlo acá o dejará de funcionar en
+# silencio. Los que hay hoy: jsDelivr (supabase-js), Google Fonts, Google
+# Analytics y el proyecto de Supabase.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://lsulsnswzesyekpsvlql.supabase.co wss://lsulsnswzesyekpsvlql.supabase.co https://www.google-analytics.com https://region1.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
 # Cabeceras de Cloudflare Pages.
 #
 # Por defecto Pages cachea los estáticos 4 horas. Sin build ni hash en los

@@ -66,7 +66,15 @@
 </script>
 
 <!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Versión fija + SRI. Con `@2` cualquier release nueva de la librería entraba
+     sola, y con la sesión de Supabase en localStorage eso es acceso completo a
+     las notas de todos. El navegador verifica el hash y, si no calza, no lo
+     ejecuta: una CDN comprometida o un paquete secuestrado dejan la app sin
+     sesión, no con una sesión robada. Al subir de versión hay que recalcular:
+       curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.2"
+        integrity="sha384-B2duOBIryCXbX4eDE4BdJwtNkQMRQde3o6IsjfPW28E6aH1CYE96hHeZRG3zY56O"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
