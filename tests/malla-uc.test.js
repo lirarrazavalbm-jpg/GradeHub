@@ -44,10 +44,30 @@ chk('ningún nombre vacío ni con espacios sueltos', todos.every(n => typeof n =
 // le falta un ramo que sí está cursando.
 chk('los tres laboratorios están', todos.filter(n => /^Laboratorio de /.test(n)).length === 3);
 
+console.log('\n=== Ingeniería Comercial UC: los ocho semestres comunes ===');
+// La mención (Economía o Administración) recién separa la malla en IX y X, así
+// que hasta 8° todos cursan lo mismo y todo eso es plan común.
+const com = MALLA_UC['COM'];
+const todosCom = Object.values(com).flat();
+chk('cubre los ocho semestres comunes', [1,2,3,4,5,6,7,8].every(s => Array.isArray(com[s]) && com[s].length));
+chk('no llega a 9° ni 10°: ahí la mención los separa', !com[9] && !com[10]);
+chk('ningún nombre repetido', new Set(todosCom).size === todosCom.length);
+[['Cálculo I',1],['Contabilidad',1],['Comportamiento Organizacional',1],
+ ['Filosofía: ¿Para Qué?',2],['Introducción a la Macroeconomía',2],
+ ['Econometría',4],['Microeconomía I',4],
+ ['Empresas y Legislación',7],['Práctica Social',8],
+].forEach(([n,s]) => chk(`${n} está en ${s}°`, (com[s]||[]).includes(n)));
+// Lo que es una ELECCIÓN no es un ramo. El curso Filosófico sí entra porque el
+// plan fija FIL2001; el Teológico es un área con muchos cursos posibles.
+chk('no entran los optativos de profundización ni los electivos',
+  !todosCom.some(n => /^OPR|Electivo|Teológico|Optativo/i.test(n)));
+// La entrada anterior tenía un solo semestre y con dos ramos mal ubicados.
+chk('Empresas y Legislación ya no está en 1°', !(com[1]||[]).includes('Empresas y Legislación'));
+
 console.log('\n=== Ningún ramo de la malla trae una pauta inventada ===');
 // La malla dice qué cursa el estudiante; la pauta dice cómo se calcula su nota.
 // Meter una pauta sin el programa oficial sería inventar ponderaciones.
-const conPauta = todos.filter(n => presetRamo(n, 'uc', 'ING-PC'));
+const conPauta = [...todos, ...Object.values(MALLA_UC['COM']).flat()].filter(n => presetRamo(n, 'uc', 'ING-PC'));
 chk('los ramos sin programa oficial no traen pauta',
   conPauta.every(n => !!PRESETS_UC[n]));
 chk('las pautas UC que existen siguen saliendo de PRESETS_UC',
