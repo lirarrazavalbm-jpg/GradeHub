@@ -64,7 +64,7 @@ const FAMILIAS_COLOR=[
   [/gestion de personas|personas|organizacional/,'#3b82f6'], // azul — personas
   [/finanzas|inversion|financier|presupuesto/,   '#06b6d4'], // cian — finanzas
   [/control de gestion|estrategia|gestion y empresas|gestion de procesos/, '#3b82f6'], // azul — gestión
-  [/marketing|negocios|comercial/,               '#d946ef'], // fucsia — negocios
+  [/marketing|negocios|comercial|competencia y mercado|mercados/, '#d946ef'], // fucsia — negocios
   [/programacion|machine learning|datos|sistemas|tecnologia|informatica|transformacion digital|ingenieria/, '#6366f1'], // índigo — tecnología
   [/derecho|legal|legisla|etica|filosof|pensamiento|historia/, '#ea580c'], // naranjo — humanidades y derecho
   // La física de Ingeniería UC no se llama "física": los ramos son Dinámica,
@@ -248,8 +248,29 @@ const MALLA_UC={
     3:['Cálculo III','Ecuaciones Diferenciales','Termodinámica','Laboratorio de Termodinámica','Introducción a la Economía','Práctica I'],
     4:['Probabilidades y Estadística','Electricidad y Magnetismo','Laboratorio de Electricidad y Magnetismo'],
   },
-  // Malla oficial Ing. Comercial UC (economiayadministracion.uc.cl). Sin ponderaciones aún: el usuario define sus secciones.
-  'COM':{1:['Cálculo I','Introducción a la Microeconomía','Contabilidad','Empresas y Legislación','Filosófico (FG)']},
+  // Ing. Comercial UC, malla 2025 oficial (economiayadministracion.uc.cl,
+  // assets/uploads/2025/07/malla-2025-1.pdf). Los ocho primeros semestres son
+  // comunes: la mención —Economía o Administración— recién separa la malla en
+  // IX y X, así que hasta 8° todos cursan lo mismo.
+  //
+  // La entrada anterior tenía un solo semestre y con errores: ponía Empresas y
+  // Legislación y el curso Filosófico en 1°, cuando el oficial los tiene en 7° y
+  // en 2°.
+  //
+  // Fuera quedan los que son una ELECCIÓN, no un ramo: los OPR (optativos de
+  // profundización), los electivos en otra disciplina y el curso Teológico, que
+  // es un área con muchos cursos posibles. El Filosófico sí entra con nombre
+  // propio porque el plan fija FIL2001, no deja elegir.
+  'COM':{
+    1:['Cálculo I','Introducción a la Microeconomía','Contabilidad','Comportamiento Organizacional'],
+    2:['Probabilidad y Estadística','Introducción al Álgebra Lineal','Cálculo II','Introducción a la Macroeconomía','Filosofía: ¿Para Qué?'],
+    3:['Inferencia Estadística','Aplicaciones Matemáticas para Economía y Negocios','Análisis Económico: La Experiencia Chilena','Fundamentos de Finanzas'],
+    4:['Econometría','Microeconomía I','Estrategia de la Organización','Fundamentos de Marketing'],
+    5:['Introducción a la Programación','Microeconomía II','Macroeconomía I','Teoría Financiera'],
+    6:['Estrategia Competitiva','Competencia y Mercado','Contabilidad de Costos','Ética, Economía y Empresa','Marketing Analytics'],
+    7:['Empresas y Legislación','Macroeconomía II','Contabilidad Gerencial','Dirección de Personas'],
+    8:['Práctica Social'],
+  },
 };
 // Carreras UAI — sin mallas verificadas todavía, el estudiante arma sus ramos
 const CARRERAS_UAI={'ING':'Ingeniería Civil','COM-UAI':'Ingeniería Comercial','DER-UAI':'Derecho','PSI':'Psicología','OTRA':'Otra carrera'};
