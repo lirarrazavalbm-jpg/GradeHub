@@ -6,7 +6,7 @@ button:active{transform:scale(.97);}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
 :root{
   --bg:#f4f7f7;--bg2:#fff;--card:#fff;--border:#e4ebeb;--border2:#c7d2d2;
-  --primary:#0d9488;--primary-fg:#fff;--primary-light:#e6f7f5;--accent:#5eead4;--secondary:#0d9488;
+  --primary:#3f7a30;--primary-fg:#fff;--primary-light:#e9f2e5;--accent:#aab4a5;--secondary:#3f7a30;
   --fg:#0b1414;--fg2:#4a5959;--fg3:#8a9797;
   --green:#0d9488;--green-bg:#e6f7f5;--green-border:#a7ebe1;
   --yellow:#a16207;--yellow-bg:#fdf9e7;
@@ -21,32 +21,32 @@ button:active{transform:scale(.97);}
 }
 @media(prefers-color-scheme:dark){
   :root:not([data-modo="claro"]){
-    /* Fondo casi negro con un pelo de azul. Los grises suben en pasos parejos
+    /* Fondo casi negro con un matiz mineral. Los grises suben en pasos parejos
        para que las cards se despeguen sin necesitar bordes fuertes. */
-    --bg:#05070a;--bg2:#0a0d13;--card:#111620;--border:#1d2534;--border2:#2c3648;
-    --primary:#2dd4bf;--primary-fg:#04211c;--primary-light:#0d2b27;--accent:#67e8f9;--secondary:#67e8f9;
+    --bg:#090b08;--bg2:#10130e;--card:#171b15;--border:#272d23;--border2:#3b4435;
+    --primary:#3f7a30;--primary-fg:#fff;--primary-light:#172313;--accent:#aab4a5;--secondary:#3f7a30;
     --fg:#eef3f8;--fg2:#94a3b8;--fg3:#61708a;
     /* Notas: saturadas y luminosas contra el fondo oscuro */
     --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
-    --muted:#161d29;
+    --muted:#1d221a;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
   }
 }
 /* Mismo bloque cuando el estudiante fuerza «oscuro» en Ajustes */
   :root[data-modo="oscuro"]{
-    /* Fondo casi negro con un pelo de azul. Los grises suben en pasos parejos
+    /* Fondo casi negro con un matiz mineral. Los grises suben en pasos parejos
        para que las cards se despeguen sin necesitar bordes fuertes. */
-    --bg:#05070a;--bg2:#0a0d13;--card:#111620;--border:#1d2534;--border2:#2c3648;
-    --primary:#2dd4bf;--primary-fg:#04211c;--primary-light:#0d2b27;--accent:#67e8f9;--secondary:#67e8f9;
+    --bg:#090b08;--bg2:#10130e;--card:#171b15;--border:#272d23;--border2:#3b4435;
+    --primary:#3f7a30;--primary-fg:#fff;--primary-light:#172313;--accent:#aab4a5;--secondary:#3f7a30;
     --fg:#eef3f8;--fg2:#94a3b8;--fg3:#61708a;
     /* Notas: saturadas y luminosas contra el fondo oscuro */
     --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
-    --muted:#161d29;
+    --muted:#1d221a;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
   }
@@ -197,8 +197,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .cat-empty{padding:14px 13px;border:1px dashed var(--border);border-radius:12px;
   font-size:13px;color:var(--fg3);text-align:center;letter-spacing:-.005em;}
 /* MONOGRAMA DE UNIVERSIDAD
-   Etiqueta con la sigla en la tipografía de GradeHub, teñida con el acento del
-   tema. NO es el escudo ni el logo de la universidad — solo texto en una caja. */
+   Etiqueta con la sigla en la tipografía y el acento de GradeHub. NO es el
+   escudo ni el logo de la universidad — la diferencia la pone el texto. */
 .tenant-badge{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
   width:38px;height:38px;border-radius:11px;
   background:color-mix(in srgb,var(--tb),transparent 86%);
@@ -233,12 +233,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .tenant-opt-info{display:flex;flex-direction:column;min-width:0;gap:2px;}
 .tenant-opt-name{font-size:14.5px;font-weight:700;color:var(--fg);letter-spacing:-.015em;line-height:1.2;}
 .tenant-opt-sub{font-size:12px;color:var(--fg3);letter-spacing:-.005em;}
-/* Selector de universidad en Configuración: chips con muestra del acento */
+/* Selector de universidad en Configuración: chips de texto, sin códigos de
+   color por institución. */
 .s-tenant-grid{display:flex;flex-wrap:wrap;gap:7px;}
 .s-tenant-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:11px;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:-.01em;transition:border-color .15s,color .15s,background .15s;}
 .s-tenant-btn:hover{color:var(--fg);border-color:var(--border2);}
 .s-tenant-btn.sel{border-color:var(--primary);color:var(--fg);background:var(--primary-light);}
-.s-tenant-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 1.5px color-mix(in srgb,var(--card),transparent 20%);}
 .carrera-opt{text-align:left;padding:11px 13px;border-radius:10px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);cursor:pointer;transition:all .15s;line-height:1.25;}
 .carrera-opt.sel{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 2px 8px rgba(59,130,246,.3);}
 .btn-primary{width:100%;padding:15px;background:var(--primary);background-image:linear-gradient(135deg,var(--primary) 0%,color-mix(in srgb,var(--accent),var(--primary) 25%) 100%);color:var(--primary-fg,#0a1f1c);border:none;border-radius:13px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:700;cursor:pointer;transition:transform .12s,box-shadow .2s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em;box-shadow:0 6px 20px -8px color-mix(in srgb,var(--primary),transparent 40%);}

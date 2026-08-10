@@ -11,10 +11,11 @@
     "test:descartes": "node tests/descartes.test.js",
     "test:malla-uc": "node tests/malla-uc.test.js",
     "test:sim-stepper": "node tests/sim-stepper.test.js",
+    "test:evaluacion-simple": "node tests/evaluacion-simple.test.js",
     "test:catalogo": "node tests/catalogo.test.js",
     "test:analitica": "node tests/analitica.test.js",
     "test:ui": "node tests/ui-confirmaciones.test.js",
-    "test": "npm run test:sintaxis && npm run test:temas && npm run test:compuertas && npm run test:importar && npm run test:presets && npm run test:descartes && npm run test:malla-uc && npm run test:sim-stepper && npm run test:catalogo && npm run test:analitica && npm run test:ui",
+    "test": "npm run test:sintaxis && npm run test:temas && npm run test:compuertas && npm run test:importar && npm run test:presets && npm run test:descartes && npm run test:malla-uc && npm run test:sim-stepper && npm run test:evaluacion-simple && npm run test:catalogo && npm run test:analitica && npm run test:ui",
     "deploy": "npx wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true"
   }
 }
