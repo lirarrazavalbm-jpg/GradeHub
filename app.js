@@ -2180,6 +2180,18 @@ function plantillaPrincipalPauta(tenant){
     ?{tipo:'tres-pruebas',label:'3 pruebas + examen',ejemplo:'Prueba'}
     :{tipo:'tres-solemnes',label:'3 solemnes + examen',ejemplo:'Solemne'};
 }
+// Son atajos de escritura, no una pauta sugerida: el estudiante elige el
+// nombre y siempre define sus propios pesos. UC y FEN usan vocabularios
+// distintos en sus programas, por eso no se mezclan en la misma lista.
+function sugerenciasEvaluacion(tenant){
+  const comunes=['Laboratorio','Informe','Taller','Proyecto','Tarea','Presentación','Examen'];
+  return tenant==='uc'
+    ?['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control',...comunes]
+    :['Solemne 1','Solemne 2','Solemne 3','Control 1','Control 2','Control 3','Prueba sorpresa','Casos y ensayos','Trabajo individual','Trabajo en grupo','Participación',...comunes];
+}
+function opcionesSugerenciasEvaluacion(tenant){
+  return sugerenciasEvaluacion(tenant).map(nombre=>`<option value="${esc(nombre)}"></option>`).join('');
+}
 function puedeUsarPlantillaPauta(){
   return pautaDraft.every(fila=>!fila.tieneNotas&&!fila.nombre.trim());
 }
@@ -2214,6 +2226,7 @@ function duplicarPautaDesdeRamo(){
 function renderPautaManualModal(){
   const fuentes=puedeUsarPlantillaPauta()?ramosParaDuplicarPauta(S.ramos,currentRamoId):[];
   const principal=plantillaPrincipalPauta(S.tenant);
+  const sugerencias=opcionesSugerenciasEvaluacion(S.tenant);
   const plantillas=puedeUsarPlantillaPauta()?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
     <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;"><button type="button" onclick="aplicarPlantillaPauta('${principal.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">${principal.label}</button><button type="button" onclick="aplicarPlantillaPauta('dos-pruebas')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">2 pruebas + examen</button></div>
@@ -2226,7 +2239,7 @@ function renderPautaManualModal(){
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>`
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 32px;gap:8px;align-items:center;margin:8px 0;">
-      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${principal.ejemplo} ${i+1}" maxlength="40" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
+      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${principal.ejemplo} ${i+1}" maxlength="40" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
       <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:13px;pointer-events:none;">%</span></div>
       <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
     </div>`).join('');
@@ -2235,6 +2248,7 @@ function renderPautaManualModal(){
     <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas.</p>
     ${plantillas}
     ${duplicar}
+    <datalist id="m-pauta-sugerencias">${sugerencias}</datalist>
     <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:13px;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
     <div>${filas}</div>
     <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Inter',sans-serif;cursor:pointer;">+ Otra evaluación</button>
