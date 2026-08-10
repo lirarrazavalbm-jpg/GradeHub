@@ -210,18 +210,19 @@ hablarías a un compañero, no como un manual.
 
 ## Pendientes conocidos
 
-- **Ponderaciones oficiales: 5 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
+- **Ponderaciones oficiales: 10 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
   están completas (177 ramos FEN, 88 únicos, los 10-11 semestres de las cuatro
   carreras); lo que falta son las pautas de evaluación. A casi todos los
   estudiantes la malla se les carga sola y las ponderaciones las escriben a
   mano — ese es el camino real del 95%, y hay que hacerlo rápido
-- Cuatro de los 5 presets FEN son exactamente el tronco común de 2° semestre,
-  así que ese segmento es hoy el mejor cubierto del producto, junto con
-  Ingeniería UC plan común 1°. El quinto (Marketing, ENMKT205) es el primero
-  que salió del pipeline de extracción
-- Notas de reemplazo y examen recuperativo (aparecen en 3 de 4 programas FEN)
-- Analítica: `track()` se llama 26 veces pero `gtag` no se carga, así que hoy son
-  no-ops. La política de privacidad ya está publicada, así que está destrabado
+- La cobertura ya no es "el tronco común de 2°": **1° semestre va en 4 de 5**
+  (falta Comunicación) y **2° en 4 de 6** (faltan Tecnología y Sistemas de
+  Información e Inglés I), más Marketing de 3° e Inglés IV de 5°. Los dos
+  primeros semestres son hoy lo mejor cubierto del producto, junto con
+  Ingeniería UC plan común 1°
+- Notas de reemplazo y examen recuperativo: aparecen en la mayoría de los
+  programas FEN transcritos y siguen sin calcularse. Ver la tabla de reglas
+  pendientes más abajo
 - Cualquier tabla nueva con datos de usuario tiene que referenciar
   `auth.users` con `ON DELETE CASCADE`. Sin eso, esos datos sobreviven al
   borrado de cuenta y la política de privacidad pasa a ser mentira sin que
@@ -254,26 +255,33 @@ la estructura declarada, así que si te faltan controles por rendir la respuesta
 ignora que el peor se va a eliminar — hoy le pedimos al estudiante una nota más
 alta de la que necesita.
 
-**Claude de Martín — el consenso de reportes.** Es lo único que puede llevar el
-catálogo de 5 pautas oficiales a 88, y sin más programas oficiales no hay otra
-vía. Ojo: `catalog_reports` solo deja leer las filas propias, así que ningún
-cliente puede calcular un consenso — necesita una vista agregada o una función
-`security definer` que exponga el conteo sin exponer quién reportó qué.
+Y además **el consenso de reportes**, que pasa a este carril porque la parte
+difícil es Supabase, no la app: `catalog_reports` solo deja leer las filas
+propias, así que ningún cliente puede calcular un consenso. Necesita una vista
+agregada o una función `security definer` que exponga el conteo sin exponer
+quién reportó qué. Ese SQL se versiona en `supabase/` — hay precedente en
+`supabase/eliminar_mi_cuenta.sql`, y está ahí justamente porque tener una
+función solo en el panel costó dos días de diagnóstico equivocado.
+
+Sigue siendo la única vía para los ramos cuyo programa no aparezca nunca, así
+que no es "para después": es para cuando se acaben los PDFs, y ese momento se ve
+venir.
+
+**Claude de Martín — pautas oficiales.** El traspaso anterior decía que el
+consenso de reportes era "lo único" que podía llevar el catálogo a 88 porque no
+había más programas oficiales. Resultó que sí había: con ocho PDFs el catálogo
+pasó de 5 a 10 pautas en una tarde, y el pipeline de extracción quedó
+documentado y probado. Mientras sigan apareciendo programas, transcribirlos es
+más rápido y más exacto que cualquier consenso, y además es `data.js` puro: no
+sale del carril de contenido.
 
 ### Lo que espera una decisión, no un agente
-
-**#39 — los tres solemnes de Métodos Matemáticos II como filas separadas.** Está
-en borrador a propósito: **mueve el número**. Con un solo solemne rendido en 2,0
-y el examen en 6,8, antes 3,92 y ahora 5,20 — de reprobado a aprobado. El
-criterio (filas propias cuando el programa dice cuántas evaluaciones son) es
-consistente con el resto del motor, pero es un criterio y no un hecho. Lo
-deciden Lucas y Martín, no se mergea solo.
 
 **Monetización.** No es una tarea, es una decisión de producto. Si va a haber
 plan pago afecta qué se construye ahora, qué dice la política de privacidad y
 hasta el onboarding. Conviene resolverla antes de seguir agregando features.
 
-### Las cinco reglas que el motor todavía no calcula
+### Las reglas que el motor todavía no calcula
 
 `drop_lowest` fue la primera de `noCalcula` que pasó a calcularse. Quedan, en
 orden de dificultad:
@@ -284,7 +292,8 @@ orden de dificultad:
 | Examen recuperativo 3,6–3,9 → 4,0 (Micro) | Que el estudiante pueda decir que lo rindió: entrada nueva |
 | Examen de Segunda Fecha (Métodos) | Lo mismo |
 | ±10 décimas por evaluación entre compañeros | El dato no existe en la app |
-| Inasistencias justificadas: el % pasa a otra evaluación | El programa no dice a cuál |
+| Inasistencias justificadas: el % pasa a otra evaluación | Depende del programa. Micro SÍ dice a cuál (Control 1 → Solemne; Control 2 y 3 → Examen), así que ahí es modelable; en otros no se especifica |
+| Busuu reprobatorio (Inglés IV) | El programa dice que reprueba pero no fija la nota mínima, así que no hay umbral que declarar |
 
 Y una que **no es calculable y no lo va a ser**: el 75% de asistencia a los
 controles sorpresa de Contabilidad. El programa dice "entre 4 y 6 controles", así

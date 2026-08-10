@@ -177,6 +177,25 @@ else {fail++;console.log('  FAIL plantilla de solemnes → '+JSON.stringify(plan
 const plantillaPruebas=ctx.plantillaPauta('dos-pruebas');
 if(plantillaPruebas.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Examen'&&plantillaPruebas.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de pruebas no inventa ponderaciones');}
 else {fail++;console.log('  FAIL plantilla de pruebas → '+JSON.stringify(plantillaPruebas));}
+const plantillasUC=ctx.plantillasPauta('uc');
+const plantillaUC=ctx.plantillaPauta(plantillasUC[0].tipo);
+if(plantillasUC[0].label==='3 pruebas + examen'&&ctx.ejemploEvaluacion('uc')==='Prueba'&&plantillaUC.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Prueba 3|Examen'){ok++;console.log('  OK   UC usa pruebas, no solemnes, en la pauta manual');}
+else {fail++;console.log('  FAIL plantilla UC → '+JSON.stringify({plantillasUC,plantillaUC}));}
+// FEN no ofrece plantillas de estructura: ninguno de sus diez programas
+// oficiales es "3 solemnes + examen", así que la plantilla empujaba a una forma
+// equivocada. El placeholder sí conserva el vocabulario de la FEN.
+const plantillasFEN=ctx.plantillasPauta('fen');
+if(plantillasFEN.length===0&&ctx.ejemploEvaluacion('fen')==='Solemne'){ok++;console.log('  OK   FEN no ofrece plantillas de estructura, pero conserva su vocabulario');}
+else {fail++;console.log('  FAIL plantillas FEN → '+JSON.stringify(plantillasFEN));}
+const sugerenciasUC=ctx.sugerenciasEvaluacion('uc');
+if(sugerenciasUC.includes('Interrogación 1')&&sugerenciasUC.includes('Laboratorio')&&sugerenciasUC.includes('Examen')&&!sugerenciasUC.some(nombre=>nombre.startsWith('Solemne'))){ok++;console.log('  OK   UC sugiere interrogaciones y no solemnes');}
+else {fail++;console.log('  FAIL sugerencias UC → '+JSON.stringify(sugerenciasUC));}
+const sugerenciasFEN=ctx.sugerenciasEvaluacion('fen');
+if(sugerenciasFEN.includes('Solemne 1')&&sugerenciasFEN.includes('Control 1')&&sugerenciasFEN.includes('Examen')&&!sugerenciasFEN.some(nombre=>nombre.startsWith('Interrogación'))){ok++;console.log('  OK   FEN sugiere solemnes y controles propios');}
+else {fail++;console.log('  FAIL sugerencias FEN → '+JSON.stringify(sugerenciasFEN));}
+const opcionesUC=ctx.opcionesSugerenciasEvaluacion('uc');
+if(opcionesUC.includes('<option value="Interrogación 1"></option>')&&opcionesUC.includes('<option value="Laboratorio"></option>')){ok++;console.log('  OK   las sugerencias UC se entregan al input');}
+else {fail++;console.log('  FAIL opciones UC → '+opcionesUC);}
 const ramosParaCopiar=[
   {id:'origen',nombre:'Microeconomía',categorias:[{id:'a',nombre:'Prueba 1',peso:35,fecha:'2026-03-01',notas:[{valor:6}]},{id:'b',nombre:'Examen',peso:65,notas:[]}]},
   {id:'actual',nombre:'Macroeconomía',categorias:[]},
@@ -201,7 +220,9 @@ ctx.document.getElementById=id=>pautaNodes[id]||stub;
 ctx.document.querySelector=sel=>sel==='.modal-sheet'?pautaNodes.sheet:stub;
 vm.runInContext("S={ramos:[{id:'sin-preset',nombre:'Economía I',origen:{tenant:'fen'},gates:[]}]};currentRamoId='sin-preset';",ctx);
 try{ctx.openPautaManualModal();
-  if(pautaNodes.modal.classList.open&&pautaNodes['modal-content'].innerHTML.includes('Configurar pauta')){ok++;console.log('  OK   ramo FEN sin preset abre el editor de pauta');}
+  // El título dejó de ser "Configurar pauta": era jerga y el estudiante no viene
+  // a configurar nada, viene a escribir sus evaluaciones.
+  if(pautaNodes.modal.classList.open&&pautaNodes['modal-content'].innerHTML.includes('Agregar evaluaciones')){ok++;console.log('  OK   ramo FEN sin preset abre el editor de evaluaciones');}
   else {fail++;console.log('  FAIL el editor no abrió para ramo sin preset');}
 }catch(e){fail++;console.log('  FAIL ramo sin preset lanzó → '+e.message);}
 ctx.document.getElementById=getBeforePauta;ctx.document.querySelector=queryBeforePauta;

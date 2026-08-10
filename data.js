@@ -383,8 +383,22 @@ const PRESETS_FEN={
     // Sin noCalcula: no queda ninguna regla pendiente de implementar.
     reglasDelCurso:['Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9'],
     evals:[
-      ['Controles de Lectura',10,{slots:3,min:1.5,cap:3.9}],
-      ['Controles Ejercicios',40,{slots:4,min:1.5,cap:3.9}],
+      // Los controles de lectura y los de ejercicios tienen fecha propia cada uno
+      // y evalúan lecturas distintas, así que van en filas separadas. Los tres de
+      // lectura: 7 de agosto, 28 de agosto y 6 de noviembre. Los cuatro de
+      // ejercicios: 21 de agosto, 11 de septiembre, 16 de octubre y 30 de octubre.
+      //
+      // El 10% de los de lectura no se divide exacto en tres. El tercero lleva
+      // 3,34 en vez de 3,33 para que la suma dé 100 justo: es un centésimo de
+      // punto porcentual, invisible en cualquier nota, y la alternativa era
+      // dejarlos agrupados y perder las tres fechas.
+      ['Control de Lectura 1',3.33,{min:1.5,cap:3.9}],
+      ['Control de Lectura 2',3.33,{min:1.5,cap:3.9}],
+      ['Control de Lectura 3',3.34,{min:1.5,cap:3.9}],
+      ['Control de Ejercicios 1',10,{min:1.5,cap:3.9}],
+      ['Control de Ejercicios 2',10,{min:1.5,cap:3.9}],
+      ['Control de Ejercicios 3',10,{min:1.5,cap:3.9}],
+      ['Control de Ejercicios 4',10,{min:1.5,cap:3.9}],
       // El programa dice "entre 4 y 6 durante el semestre": el número exacto NO
       // está. Sin slots, el estudiante agrega los que realmente le tomaron.
       // Antes decía slots:4 — un dato plausible pero inventado.
@@ -502,10 +516,12 @@ const PRESETS_FEN={
   // OJO: es el programa de UNA sección, no el común del ramo. Las otras secciones
   // pueden ponderar distinto. Si aparece el programa común, este se reemplaza.
   //
-  // Los controles de lectura van sin `slots`: el programa numera hasta el Control
-  // 7 pero el cronograma que tenemos salta las semanas 9 y 10, así que el total
-  // no está confirmado. `dropLowest` funciona igual con los que el estudiante
-  // agregue.
+  // Los controles de lectura van sin `slots`, y NO es que falte confirmar el
+  // número: cambia de una sección a otra. Es lo único que varía entre secciones
+  // — el resto de la pauta es igual para todas. Aunque aparezca el cronograma
+  // completo de una sección, ese número no sirve para las demás, así que esta
+  // fila se queda sin `slots` para siempre y el estudiante agrega los que le
+  // tomaron. `dropLowest` funciona igual con los que agregue.
   'Gestión y Empresas':{
     noCalcula:[
       'Toda ausencia a una exigencia del curso se califica con 1,0',

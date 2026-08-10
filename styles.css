@@ -11,6 +11,8 @@ button:active{transform:scale(.97);}
   --green:#0d9488;--green-bg:#e6f7f5;--green-border:#a7ebe1;
   --yellow:#a16207;--yellow-bg:#fdf9e7;
   --red:#c02b3f;--red-bg:#fdecef;
+  /* En claro baja la luminosidad: incluso el verde 7.0 sigue legible en texto. */
+  --grade-light:30%;
   --muted:#eff3f3;--radius:14px;
   --shadow:0 1px 2px rgba(11,20,20,.04),0 4px 16px -4px rgba(11,20,20,.08);
   --shadow-lg:0 8px 30px -8px rgba(11,20,20,.16);
@@ -30,6 +32,7 @@ button:active{transform:scale(.97);}
     --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
+    --grade-light:62%;
     --muted:#1d221a;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
@@ -46,6 +49,7 @@ button:active{transform:scale(.97);}
     --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
+    --grade-light:62%;
     --muted:#1d221a;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
@@ -274,26 +278,15 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 /* GPA — hero protagonista, con color propio (gradient teal) y contexto único */
 .gpa-card{margin:6px 20px 28px;padding:0;background:none;box-shadow:none;position:relative;}
 .gpa-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--fg3);margin-bottom:2px;}
-/* Número del promedio: gradient adaptable al semáforo. Base sin color;
-   cada variante (.good/.warn/.bad) aplica su propio gradient. */
+/* Número del promedio: cada décima recibe su color continuo de rojo a verde.
+   Las clases siguen existiendo para las etiquetas semánticas, no para pintar. */
 .gpa-num{font-family:'Sora','Inter',sans-serif;font-size:96px;font-weight:800;letter-spacing:-.055em;line-height:.9;font-variant-numeric:tabular-nums;
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
   display:inline-block;padding-right:.02em;cursor:pointer;user-select:none;-webkit-user-select:none;
   transition:transform .12s ease;}
 .gpa-num:active{transform:scale(.97);}
-.gpa-num.good{background-image:linear-gradient(160deg,#2ee6c8 10%,#5ff5d8 55%,#a8f7ff 100%);}
-.gpa-num.warn{background-image:linear-gradient(160deg,#ffb020 10%,#ffcf5c 55%,#ffe9a8 100%);}
-.gpa-num.bad{background-image:linear-gradient(160deg,#ff3f63 10%,#ff7a8f 55%,#ffc4cf 100%);}
+.gpa-num.good,.gpa-num.warn,.gpa-num.bad{background-image:linear-gradient(160deg,color-mix(in srgb,var(--grade-color),#fff 10%),var(--grade-color) 72%,color-mix(in srgb,var(--grade-color),#000 8%));}
 .gpa-num.empty{background-image:none;-webkit-text-fill-color:var(--fg3);color:var(--fg3);font-size:40px;opacity:.4;cursor:default;line-height:1.6;}
-@media(prefers-color-scheme:light){
-  :root:not([data-modo="oscuro"]) .gpa-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
-  :root:not([data-modo="oscuro"]) .gpa-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
-  :root:not([data-modo="oscuro"]) .gpa-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
-}
-/* Mismo bloque cuando el estudiante fuerza «claro» en Ajustes */
-  :root[data-modo="claro"] .gpa-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
-  :root[data-modo="claro"] .gpa-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
-  :root[data-modo="claro"] .gpa-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
 /* Decimal grande, mismo tamaño y gradient que el número. Solo se atenúa con opacity. */
 .gpa-num .gpa-decimal{
   background-image:inherit;-webkit-background-clip:text;background-clip:text;
@@ -342,7 +335,24 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .simg-row-val{font-family:'Sora','Inter',sans-serif;font-size:19px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;flex-shrink:0;}
 .simg-row-val.hyp{opacity:1;}
 .simg-row-val.real{opacity:.5;}
-.simg-slider{width:100%;accent-color:var(--primary);margin:0;}
+/* Stepper de nota simulada. Reemplazó al slider: 60 pasos de 0,1 en el ancho de
+   un teléfono no se pueden apuntar, y el dedo tapaba justo el número que había
+   que leer. Los botones son de 44px porque menos que eso no se acierta. */
+.simg-stepper{display:flex;align-items:center;gap:10px;}
+.simg-step{width:44px;height:44px;flex-shrink:0;border-radius:12px;border:1px solid var(--border2);
+  background:var(--muted);color:var(--fg);font-family:'Sora','Inter',sans-serif;font-size:22px;
+  font-weight:600;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:transform var(--motion-press) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard);}
+.simg-step:active:not(:disabled){transform:scale(.94);background:var(--primary-light);border-color:var(--primary);}
+.simg-step:disabled{opacity:.35;cursor:default;}
+/* El número es el campo: se toca y se escribe, sin abrir otra pantalla. */
+.simg-val{flex:1;min-width:0;height:44px;border-radius:12px;border:1px solid transparent;
+  background:transparent;text-align:center;font-family:'Sora','Inter',sans-serif;font-size:24px;
+  font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+  transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard);}
+.simg-val.real{opacity:.5;}
+.simg-val:focus{outline:none;border-color:var(--primary);background:var(--primary-light);opacity:1;}
+.simg-val::placeholder{color:var(--fg3);opacity:.6;}
 .simg-row-meta{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--fg3);margin-top:5px;letter-spacing:-.005em;}
 .simg-reset{background:none;border:none;color:var(--primary);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;padding:0;}
 /* INSIGHT CARDS — señales inteligentes arriba de "Mis ramos" */
@@ -376,19 +386,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .ramo-progress-fill{height:100%;background:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 25%);border-radius:2px;transition:width .3s ease;}
 .ramo-meta-text{white-space:nowrap;}
 .ramo-nota{font-family:'Sora','Inter',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;transition:color .3s ease;line-height:1;min-width:52px;text-align:right;}
-.ramo-nota.good{color:#5ff5d8;} /* teal luminoso */
-.ramo-nota.warn{color:#ffcf5c;} /* ámbar cálido */
-.ramo-nota.bad{color:#ff7a8f;}  /* rosa vivo */
+.ramo-nota.good,.ramo-nota.warn,.ramo-nota.bad{color:var(--grade-color);}
 .ramo-nota.neutral{color:var(--fg3);opacity:.45;font-weight:500;font-size:20px;}
-@media(prefers-color-scheme:light){
-  :root:not([data-modo="oscuro"]) .ramo-nota.good{color:#0d9488;}
-  :root:not([data-modo="oscuro"]) .ramo-nota.warn{color:#b45309;}
-  :root:not([data-modo="oscuro"]) .ramo-nota.bad{color:#be123c;}
-}
-/* Mismo bloque cuando el estudiante fuerza «claro» en Ajustes */
-  :root[data-modo="claro"] .ramo-nota.good{color:#0d9488;}
-  :root[data-modo="claro"] .ramo-nota.warn{color:#b45309;}
-  :root[data-modo="claro"] .ramo-nota.bad{color:#be123c;}
 .chevron-r{color:var(--fg3);font-size:14px;opacity:.5;margin-left:2px;}
 /* EMPTY */
 .empty{display:flex;flex-direction:column;align-items:center;padding:48px 20px;text-align:center;}
@@ -407,19 +406,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   display:inline-block;padding-right:.02em;
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
 }
-.ramo-num.good{background-image:linear-gradient(160deg,#2ee6c8 10%,#5ff5d8 55%,#a8f7ff 100%);}
-.ramo-num.warn{background-image:linear-gradient(160deg,#ffb020 10%,#ffcf5c 55%,#ffe9a8 100%);}
-.ramo-num.bad{background-image:linear-gradient(160deg,#ff3f63 10%,#ff7a8f 55%,#ffc4cf 100%);}
+.ramo-num.good,.ramo-num.warn,.ramo-num.bad{background-image:linear-gradient(160deg,color-mix(in srgb,var(--grade-color),#fff 10%),var(--grade-color) 72%,color-mix(in srgb,var(--grade-color),#000 8%));}
 .ramo-num.empty{background-image:none;-webkit-text-fill-color:var(--fg3);color:var(--fg3);font-size:32px;font-weight:600;opacity:.7;letter-spacing:-.01em;}
-@media(prefers-color-scheme:light){
-  :root:not([data-modo="oscuro"]) .ramo-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
-  :root:not([data-modo="oscuro"]) .ramo-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
-  :root:not([data-modo="oscuro"]) .ramo-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
-}
-/* Mismo bloque cuando el estudiante fuerza «claro» en Ajustes */
-  :root[data-modo="claro"] .ramo-num.good{background-image:linear-gradient(160deg,#0d9488 15%,#0f766e 100%);}
-  :root[data-modo="claro"] .ramo-num.warn{background-image:linear-gradient(160deg,#a16207 15%,#78350f 100%);}
-  :root[data-modo="claro"] .ramo-num.bad{background-image:linear-gradient(160deg,#be123c 15%,#9f1239 100%);}
 .ramo-num .ramo-decimal{
   background-image:inherit;-webkit-background-clip:text;background-clip:text;
   -webkit-text-fill-color:transparent;color:transparent;
@@ -922,4 +910,21 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .ramo-num.grade-value-arrival,.gpa-num.grade-value-arrival,.ramo-num.grade-threshold-crossed,
   .gpa-num.grade-threshold-crossed,.grade-gpa-echo{animation:none;}
   .ramo-num.grade-value-changing,.gpa-num.grade-value-changing{will-change:auto;}
+}
+
+/* ═══ PANTALLAS ANCHAS ═══════════════════════════════════════════════════
+   En un monitor de 1920 la app quedaba en 940px con el rail de 224 a la
+   izquierda: 378px muertos a cada lado del contenido. Se veía como una app
+   de teléfono pegada al medio de la pantalla.
+
+   Ensancha, pero NO a pantalla completa. Esto es texto y números en filas:
+   una tarjeta de 1900px de ancho deja el nombre del ramo pegado a un borde y
+   la nota al otro, y el ojo pierde el renglón. 1180px es lo más ancho que
+   aguanta sin que eso pase, y el espacio que sobra se aprovecha poniendo los
+   ramos en tres columnas en vez de dos.
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media(min-width:1440px){
+  .app{max-width:1180px;}
+  #home-ramos{grid-template-columns:1fr 1fr 1fr;}
 }

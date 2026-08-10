@@ -21,7 +21,7 @@ function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
   data.ramos = (data.ramos || []).map(r => ({
     ...r,
-    id: r.id || uid(),
+    id: idSeguro(r.id),
     color: r.color || '#2563eb',
     // Créditos SCT — opcional. Si todos los ramos lo tienen, el promedio se pondera.
     creditos: (typeof r.creditos === 'number' && r.creditos > 0) ? r.creditos : null,
@@ -29,11 +29,16 @@ function normalize(data) {
     origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
     categorias: (r.categorias || []).map(c => ({
       ...c,
-      id: c.id || uid(),
+      id: idSeguro(c.id),
       ponderaNotas: c.ponderaNotas ?? false,
+      // Las evaluaciones creadas a mano antes de esto quedaron sin `directNota`
+      // y se dibujaban como una lista en la que había que entrar. Se convierten
+      // a fila simple SOLO si tienen 0 o 1 nota: con dos o más, la fila simple
+      // mostraría una y escondería el resto, así que esas se dejan como están.
+      directNota: c.directNota ?? (!c.slots && (c.notas || []).length <= 1),
       fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
       notas: (c.notas || []).map(n => ({
-        id: n.id || uid(),
+        id: idSeguro(n.id),
         nombre: n.nombre || 'Nota',
         valor: n.valor ?? (typeof n === 'number' ? n : null),
         peso: n.peso || 1,
@@ -43,7 +48,22 @@ function normalize(data) {
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
   data.userName = data.userName || '';
-  data.historial = Array.isArray(data.historial) ? data.historial : [];
+  // El historial guarda ramos completos y sus ids llegan a los mismos atributos
+  // onclick (`toggleHist('<id>')`), así que necesita el mismo saneo. Antes se
+  // aceptaba tal cual: un respaldo importado con historial era el mismo agujero.
+  data.historial = (Array.isArray(data.historial) ? data.historial : []).map(h => ({
+    ...h,
+    id: idSeguro(h.id),
+    ramos: (h.ramos || []).map(r => ({
+      ...r,
+      id: idSeguro(r.id),
+      categorias: (r.categorias || []).map(c => ({
+        ...c,
+        id: idSeguro(c.id),
+        notas: (c.notas || []).map(n => ({...n, id: idSeguro(n.id)})),
+      })),
+    })),
+  }));
   data.carrera = data.carrera || null;
   data.tenant = data.tenant || 'fen';
   // Las dos menciones de Ing. Comercial se fusionaron: se elige más adelante en
@@ -271,12 +291,40 @@ function save(){
   syncToCloud();
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+// Los ids se interpolan dentro de atributos onclick ("toggleCat('<id>')"), así
+// que un id con comillas se sale de la llamada y el resto se ejecuta como JS.
+// `uid()` solo produce [a-z0-9], pero un id NO siempre lo genera la app: al
+// importar un respaldo se conserva el que venga en el JSON, y `esExportValido`
+// solo comprueba que `ramos` sea un arreglo. Pegar un respaldo ajeno bastaba
+// para ejecutar código con la sesión de Supabase en localStorage.
+//
+// Se saneia en la frontera: un id que no calce se reemplaza por uno nuevo. Es
+// preferible a escapar en cada uno de los 30 sitios de render, porque olvidar
+// uno vuelve a abrir el agujero entero.
+// La expresión va adentro a propósito: `normalize` se ejecuta al cargar los
+// datos, antes de que este trozo del archivo se haya evaluado, y un `const`
+// externo estaría en zona muerta temporal. Reventaría el arranque de la app.
+function idSeguro(v){return (typeof v==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(v))?v:uid();}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Redondea a 2 decimales para evitar errores de punto flotante en comparaciones
 function r2(n){return Math.round(n*100)/100;}
-// Semáforo de 3 estados: verde ≥5.0 (sólido) · amarillo 4.0–5.0 (aprobando, pero justo) · rojo <4.0
+// El semáforo conserva sus categorías: una nota bajo 4,0 no puede parecerse a
+// una aprobada. Dentro de cada categoría sí graduamos el color para que 1,0 y
+// 3,9, por ejemplo, no se sientan igual de urgentes.
 function colorClass(n){if(n===null||isNaN(n))return'neutral';const v=r2(n);return v>=5.0?'good':v>=4.0?'warn':'bad';}
-function getColor(n){const c=colorClass(n);return c==='good'?'var(--green)':c==='warn'?'var(--yellow)':c==='bad'?'var(--red)':'var(--fg3)';}
+function notaHue(n){
+  const v=Math.max(1,Math.min(7,Number(n)));
+  // Tres bandas semánticas, con saltos visibles al aprobar (4,0) y al salir
+  // de la zona de riesgo (5,0). 1,0→0° rojo; 4,0→48° ámbar; 6,0→142° verde.
+  //
+  // El verde llega a su tope en 6,0, no en 7,0: un 7 es excepcional, y
+  // reservarle el mejor verde dejaba a todas las notas que sí se sacan los
+  // estudiantes en verdes apagados. De 6,0 a 7,0 el color se queda arriba.
+  if(v<4)return(v-1)*18/3;
+  if(v<5)return 48+(v-4)*12;
+  return 105+Math.min(v-5,1)*37;
+}
+function getColor(n){return n===null||isNaN(n)?'var(--fg3)':`hsl(${notaHue(n).toFixed(1)} 78% var(--grade-light))`;}
 function fmt(n){return n===null?'·':n.toFixed(1);}
 // Formato numérico con 1 decimal por defecto (usa punto, no coma)
 function nf(n,dec){return n.toFixed(dec==null?1:dec);}
@@ -302,6 +350,7 @@ function promedioMarkup(valor,tipo){
 function pintarPromedio(el,valor,tipo,efecto){
   el.innerHTML=promedioMarkup(valor,tipo);
   el.className=`${tipo==='ramo'?'ramo-num':'gpa-num'} ${colorClass(valor)}${efecto?' '+efecto:''}`;
+  el.style.setProperty('--grade-color',getColor(valor));
 }
 function cambioDeUmbral(antes,despues){return antes!==null&&despues!==null&&colorClass(antes)!==colorClass(despues);}
 function cambioDePromedio(antes,despues){return antes!==null&&despues!==null&&Math.abs(antes-despues)>.0001;}
@@ -1146,6 +1195,7 @@ function renderHome(){
     const decimal=rounded.slice(sep);
     gpael.innerHTML=`${entera}<span class="gpa-decimal">${decimal}</span>`;
     gpael.className='gpa-num '+colorClass(g);
+    gpael.style.setProperty('--grade-color',getColor(g));
     gpael.onclick=()=>{
       const exacto=nf(g,2);
       const umbrales=[4.0,5.0,6.0,7.0];
@@ -1255,8 +1305,7 @@ function renderHome(){
     if(cards.length===0){
       const lg=latestGrade();
       if(lg){
-        const cls=colorClass(lg.nota.valor);
-        const noteColor=cls==='good'?'#5ff5d8':cls==='warn'?'#ffcf5c':cls==='bad'?'#ff7a8f':'var(--fg3)';
+        const noteColor=getColor(lg.nota.valor);
         cards.push(`
           <div class="insight-card" style="--insight-color:${noteColor}" onclick="openRamo('${esc(lg.ramo.id)}')">
             <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
@@ -1296,7 +1345,7 @@ function renderHome(){
     div.innerHTML=`
       <div class="ramo-band" style="background:${esc(r.color)}"></div>
       <div class="ramo-info"><div class="ramo-name">${esc(r.nombre)}</div><div class="ramo-meta">${metaHtml}</div></div>
-      <div class="ramo-nota ${colorClass(avg)}">${fmt(avg)}</div><span class="chevron-r">›</span>`;
+      <div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div><span class="chevron-r">›</span>`;
     c.appendChild(div);
   });
 }
@@ -1326,6 +1375,7 @@ function renderRamo(){
     const s=nf(avg);const dot=s.indexOf('.');
     avgEl.innerHTML=`${s.slice(0,dot)}<span class="ramo-decimal">${s.slice(dot)}</span>`;
     avgEl.className='ramo-num '+colorClass(avg);
+    avgEl.style.setProperty('--grade-color',getColor(avg));
   } else {
     avgEl.textContent='Sin notas';avgEl.className='ramo-num empty';
   }
@@ -1398,6 +1448,19 @@ function renderRamo(){
     ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
 
+  // Reportar la pauta vivía escondido al fondo del modal de "Editar ramo",
+  // debajo de Guardar y Cancelar. Nadie entra a editar el nombre de un ramo para
+  // avisar que su pauta está mal. Va acá, al pie de las evaluaciones, que es
+  // donde el estudiante se da cuenta.
+  const rep=document.getElementById('ramo-report');
+  if(rep){
+    // Sin evaluaciones no hay nada que enviar: el reporte ES la estructura.
+    if(r.categorias.length){
+      rep.style.display='flex';
+      rep.onclick=()=>openReportModal(r.id);
+    }else{rep.style.display='none';rep.onclick=null;}
+  }
+
   const cl=document.getElementById('cat-list');cl.innerHTML='';
   if(r.categorias.length===0){
     // Un ramo del catálogo sin pauta oficial NO es lo mismo que uno que el
@@ -1407,7 +1470,7 @@ function renderRamo(){
     const delCatalogo=!!(r.origen&&r.origen.tenant)&&!presetRamo(r.nombre,r.origen.tenant,r.origen.carrera);
     const titulo=delCatalogo?'Todavía no tenemos la pauta de este ramo':'Sin evaluaciones';
     const sub=delCatalogo
-      ? 'Disculpa: el ramo está en la malla pero su pauta oficial todavía no. Agrega tus evaluaciones con su porcentaje y el promedio funciona igual. Si tienes el programa del curso, repórtalo y lo sumamos al catálogo.'
+      ? 'Disculpa: el ramo está en la malla pero su pauta oficial todavía no. Agrega tus evaluaciones con su porcentaje y el promedio funciona igual — y después puedes reportárnosla para que la tengan los demás.'
       : 'Agrega tus pruebas, controles o tareas con su porcentaje del ramo. Puedes incluir la fecha para que aparezcan en la Agenda.';
     cl.innerHTML=`<div class="empty" style="padding:32px 20px;">
       <div class="empty-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
@@ -1439,7 +1502,7 @@ function renderRamo(){
               <div class="eval-row-name">${esc(cat.nombre)}</div>
               <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}</div>
             </div>
-            <div class="ramo-nota ${colorClass(av)}" style="min-width:auto;font-size:19px;">${fmt(av)}</div>
+            <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:19px;">${fmt(av)}</div>
             <span aria-hidden="true" style="color:var(--fg3);font-size:11px;margin-left:6px;">${isOpen?'▲':'▼'}</span>
           </div>
           <div class="eval-group-body${isOpen?' open':''}">${rows}</div>`;
@@ -1658,41 +1721,33 @@ function confirmAddMalla(){
   showToast(`✓ ${elegidos.length} ramo${elegidos.length!==1?'s':''} agregado${elegidos.length!==1?'s':''}`);
 }
 
+// Un solo campo: lo que el estudiante escribe es a la vez la búsqueda en su
+// malla y el nombre del ramo si no está ahí. Créditos y color se editan
+// después en la ficha del ramo — pedirlos acá era pedir una decisión en el
+// peor momento, cuando todavía no tiene el ramo.
 function openAddRamoModal(){
-  _colorElegidoAMano=false;
-  modalColor=nextRamoColor();
   const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0;
   const uni=(TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Agregar ramo</div>
-    ${hayCatalogo?`
-      <label class="modal-label">Buscar en tu malla${uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· ${esc(uni)}</span>`:''}</label>
-      <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="Escribe para buscar…" maxlength="40" autocomplete="off" autocapitalize="none"/></div>
-      <div id="m-ramo-results" class="cat-results"></div>
-      <div class="oauth-divider" style="margin:14px 0;"><span>o créalo tú</span></div>`:''}
-    <label class="modal-label">Nombre del ramo</label>
-    <div class="modal-input"><input type="text" id="m-ramo-name" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off" oninput="sugerirColorPorNombre(this.value)"/></div>
-    <label class="modal-label">Créditos <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(SCT — opcional)</span></label>
-    <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-creditos" placeholder="Ej: 10" maxlength="3" autocomplete="off"/></div>
-    <label class="modal-label">Color</label>
-    <div class="color-row" id="m-colors"></div>
+    <label class="modal-label">Nombre del ramo${hayCatalogo&&uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· lo buscamos en la malla ${esc(uni)}</span>`:''}</label>
+    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off" autocapitalize="none"/></div>
+    ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()" disabled>Agregar ramo</button>
     </div>`;
-  renderModalColors();openModal();
+  openModal();
 
-  const nameInput=document.getElementById('m-ramo-name');
-  const searchInput=document.getElementById('m-ramo-search');
-  setTimeout(()=>{(searchInput||nameInput).focus();},100);
-  nameInput.addEventListener('input',()=>{document.getElementById('m-add-ramo-btn').disabled=!nameInput.value.trim();});
-  nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddRamo();});
-
-  if(searchInput){
-    const pintar=()=>renderCatalogResults(searchInput.value);
-    searchInput.addEventListener('input',pintar);
-    pintar();
-  }
+  const input=document.getElementById('m-ramo-search');
+  setTimeout(()=>{input.focus();},100);
+  const pintar=()=>{
+    document.getElementById('m-add-ramo-btn').disabled=!input.value.trim();
+    if(hayCatalogo)renderCatalogResults(input.value);
+  };
+  input.addEventListener('input',pintar);
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddRamo();});
+  pintar();
 }
 
 // Resultados de búsqueda del catálogo. Solo ramos de la universidad y carrera
@@ -1702,7 +1757,7 @@ function renderCatalogResults(q){
   const yaTengo=new Set(S.ramos.map(r=>normName(r.nombre)));
   const res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre).slice(0,6);
   if(res.length===0){
-    box.innerHTML=`<div class="cat-empty">${q&&q.trim()?'No está en tu malla. Créalo abajo.':'Sin ramos en el catálogo.'}</div>`;
+    box.innerHTML=`<div class="cat-empty">${q&&q.trim()?'No está en tu malla — lo agregamos como ramo tuyo.':'Sin ramos en el catálogo.'}</div>`;
     return;
   }
   box.innerHTML=res.map(r=>{
@@ -1731,20 +1786,12 @@ function addFromCatalog(nombre){
   closeModal();renderHome();
   showToast(preset?'Agregado con sus ponderaciones':'Ramo agregado');
 }
-let _colorElegidoAMano=false;
 function renderModalColors(){
   const c=document.getElementById('m-colors');if(!c)return;c.innerHTML='';
   chartColors().forEach(col=>{
     const d=document.createElement('div');d.className='color-dot'+(col===modalColor?' sel':'');d.style.background=col;
-    d.onclick=()=>{modalColor=col;_colorElegidoAMano=true;renderModalColors();};c.appendChild(d);
+    d.onclick=()=>{modalColor=col;renderModalColors();};c.appendChild(d);
   });
-}
-// Mientras el estudiante escribe el nombre, el color sigue a la familia del
-// ramo. Deja de seguirlo en cuanto elige uno a mano: su decisión gana.
-function sugerirColorPorNombre(nombre){
-  if(_colorElegidoAMano)return;
-  const sug=nextRamoColor(nombre);
-  if(sug!==modalColor){modalColor=sug;renderModalColors();}
 }
 // Matching tolerante: ignora tildes y mayúsculas para encontrar el preset.
 function normName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
@@ -2082,14 +2129,14 @@ function parseCreditos(raw){
   return (!isNaN(n)&&n>0&&n<=60)?n:null;
 }
 function confirmAddRamo(){
-  const name=document.getElementById('m-ramo-name').value.trim();if(!name)return;
-  const cr=parseCreditos((document.getElementById('m-ramo-creditos')||{}).value);
+  const name=document.getElementById('m-ramo-search').value.trim();if(!name)return;
   // Si el nombre coincide con un ramo del catálogo del tenant, carga sus ponderaciones oficiales.
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-  S.ramos.push({id:uid(),nombre:presetName||name,color:modalColor,creditos:cr||(preset&&preset.creditos)||null,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+  const cr=(preset&&preset.creditos)||null;
+  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
-  if(preset)showToast('Ponderaciones oficiales cargadas');
+  showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
 }
 
 function openAddCatModal(prefillDate){
@@ -2115,7 +2162,11 @@ function confirmAddCat(){
   const fechaInput=document.getElementById('m-cat-fecha');
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;
   const r=S.ramos.find(x=>x.id===currentRamoId);
-  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,notas:[]});
+  // directNota: una evaluación es UNA nota que se escribe en su fila, igual que
+  // en las pautas oficiales. Sin esto quedaba como una lista a la que había que
+  // entrar para agregar notas adentro — una "Prueba 1" no tiene notas adentro,
+  // tiene una nota.
+  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,directNota:true,notas:[]});
   save();track('add_categoria',{peso,tiene_fecha:!!fecha});closeModal();renderRamo();
 }
 
@@ -2144,10 +2195,45 @@ function pautaResumen(){
 function plantillaPauta(tipo){
   const nombres=tipo==='tres-solemnes'
     ?['Solemne 1','Solemne 2','Solemne 3','Examen']
+    :tipo==='tres-pruebas'
+      ?['Prueba 1','Prueba 2','Prueba 3','Examen']
     :tipo==='dos-pruebas'
       ?['Prueba 1','Prueba 2','Examen']
       :[];
   return nombres.map(nombre=>({id:null,nombre,peso:0,tieneNotas:false}));
+}
+// En UC las evaluaciones se llaman pruebas, no solemnes. FEN conserva el
+// término porque aparece así en sus programas oficiales. Solo alimenta el
+// placeholder del campo: no arma ninguna estructura.
+function ejemploEvaluacion(tenant){return tenant==='uc'?'Prueba':'Solemne';}
+
+// Plantillas de estructura, POR TENANT — y FEN no tiene.
+//
+// El plan común de Ingeniería UC sí tiene una forma estable: tres
+// interrogaciones y un examen, y así están sus cuatro presets. Ahí la plantilla
+// ahorra tipeo real.
+//
+// En FEN no existe esa forma. De los diez programas oficiales transcritos, cada
+// uno mezcla distinto solemnes, controles de lectura, controles de ejercicios,
+// controles sorpresa, trabajos grupales y participación — y ninguno es "3
+// solemnes + examen". Ofrecer esa plantilla empujaba a la mayoría a una
+// estructura que después tenían que deshacer a mano.
+function plantillasPauta(tenant){
+  return tenant==='uc'
+    ?[{tipo:'tres-pruebas',label:'3 pruebas + examen'},{tipo:'dos-pruebas',label:'2 pruebas + examen'}]
+    :[];
+}
+// Son atajos de escritura, no una pauta sugerida: el estudiante elige el
+// nombre y siempre define sus propios pesos. UC y FEN usan vocabularios
+// distintos en sus programas, por eso no se mezclan en la misma lista.
+function sugerenciasEvaluacion(tenant){
+  const comunes=['Laboratorio','Informe','Taller','Proyecto','Tarea','Presentación','Examen'];
+  return tenant==='uc'
+    ?['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control',...comunes]
+    :['Solemne 1','Solemne 2','Solemne 3','Control 1','Control 2','Control 3','Prueba sorpresa','Casos y ensayos','Trabajo individual','Trabajo en grupo','Participación',...comunes];
+}
+function opcionesSugerenciasEvaluacion(tenant){
+  return sugerenciasEvaluacion(tenant).map(nombre=>`<option value="${esc(nombre)}"></option>`).join('');
 }
 function puedeUsarPlantillaPauta(){
   return pautaDraft.every(fila=>!fila.tieneNotas&&!fila.nombre.trim());
@@ -2182,9 +2268,12 @@ function duplicarPautaDesdeRamo(){
 }
 function renderPautaManualModal(){
   const fuentes=puedeUsarPlantillaPauta()?ramosParaDuplicarPauta(S.ramos,currentRamoId):[];
-  const plantillas=puedeUsarPlantillaPauta()?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
+  const ejemplo=ejemploEvaluacion(S.tenant);
+  const sugerencias=opcionesSugerenciasEvaluacion(S.tenant);
+  const disponibles=plantillasPauta(S.tenant);
+  const plantillas=(puedeUsarPlantillaPauta()&&disponibles.length)?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
     <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;"><button type="button" onclick="aplicarPlantillaPauta('tres-solemnes')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">3 solemnes + examen</button><button type="button" onclick="aplicarPlantillaPauta('dos-pruebas')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">2 pruebas + examen</button></div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">${p.label}</button>`).join('')}</div>
     <div style="font-size:12px;color:var(--fg2);line-height:1.4;margin-top:8px;">Los pesos quedan en 0%. Confírmalos con el programa del curso.</div>
   </div>`:'';
   const duplicar=fuentes.length?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);">
@@ -2194,21 +2283,22 @@ function renderPautaManualModal(){
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>`
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 32px;gap:8px;align-items:center;margin:8px 0;">
-      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: Solemne ${i+1}" maxlength="40" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
+      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="40" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
       <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:13px;pointer-events:none;">%</span></div>
       <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Configurar pauta</div>
-    <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Agrega tus evaluaciones y su porcentaje. Puedes guardar aunque te falte parte de la pauta.</p>
+    <div class="modal-title">Agregar evaluaciones</div>
+    <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas.</p>
     ${plantillas}
     ${duplicar}
+    <datalist id="m-pauta-sugerencias">${sugerencias}</datalist>
     <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:13px;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
     <div>${filas}</div>
     <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Inter',sans-serif;cursor:pointer;">+ Otra evaluación</button>
     <div class="modal-btns" style="margin-top:14px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-confirm" onclick="guardarPautaManual()">Guardar pauta</button>
+      <button class="btn-confirm" onclick="guardarPautaManual()">Guardar</button>
     </div>`;
 }
 function actualizarPautaNombre(i,valor){if(pautaDraft[i])pautaDraft[i].nombre=valor;}
@@ -2242,10 +2332,10 @@ function guardarPautaManual(){
   filas.forEach(f=>{
     const existente=f.id&&r.categorias.find(c=>c.id===f.id);
     if(existente){existente.nombre=f.nombre.trim();existente.peso=f.peso;}
-    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,notas:[]});
+    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:true,notas:[]});
   });
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
-  showToast(estado.lista?'✓ Pauta lista para calcular':'Pauta guardada · puedes completarla después');
+  showToast(estado.lista?'✓ Listo, ya suma 100%':'Guardado · puedes completar el resto después');
 }
 function abrirPautaDesdeNota(){closeModal();setTimeout(openPautaManualModal,120);}
 
@@ -2942,11 +3032,7 @@ function openEditRamoModal(){
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="confirmEditRamo()">Guardar</button>
-    </div>
-    <button class="rep-link" onclick="openReportModal('${esc(r.id)}')">
-      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15V4h16l-3 4 3 4H4"/><path d="M4 21v-6"/></svg>
-      ¿Le cambiaron las ponderaciones? Repórtalo
-    </button>`;
+    </div>`;
   renderModalColors();openModal();
   setTimeout(()=>{const i=document.getElementById('m-ramo-name');i.focus();i.select();},100);
   document.getElementById('m-ramo-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditRamo();});
@@ -3113,7 +3199,7 @@ function openSimGlobalModal(){
   simGlobalState={};
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Simular el semestre</div>
-    <p style="font-size:13px;color:var(--fg2);margin-bottom:16px;line-height:1.5;">Mueve la nota final de cada ramo y mira cómo queda tu promedio general. Nada de esto se guarda.</p>
+    <p style="font-size:13px;color:var(--fg2);margin-bottom:16px;line-height:1.5;">Ajusta la nota final de cada ramo y mira cómo queda tu promedio general. Puedes escribirla directo. Nada de esto se guarda.</p>
     <div class="simg-hero">
       <div class="simg-hero-label">Promedio proyectado</div>
       <div class="simg-hero-num" id="simg-avg">—</div>
@@ -3131,11 +3217,41 @@ function openSimGlobalModal(){
 
 function simGlobalReset(){simGlobalState={};renderSimGlobal();}
 
-function simGlobalSet(ramoId,raw){
-  const v=parseFloat(raw);
-  if(isNaN(v))delete simGlobalState[ramoId];
-  else simGlobalState[ramoId]=Math.round(v*10)/10;
+// El slider era imposible de apuntar: 60 pasos de 0,1 repartidos en el ancho de
+// un teléfono, y con el dedo encima tapando el número. Ahora son dos botones de
+// 0,1 y el número se escribe directo.
+const SIM_MIN=1.0, SIM_MAX=7.0;
+function simGlobalNormaliza(v){
+  if(isNaN(v))return null;
+  return Math.round(Math.min(SIM_MAX,Math.max(SIM_MIN,v))*10)/10;
+}
+// Punto de partida cuando el ramo no tiene nota todavía: el 4,0 es el número
+// desde el que el estudiante piensa, no el 1,0.
+function simGlobalBase(ramoId){
+  if(simGlobalState[ramoId]!==undefined)return simGlobalState[ramoId];
+  const r=S.ramos.find(x=>x.id===ramoId);
+  const real=r?ramoAvg(r):null;
+  return real!==null&&real!==undefined?real:4.0;
+}
+function simGlobalStep(ramoId,delta){
+  simGlobalState[ramoId]=simGlobalNormaliza(simGlobalBase(ramoId)+delta);
   renderSimGlobal();
+}
+function simGlobalSet(ramoId,raw){
+  // Acepta coma: en Chile la nota se escribe 5,5 y nadie va a cambiar el hábito
+  // porque el input espere un punto.
+  const v=simGlobalNormaliza(parseFloat(String(raw).replace(',','.')));
+  if(v===null)delete simGlobalState[ramoId];
+  else simGlobalState[ramoId]=v;
+  renderSimGlobal();
+}
+// Mientras escribe NO se vuelve a dibujar la lista: eso le arrancaría el foco
+// del campo en la primera tecla. Solo se actualiza el proyectado de arriba.
+function simGlobalTyping(ramoId,raw){
+  const v=simGlobalNormaliza(parseFloat(String(raw).replace(',','.')));
+  if(v===null)delete simGlobalState[ramoId];
+  else simGlobalState[ramoId]=v;
+  renderSimGlobalHero();
 }
 
 function simGlobalClear(ramoId){
@@ -3152,7 +3268,9 @@ function simGlobalAvg(){
   return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
 }
 
-function renderSimGlobal(){
+function renderSimGlobal(){renderSimGlobalHero();renderSimGlobalList();}
+
+function renderSimGlobalHero(){
   const real=gpa(S.ramos);
   const proj=simGlobalAvg();
   const hasSim=Object.keys(simGlobalState).length>0;
@@ -3177,6 +3295,9 @@ function renderSimGlobal(){
     }
   }
 
+}
+
+function renderSimGlobalList(){
   const list=document.getElementById('simg-list');
   if(!list)return;
   list.innerHTML=S.ramos.map(r=>{
@@ -3184,22 +3305,31 @@ function renderSimGlobal(){
     const hyp=simGlobalState[r.id];
     const shown=hyp!==undefined?hyp:realAvg;
     const isHyp=hyp!==undefined;
-    const sliderVal=shown!==null?shown:4.0;
     const prog=ramoProgress(r);
     const metaLeft=realAvg!==null
       ? `Actual ${nf(realAvg)} · ${prog.pct}% evaluado`
       : (r.categorias.length?'Sin notas aún':'Sin evaluaciones');
+    const id=esc(r.id);
+    const val=shown!==null?nf(shown):'';
+    const color=shown!==null?getColor(shown):'var(--fg3)';
+    const tope=shown!==null&&shown>=SIM_MAX, piso=shown!==null&&shown<=SIM_MIN;
     return `
       <div class="simg-row">
         <div class="simg-row-hd">
           <div class="simg-row-name"><span class="simg-dot" style="background:${esc(r.color)}"></span><span>${esc(r.nombre)}</span></div>
-          <div class="simg-row-val ${isHyp?'hyp':'real'}" style="color:${shown!==null?getColor(shown):'var(--fg3)'}">${shown!==null?nf(shown):'—'}</div>
         </div>
-        <input class="simg-slider" type="range" min="1" max="7" step="0.1" value="${sliderVal}"
-          oninput="simGlobalSet('${esc(r.id)}',this.value)" aria-label="Nota simulada de ${esc(r.nombre)}"/>
+        <div class="simg-stepper">
+          <button type="button" class="simg-step" ${piso?'disabled':''} onclick="simGlobalStep('${id}',-0.1)" aria-label="Bajar la nota de ${esc(r.nombre)}">−</button>
+          <input class="simg-val ${isHyp?'hyp':'real'}" style="color:${color}" value="${val}" placeholder="—"
+            inputmode="decimal" maxlength="4" aria-label="Nota simulada de ${esc(r.nombre)}"
+            oninput="simGlobalTyping('${id}',this.value)"
+            onchange="simGlobalSet('${id}',this.value)"
+            onfocus="this.select()"/>
+          <button type="button" class="simg-step" ${tope?'disabled':''} onclick="simGlobalStep('${id}',0.1)" aria-label="Subir la nota de ${esc(r.nombre)}">+</button>
+        </div>
         <div class="simg-row-meta">
           <span>${metaLeft}</span>
-          ${isHyp?`<button class="simg-reset" onclick="simGlobalClear('${esc(r.id)}')">Volver al real</button>`:'<span></span>'}
+          ${isHyp?`<button class="simg-reset" onclick="simGlobalClear('${id}')">Volver al real</button>`:'<span></span>'}
         </div>
       </div>`;
   }).join('');

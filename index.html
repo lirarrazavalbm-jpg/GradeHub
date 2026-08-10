@@ -66,7 +66,15 @@
 </script>
 
 <!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Versión fija + SRI. Con `@2` cualquier release nueva de la librería entraba
+     sola, y con la sesión de Supabase en localStorage eso es acceso completo a
+     las notas de todos. El navegador verifica el hash y, si no calza, no lo
+     ejecuta: una CDN comprometida o un paquete secuestrado dejan la app sin
+     sesión, no con una sesión robada. Al subir de versión hay que recalcular:
+       curl -sL <url> | openssl dgst -sha384 -binary | openssl base64 -A -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.2"
+        integrity="sha384-B2duOBIryCXbX4eDE4BdJwtNkQMRQde3o6IsjfPW28E6aH1CYE96hHeZRG3zY56O"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
@@ -177,7 +185,6 @@
       <span class="brand-word" style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--fg);">GradeHub</span>
       <span class="brand-glyph-slot" id="brand-glyph" title=""></span>
     </span>
-    <button class="icon-btn" onclick="openAddRamoModal()" aria-label="Agregar ramo" title="Agregar ramo" style="background:var(--primary);color:var(--primary-fg,#fff);border:none;"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
     <button class="avatar-btn" id="user-avatar" onclick="toggleUserMenu(event)" aria-label="Menú de usuario" aria-haspopup="menu" aria-expanded="false">?</button>
   </div>
   <div class="scroll">
@@ -201,6 +208,7 @@
     <div id="home-insights" style="margin:6px 20px 4px;display:none;"></div>
     <div class="section-hd" id="ramos-hd" style="display:none;">
       <span class="section-hd-title">Mis ramos</span>
+      <button class="section-hd-action" onclick="openAddRamoModal()" aria-label="Agregar ramo">+ Agregar</button>
       <button class="section-hd-action" id="sort-btn" onclick="cycleSortMode()" aria-label="Ordenar ramos">Manual ↕</button>
     </div>
     <div id="home-ramos"></div>
@@ -235,7 +243,11 @@
     <div id="peso-warning" class="ramo-warning" style="display:none;"></div>
     <div id="no-calcula-warning" style="display:none;"></div>
     <div id="cat-list"></div>
-    <button class="add-cat-btn" onclick="openPautaManualModal()">Configurar pauta</button>
+    <button class="add-cat-btn" onclick="openPautaManualModal()">Agregar evaluaciones</button>
+    <button class="rep-link" id="ramo-report" style="display:none;">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15V4h16l-3 4 3 4H4"/><path d="M4 21v-6"/></svg>
+      ¿Esta pauta no calza con tu curso? Repórtala
+    </button>
   </div>
 </div>
 
