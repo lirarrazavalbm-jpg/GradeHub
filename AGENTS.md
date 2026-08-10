@@ -255,19 +255,25 @@ la estructura declarada, así que si te faltan controles por rendir la respuesta
 ignora que el peor se va a eliminar — hoy le pedimos al estudiante una nota más
 alta de la que necesita.
 
-**Claude de Martín — pautas oficiales, y el consenso de reportes cuando se
-acaben.** El traspaso anterior decía que el consenso era "lo único" que podía
-llevar el catálogo a 88 porque no había más programas oficiales. Resultó que sí
-había: con ocho PDFs el catálogo pasó de 5 a 10 pautas en una tarde, y el
-pipeline de extracción quedó documentado y probado. Mientras sigan apareciendo
-programas, transcribirlos es más rápido y más exacto que cualquier consenso, y
-además es `data.js` puro.
+Y además **el consenso de reportes**, que pasa a este carril porque la parte
+difícil es Supabase, no la app: `catalog_reports` solo deja leer las filas
+propias, así que ningún cliente puede calcular un consenso. Necesita una vista
+agregada o una función `security definer` que exponga el conteo sin exponer
+quién reportó qué. Ese SQL se versiona en `supabase/` — hay precedente en
+`supabase/eliminar_mi_cuenta.sql`, y está ahí justamente porque tener una
+función solo en el panel costó dos días de diagnóstico equivocado.
 
-El consenso sigue en pie para cuando se acaben, y su obstáculo no cambió:
-`catalog_reports` solo deja leer las filas propias, así que ningún cliente puede
-calcular un consenso — necesita una vista agregada o una función `security
-definer` que exponga el conteo sin exponer quién reportó qué. Ese SQL se
-versiona en `supabase/`, no se deja solo en el panel.
+Sigue siendo la única vía para los ramos cuyo programa no aparezca nunca, así
+que no es "para después": es para cuando se acaben los PDFs, y ese momento se ve
+venir.
+
+**Claude de Martín — pautas oficiales.** El traspaso anterior decía que el
+consenso de reportes era "lo único" que podía llevar el catálogo a 88 porque no
+había más programas oficiales. Resultó que sí había: con ocho PDFs el catálogo
+pasó de 5 a 10 pautas en una tarde, y el pipeline de extracción quedó
+documentado y probado. Mientras sigan apareciendo programas, transcribirlos es
+más rápido y más exacto que cualquier consenso, y además es `data.js` puro: no
+sale del carril de contenido.
 
 ### Lo que espera una decisión, no un agente
 
