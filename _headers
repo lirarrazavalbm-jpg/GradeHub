@@ -14,9 +14,14 @@
 #
 # Al agregar un servicio externo hay que sumarlo acá o dejará de funcionar en
 # silencio. Los que hay hoy: jsDelivr (supabase-js), Google Fonts, Google
-# Analytics y el proyecto de Supabase.
+# Analytics, el proyecto de Supabase y Cloudflare Insights.
+#
+# OJO CON CLOUDFLARE INSIGHTS: Pages inyecta ese script en el edge, no está en
+# el index.html. Por eso ningún test que lea el repo lo puede encontrar, y la
+# primera CSP lo bloqueó. La única forma de verlo es abrir el sitio desplegado
+# con la consola. Si mañana Pages inyecta algo más, va a pasar lo mismo.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://lsulsnswzesyekpsvlql.supabase.co wss://lsulsnswzesyekpsvlql.supabase.co https://www.google-analytics.com https://region1.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://static.cloudflareinsights.com; connect-src 'self' https://lsulsnswzesyekpsvlql.supabase.co wss://lsulsnswzesyekpsvlql.supabase.co https://www.google-analytics.com https://region1.google-analytics.com https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
