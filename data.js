@@ -502,10 +502,12 @@ const PRESETS_FEN={
   // OJO: es el programa de UNA sección, no el común del ramo. Las otras secciones
   // pueden ponderar distinto. Si aparece el programa común, este se reemplaza.
   //
-  // Los controles de lectura van sin `slots`: el programa numera hasta el Control
-  // 7 pero el cronograma que tenemos salta las semanas 9 y 10, así que el total
-  // no está confirmado. `dropLowest` funciona igual con los que el estudiante
-  // agregue.
+  // Los controles de lectura van sin `slots`, y NO es que falte confirmar el
+  // número: cambia de una sección a otra. Es lo único que varía entre secciones
+  // — el resto de la pauta es igual para todas. Aunque aparezca el cronograma
+  // completo de una sección, ese número no sirve para las demás, así que esta
+  // fila se queda sin `slots` para siempre y el estudiante agrega los que le
+  // tomaron. `dropLowest` funciona igual con los que agregue.
   'Gestión y Empresas':{
     noCalcula:[
       'Toda ausencia a una exigencia del curso se califica con 1,0',
