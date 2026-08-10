@@ -284,11 +284,26 @@ const PRESETS_UC={
 // Primavera 2026. `grupo` define una compuerta sobre un CONJUNTO de
 // evaluaciones: con cap 'self' el tope es el promedio del propio grupo.
 //
-// `noCalcula` lista reglas que SÍ están en el programa oficial y que el motor
-// NO sabe representar: eximiciones, exámenes recuperativos, "se elimina la peor
-// nota", mínimos de asistencia. No es documentación interna — se le muestra al
-// estudiante, porque su promedio real puede diferir del que ve acá y tiene
-// derecho a saber por qué. Callarlo es peor que no tener el preset.
+// Dos listas para dos cosas distintas, y la diferencia le importa al estudiante:
+//
+// `noCalcula` — reglas que el motor TODAVÍA no sabe representar y que sí va a
+// saber. Es una deuda nuestra con fecha de vencimiento. Cuando se implementan,
+// salen de acá (así salió "se elimina el 25% de los controles", que hoy calcula
+// `dropLowest`).
+//
+// `reglasDelCurso` — reglas del programa que el promedio NUNCA va a incluir,
+// porque dependen de información que la app no puede tener: un dato que el
+// programa no da (¿cuántos controles sorpresa son?), algo que decide el profesor
+// caso a caso (una recuperativa autorizada), o una aproximación deliberada del
+// motor. No son una deuda: son cómo funciona el curso.
+//
+// Ninguna de las dos es documentación interna: las dos se le muestran al
+// estudiante, porque su promedio real puede diferir del que ve y tiene derecho a
+// saber por qué. Callarlo es peor que no tener el preset.
+//
+// Al transcribir un programa, la pregunta para decidir dónde va una regla es:
+// ¿con la información que el estudiante puede darnos, esto se podría calcular
+// algún día? Si sí, `noCalcula`. Si no, `reglasDelCurso`.
 const PRESETS_FEN={
   'Métodos Matemáticos II':{
     creditos:6,
@@ -297,18 +312,18 @@ const PRESETS_FEN={
   },
   'Introducción a la Microeconomía':{
     creditos:6,
-    noCalcula:[
-      'Examen Recuperativo: con promedio entre 3,6 y 3,9 puedes aprobar con 4,0',
-      'Inasistencias justificadas: el porcentaje pasa a otra evaluación',
-    ],
+    noCalcula:['Examen Recuperativo: con promedio entre 3,6 y 3,9 puedes aprobar con 4,0'],
+    // El programa dice que el porcentaje "pasa a otra evaluación" pero no dice a
+    // cuál. Sin eso no hay nada que calcular, y elegirla nosotros sería inventar.
+    reglasDelCurso:['Con inasistencias justificadas, el porcentaje de esa evaluación pasa a otra que el curso define'],
     evals:[['Solemne',30],['Examen',35],['Controles parciales',30,{slots:3}],['Pruebas sorpresa',5,{slots:5}]],
   },
   'Gestión de Personas':{
     creditos:6,
-    noCalcula:[
-      'Eximición del examen con promedio ≥ 5,5 en Casos: la nota del examen pasa a ser el promedio individual',
-      'La nota del trabajo grupal se ajusta ±10 décimas según la evaluación entre compañeros',
-    ],
+    noCalcula:['Eximición del examen con promedio ≥ 5,5 en Casos: la nota del examen pasa a ser el promedio individual'],
+    // El ajuste sale de cómo te evalúan tus compañeros: es un dato que solo
+    // existe cuando el curso lo entrega. La app no puede anticiparlo.
+    reglasDelCurso:['La nota del trabajo grupal se ajusta ±10 décimas según la evaluación entre compañeros'],
     evals:[['Casos y ensayos',40,{slots:5}],['Trabajo en grupo',30],['Participación',20],['Examen Integrativo',10]],
     // "Si alguno de los requisitos no se cumple, la nota final será la más baja
     //  entre los dos" → dos compuertas de grupo con tope en su propio promedio.
@@ -323,9 +338,8 @@ const PRESETS_FEN={
     // el motor ya lo aplica vía `dropLowest`. El 75% de asistencia NO se puede
     // calcular y se queda: el programa dice "entre 4 y 6 controles", así que no
     // existe el denominador contra el cual medir el 75%.
-    noCalcula:[
-      'Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9',
-    ],
+    // Sin noCalcula: no queda ninguna regla pendiente de implementar.
+    reglasDelCurso:['Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9'],
     evals:[
       ['Controles de Lectura',10,{slots:3,min:1.5,cap:3.9}],
       ['Controles Ejercicios',40,{slots:4,min:1.5,cap:3.9}],
@@ -349,7 +363,12 @@ const PRESETS_FEN={
   //     inventarlo. Sin slots el estudiante ingresa las notas que le pongan.
   'Marketing':{
     creditos:6,
-    noCalcula:[
+    // Las tres son permanentes, cada una por su motivo. La primera el motor sí la
+    // modela, con `group_min` y cap 'self': el veredicto aprobado/reprobado
+    // coincide siempre (barrido de las 6561 combinaciones), y el número solo
+    // difiere cuando ya estás reprobado por los dos caminos. Es una aproximación
+    // deliberada y por eso se declara, no una deuda.
+    reglasDelCurso:[
       'Si tu promedio en las evaluaciones individuales (Solemne, Controles y Examen) queda bajo 4,0, las notas grupales no se consideran y tu nota final pasa a ser ese promedio individual',
       'La nota del trabajo grupal se ajusta con un modificador por evaluación de pares, normalmente entre -0,9 y +0,9, aunque el rango cambia cada semestre',
       'Las evaluaciones no se repiten. Con prueba recuperativa autorizada se recupera solo una, Solemne o Examen, y nunca los controles',

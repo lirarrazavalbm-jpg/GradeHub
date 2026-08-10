@@ -205,10 +205,21 @@ try{ctx.openPautaManualModal();
   else {fail++;console.log('  FAIL el editor no abrió para ramo sin preset');}
 }catch(e){fail++;console.log('  FAIL ramo sin preset lanzó → '+e.message);}
 ctx.document.getElementById=getBeforePauta;ctx.document.querySelector=queryBeforePauta;
-const reglasGp=ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:{tenant:'fen'}});
-if(reglasGp.length===2&&reglasGp[0].includes('Eximición')){ok++;console.log('  OK   muestra reglas oficiales que el motor no calcula');}
+// Las dos listas se le muestran al estudiante con promesas distintas: una dice
+// "lo vamos a calcular" y la otra "esto nunca entra en el promedio". Confundirlas
+// es prometer algo que no va a pasar, así que se verifican por separado.
+const gp={nombre:'Gestión de Personas',origen:{tenant:'fen'}};
+const reglasGp=ctx.reglasNoCalculadas(gp);
+if(reglasGp.length===1&&reglasGp[0].includes('Eximición')){ok++;console.log('  OK   la eximición es deuda nuestra: va en las que todavía no calculamos');}
 else {fail++;console.log('  FAIL reglas no calculadas → '+JSON.stringify(reglasGp));}
-if(ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:null}).length===0){ok++;console.log('  OK   no inventa reglas para ramos manuales');}
+const cursoGp=ctx.reglasDelCurso(gp);
+if(cursoGp.length===1&&cursoGp[0].includes('compañeros')){ok++;console.log('  OK   el ajuste entre compañeros es regla del curso: nunca la vamos a calcular');}
+else {fail++;console.log('  FAIL reglas del curso → '+JSON.stringify(cursoGp));}
+// Contabilidad ya no tiene deuda pendiente: su única regla es del curso.
+const conta={nombre:'Contabilidad',origen:{tenant:'fen'}};
+if(ctx.reglasNoCalculadas(conta).length===0&&ctx.reglasDelCurso(conta).some(r=>/75%/.test(r))){ok++;console.log('  OK   el 75% de asistencia no promete cálculo futuro');}
+else {fail++;console.log('  FAIL Contabilidad clasificó mal sus reglas');}
+if(ctx.reglasNoCalculadas({nombre:'Gestión de Personas',origen:null}).length===0&&ctx.reglasDelCurso({nombre:'Gestión de Personas',origen:null}).length===0){ok++;console.log('  OK   no inventa reglas para ramos manuales');}
 else {fail++;console.log('  FAIL inventó reglas para un ramo manual');}
 
 console.log('\n=== Ajustes por secciones ===');
