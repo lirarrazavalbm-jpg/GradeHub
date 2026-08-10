@@ -50,6 +50,12 @@ const supabaseUrl = (app.match(/https:\/\/([a-z0-9]+\.supabase\.co)/) || [])[1];
   chk(`${o} está en la CSP`, csp.includes(o)));
 chk(`el proyecto de Supabase (${supabaseUrl}) está en la CSP`, csp.includes(supabaseUrl));
 
+// Cloudflare Pages inyecta su beacon en el edge: no está en index.html, así que
+// ningún test que lea el repo lo encuentra. La primera versión de esta CSP lo
+// bloqueó y solo se vio abriendo el sitio desplegado con la consola.
+chk('Cloudflare Insights está permitido (Pages lo inyecta en el edge)',
+  /script-src[^;]*static\.cloudflareinsights\.com/.test(csp) && /connect-src[^;]*cloudflareinsights\.com/.test(csp));
+
 console.log('\n=== Las otras cabeceras ===');
 chk('X-Content-Type-Options nosniff', /X-Content-Type-Options:\s*nosniff/.test(headers));
 chk('Referrer-Policy', /Referrer-Policy:\s*strict-origin/.test(headers));
