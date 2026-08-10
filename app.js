@@ -308,14 +308,17 @@ function idSeguro(v){return (typeof v==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(v
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Redondea a 2 decimales para evitar errores de punto flotante en comparaciones
 function r2(n){return Math.round(n*100)/100;}
-// Las etiquetas siguen siendo semánticas, pero el color de una nota no salta
-// entre tres bloques. La escala recorre rojo urgente (1.0), ámbar (4.0) y verde
-// excelente (7.0), para que cada décima tenga una señal visual propia.
+// El semáforo conserva sus categorías: una nota bajo 4,0 no puede parecerse a
+// una aprobada. Dentro de cada categoría sí graduamos el color para que 1,0 y
+// 3,9, por ejemplo, no se sientan igual de urgentes.
 function colorClass(n){if(n===null||isNaN(n))return'neutral';const v=r2(n);return v>=5.0?'good':v>=4.0?'warn':'bad';}
 function notaHue(n){
   const v=Math.max(1,Math.min(7,Number(n)));
-  // 1.0→0° rojo, 4.0→44° ámbar, 7.0→142° verde brillante.
-  return v<=4?(v-1)*44/3:44+(v-4)*98/3;
+  // Tres bandas semánticas, con saltos visibles al aprobar (4,0) y al salir
+  // de la zona de riesgo (5,0). 1,0→0° rojo; 4,0→48° ámbar; 7,0→142° verde.
+  if(v<4)return(v-1)*18/3;
+  if(v<5)return 48+(v-4)*12;
+  return 105+(v-5)*37/2;
 }
 function getColor(n){return n===null||isNaN(n)?'var(--fg3)':`hsl(${notaHue(n).toFixed(1)} 78% var(--grade-light))`;}
 function fmt(n){return n===null?'·':n.toFixed(1);}
