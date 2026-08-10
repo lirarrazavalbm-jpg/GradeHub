@@ -58,8 +58,11 @@ self.addEventListener('fetch', event => {
   // Requests externos
   if (url.origin !== location.origin) {
     // Google Fonts: cache-then-network
-    if (url.hostname.includes('fonts.googleapis.com') ||
-        url.hostname.includes('fonts.gstatic.com')) {
+    // Coincidencia EXACTA, no `includes`: con subcadena, un dominio como
+    // fonts.googleapis.com.malo.cl también calzaba y su respuesta terminaba
+    // guardada en la caché de la app.
+    if (url.hostname === 'fonts.googleapis.com' ||
+        url.hostname === 'fonts.gstatic.com') {
       event.respondWith(
         caches.open(CACHE_NAME).then(cache =>
           cache.match(request).then(cached => {
