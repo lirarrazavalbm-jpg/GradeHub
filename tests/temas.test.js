@@ -106,8 +106,10 @@ const gradeHue = n => Number(vm.runInContext('notaHue(' + n + ')', dark).toFixed
 const gradeHues = [1, 2, 3, 4, 5, 6, 7].map(gradeHue);
 chk('1.0 es rojo urgente', gradeHues[0] === 0);
 chk('4.0 cae en ámbar', gradeHues[3] === 48);
-chk('7.0 es verde brillante', gradeHues[6] === 142);
-chk('cada nota sube de color sin retroceder', gradeHues.every((h, i) => i === 0 || h > gradeHues[i - 1]));
+chk('6.0 ya es el verde más alto', gradeHues[5] === 142);
+chk('un 7 no se ve menos verde que un 6', gradeHues[6] === gradeHues[5]);
+chk('hasta el 6.0 cada nota sube de color', gradeHues.slice(0, 6).every((h, i) => i === 0 || h > gradeHues[i - 1]));
+chk('el color nunca retrocede al subir la nota', gradeHues.every((h, i) => i === 0 || h >= gradeHues[i - 1]));
 chk('las etiquetas siguen siendo semánticas', vm.runInContext('colorClass(3.9)+"|"+colorClass(4.0)+"|"+colorClass(5.0)', dark) === 'bad|warn|good');
 const saltoAprobacion=gradeHue(4.0)-gradeHue(3.9);
 const variacionReprobado=gradeHue(3.9)-gradeHue(1.0);

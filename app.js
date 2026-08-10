@@ -315,10 +315,14 @@ function colorClass(n){if(n===null||isNaN(n))return'neutral';const v=r2(n);retur
 function notaHue(n){
   const v=Math.max(1,Math.min(7,Number(n)));
   // Tres bandas semánticas, con saltos visibles al aprobar (4,0) y al salir
-  // de la zona de riesgo (5,0). 1,0→0° rojo; 4,0→48° ámbar; 7,0→142° verde.
+  // de la zona de riesgo (5,0). 1,0→0° rojo; 4,0→48° ámbar; 6,0→142° verde.
+  //
+  // El verde llega a su tope en 6,0, no en 7,0: un 7 es excepcional, y
+  // reservarle el mejor verde dejaba a todas las notas que sí se sacan los
+  // estudiantes en verdes apagados. De 6,0 a 7,0 el color se queda arriba.
   if(v<4)return(v-1)*18/3;
   if(v<5)return 48+(v-4)*12;
-  return 105+(v-5)*37/2;
+  return 105+Math.min(v-5,1)*37;
 }
 function getColor(n){return n===null||isNaN(n)?'var(--fg3)':`hsl(${notaHue(n).toFixed(1)} 78% var(--grade-light))`;}
 function fmt(n){return n===null?'·':n.toFixed(1);}
