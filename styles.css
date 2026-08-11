@@ -5,17 +5,17 @@ button:active{transform:scale(.97);}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
 :root{
-  --bg:#f4f7f7;--bg2:#fff;--card:#fff;--border:#e4ebeb;--border2:#c7d2d2;
-  --primary:#3f7a30;--primary-fg:#fff;--primary-light:#e9f2e5;--accent:#aab4a5;--secondary:#3f7a30;
-  --fg:#0b1414;--fg2:#4a5959;--fg3:#8a9797;
+  --bg:#f2f7f8;--bg2:#fff;--card:#fff;--border:#deebee;--border2:#bccdd2;
+  --primary:#087f98;--primary-fg:#fff;--primary-light:#e2f6f8;--accent:#22d3ee;--secondary:#087f98;
+  --fg:#07171b;--fg2:#40565b;--fg3:#7a8e93;
   --green:#0d9488;--green-bg:#e6f7f5;--green-border:#a7ebe1;
   --yellow:#a16207;--yellow-bg:#fdf9e7;
   --red:#c02b3f;--red-bg:#fdecef;
   /* En claro baja la luminosidad: incluso el verde 7.0 sigue legible en texto. */
   --grade-light:30%;
-  --muted:#eff3f3;--radius:14px;
-  --shadow:0 1px 2px rgba(11,20,20,.04),0 4px 16px -4px rgba(11,20,20,.08);
-  --shadow-lg:0 8px 30px -8px rgba(11,20,20,.16);
+  --muted:#eaf2f4;--radius:14px;
+  --shadow:0 1px 2px rgba(7,23,27,.04),0 4px 16px -4px rgba(7,23,27,.08);
+  --shadow-lg:0 8px 30px -8px rgba(7,23,27,.16);
   /* Un ritmo compartido evita que cada pantalla "invente" su propia
      transición. Corto a propósito: orienta la interacción, no la retrasa. */
   --motion-press:120ms;--motion-fast:160ms;--motion-base:220ms;
@@ -23,34 +23,34 @@ button:active{transform:scale(.97);}
 }
 @media(prefers-color-scheme:dark){
   :root:not([data-modo="claro"]){
-    /* Fondo casi negro con un matiz mineral. Los grises suben en pasos parejos
+    /* Fondo casi negro azulado. Los grises suben en pasos parejos
        para que las cards se despeguen sin necesitar bordes fuertes. */
-    --bg:#090b08;--bg2:#10130e;--card:#171b15;--border:#272d23;--border2:#3b4435;
-    --primary:#3f7a30;--primary-fg:#fff;--primary-light:#172313;--accent:#aab4a5;--secondary:#3f7a30;
-    --fg:#eef3f8;--fg2:#94a3b8;--fg3:#61708a;
+    --bg:#070b0e;--bg2:#0d1418;--card:#141d22;--border:#26343a;--border2:#3a4b52;
+    --primary:#22d3ee;--primary-fg:#05252b;--primary-light:#0b2930;--accent:#65e6f4;--secondary:#22d3ee;
+    --fg:#eef4f6;--fg2:#99aab2;--fg3:#657780;
     /* Notas: saturadas y luminosas contra el fondo oscuro */
     --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
     --grade-light:62%;
-    --muted:#1d221a;
+    --muted:#182228;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
   }
 }
 /* Mismo bloque cuando el estudiante fuerza «oscuro» en Ajustes */
   :root[data-modo="oscuro"]{
-    /* Fondo casi negro con un matiz mineral. Los grises suben en pasos parejos
+    /* Fondo casi negro azulado. Los grises suben en pasos parejos
        para que las cards se despeguen sin necesitar bordes fuertes. */
-    --bg:#090b08;--bg2:#10130e;--card:#171b15;--border:#272d23;--border2:#3b4435;
-    --primary:#3f7a30;--primary-fg:#fff;--primary-light:#172313;--accent:#aab4a5;--secondary:#3f7a30;
-    --fg:#eef3f8;--fg2:#94a3b8;--fg3:#61708a;
+    --bg:#070b0e;--bg2:#0d1418;--card:#141d22;--border:#26343a;--border2:#3a4b52;
+    --primary:#22d3ee;--primary-fg:#05252b;--primary-light:#0b2930;--accent:#65e6f4;--secondary:#22d3ee;
+    --fg:#eef4f6;--fg2:#99aab2;--fg3:#657780;
     /* Notas: saturadas y luminosas contra el fondo oscuro */
     --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
     --grade-light:62%;
-    --muted:#1d221a;
+    --muted:#182228;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
   }

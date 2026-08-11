@@ -161,9 +161,8 @@ const TENANT_GLYPHS={
 // tokens que debe compartir toda la app. Agregar una universidad es puro dato,
 // no la creación de otra paleta.
 //
-// Verde mineral: cercano a una libreta y a una herramienta de estudio, pero
-// separado del verde brillante del semáforo y de los colores identificadores de
-// ramo. El acento secundario es casi neutro para que no compita con ellos.
+// Cian profundo: da energía sin apropiarse del verde del semáforo. El cian de
+// los ramos sigue siendo más luminoso y funciona solo como identificador.
 const THEME_BASE={
   // Semáforo de notas. Se deja IGUAL en todos los temas a propósito: verde/ámbar/
   // rojo son semánticos (aprobado / al borde / reprobado), no decorativos. Teñirlos
@@ -172,9 +171,10 @@ const THEME_BASE={
 };
 
 const GRADEHUB_THEME={
-  primary:'#3f7a30', primaryFg:'#ffffff', primaryLight:'#e9f2e5',
-  darkPrimaryLight:'#172313', accent:'#aab4a5', secondary:'#3f7a30',
-  dark:{bg:'#090b08',bg2:'#10130e',card:'#171b15',border:'#272d23',border2:'#3b4435',muted:'#1d221a'},
+  primary:'#087f98', primaryFg:'#ffffff', primaryLight:'#e2f6f8',
+  darkPrimary:'#22d3ee', darkPrimaryFg:'#05252b', darkPrimaryLight:'#0b2930',
+  accent:'#65e6f4', secondary:'#087f98', darkSecondary:'#22d3ee',
+  dark:{bg:'#070b0e',bg2:'#0d1418',card:'#141d22',border:'#26343a',border2:'#3a4b52',muted:'#182228'},
 };
 const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
 
