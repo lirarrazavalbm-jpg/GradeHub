@@ -376,10 +376,13 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .insight-meta{font-size:12px;color:var(--fg2);margin-top:2px;letter-spacing:-.005em;}
 .insight-meta .strong{color:var(--insight-color,var(--fg));font-weight:700;}
 /* RAMOS — sección + filas densas editoriales */
-.section-hd{display:flex;align-items:baseline;justify-content:space-between;padding:20px 20px 10px;}
+.section-hd{display:flex;align-items:center;padding:20px 20px 10px;gap:10px;}
 .section-hd-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--fg3);}
 .section-hd-action{font-size:12px;font-weight:600;color:var(--fg3);background:none;border:none;cursor:pointer;letter-spacing:-.01em;padding:2px 0;transition:color .15s;}
 .section-hd-action:hover{color:var(--fg);}
+.section-hd-add{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border:0;border-radius:10px;background:var(--primary);color:var(--primary-fg,#0a1f1c);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 5px 14px -7px color-mix(in srgb,var(--primary),transparent 28%);transition:transform var(--motion-press) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
+.section-hd-add .ic{width:15px;height:15px;stroke-width:2.4;}
+@media(hover:hover) and (pointer:fine){.section-hd-add:hover{transform:translateY(-1px);box-shadow:0 8px 18px -8px color-mix(in srgb,var(--primary),transparent 18%);}}
 .ramo-row{position:relative;display:flex;align-items:center;gap:14px;margin:0 20px 10px;padding:18px 22px;background:linear-gradient(115deg,color-mix(in srgb,var(--ramo-tint,transparent),transparent 78%) 0%,color-mix(in srgb,var(--ramo-tint,transparent),transparent 92%) 40%,var(--card) 100%);border:1px solid color-mix(in srgb,var(--ramo-tint,var(--border)),transparent 72%);border-radius:16px;cursor:pointer;overflow:hidden;transition:transform .18s ease,border-color .2s ease,box-shadow .2s ease;
   /* Banda lateral de color como box-shadow inset — respeta el border-radius sin
      glitches en hover (antes era un div absolute que se cortaba al scale). */
