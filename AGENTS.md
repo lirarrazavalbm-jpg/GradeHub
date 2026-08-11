@@ -175,11 +175,37 @@ tocar todo, es lo único que evita conflictos.
 
 | Carril | Archivos | Quién |
 |---|---|---|
-| Contenido | `data.js` — mallas, presets, carreras | `ms` |
+| Contenido FEN | `data.js` — mallas, presets y carreras de FEN | `ms` |
+| Contenido UC | `data.js` — mallas, presets, carreras y créditos de UC | `li` |
 | Motor y render | el cálculo y las pantallas en `app.js` | `codex` |
 | Infra y seguridad | workflows, `sw.js`, `styles.css`, `_headers` | `li` |
 
 Si tu tarea te obliga a salir de tu carril, no lo hagas: dilo primero.
+
+**`data.js` se reparte por universidad, no por archivo.** Es la única excepción
+al reparto por archivo y existe porque las dos universidades avanzan en
+paralelo: Martín transcribe programas de FEN, Lucas arma UC. Dentro de `data.js`
+cada uno toca lo suyo — `PRESETS_FEN` y las mallas FEN por un lado,
+`PRESETS_UC`, `MALLA_UC` y `CREDITOS_UC` por el otro.
+
+### Cada universidad habla su idioma
+
+**Nunca uses el vocabulario de una universidad en los datos de otra.** En FEN las
+pruebas grandes se llaman **Solemnes**; en la UC son **Interrogaciones**,
+**Pruebas** o **Controles**. Un estudiante de Ingeniería UC que abre su ramo y ve
+"Solemne 1" sabe al tiro que la app no es para él, y deja de creerle también al
+número.
+
+Esto vale para los nombres de evaluación en los presets, las plantillas del
+editor de pauta, las sugerencias al escribir y cualquier texto de la interfaz que
+dependa del tenant. `sugerenciasEvaluacion` y `plantillaPrincipalPauta` en
+`app.js` ya separan los dos vocabularios: si agregas uno nuevo, sepáralo ahí.
+(La función de plantillas se llama `plantillasPauta`, en plural: en FEN devuelve
+vacío a propósito, porque ninguno de sus diez programas es "3 solemnes + examen".)
+
+Hay un test que lo verifica (`tests/vocabulario.test.js`). No es paranoia: el
+editor de pauta ofrecía "3 solemnes + examen" a los estudiantes de la UC hasta
+que alguien lo notó.
 
 ### Un PR, una cosa
 
