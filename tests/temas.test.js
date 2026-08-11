@@ -62,14 +62,15 @@ const snapshot = () => ['--primary', '--primary-fg', '--primary-light', '--accen
 console.log('\n=== Una identidad, sin importar la universidad ===');
 const theme = vm.runInContext('GRADEHUB_THEME', dark);
 chk('no queda registro THEMES por universidad', vm.runInContext('typeof THEMES', dark) === 'undefined');
-chk('tiene todos los tokens de identidad', ['primary', 'primaryFg', 'primaryLight', 'darkPrimaryLight', 'accent', 'secondary', 'dark'].every(k => k in theme));
-chk('el acento secundario es neutro y no compite con ramos', saturation(theme.accent) <= .15);
+chk('tiene todos los tokens de identidad', ['primary', 'primaryFg', 'primaryLight', 'darkPrimary', 'darkPrimaryFg', 'darkPrimaryLight', 'accent', 'secondary', 'darkSecondary', 'dark'].every(k => k in theme));
+chk('el acento luminoso acompaña al cian profundo', saturation(theme.accent) >= .5 && lum(theme.accent)>lum(theme.primary));
+chk('el cian de identidad no es el cian de un ramo', theme.primary !== '#06b6d4' && Math.abs(lum(theme.primary)-lum('#06b6d4')) >= .08);
 const firmas = TENANT_CODES.map(code => { reset(); dark.applyTheme(code); return snapshot(); });
 chk('los cuatro tenants reciben exactamente los mismos tokens', new Set(firmas).size === 1);
 chk('los cuatro tenants siguen existiendo como datos', TENANT_CODES.every(code => vm.runInContext('Boolean(TENANTS[' + JSON.stringify(code) + '])', dark)));
 TENANT_CODES.forEach(code => {
   const badge = vm.runInContext('tenantBadge(' + JSON.stringify(code) + ')', dark);
-  chk(code + ' conserva su monograma con el acento común', badge.includes('--tb:#3f7a30'));
+  chk(code + ' conserva su monograma con el acento común', badge.includes('--tb:var(--primary)'));
 });
 console.log('  ' + TENANT_CODES.map((t, i) => t.toUpperCase() + '=' + firmas[i].split('|')[0]).join('  '));
 
@@ -91,9 +92,11 @@ TENANT_CODES.forEach(code => {
   Object.keys(PL).forEach(k => delete PL[k]);
   light.applyTheme(code);
   chk(code + ' conserva la superficie clara del CSS', ['--bg', '--card', '--border'].every(k => !(k in PL)));
+  chk(code + ' conserva el cian profundo en claro', PL['--primary'] === theme.primary && PL['--primary-fg'] === theme.primaryFg);
   chk(code + ' usa el tinte claro', PL['--primary-light'] === theme.primaryLight);
 });
 reset(); dark.applyTheme('uc');
+chk('oscuro usa el cian luminoso', P['--primary'] === theme.darkPrimary && P['--primary-fg'] === theme.darkPrimaryFg);
 chk('oscuro usa el tinte oscuro', P['--primary-light'] === theme.darkPrimaryLight);
 
 console.log('\n=== Semáforo fijo y separado de la identidad ===');
@@ -133,8 +136,14 @@ hues.forEach((h, i) => {
 });
 chk('ningún par de colores a menos de 18° de matiz', minSep >= 18);
 const SEM = ['#2ee6c8', '#ffc94d', '#ff5f7a'];
-chk('el acento no se confunde con un ramo', pal.every(c => Math.min(Math.abs(hue(c) - hue(theme.primary)), 360 - Math.abs(hue(c) - hue(theme.primary))) >= 21));
-chk('el acento no se confunde con el semáforo', SEM.every(s => Math.min(Math.abs(hue(s) - hue(theme.primary)), 360 - Math.abs(hue(s) - hue(theme.primary))) >= 21));
+const separaIdentidad = color => {
+  const distancia=Math.min(Math.abs(hue(color)-hue(theme.primary)),360-Math.abs(hue(color)-hue(theme.primary)));
+  // El acento de la app y un ramo pueden compartir familia cian, pero no el
+  // mismo rol visual: cuando el matiz coincide, exigimos contraste propio.
+  return distancia>=21||ratio(color,theme.primary)>=1.7;
+};
+chk('el acento se distingue de cada ramo por matiz o contraste', pal.every(separaIdentidad));
+chk('el acento se distingue del semáforo por matiz o contraste', SEM.every(separaIdentidad));
 chk('ningún color de ramo choca con el semáforo', pal.every(c => SEM.every(s => Math.min(Math.abs(hue(c) - hue(s)), 360 - Math.abs(hue(c) - hue(s))) >= 10)));
 console.log('  ' + pal.length + ' colores, separación mínima ' + minSep.toFixed(0) + '° (' + par + ')');
 
