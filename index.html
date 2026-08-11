@@ -209,7 +209,10 @@
     <div id="home-insights" style="margin:6px 20px 4px;display:none;"></div>
     <div class="section-hd" id="ramos-hd" style="display:none;">
       <span class="section-hd-title">Mis ramos</span>
-      <button class="section-hd-action" onclick="openAddRamoModal()" aria-label="Agregar ramo">+ Agregar</button>
+      <button class="section-hd-add" onclick="openAddRamoModal()" aria-label="Agregar ramo">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Agregar ramo
+      </button>
       <button class="section-hd-action" id="sort-btn" onclick="cycleSortMode()" aria-label="Ordenar ramos">Manual ↕</button>
     </div>
     <div id="home-ramos"></div>
