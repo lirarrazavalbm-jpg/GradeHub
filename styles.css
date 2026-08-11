@@ -55,6 +55,20 @@ button:active{transform:scale(.97);}
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
   }
 body{font-family:'Inter',sans-serif;background:var(--bg);background-image:radial-gradient(1100px 380px at 50% -120px,color-mix(in srgb,var(--primary),transparent 91%),transparent);color:var(--fg);min-height:100vh;min-height:100dvh;}
+/* Página 404: no depende de JavaScript, pero conserva el mismo fondo, acento y
+   ritmo de GradeHub. El turquesa guía la vuelta a la app; no usa el semáforo. */
+.error-page{display:grid;place-items:center;padding:28px 22px;background-image:radial-gradient(680px 340px at 50% 12%,color-mix(in srgb,var(--primary),transparent 86%),transparent);}
+.error-wrap{width:min(100%,430px);padding:24px 0;text-align:center;}
+.error-brand{display:inline-flex;align-items:center;gap:9px;margin-bottom:54px;color:var(--fg);font-family:'Sora','Inter',sans-serif;font-size:16px;font-weight:800;letter-spacing:-.03em;text-decoration:none;}
+.error-mark{display:grid;place-items:center;width:32px;height:32px;border:1px solid color-mix(in srgb,var(--primary),transparent 55%);border-radius:10px;background:var(--primary-light);color:var(--primary);box-shadow:0 8px 22px -13px color-mix(in srgb,var(--primary),transparent 20%);}
+.error-mark svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.7;}
+.error-code{margin-bottom:8px;color:var(--primary);font-family:'Sora','Inter',sans-serif;font-size:clamp(72px,25vw,108px);font-weight:800;letter-spacing:-.085em;line-height:.9;text-shadow:0 8px 28px color-mix(in srgb,var(--primary),transparent 80%);}
+.error-wrap h1{margin:0;color:var(--fg);font-family:'Sora','Inter',sans-serif;font-size:27px;letter-spacing:-.045em;line-height:1.16;}
+.error-wrap p{max-width:350px;margin:14px auto 26px;color:var(--fg2);font-size:15px;line-height:1.55;}
+.error-cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:12px 18px;border-radius:12px;background:var(--primary);color:var(--primary-fg,#05252b);font-size:14px;font-weight:800;letter-spacing:-.01em;text-decoration:none;box-shadow:0 10px 24px -12px color-mix(in srgb,var(--primary),transparent 25%);transition:transform var(--motion-press) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
+.error-cta .ic{width:16px;height:16px;stroke-width:2.2;}
+.error-note{margin-top:30px;color:var(--fg3);font-size:12px;}
+@media(hover:hover) and (pointer:fine){.error-cta:hover{transform:translateY(-1px);box-shadow:0 14px 28px -12px color-mix(in srgb,var(--primary),transparent 15%);}}
 /* Íconos de línea: heredan tamaño y color del contexto */
 .ic{width:1em;height:1em;display:inline-block;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
 .nav-icon .ic{width:22px;height:22px;stroke-width:1.9;}

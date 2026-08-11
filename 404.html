@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Página no encontrada — GradeHub</title>
+<meta name="description" content="Esta dirección no existe, pero GradeHub sigue funcionando. Vuelve a la app para ver tus ramos, notas y promedio."/>
+<meta name="robots" content="noindex,follow"/>
+<meta name="theme-color" content="#070b0e" media="(prefers-color-scheme: dark)"/>
+<meta name="theme-color" content="#f2f7f8" media="(prefers-color-scheme: light)"/>
+<link rel="icon" href="/icon.svg" type="image/svg+xml"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Sora:wght@700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/styles.css"/>
+<!-- El tema lo aplica applyTheme() desde app.js, y esta página no carga app.js a
+     propósito: tiene que servir aunque la app esté a medio cargar. Así que copia
+     los valores del modo oscuro de GRADEHUB_THEME (data.js).
+     Es una copia, y las copias se desincronizan: tres de estos cinco ya estaban
+     desfasados al abrir el PR. Hay un test que los compara contra data.js y falla
+     si alguien cambia el tema y se olvida de esta página. -->
+<style>@media(prefers-color-scheme:dark){:root{--primary:#2dd4bf;--primary-fg:#04231e;--primary-light:#0a2b26;--accent:#56e2e8;--secondary:#2dd4bf;}}</style>
+</head>
+<body class="error-page">
+<main class="error-wrap">
+  <a class="error-brand" href="/" aria-label="Volver a GradeHub">
+    <span class="error-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 7 4.1-7 4.1L5 7.1 12 3Z"/><path d="m5 11 7 4.1 7-4.1M5 15 12 19l7-4"/></svg></span>
+    <span>GradeHub</span>
+  </a>
+  <div class="error-code" aria-hidden="true">404</div>
+  <h1>Esta dirección no existe.</h1>
+  <p>GradeHub está funcionando. Puede que el link sea antiguo o que haya un error en la dirección.</p>
+  <a class="error-cta" href="/">Ir a GradeHub <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+  <div class="error-note">Tus ramos y notas siguen donde los dejaste.</div>
+</main>
+</body>
+</html>

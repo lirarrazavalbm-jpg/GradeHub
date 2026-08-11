@@ -30,7 +30,7 @@ chk('cada URL corresponde a un archivo que existe',
     return fs.existsSync(path.join(raiz, ruta));
   }));
 
-console.log('\n=== Metadatos de las dos páginas ===');
+console.log('\n=== Metadatos de las páginas ===');
 [['index.html', 'la app'], ['privacidad.html', 'la política']].forEach(([f, que]) => {
   const html = leer(f);
   const titulo = (html.match(/<title>([^<]+)<\/title>/) || [])[1] || '';
@@ -42,6 +42,15 @@ console.log('\n=== Metadatos de las dos páginas ===');
 chk('los títulos son distintos entre sí',
   (leer('index.html').match(/<title>([^<]+)</) || [])[1] !== (leer('privacidad.html').match(/<title>([^<]+)</) || [])[1]);
 
+console.log('\n=== Página 404 ===');
+const pagina404=leer('404.html');
+const titulo404=(pagina404.match(/<title>([^<]+)<\/title>/)||[])[1]||'';
+const desc404=(pagina404.match(/<meta name="description" content="([^"]+)"/)||[])[1]||'';
+chk('existe con título y descripción propios', titulo404.length>15&&desc404.length>50);
+chk('su título no repite ninguna página real', ![leer('index.html'),leer('privacidad.html')].some(html=>(html.match(/<title>([^<]+)<\/title>/)||[])[1]===titulo404));
+chk('enlaza a la raíz en un toque', /href="\/"/.test(pagina404));
+chk('no se indexa ni aparece en el sitemap', /name="robots" content="noindex,follow"/.test(pagina404)&&!urls.includes('https://gradehub.cl/404.html'));
+
 console.log('\n=== El schema declara lo que la app es ===');
 const ld = (leer('index.html').match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/) || [])[1];
 chk('el JSON-LD parsea', (() => { try { JSON.parse(ld); return true; } catch (e) { return false; } })());
@@ -50,6 +59,26 @@ chk('se declara como WebApplication', /"WebApplication"/.test(datos));
 // LocalBusiness sería falso: GradeHub no tiene local, ni dirección, ni horario.
 // Declararlo para "cumplir un checklist" es mentirle a un buscador.
 chk('NO se declara como LocalBusiness', !/LocalBusiness/.test(datos));
+
+console.log('\n=== La 404 no se desincroniza del tema ===');
+// La 404 no carga app.js —tiene que servir aunque la app esté a medio cargar—,
+// así que no puede recibir el tema por applyTheme() y copia los valores del modo
+// oscuro a mano. Una copia se desincroniza sola: al abrir el PR que la creó, tres
+// de los cinco valores ya estaban desfasados y apuntaban a un acento de dos
+// versiones atrás. Nadie lo habría notado: la página se ve bien igual, solo con
+// el color equivocado.
+const vm404 = require('vm'), ctx404 = {};
+vm404.createContext(ctx404);
+vm404.runInContext(leer('data.js'), ctx404);
+const TEMA = vm404.runInContext('GRADEHUB_THEME', ctx404);
+const html404 = leer('404.html');
+const bloque = (html404.match(/:root\{([^}]+)\}/) || [])[1] || '';
+const fijados = Object.fromEntries(bloque.split(';').filter(Boolean).map(p => p.split(':').map(t => t.trim())));
+Object.entries({
+  '--primary': TEMA.darkPrimary, '--primary-fg': TEMA.darkPrimaryFg,
+  '--primary-light': TEMA.darkPrimaryLight, '--accent': TEMA.accent,
+  '--secondary': TEMA.darkSecondary,
+}).forEach(([k, v]) => chk(`404.html: ${k} calza con el tema (${v})`, fijados[k] === v));
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
