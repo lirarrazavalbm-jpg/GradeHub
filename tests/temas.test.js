@@ -118,6 +118,9 @@ const saltoAprobacion=gradeHue(4.0)-gradeHue(3.9);
 const variacionReprobado=gradeHue(3.9)-gradeHue(1.0);
 chk('3.9 → 4.0 cambia más que todo el rojo reprobado', saltoAprobacion>variacionReprobado);
 chk('el número usa un color calculado, no tres valores fijos', vm.runInContext('getColor(1.0)!==getColor(3.0)&&getColor(3.0)!==getColor(5.0)&&getColor(5.0)!==getColor(7.0)', dark));
+chk('1.0 usa el rojo urgente, no el rojo regular', vm.runInContext('notaUrgente(1.0)&&getColor(1.0)==="hsl(352 100% var(--grade-urgent-light))"&&!notaUrgente(1.1)', dark));
+chk('7.0 reserva un dorado para la nota perfecta', vm.runInContext('notaPerfecta(7.0)&&getColor(7.0)==="hsl(43 100% var(--grade-perfect-light))"&&!notaPerfecta(6.9)', dark));
+chk('los extremos grandes reciben su acabado propio', vm.runInContext('claseNotaEspecial(1.0)+"|"+claseNotaEspecial(7.0)', dark) === ' grade-urgent| grade-perfect');
 console.log('  ' + gradeHues.map((h, i) => (i + 1) + '.0=' + h + '°').join('  '));
 
 console.log('\n=== Colores de ramo: identificadores, no decoración ===');

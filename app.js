@@ -325,7 +325,17 @@ function notaHue(n){
   if(v<5)return 48+(v-4)*12;
   return 105+Math.min(v-5,1)*37;
 }
-function getColor(n){return n===null||isNaN(n)?'var(--fg3)':`hsl(${notaHue(n).toFixed(1)} 78% var(--grade-light))`;}
+function notaUrgente(n){return Number(n)<=1.05;}
+function notaPerfecta(n){return Number(n)>=6.95;}
+function claseNotaEspecial(n){return notaUrgente(n)?' grade-urgent':notaPerfecta(n)?' grade-perfect':'';}
+function getColor(n){
+  if(n===null||isNaN(n))return'var(--fg3)';
+  if(notaUrgente(n))return'hsl(352 100% var(--grade-urgent-light))';
+  // El oro se reserva solo para la nota perfecta. Los estados de aprobación
+  // siguen usando verde en sus chips y etiquetas semánticas.
+  if(notaPerfecta(n))return'hsl(43 100% var(--grade-perfect-light))';
+  return`hsl(${notaHue(n).toFixed(1)} 84% var(--grade-light))`;
+}
 function fmt(n){return n===null?'·':n.toFixed(1);}
 // Formato numérico con 1 decimal por defecto (usa punto, no coma)
 function nf(n,dec){return n.toFixed(dec==null?1:dec);}
@@ -350,7 +360,7 @@ function promedioMarkup(valor,tipo){
 }
 function pintarPromedio(el,valor,tipo,efecto){
   el.innerHTML=promedioMarkup(valor,tipo);
-  el.className=`${tipo==='ramo'?'ramo-num':'gpa-num'} ${colorClass(valor)}${efecto?' '+efecto:''}`;
+  el.className=`${tipo==='ramo'?'ramo-num':'gpa-num'} ${colorClass(valor)}${claseNotaEspecial(valor)}${efecto?' '+efecto:''}`;
   el.style.setProperty('--grade-color',getColor(valor));
 }
 function cambioDeUmbral(antes,despues){return antes!==null&&despues!==null&&colorClass(antes)!==colorClass(despues);}
@@ -1195,7 +1205,7 @@ function renderHome(){
     const entera=rounded.slice(0,sep);
     const decimal=rounded.slice(sep);
     gpael.innerHTML=`${entera}<span class="gpa-decimal">${decimal}</span>`;
-    gpael.className='gpa-num '+colorClass(g);
+    gpael.className='gpa-num '+colorClass(g)+claseNotaEspecial(g);
     gpael.style.setProperty('--grade-color',getColor(g));
     gpael.onclick=()=>{
       const exacto=nf(g,2);
@@ -1375,7 +1385,7 @@ function renderRamo(){
   if(avg!==null){
     const s=nf(avg);const dot=s.indexOf('.');
     avgEl.innerHTML=`${s.slice(0,dot)}<span class="ramo-decimal">${s.slice(dot)}</span>`;
-    avgEl.className='ramo-num '+colorClass(avg);
+    avgEl.className='ramo-num '+colorClass(avg)+claseNotaEspecial(avg);
     avgEl.style.setProperty('--grade-color',getColor(avg));
   } else {
     avgEl.textContent='Sin notas';avgEl.className='ramo-num empty';
