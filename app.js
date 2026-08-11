@@ -331,9 +331,13 @@ function claseNotaEspecial(n){return notaUrgente(n)?' grade-urgent':notaPerfecta
 function getColor(n){
   if(n===null||isNaN(n))return'var(--fg3)';
   if(notaUrgente(n))return'hsl(352 100% var(--grade-urgent-light))';
-  // El oro se reserva solo para la nota perfecta. Los estados de aprobación
-  // siguen usando verde en sus chips y etiquetas semánticas.
-  if(notaPerfecta(n))return'hsl(43 100% var(--grade-perfect-light))';
+  // El 7,0 NO cambia de matiz: se queda en el verde de aprobado, más vivo. El
+  // oro que tenía antes era hsl(43…), el mismo matiz exacto que el ámbar de "al
+  // borde" (#ffc94d es hue 42°), así que la nota perfecta se pintaba del color
+  // del peligro. El adorno dorado ahora va en un anillo alrededor, en styles.css:
+  // rodea el número pero nunca lo colorea, y por eso no puede confundirse con un
+  // estado.
+  if(notaPerfecta(n))return'hsl(142 92% var(--grade-perfect-light))';
   return`hsl(${notaHue(n).toFixed(1)} 84% var(--grade-light))`;
 }
 function fmt(n){return n===null?'·':n.toFixed(1);}
