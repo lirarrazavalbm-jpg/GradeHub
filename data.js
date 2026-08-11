@@ -170,11 +170,35 @@ const THEME_BASE={
   success:'#2ee6c8', warning:'#ffc94d', danger:'#ff5f7a',
 };
 
+// La identidad sale de og.png, la tarjeta social del producto: fondo casi negro
+// con tinte azul, tipografía blanca y un degradado turquesa → índigo abajo.
+//
+// POR QUÉ ÍNDIGO Y NO EL TURQUESA DE LA TARJETA. El turquesa de og.png es
+// #2dd4bf y el verde de "aprobado" del semáforo es #2ee6c8: están a 2° de matiz,
+// o sea son el mismo color. Con ese acento, cada botón y cada enlace de la app se
+// leería como un estado "aprobado". Mover el semáforo por una razón estética
+// sería tocar lo único que la app tiene que comunicar sin error, así que se mueve
+// la marca.
+//
+// El índigo es el otro extremo del mismo degradado —está en la tarjeta y en las
+// capas del logo—, así que sigue siendo la paleta de la referencia, y queda a 73°
+// del semáforo: la mayor separación de todos los candidatos.
+//
+// El cian anterior (#22d3ee) tenía un problema que nadie había medido: quedaba a
+// 1° del color de ramo #06b6d4. La identidad y un ramo eran el mismo color.
+//
+// primary es 7,90:1 contra blanco y 1,77:1 contra el ramo índigo #6366f1, que es
+// el vecino más cercano en matiz (5°). El test exige 21° de separación o 1,7 de
+// contraste; pasa por contraste, a propósito y con poco margen: si alguien
+// aclara este color, el test cae.
 const GRADEHUB_THEME={
-  primary:'#087f98', primaryFg:'#ffffff', primaryLight:'#e2f6f8',
-  darkPrimary:'#22d3ee', darkPrimaryFg:'#05252b', darkPrimaryLight:'#0b2930',
-  accent:'#65e6f4', secondary:'#087f98', darkSecondary:'#22d3ee',
-  dark:{bg:'#070b0e',bg2:'#0d1418',card:'#141d22',border:'#26343a',border2:'#3a4b52',muted:'#182228'},
+  primary:'#4338ca', primaryFg:'#ffffff', primaryLight:'#eceefe',
+  darkPrimary:'#818cf8', darkPrimaryFg:'#0b1020', darkPrimaryLight:'#171c33',
+  // El acento va más profundo que un índigo pastel a propósito: se usa en pesos,
+  // porcentajes y chips, o sea texto chico, y ahí un tono lavado se pierde.
+  accent:'#6d78f0', secondary:'#4338ca', darkSecondary:'#818cf8',
+  // bg es literalmente el fondo de og.png.
+  dark:{bg:'#05070a',bg2:'#0a0e15',card:'#111623',border:'#212a3d',border2:'#333e57',muted:'#161c2b'},
 };
 const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
 

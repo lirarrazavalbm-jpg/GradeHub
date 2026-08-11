@@ -63,8 +63,16 @@ console.log('\n=== Una identidad, sin importar la universidad ===');
 const theme = vm.runInContext('GRADEHUB_THEME', dark);
 chk('no queda registro THEMES por universidad', vm.runInContext('typeof THEMES', dark) === 'undefined');
 chk('tiene todos los tokens de identidad', ['primary', 'primaryFg', 'primaryLight', 'darkPrimary', 'darkPrimaryFg', 'darkPrimaryLight', 'accent', 'secondary', 'darkSecondary', 'dark'].every(k => k in theme));
-chk('el acento luminoso acompaña al cian profundo', saturation(theme.accent) >= .5 && lum(theme.accent)>lum(theme.primary));
-chk('el cian de identidad no es el cian de un ramo', theme.primary !== '#06b6d4' && Math.abs(lum(theme.primary)-lum('#06b6d4')) >= .08);
+// El acento tiene que ser vivo y más claro que el primario, sea cual sea la
+// familia de color. La versión anterior de este chequeo se llamaba "el acento
+// luminoso acompaña al cian profundo" — el nombre daba por hecho una paleta que
+// ya no existe, y un test que describe mal lo que prueba envejece peor que uno
+// que falla.
+chk('el acento es vivo y más claro que el primario', saturation(theme.accent) >= .5 && lum(theme.accent)>lum(theme.primary));
+// El acento de identidad no puede ser el color de ningún ramo. El cian anterior
+// (#22d3ee) quedaba a 1° de matiz del ramo #06b6d4 y nadie lo había medido.
+chk('la identidad no es el color de ningún ramo',
+  vm.runInContext('COLORS', dark).every(c => c !== theme.primary && Math.abs(lum(theme.primary) - lum(c)) >= .08));
 const firmas = TENANT_CODES.map(code => { reset(); dark.applyTheme(code); return snapshot(); });
 chk('los cuatro tenants reciben exactamente los mismos tokens', new Set(firmas).size === 1);
 chk('los cuatro tenants siguen existiendo como datos', TENANT_CODES.every(code => vm.runInContext('Boolean(TENANTS[' + JSON.stringify(code) + '])', dark)));
@@ -119,7 +127,23 @@ const variacionReprobado=gradeHue(3.9)-gradeHue(1.0);
 chk('3.9 → 4.0 cambia más que todo el rojo reprobado', saltoAprobacion>variacionReprobado);
 chk('el número usa un color calculado, no tres valores fijos', vm.runInContext('getColor(1.0)!==getColor(3.0)&&getColor(3.0)!==getColor(5.0)&&getColor(5.0)!==getColor(7.0)', dark));
 chk('1.0 usa el rojo urgente, no el rojo regular', vm.runInContext('notaUrgente(1.0)&&getColor(1.0)==="hsl(352 100% var(--grade-urgent-light))"&&!notaUrgente(1.1)', dark));
-chk('7.0 reserva un dorado para la nota perfecta', vm.runInContext('notaPerfecta(7.0)&&getColor(7.0)==="hsl(43 100% var(--grade-perfect-light))"&&!notaPerfecta(6.9)', dark));
+// El 7,0 se queda en el verde de aprobado, más vivo, y el oro va en un anillo
+// alrededor del número (styles.css). El dorado anterior era hsl(43…), el mismo
+// matiz que el ámbar de "al borde": la nota perfecta se pintaba del color del
+// peligro. Este test fija que el número NUNCA vuelva a un matiz que no sea verde.
+chk('7.0 usa el verde más vivo, no un dorado', vm.runInContext('notaPerfecta(7.0)&&getColor(7.0)==="hsl(142 92% var(--grade-perfect-light))"&&!notaPerfecta(6.9)', dark));
+chk('ningún matiz del número de nota cae en la familia del ámbar',
+  [1,2,3,3.9,4,5,6,6.5,7].every(n => {
+    const c = vm.runInContext(`getColor(${n})`, dark);
+    const m = c.match(/hsl\((\d+(?:\.\d+)?)/);
+    if (!m) return true;
+    const h = Number(m[1]);
+    // El ámbar del semáforo está en 42°. Se exige distancia salvo en la banda
+    // que de verdad significa "al borde" (4,0–5,0), donde el ámbar es correcto.
+    return (n >= 4 && n < 5) || Math.abs(h - 42) >= 12;
+  }));
+chk('el anillo dorado existe y rodea al número, no lo pinta',
+  /\.grade-perfect::after/.test(require('fs').readFileSync(__dirname + '/../styles.css', 'utf8')));
 chk('los extremos grandes reciben su acabado propio', vm.runInContext('claseNotaEspecial(1.0)+"|"+claseNotaEspecial(7.0)', dark) === ' grade-urgent| grade-perfect');
 console.log('  ' + gradeHues.map((h, i) => (i + 1) + '.0=' + h + '°').join('  '));
 
