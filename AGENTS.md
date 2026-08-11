@@ -223,6 +223,15 @@ hablarías a un compañero, no como un manual.
 - Notas de reemplazo y examen recuperativo: aparecen en la mayoría de los
   programas FEN transcritos y siguen sin calcularse. Ver la tabla de reglas
   pendientes más abajo
+- **La RLS quedó auditada el 2026-08-10 y está correcta.** Las tres tablas
+  (`user_ramos`, `profiles`, `catalog_reports`) tienen `rowsecurity` activo y
+  doce políticas: todo INSERT con `WITH CHECK`, todo UPDATE con `USING` y
+  `WITH CHECK`, siempre atando `auth.uid()` a la columna de usuario. Que SELECT
+  y DELETE no lleven `with_check` es correcto, no un hueco. Que las políticas
+  estén sobre el rol `public` tampoco: `auth.uid()` es NULL para anon y la
+  comparación nunca da verdadero. **No hace falta volver a auditarlo** salvo que
+  se agregue una tabla — y ahí sí, porque una tabla sin política es legible por
+  cualquiera. La consulta está en el historial de este PR.
 - Cualquier tabla nueva con datos de usuario tiene que referenciar
   `auth.users` con `ON DELETE CASCADE`. Sin eso, esos datos sobreviven al
   borrado de cuenta y la política de privacidad pasa a ser mentira sin que
