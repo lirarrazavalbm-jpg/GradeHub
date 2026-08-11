@@ -23,7 +23,7 @@ const val = n => vm.runInContext(n, ctx);
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
-const MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), presetRamo = val('presetRamo');
+const MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), presetRamo = val('presetRamo'), findPresetName = val('findPresetName'), reglasNoCalculadas = val('reglasNoCalculadas'), reglasDelCurso = val('reglasDelCurso');
 const pc = MALLA_UC['ING-PC'];
 const todos = Object.values(pc).flat();
 
@@ -72,6 +72,21 @@ chk('los ramos sin programa oficial no traen pauta',
   conPauta.every(n => !!PRESETS_UC[n]));
 chk('las pautas UC que existen siguen saliendo de PRESETS_UC',
   Object.keys(PRESETS_UC).length > 0);
+
+console.log('\n=== Programas UC con reglas y fechas ===');
+const programacion=presetRamo('Introducción a la Programación','uc','ING-PC');
+chk('Programación carga fechas oficiales en la Agenda',
+  programacion.categorias.slice(0,3).map(c=>c.fecha).join('|')==='2026-09-24|2026-10-22|2026-12-10');
+chk('Programación carga la compuerta de evaluaciones principales',
+  programacion.gates.some(g=>g.type==='group_min'&&g.min===4&&g.cap===3.9&&g.catIds.length===3));
+const lab=presetRamo('Laboratorio de Dinámica','uc','ING-PC');
+chk('Laboratorio carga el mínimo de evaluación de pares',
+  lab.gates.some(g=>g.type==='min_grade_required'&&g.min===4&&g.cap===3.9));
+const calculoOrigen={nombre:'Cálculo II',origen:{tenant:'uc',carrera:'ING-PC'}};
+chk('Cálculo II no inventa una pauta sin pesos oficiales',presetRamo('Cálculo II','uc','ING-PC')===null);
+chk('Cálculo II no se anuncia como pauta oficial cargada',findPresetName('Cálculo II','uc','ING-PC')===null);
+chk('Cálculo II sí explica las ocho reglas de su programa',
+  reglasNoCalculadas(calculoOrigen).length===4&&reglasDelCurso(calculoOrigen).length===4);
 
 console.log('\n=== El ramo sin pauta lo dice, y la deuda es nuestra ===');
 const render = src.slice(src.indexOf('function renderRamo()'), src.indexOf('function renderRamo()') + 12000);
