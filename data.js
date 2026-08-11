@@ -19,7 +19,7 @@
 // distinguía del de al lado.
 //
 // Los matices están repartidos por la rueda de color, a 21° o más uno de otro,
-// y ninguno cae cerca del semáforo (verde #2ee6c8, ámbar #ffc94d, rojo #ff5f7a)
+// y ninguno cae cerca del semáforo (verde #2ecc40, ámbar #ffc94d, rojo #ff5f7a)
 // para que nadie confunda "este ramo es rojo" con "este ramo va reprobado".
 // Por eso no hay rojo ni amarillo acá: esos matices ya significan otra cosa.
 // Al agregar uno nuevo, respeta la separación — el test la verifica.
@@ -27,7 +27,7 @@ const COLORS=[
   '#ea580c', // naranjo
   '#a3e635', // lima
   '#22c55e', // verde
-  '#06b6d4', // cian
+  '#0ea5e9', // cian
   '#3b82f6', // azul
   '#6366f1', // índigo
   '#a855f7', // violeta
@@ -62,7 +62,7 @@ const FAMILIAS_COLOR=[
   [/comunicacion/,                               '#ea580c'], // naranjo — comunicación
   [/microeconomia|macroeconomia|economia|econom/,'#a855f7'], // violeta — economía
   [/gestion de personas|personas|organizacional/,'#3b82f6'], // azul — personas
-  [/finanzas|inversion|financier|presupuesto/,   '#06b6d4'], // cian — finanzas
+  [/finanzas|inversion|financier|presupuesto/,   '#0ea5e9'], // cian — finanzas
   [/control de gestion|estrategia|gestion y empresas|gestion de procesos/, '#3b82f6'], // azul — gestión
   [/marketing|negocios|comercial|competencia y mercado|mercados/, '#d946ef'], // fucsia — negocios
   [/programacion|machine learning|datos|sistemas|tecnologia|informatica|transformacion digital|ingenieria/, '#6366f1'], // índigo — tecnología
@@ -70,7 +70,7 @@ const FAMILIAS_COLOR=[
   // La física de Ingeniería UC no se llama "física": los ramos son Dinámica,
   // Termodinámica y Electricidad y Magnetismo, y sus laboratorios heredan el
   // matiz porque el nombre los contiene ("Laboratorio de Dinámica").
-  [/quimica|fisica|biolog|dinamica|electricidad|magnetismo|estatica|mecanica|ondas|optica/, '#06b6d4'], // cian — ciencias
+  [/quimica|fisica|biolog|dinamica|electricidad|magnetismo|estatica|mecanica|ondas|optica/, '#0ea5e9'], // cian — ciencias
   [/practica|taller|integracion|afe/,            '#d946ef'], // fucsia — práctica
 ];
 
@@ -167,38 +167,38 @@ const THEME_BASE={
   // Semáforo de notas. Se deja IGUAL en todos los temas a propósito: verde/ámbar/
   // rojo son semánticos (aprobado / al borde / reprobado), no decorativos. Teñirlos
   // por universidad haría ilegible lo único que la app tiene que comunicar sin error.
-  success:'#2ee6c8', warning:'#ffc94d', danger:'#ff5f7a',
+  // El verde de aprobado se corrió de #2ee6c8 (170°, menta) a #2ecc40 (127°,
+  // verde). El menta era prácticamente el turquesa de la marca —2° de matiz— y
+  // con la identidad puesta en el turquesa de og.png, cada botón se habría leído
+  // como un estado "aprobado". Se mueve el semáforo porque el color de la marca
+  // lo eligió una persona; el del semáforo solo tiene que ser inconfundible.
+  success:'#2ecc40', warning:'#ffc94d', danger:'#ff5f7a',
 };
 
-// La identidad sale de og.png, la tarjeta social del producto: fondo casi negro
-// con tinte azul, tipografía blanca y un degradado turquesa → índigo abajo.
+// La identidad es la de og.png, la tarjeta social del producto, con sus colores
+// exactos: el turquesa del kicker GRADEHUB (#2dd4bf) y el de la palabra "Excel"
+// (#56e2e8), sobre el fondo casi negro de la misma tarjeta (#05070a).
 //
-// POR QUÉ ÍNDIGO Y NO EL TURQUESA DE LA TARJETA. El turquesa de og.png es
-// #2dd4bf y el verde de "aprobado" del semáforo es #2ee6c8: están a 2° de matiz,
-// o sea son el mismo color. Con ese acento, cada botón y cada enlace de la app se
-// leería como un estado "aprobado". Mover el semáforo por una razón estética
-// sería tocar lo único que la app tiene que comunicar sin error, así que se mueve
-// la marca.
+// LO QUE COSTÓ USAR EL COLOR EXACTO. El turquesa está a 2° de matiz del verde de
+// aprobado que había (#2ee6c8) y a 17° del color de ramo cian (#06b6d4). Con la
+// marca ahí, un botón se leía como "aprobado" y un ramo se veía como la marca.
 //
-// El índigo es el otro extremo del mismo degradado —está en la tarjeta y en las
-// capas del logo—, así que sigue siendo la paleta de la referencia, y queda a 73°
-// del semáforo: la mayor separación de todos los candidatos.
+// Se movieron los otros dos, no la marca: el color de la identidad lo eligió una
+// persona mirando una imagen, y el del semáforo solo tiene que ser inconfundible.
+// El verde de aprobado pasó a #2ecc40 (127°) y el ramo cian a #0ea5e9 (199°),
+// dejando la marca en 172° con 45° y 27° de separación.
 //
-// El cian anterior (#22d3ee) tenía un problema que nadie había medido: quedaba a
-// 1° del color de ramo #06b6d4. La identidad y un ramo eran el mismo color.
+// Antes de esto la identidad fue verde mineral, después cian (#22d3ee) y después
+// índigo. El cian quedaba a 1° del ramo cian; el índigo se leía morado y no era
+// el color de la tarjeta. Este es el color de la tarjeta.
 //
-// primary es 7,90:1 contra blanco y 1,77:1 contra el ramo índigo #6366f1, que es
-// el vecino más cercano en matiz (5°). El test exige 21° de separación o 1,7 de
-// contraste; pasa por contraste, a propósito y con poco margen: si alguien
-// aclara este color, el test cae.
+// primary es la versión profunda para modo claro: mismo matiz, 5,23:1 con blanco.
 const GRADEHUB_THEME={
-  primary:'#4338ca', primaryFg:'#ffffff', primaryLight:'#eceefe',
-  darkPrimary:'#818cf8', darkPrimaryFg:'#0b1020', darkPrimaryLight:'#171c33',
-  // El acento va más profundo que un índigo pastel a propósito: se usa en pesos,
-  // porcentajes y chips, o sea texto chico, y ahí un tono lavado se pierde.
-  accent:'#6d78f0', secondary:'#4338ca', darkSecondary:'#818cf8',
+  primary:'#0d7a6b', primaryFg:'#ffffff', primaryLight:'#dff7f2',
+  darkPrimary:'#2dd4bf', darkPrimaryFg:'#04231e', darkPrimaryLight:'#0a2b26',
+  accent:'#56e2e8', secondary:'#0d7a6b', darkSecondary:'#2dd4bf',
   // bg es literalmente el fondo de og.png.
-  dark:{bg:'#05070a',bg2:'#0a0e15',card:'#111623',border:'#212a3d',border2:'#333e57',muted:'#161c2b'},
+  dark:{bg:'#05070a',bg2:'#0a0f13',card:'#111820',border:'#20303a',border2:'#324755',muted:'#151d26'},
 };
 const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
 
