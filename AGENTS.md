@@ -302,6 +302,12 @@ Sigue siendo la única vía para los ramos cuyo programa no aparezca nunca, así
 que no es "para después": es para cuando se acaben los PDFs, y ese momento se ve
 venir.
 
+**Claude de Martín — pautas oficiales, y las preguntas frecuentes.** El detalle
+de las FAQ está en el issue #86: es la única pieza de contenido que falta del
+sitio y la única que no puede escribir alguien que no conozca a los usuarios.
+Hoy quien llega a gradehub.cl ve un login y nada que responda "¿qué hace esto?"
+o "¿me van a vender mis notas?".
+
 **Claude de Martín — pautas oficiales.** El traspaso anterior decía que el
 consenso de reportes era "lo único" que podía llevar el catálogo a 88 porque no
 había más programas oficiales. Resultó que sí había: con ocho PDFs el catálogo
