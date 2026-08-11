@@ -174,7 +174,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   transition:background-color 5000s ease-in-out 0s;
 }
 .sem-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
-.sem-btn{padding:11px 4px;border-radius:10px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);cursor:pointer;transition:all .15s;}
+.sem-btn{padding:11px 4px;border-radius:10px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);cursor:pointer;transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard);}
 .sem-btn.sel{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 2px 8px rgba(59,130,246,.3);}
 /* REPORTE DE PONDERACIONES */
 .rep-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
@@ -257,7 +257,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .s-tenant-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:11px;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:-.01em;transition:border-color .15s,color .15s,background .15s;}
 .s-tenant-btn:hover{color:var(--fg);border-color:var(--border2);}
 .s-tenant-btn.sel{border-color:var(--primary);color:var(--fg);background:var(--primary-light);}
-.carrera-opt{text-align:left;padding:11px 13px;border-radius:10px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);cursor:pointer;transition:all .15s;line-height:1.25;}
+.carrera-opt{text-align:left;padding:11px 13px;border-radius:10px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);cursor:pointer;transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard);line-height:1.25;}
 .carrera-opt.sel{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 2px 8px rgba(59,130,246,.3);}
 .btn-primary{width:100%;padding:15px;background:var(--primary);background-image:linear-gradient(135deg,var(--primary) 0%,color-mix(in srgb,var(--accent),var(--primary) 25%) 100%);color:var(--primary-fg,#0a1f1c);border:none;border-radius:13px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:700;cursor:pointer;transition:transform .12s,box-shadow .2s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em;box-shadow:0 6px 20px -8px color-mix(in srgb,var(--primary),transparent 40%);}
 .btn-primary:disabled{opacity:.35;cursor:default;box-shadow:none;}
@@ -380,7 +380,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .simg-reset{background:none;border:none;color:var(--primary);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;padding:0;}
 /* INSIGHT CARDS — señales inteligentes arriba de "Mis ramos" */
 .insight-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--insight-color,var(--primary));border-radius:14px;margin-bottom:8px;cursor:pointer;transition:transform .12s,border-color .2s,box-shadow .2s;}
-.insight-card:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--insight-color,var(--primary)),transparent 45%);box-shadow:0 6px 18px -8px color-mix(in srgb,var(--insight-color,var(--primary)),transparent 60%);}
+
 .insight-card:active{transform:scale(.99);}
 .insight-icon{width:38px;height:38px;border-radius:11px;background:color-mix(in srgb,var(--insight-color,var(--primary)),transparent 84%);color:var(--insight-color,var(--primary));display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .insight-icon .ic{width:19px;height:19px;stroke-width:2.1;}
@@ -401,8 +401,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   /* Banda lateral de color como box-shadow inset — respeta el border-radius sin
      glitches en hover (antes era un div absolute que se cortaba al scale). */
   box-shadow:inset 4px 0 0 0 var(--ramo-tint,var(--primary)), 0 1px 3px rgba(0,0,0,.05);}
-.ramo-row:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 50%);
-  box-shadow:inset 4px 0 0 0 var(--ramo-tint,var(--primary)), 0 8px 24px -8px color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 55%);}
+
 .ramo-row:active{transform:scale(.99);}
 .ramo-band{display:none;} /* Reemplazado por box-shadow inset arriba */
 .ramo-info{flex:1;min-width:0;}
@@ -524,7 +523,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 /* STATS */
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;margin-bottom:20px;}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 16px 14px;box-shadow:var(--shadow);transition:transform .12s,border-color .16s,box-shadow .16s;}
-.stat-card:hover{transform:translateY(-1px);border-color:var(--border2);box-shadow:var(--shadow-lg);}
+
 .stat-icon-wrap{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:var(--primary);background:color-mix(in srgb,var(--primary),transparent 85%);}
 .stat-icon-wrap .ic{width:16px;height:16px;stroke-width:2.1;}
 .stat-icon-wrap.stat-icon-good{color:var(--green);background:var(--green-bg);}
@@ -537,7 +536,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-section{margin-bottom:22px;}
 .ag-section-label{font-family:'Sora','Inter',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:10px;padding:0 2px;}
 .ag-item{display:flex;align-items:center;gap:14px;padding:14px 14px 14px 12px;background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,transform .12s,box-shadow .15s;}
-.ag-item:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:var(--shadow);}
+
 .ag-item:active{transform:scale(.99);}
 .ag-date{width:48px;height:48px;border-radius:12px;background:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;line-height:1;}
 .ag-day{font-family:'Sora','Inter',sans-serif;font-size:20px;font-weight:800;color:var(--fg);letter-spacing:-.03em;font-variant-numeric:tabular-nums;}
@@ -551,7 +550,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-list-hd{display:flex;align-items:baseline;gap:8px;padding:2px 2px 12px;}
 .ag-count{font-size:12px;font-weight:700;color:var(--fg3);background:var(--muted);border-radius:999px;padding:2px 9px;font-variant-numeric:tabular-nums;}
 .ag-row{position:relative;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:15px 14px 15px 20px;margin-bottom:9px;background:var(--card);border:1px solid var(--border);border-radius:15px;cursor:pointer;overflow:hidden;font-family:'Inter',sans-serif;transition:transform .12s,border-color .18s,box-shadow .18s;}
-.ag-row:hover{transform:translateY(-1px);border-color:var(--border2);box-shadow:var(--shadow);}
+
 .ag-row:active{transform:scale(.99);}
 .ag-row-bar{position:absolute;left:0;top:0;bottom:0;width:4px;}
 .ag-row.done{opacity:.62;}
@@ -669,7 +668,6 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .app-footer a{color:var(--fg3);text-decoration:none;}
 .app-footer a:hover{color:var(--primary);}
 /* SCREEN TRANSITIONS */
-@keyframes screenIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 /* Tab-mode: los 3 tab-screens siempre presentes en un carrusel horizontal.
    showTab / drag controlan translateX vía JS. Los otros screens (auth, onboard,
    reset, ramo) se comportan como overlays fullscreen encima con z-index. */
@@ -696,7 +694,6 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .app.tab-mode #screen-ramo.active{
   position:absolute;top:0;left:0;right:0;bottom:0;z-index:15;background:var(--bg2);
 }
-.screen.active{animation:screenIn .34s cubic-bezier(.22,1,.36,1);}
 /* APPROVAL CHIP */
 .aprov-chip{display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;}
 .aprov-chip.good{background:var(--green-bg);color:var(--green);}
@@ -704,7 +701,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .aprov-chip.warn{background:var(--yellow-bg);color:var(--yellow);}
 /* HISTORIAL */
 .hist-card{background:var(--card);border:1px solid var(--border);border-radius:16px;margin:0 20px 10px;overflow:hidden;box-shadow:var(--shadow);transition:transform .12s,border-color .16s;}
-.hist-card:hover{border-color:var(--border2);transform:translateY(-1px);}
+
 .hist-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;gap:12px;}
 .hist-body{border-top:1px solid var(--border);padding:10px 16px 14px;display:none;}
 .hist-body.open{display:block;}
@@ -926,6 +923,12 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
    El movimiento confirma una acción o un cambio de contexto; nunca es una
    espera para ver información. Los colores semánticos y los de cada ramo
    quedan fuera de este bloque deliberadamente. */
+/* Entrada de pantalla. Convivía con otra regla idéntica en selector
+   (`animation:screenIn .34s`) declarada 230 líneas más arriba: como esta va
+   después, ganaba siempre y aquellos 340ms no corrían nunca. Se borró el par
+   muerto — keyframe incluido. Si mañana aparece otra `.screen.active` con
+   animación, es señal de que alguien agregó un sistema paralelo en vez de tocar
+   este. */
 .screen.active{animation:screen-rise var(--motion-fast) var(--ease-out);}
 @keyframes screen-rise{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 
@@ -951,6 +954,21 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .btn-confirm:active,.btn-danger:active,.btn-prim-sm:active,.ramo-action:active,
 .gpa-start-btn:active,.ag-empty-cta:active,.add-nota-btn:active,.add-cat-btn:active,
 .user-menu-item:active{transform:scale(.985);}
+
+/* Hover con desplazamiento, detrás de la barrera táctil.
+   En un teléfono, tocar un elemento dispara :hover y el transform QUEDA PEGADO
+   hasta que toques otra cosa. Estas seis reglas estaban sueltas mientras el
+   bloque de abajo ya usaba la barrera: el patrón existía y a estas no se les
+   aplicó. `.ramo-row` es el elemento más tocado de la app. */
+@media(hover:hover) and (pointer:fine){
+  .insight-card:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--insight-color,var(--primary)),transparent 45%);box-shadow:0 6px 18px -8px color-mix(in srgb,var(--insight-color,var(--primary)),transparent 60%);}
+  .ramo-row:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 50%);
+  box-shadow:inset 4px 0 0 0 var(--ramo-tint,var(--primary)), 0 8px 24px -8px color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 55%);}
+  .stat-card:hover{transform:translateY(-1px);border-color:var(--border2);box-shadow:var(--shadow-lg);}
+  .ag-item:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:var(--shadow);}
+  .ag-row:hover{transform:translateY(-1px);border-color:var(--border2);box-shadow:var(--shadow);}
+  .hist-card:hover{border-color:var(--border2);transform:translateY(-1px);}
+}
 
 @media(hover:hover) and (pointer:fine){
   .ramo-row:hover,.insight-card:hover,.stat-card:hover,.ag-row:hover,.eval-row:hover,
