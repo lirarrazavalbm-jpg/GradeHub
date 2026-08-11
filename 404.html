@@ -11,7 +11,13 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Sora:wght@700;800&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/styles.css"/>
-<style>@media(prefers-color-scheme:dark){:root{--primary:#2dd4bf;--primary-fg:#05252b;--primary-light:#0b2b2c;--accent:#65e6f4;--secondary:#2dd4bf;}}</style>
+<!-- El tema lo aplica applyTheme() desde app.js, y esta página no carga app.js a
+     propósito: tiene que servir aunque la app esté a medio cargar. Así que copia
+     los valores del modo oscuro de GRADEHUB_THEME (data.js).
+     Es una copia, y las copias se desincronizan: tres de estos cinco ya estaban
+     desfasados al abrir el PR. Hay un test que los compara contra data.js y falla
+     si alguien cambia el tema y se olvida de esta página. -->
+<style>@media(prefers-color-scheme:dark){:root{--primary:#2dd4bf;--primary-fg:#04231e;--primary-light:#0a2b26;--accent:#56e2e8;--secondary:#2dd4bf;}}</style>
 </head>
 <body class="error-page">
 <main class="error-wrap">

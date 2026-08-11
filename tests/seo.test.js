@@ -60,5 +60,25 @@ chk('se declara como WebApplication', /"WebApplication"/.test(datos));
 // Declararlo para "cumplir un checklist" es mentirle a un buscador.
 chk('NO se declara como LocalBusiness', !/LocalBusiness/.test(datos));
 
+console.log('\n=== La 404 no se desincroniza del tema ===');
+// La 404 no carga app.js —tiene que servir aunque la app esté a medio cargar—,
+// así que no puede recibir el tema por applyTheme() y copia los valores del modo
+// oscuro a mano. Una copia se desincroniza sola: al abrir el PR que la creó, tres
+// de los cinco valores ya estaban desfasados y apuntaban a un acento de dos
+// versiones atrás. Nadie lo habría notado: la página se ve bien igual, solo con
+// el color equivocado.
+const vm404 = require('vm'), ctx404 = {};
+vm404.createContext(ctx404);
+vm404.runInContext(leer('data.js'), ctx404);
+const TEMA = vm404.runInContext('GRADEHUB_THEME', ctx404);
+const html404 = leer('404.html');
+const bloque = (html404.match(/:root\{([^}]+)\}/) || [])[1] || '';
+const fijados = Object.fromEntries(bloque.split(';').filter(Boolean).map(p => p.split(':').map(t => t.trim())));
+Object.entries({
+  '--primary': TEMA.darkPrimary, '--primary-fg': TEMA.darkPrimaryFg,
+  '--primary-light': TEMA.darkPrimaryLight, '--accent': TEMA.accent,
+  '--secondary': TEMA.darkSecondary,
+}).forEach(([k, v]) => chk(`404.html: ${k} calza con el tema (${v})`, fijados[k] === v));
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
