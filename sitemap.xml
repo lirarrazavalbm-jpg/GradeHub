@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dos URLs: la app y la política de privacidad. No se agregan rutas de la
+     app porque es una sola página — las pantallas (Home, ramo, agenda) no
+     tienen URL propia. Si algún día la tienen, van acá. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://gradehub.cl/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://gradehub.cl/privacidad.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>
