@@ -281,26 +281,48 @@ movimiento) y 2 (el momento de la nota) ya están en producción. Sigue jerarqu�
 de Home, después los vacíos, estadísticas y Agenda. Su carril es `app.js` y,
 durante la revisión estética, `styles.css`.
 
-**Claude de Lucas — mostrar los descartes y arreglar el "¿qué nota necesito?".**
-El motor ya elimina la peor nota cuando el programa lo dice (`drop_lowest`), pero
-la ficha del ramo todavía no muestra CUÁL se eliminó: el estudiante ingresa
-2,0/6,0/6,0/7,0 y ve 6,3 sin explicación. El resultado trae `drops` justamente
-para eso. Y `solveForTarget` no sabe de descartes: sus pesos efectivos salen de
-la estructura declarada, así que si te faltan controles por rendir la respuesta
-ignora que el peor se va a eliminar — hoy le pedimos al estudiante una nota más
-alta de la que necesita.
+**Claude de Lucas — terminar la auditoría de movimiento.** Salió de correr la
+skill `improve-animations` sobre `styles.css` y `app.js` el 2026-08-11. Se
+arreglaron tres defectos (#90: hover pegado en táctil, 340ms de `screenIn` que
+nunca corrían, dos `transition:all`) y el modal, que aparecía y desaparecía de
+golpe (#91). Queda:
 
-Y además **el consenso de reportes**, que pasa a este carril porque la parte
-difícil es Supabase, no la app: `catalog_reports` solo deja leer las filas
-propias, así que ningún cliente puede calcular un consenso. Necesita una vista
-agregada o una función `security definer` que exponga el conteo sin exponer
-quién reportó qué. Ese SQL se versiona en `supabase/` — hay precedente en
-`supabase/eliminar_mi_cuenta.sql`, y está ahí justamente porque tener una
-función solo en el panel costó dos días de diagnóstico equivocado.
+1. **Las duraciones no usan los tokens.** 54 escritas a mano contra 7 con
+   `var(--motion-*)`, en 12 valores distintos para una escala de tres. Seis
+   copian `cubic-bezier(.22,1,.36,1)`, que es `--ease-out` literal. Es refactor
+   puro y va en su propio PR: acá un refactor no viaja con una feature.
+   Ojo: `.15s` aparece 45 veces y no está en la escala (120/160/220), así que
+   mapearla cambia el número. Hay que decidir si se mueve a 160 o si la escala
+   necesita un valor más.
+2. **Dos barras de progreso animan `width`.** `.ob-progress-bar` y
+   `.ramo-progress-fill`. Anima layout en cada actualización; va `transform:
+   scaleX()` con `transform-origin:left`.
+3. **`button:active{transform:scale(.97)}` sin transición.** El rebote al soltar
+   es instantáneo en toda la app.
+4. **`prefers-reduced-motion` es nuclear.** `*{animation-duration:.01ms!important}`
+   mata todo, incluido lo que ayuda a comprender. El criterio es menos
+   movimiento, no cero: conservar opacidad y color, eliminar desplazamientos.
 
-Sigue siendo la única vía para los ramos cuyo programa no aparezca nunca, así
-que no es "para después": es para cuando se acaben los PDFs, y ese momento se ve
-venir.
+`tests/movimiento.test.js` fija lo ya arreglado y tres reglas más (nada de
+`ease-in`, nada de `scale(0)`, ningún `@keyframes` huérfano).
+
+**Dos cosas que hacen perder tiempo al verificar movimiento**, y que costaron
+descubrir: un documento oculto pausa el compositor, así que si mides una
+transición con el panel del navegador escondido siempre vas a leer el valor
+inicial congelado — usa `document.getAnimations()` en vez de `getComputedStyle`.
+Y en local el `CACHE_NAME` es siempre `gradehub-dev`, así que el service worker
+se queda pegado con la copia vieja entre sesiones: desregístralo y borra las
+cachés antes de creerle a lo que ves.
+
+**El consenso de reportes NO se construye todavía.** Pasó a este carril, pero al
+2026-08-10 hay **1 reporte de 1 persona** — y el botón para reportar recién dejó
+de estar escondido al fondo del modal de "Editar ramo". No hay nada que agregar.
+Dejar correr una o dos semanas y mirar si llegan reportes; si en dos semanas hay
+tres, el problema no es el consenso sino que nadie reporta, y eso se arregla en
+la app. El obstáculo técnico sigue en pie para cuando toque: `catalog_reports`
+solo deja leer las filas propias, así que necesita una vista agregada o una
+función `security definer` que exponga el conteo sin exponer quién reportó qué,
+versionada en `supabase/`.
 
 **Claude de Martín — pautas oficiales, y las preguntas frecuentes.** El detalle
 de las FAQ está en el issue #86: es la única pieza de contenido que falta del
