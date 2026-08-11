@@ -2486,55 +2486,88 @@ document.addEventListener('keydown',e=>{
 function openSettings(){
   let settingsSem=S.careerSemestre;
   let settingsCarrera=S.carrera;
+  let settingsName=S.userName;
   // Se declara acá arriba: los render*Grid() se llaman antes de las definiciones
   // de función y con `let` más abajo caería en la zona muerta temporal (TDZ).
   let settingsTenant=S.tenant||'fen';
   const nombreHint=`<p style="font-size:11px;color:var(--fg3);margin:-8px 0 14px;">Aparece en el saludo de inicio.</p>`;
-  document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Ajustes</div>
-    <section style="padding:0 0 16px;margin-bottom:16px;border-bottom:1px solid var(--border);">
-      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:12px;">Perfil</div>
+  let activeSection=window.matchMedia('(min-width:768px)').matches?'perfil':'';
+  const icons={
+    perfil:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.4 3.5-5.3 7.5-5.3s6.7 1.9 7.5 5.3"/></svg>',
+    academico:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    apariencia:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    datos:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v7c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 12v7c0 1.7 3.1 3 7 3s7-1.3 7-3v-7"/></svg>',
+    arrow:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>'
+  };
+  const sections=[
+    ['Tu cuenta','perfil','Perfil','Tu nombre en GradeHub'],
+    ['Estudio','academico','Información académica','Universidad, carrera y semestre'],
+    ['Preferencias','apariencia','Apariencia','Cómo se ve la app'],
+    ['Datos','datos','Datos y cuenta','Respaldos y acciones de cuenta']
+  ];
+
+  function guardarBtn(){return '<button class="btn-primary settings-save" id="s-save-btn" onclick="saveSettings()">Guardar cambios</button>';}
+  function panel(section){
+    if(section==='perfil')return `
       <label class="modal-label">Nombre para mostrar</label>
-      <div class="modal-input" style="${currentUser?'margin-bottom:0;':''}"><input type="text" id="s-name" value="${esc(S.userName)}" maxlength="30" autocomplete="off"/></div>
-      ${nombreHint}
-    </section>
-    <section style="padding:0 0 16px;margin-bottom:16px;border-bottom:1px solid var(--border);">
-      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:12px;">Información académica</div>
+      <div class="modal-input" style="${currentUser?'margin-bottom:0;':''}"><input type="text" id="s-name" value="${esc(settingsName)}" maxlength="30" autocomplete="off"/></div>
+      ${nombreHint}${guardarBtn()}`;
+    if(section==='academico')return `
       <label class="modal-label">Universidad</label>
       <div id="s-tenant-grid" class="s-tenant-grid"></div>
-      <p style="font-size:11.5px;color:var(--fg3);margin:8px 0 16px;line-height:1.4;">Cambia los colores de la app. Tus ramos y notas no se tocan.</p>
+      <p class="settings-help">Cambia tu catálogo disponible. Tus ramos y notas no se tocan.</p>
       <label class="modal-label">Carrera</label>
-      <div id="s-carrera-grid" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+      <div id="s-carrera-grid" class="settings-carrera-grid"></div>
       <label class="modal-label">Semestre de carrera</label>
       <div class="sem-grid" id="s-sem-grid"></div>
-    </section>
-    <section style="padding:0 0 16px;margin-bottom:16px;border-bottom:1px solid var(--border);">
-      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:12px;">Apariencia</div>
-      <div class="modo-grid" id="s-modo-grid"></div>
-    </section>
-    <button class="btn-primary" id="s-save-btn" onclick="saveSettings()" style="margin-bottom:20px;">Guardar cambios</button>
-    <section>
-      <div style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px;">Datos y cuenta</div>
-      <p style="font-size:12px;color:var(--fg2);line-height:1.45;margin:0 0 10px;">Guarda una copia antes de cambiar de dispositivo.</p>
-      <div style="display:grid;gap:8px;margin-bottom:16px;">
-        <button type="button" onclick="exportarDatos()" style="width:100%;padding:11px;background:var(--muted);color:var(--fg);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Exportar mis datos</button>
-        <button type="button" onclick="abrirImportar()" style="width:100%;padding:11px;background:var(--muted);color:var(--fg);border:1px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Importar datos</button>
+      ${guardarBtn()}`;
+    if(section==='apariencia')return `
+      <p class="settings-help settings-help-top">Elige cómo prefieres ver GradeHub. Se guarda al elegir.</p>
+      <div class="modo-grid" id="s-modo-grid"></div>`;
+    return `
+      <p class="settings-help settings-help-top">Guarda una copia antes de cambiar de dispositivo.</p>
+      <div class="settings-data-actions">
+        <button type="button" onclick="exportarDatos()">Exportar mis datos</button>
+        <button type="button" onclick="abrirImportar()">Importar datos</button>
       </div>
-      <button type="button" onclick="confirmarEliminarCuenta()" style="width:100%;padding:11px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Eliminar mi cuenta</button>
-      <p style="font-size:11.5px;color:var(--fg3);line-height:1.4;margin:7px 0 16px;">Borra tu cuenta y todas tus notas, en este dispositivo y en la nube. No se puede deshacer.</p>
-      <button onclick="confirmResetApp()" style="width:100%;padding:12px;background:var(--red-bg);color:var(--red);border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Reiniciar app</button>
-      <p style="text-align:center;margin:14px 0 0;font-size:12px;"><a href="/privacidad.html" target="_blank" rel="noopener" style="color:var(--fg3);text-decoration:none;">Política de privacidad</a></p>
-    </section>`;
+      <div class="settings-danger-zone">
+        <div class="settings-danger-label">Zona sensible</div>
+        <button type="button" class="settings-danger-btn" onclick="confirmarEliminarCuenta()">Eliminar mi cuenta</button>
+        <p>Borra tu cuenta y todas tus notas, en este dispositivo y en la nube. No se puede deshacer.</p>
+        <button type="button" class="settings-danger-btn" onclick="confirmResetApp()">Reiniciar app</button>
+      </div>
+      <p class="settings-privacy"><a href="/privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
+  }
+  function renderSettings(){
+    const nav=sections.map(([group,id,title,detail],i)=>`${!i||sections[i-1][0]!==group?`<div class="settings-nav-group">${group}</div>`:''}<button type="button" class="settings-nav-item${id===activeSection?' active':''}" data-settings-section="${id}"><span class="settings-nav-icon">${icons[id]}</span><span><b>${title}</b><small>${detail}</small></span><span class="settings-nav-chevron">›</span></button>`).join('');
+    const current=sections.find(x=>x[1]===activeSection);
+    document.getElementById('modal-content').innerHTML=`
+      <div class="modal-title settings-modal-title${activeSection?' settings-mobile-hidden':''}">Ajustes</div>
+      <div class="settings-shell${activeSection?' settings-detail-open':''}">
+        <aside class="settings-nav" aria-label="Secciones de Ajustes">${nav}</aside>
+        <section class="settings-detail" ${activeSection?'':'aria-hidden="true"'}>
+          ${activeSection?`<div class="settings-detail-heading"><button type="button" class="settings-back" aria-label="Volver a Ajustes">${icons.arrow}<span>Ajustes</span></button><div><h2>${current[2]}</h2><p>${current[3]}</p></div></div><div class="settings-detail-body">${panel(activeSection)}</div>`:''}
+        </section>
+      </div>`;
+    document.querySelectorAll('[data-settings-section]').forEach(b=>b.onclick=()=>{activeSection=b.dataset.settingsSection;renderSettings();});
+    const back=document.querySelector('.settings-back');if(back)back.onclick=()=>{activeSection='';renderSettings();};
+    if(activeSection==='academico'){renderSettingsSemGrid();renderSettingsTenantGrid();renderSettingsCarreraGrid();}
+    if(activeSection==='apariencia')renderModoGrid();
+    if(activeSection==='perfil'){
+      const inp=document.getElementById('s-name');
+      if(inp){
+        inp.addEventListener('input',()=>{settingsName=inp.value;checkSave();});
+        inp.addEventListener('keydown',e=>{if(e.key==='Enter')window.saveSettings();});
+        setTimeout(()=>{inp.focus();inp.select();},100);
+      }
+    }
+  }
+  renderSettings();
   openModal();
-  renderSettingsSemGrid();
-  renderSettingsTenantGrid();
-  renderSettingsCarreraGrid();
-  renderModoGrid();
-  setTimeout(()=>{const inp=document.getElementById('s-name');inp.focus();inp.select();},100);
 
   function checkSave(){
     const btn=document.getElementById('s-save-btn');
-    if(btn)btn.disabled=!document.getElementById('s-name').value.trim();
+    if(btn)btn.disabled=!settingsName.trim();
   }
   function renderModoGrid(){
     const g=document.getElementById('s-modo-grid');if(!g)return;g.innerHTML='';
@@ -2549,6 +2582,7 @@ function openSettings(){
         g.appendChild(b);
       });
   }
+  window.renderModoGrid=renderModoGrid;
   function renderSettingsSemGrid(){
     const g=document.getElementById('s-sem-grid');if(!g)return;g.innerHTML='';
     for(let i=1;i<=11;i++){
@@ -2589,7 +2623,7 @@ function openSettings(){
     }
   },120);
   window.saveSettings=function(){
-    const name=document.getElementById('s-name').value.trim();if(!name)return;
+    const name=settingsName.trim();if(!name)return;
     const cambioUni=settingsTenant!==S.tenant;
     S.userName=name;S.careerSemestre=settingsSem;S.carrera=settingsCarrera;S.tenant=settingsTenant;
     selectedTenant=settingsTenant;
