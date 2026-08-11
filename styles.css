@@ -29,7 +29,7 @@ button:active{transform:scale(.97);}
     --primary:#22d3ee;--primary-fg:#05252b;--primary-light:#0b2930;--accent:#65e6f4;--secondary:#22d3ee;
     --fg:#eef4f6;--fg2:#99aab2;--fg3:#657780;
     /* Notas: saturadas y luminosas contra el fondo oscuro */
-    --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
+    --green:#2ecc40;--green-bg:#08210d;--green-border:#155224;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
     --grade-light:62%;--grade-urgent-light:58%;--grade-perfect-light:58%;
@@ -46,7 +46,7 @@ button:active{transform:scale(.97);}
     --primary:#22d3ee;--primary-fg:#05252b;--primary-light:#0b2930;--accent:#65e6f4;--secondary:#22d3ee;
     --fg:#eef4f6;--fg2:#99aab2;--fg3:#657780;
     /* Notas: saturadas y luminosas contra el fondo oscuro */
-    --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
+    --green:#2ecc40;--green-bg:#08210d;--green-border:#155224;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
     --grade-light:62%;--grade-urgent-light:58%;--grade-perfect-light:58%;
@@ -287,21 +287,14 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .gpa-num:active{transform:scale(.97);}
 .gpa-num.good,.gpa-num.warn,.gpa-num.bad{background-image:linear-gradient(160deg,color-mix(in srgb,var(--grade-color),#fff 10%),var(--grade-color) 72%,color-mix(in srgb,var(--grade-color),#000 8%));}
 .gpa-num.grade-urgent,.ramo-num.grade-urgent{background-image:linear-gradient(158deg,#ff8293 0%,#f31242 42%,#7a001b 100%);}
-/* 7,0. El número va en el verde más vivo de la escala —no cambia de familia,
-   solo de intensidad— y el oro queda en un anillo que lo rodea. Antes el número
-   mismo era dorado con matiz 43°, idéntico al ámbar de "al borde": la nota
-   perfecta se leía como advertencia. El adorno no puede vivir en el color del
-   número, porque ahí el color significa algo. */
+/* 7,0. El número va en el verde más vivo de la escala y el oro va en su
+   CONTORNO: el trazo del propio número, no un aro alrededor. La versión anterior
+   dibujaba un anillo con ::after y quedaba como una medalla pegada encima.
+   El relleno sigue siendo verde —el color que significa aprobado— y el oro solo
+   perfila el borde de los dígitos, así que adorna sin decir nada. */
 .gpa-num.grade-perfect,.ramo-num.grade-perfect{
-  background-image:linear-gradient(158deg,#7bffc4 0%,#22e07d 45%,#0fbf63 100%);
-  position:relative;}
-.gpa-num.grade-perfect::after,.ramo-num.grade-perfect::after{
-  content:'';position:absolute;inset:-7px -11px;border-radius:999px;pointer-events:none;
-  border:1.5px solid transparent;
-  background:linear-gradient(135deg,#ffe9a3,#e8b53c 45%,#a87d1e 70%,#ffdf8a) border-box;
-  -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);
-  mask-composite:exclude;}
+  background-image:linear-gradient(158deg,#7bffa8 0%,#2ecc40 45%,#12a52c 100%);
+  -webkit-text-stroke:1.4px #e8b53c;paint-order:stroke fill;}
 .gpa-num.empty{background-image:none;-webkit-text-fill-color:var(--fg3);color:var(--fg3);font-size:40px;opacity:.4;cursor:default;line-height:1.6;}
 /* Decimal grande, mismo tamaño y gradient que el número. Solo se atenúa con opacity. */
 .gpa-num .gpa-decimal{

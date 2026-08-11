@@ -69,10 +69,27 @@ chk('tiene todos los tokens de identidad', ['primary', 'primaryFg', 'primaryLigh
 // ya no existe, y un test que describe mal lo que prueba envejece peor que uno
 // que falla.
 chk('el acento es vivo y más claro que el primario', saturation(theme.accent) >= .5 && lum(theme.accent)>lum(theme.primary));
-// El acento de identidad no puede ser el color de ningún ramo. El cian anterior
-// (#22d3ee) quedaba a 1° de matiz del ramo #06b6d4 y nadie lo había medido.
-chk('la identidad no es el color de ningún ramo',
-  vm.runInContext('COLORS', dark).every(c => c !== theme.primary && Math.abs(lum(theme.primary) - lum(c)) >= .08));
+// El acento de identidad no puede confundirse con el color de un ramo. La
+// versión anterior de este chequeo exigía que difirieran en LUMINOSIDAD, y era
+// una regla mal planteada: dos colores de matiz distinto se distinguen perfecto
+// con la misma luminosidad, y con nueve colores de ramo repartidos por la rueda
+// es casi imposible de cumplir. Pasaba por casualidad.
+//
+// El criterio correcto es el mismo que se aplica más abajo a los ramos y al
+// semáforo: separación por matiz o por contraste. Tener dos reglas distintas
+// para la misma pregunta era el error real.
+//
+// Se revisan los DOS primarios. La app se ve casi siempre en oscuro, así que un
+// chequeo que solo mira el de modo claro deja fuera el que de verdad se usa.
+const separaDe = (a, b) => {
+  const d = Math.min(Math.abs(hue(a) - hue(b)), 360 - Math.abs(hue(a) - hue(b)));
+  return d >= 21 || ratio(a, b) >= 1.7;
+};
+[['claro', theme.primary], ['oscuro', theme.darkPrimary]].forEach(([modo, color]) => {
+  chk(`la identidad en ${modo} (${color}) no se confunde con ningún ramo`,
+    vm.runInContext('COLORS', dark).every(c => separaDe(color, c)));
+});
+
 const firmas = TENANT_CODES.map(code => { reset(); dark.applyTheme(code); return snapshot(); });
 chk('los cuatro tenants reciben exactamente los mismos tokens', new Set(firmas).size === 1);
 chk('los cuatro tenants siguen existiendo como datos', TENANT_CODES.every(code => vm.runInContext('Boolean(TENANTS[' + JSON.stringify(code) + '])', dark)));
@@ -142,8 +159,12 @@ chk('ningún matiz del número de nota cae en la familia del ámbar',
     // que de verdad significa "al borde" (4,0–5,0), donde el ámbar es correcto.
     return (n >= 4 && n < 5) || Math.abs(h - 42) >= 12;
   }));
-chk('el anillo dorado existe y rodea al número, no lo pinta',
-  /\.grade-perfect::after/.test(require('fs').readFileSync(__dirname + '/../styles.css', 'utf8')));
+// El oro va en el CONTORNO del número, no en un aro alrededor ni en el relleno.
+// El relleno tiene que seguir siendo verde: ahí el color significa aprobado.
+const cssPerfecto = require('fs').readFileSync(__dirname + '/../styles.css', 'utf8');
+chk('el oro del 7,0 es el contorno del número', /grade-perfect\{[^}]*-webkit-text-stroke:[^;]*#e8b53c/.test(cssPerfecto.replace(/\s+/g, '')) || /-webkit-text-stroke:1\.4px #e8b53c/.test(cssPerfecto));
+chk('el relleno del 7,0 sigue siendo verde', /grade-perfect[^}]*linear-gradient\(158deg,#7bffa8/.test(cssPerfecto));
+chk('ya no hay anillo alrededor del número', !/\.grade-perfect::after/.test(cssPerfecto));
 chk('los extremos grandes reciben su acabado propio', vm.runInContext('claseNotaEspecial(1.0)+"|"+claseNotaEspecial(7.0)', dark) === ' grade-urgent| grade-perfect');
 console.log('  ' + gradeHues.map((h, i) => (i + 1) + '.0=' + h + '°').join('  '));
 
@@ -159,7 +180,7 @@ hues.forEach((h, i) => {
   if (sep < minSep) { minSep = sep; par = h.toFixed(0) + '° / ' + sig.toFixed(0) + '°'; }
 });
 chk('ningún par de colores a menos de 18° de matiz', minSep >= 18);
-const SEM = ['#2ee6c8', '#ffc94d', '#ff5f7a'];
+const SEM = ['#2ecc40', '#ffc94d', '#ff5f7a'];
 const separaIdentidad = color => {
   const distancia=Math.min(Math.abs(hue(color)-hue(theme.primary)),360-Math.abs(hue(color)-hue(theme.primary)));
   // El acento de la app y un ramo pueden compartir familia cian, pero no el
