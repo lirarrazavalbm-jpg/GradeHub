@@ -2490,7 +2490,6 @@ function openSettings(){
   // Se declara acá arriba: los render*Grid() se llaman antes de las definiciones
   // de función y con `let` más abajo caería en la zona muerta temporal (TDZ).
   let settingsTenant=S.tenant||'fen';
-  const nombreHint=`<p style="font-size:11px;color:var(--fg3);margin:-8px 0 14px;">Aparece en el saludo de inicio.</p>`;
   let activeSection=window.matchMedia('(min-width:768px)').matches?'perfil':'';
   const icons={
     perfil:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.4 3.5-5.3 7.5-5.3s6.7 1.9 7.5 5.3"/></svg>',
@@ -2510,8 +2509,11 @@ function openSettings(){
   function panel(section){
     if(section==='perfil')return `
       <label class="modal-label">Nombre para mostrar</label>
-      <div class="modal-input" style="${currentUser?'margin-bottom:0;':''}"><input type="text" id="s-name" value="${esc(settingsName)}" maxlength="30" autocomplete="off"/></div>
-      ${nombreHint}${guardarBtn()}`;
+      <div class="settings-name-field">
+        <div class="modal-input"><input type="text" id="s-name" value="${esc(settingsName)}" maxlength="30" autocomplete="off"/></div>
+        <p class="settings-name-hint">Aparece en el saludo de inicio.</p>
+      </div>
+      ${guardarBtn()}`;
     if(section==='academico')return `
       <label class="modal-label">Universidad</label>
       <div id="s-tenant-grid" class="s-tenant-grid"></div>
@@ -2534,8 +2536,8 @@ function openSettings(){
         <div class="settings-danger-label">Zona sensible</div>
         <button type="button" class="settings-danger-btn" onclick="confirmarEliminarCuenta()">Eliminar mi cuenta</button>
         <p>Borra tu cuenta y todas tus notas, en este dispositivo y en la nube. No se puede deshacer.</p>
-        <button type="button" class="settings-danger-btn" onclick="confirmResetApp()">Reiniciar app</button>
       </div>
+      ${currentUser?`<div class="settings-reset-zone"><button type="button" class="settings-reset-btn" onclick="confirmResetApp()">Reiniciar app</button><p>Borra los datos de este dispositivo y cierra sesión. Tus notas en la nube se conservan.</p></div>`:`<div class="settings-danger-zone settings-reset-danger-zone"><div class="settings-danger-label">Zona sensible</div><button type="button" class="settings-danger-btn" onclick="confirmResetApp()">Reiniciar app</button><p>Borra todos tus datos de este dispositivo. No se puede deshacer.</p></div>`}
       <p class="settings-privacy"><a href="/privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
   }
   function renderSettings(){

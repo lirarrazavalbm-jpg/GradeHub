@@ -63,6 +63,38 @@ console.log('\n=== Una identidad, sin importar la universidad ===');
 const theme = vm.runInContext('GRADEHUB_THEME', dark);
 chk('no queda registro THEMES por universidad', vm.runInContext('typeof THEMES', dark) === 'undefined');
 chk('tiene todos los tokens de identidad', ['primary', 'primaryFg', 'primaryLight', 'darkPrimary', 'darkPrimaryFg', 'darkPrimaryLight', 'accent', 'secondary', 'darkSecondary', 'dark'].every(k => k in theme));
+
+console.log('\n=== El CSS parte con la identidad correcta ===');
+// applyTheme() reemplaza estos tokens en cuanto corre app.js, pero antes de eso
+// el navegador pinta los defaults de styles.css. Si se desincronizan, cada carga
+// fría parte con otra identidad y después salta de color. La 404 ya tenía esta
+// misma guarda: acá cubrimos los tres bloques que pinta la app principal.
+const tokensCss = bloque => Object.fromEntries([...bloque.matchAll(/(--(?:primary(?:-fg|-light)?|accent|secondary)):([^;]+)/g)].map(([, k, v]) => [k, v.trim()]));
+const bloqueCss = selector => (css.match(selector) || [])[1] || '';
+const defaultsCss = [
+  ['claro', bloqueCss(/:root\{([^}]*)\}/), {
+    '--primary': theme.primary, '--primary-fg': theme.primaryFg,
+    '--primary-light': theme.primaryLight, '--accent': theme.accent,
+    '--secondary': theme.secondary,
+  }],
+  ['oscuro del sistema', bloqueCss(/:root:not\(\[data-modo="claro"\]\)\{([^}]*)\}/), {
+    '--primary': theme.darkPrimary, '--primary-fg': theme.darkPrimaryFg,
+    '--primary-light': theme.darkPrimaryLight, '--accent': theme.accent,
+    '--secondary': theme.darkSecondary,
+  }],
+  ['oscuro forzado', bloqueCss(/:root\[data-modo="oscuro"\]\{([^}]*)\}/), {
+    '--primary': theme.darkPrimary, '--primary-fg': theme.darkPrimaryFg,
+    '--primary-light': theme.darkPrimaryLight, '--accent': theme.accent,
+    '--secondary': theme.darkSecondary,
+  }],
+];
+defaultsCss.forEach(([modo, bloque, esperado]) => {
+  const actuales = tokensCss(bloque);
+  chk(`${modo}: los cinco tokens iniciales calzan con GRADEHUB_THEME`,
+    Object.entries(esperado).every(([k, v]) => actuales[k] === v));
+});
+chk('styles.css no conserva el cian de la identidad anterior',
+  ['#087f98','#e2f6f8','#22d3ee','#05252b','#0b2930','#65e6f4'].every(c => !css.includes(c)));
 // El acento tiene que ser vivo y más claro que el primario, sea cual sea la
 // familia de color. La versión anterior de este chequeo se llamaba "el acento
 // luminoso acompaña al cian profundo" — el nombre daba por hecho una paleta que
