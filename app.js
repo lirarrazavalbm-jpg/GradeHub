@@ -97,14 +97,14 @@ function tenantMark(code){
 // Con caja teñida — onboarding
 function tenantBadge(code,cls){
   if(!TENANTS[code])return '';
-  return `<span class="tenant-badge ${cls||''}" style="--tb:${esc(GRADEHUB_THEME.primary)}" aria-hidden="true">`
+  return `<span class="tenant-badge ${cls||''}" style="--tb:var(--primary)" aria-hidden="true">`
     +tenantMark(code)+'</span>';
 }
 
 // Compacta — junto al wordmark de GradeHub en la topbar
 function tenantGlyphBare(code){
   if(!TENANTS[code])return '';
-  return `<span class="brand-tenant" style="--tb:${esc(GRADEHUB_THEME.primary)}" aria-hidden="true">`
+  return `<span class="brand-tenant" style="--tb:var(--primary)" aria-hidden="true">`
     +tenantMark(code)+'</span>';
 }
 let selectedTenant='fen';
@@ -148,18 +148,19 @@ function applyTheme(){
   aplicarModo();
   const th={...THEME_BASE,...GRADEHUB_THEME};
   const r=document.documentElement.style;
+  const dark=prefersDark();
   // Acentos: valen en ambos modos
-  r.setProperty('--primary',th.primary);
-  r.setProperty('--primary-fg',th.primaryFg);
-  r.setProperty('--primary-light',prefersDark()?th.darkPrimaryLight:th.primaryLight);
+  r.setProperty('--primary',dark?(th.darkPrimary||th.primary):th.primary);
+  r.setProperty('--primary-fg',dark?(th.darkPrimaryFg||th.primaryFg):th.primaryFg);
+  r.setProperty('--primary-light',dark?th.darkPrimaryLight:th.primaryLight);
   r.setProperty('--accent',th.accent);
-  r.setProperty('--secondary',th.secondary||th.accent);
+  r.setProperty('--secondary',dark?(th.darkSecondary||th.secondary||th.accent):(th.secondary||th.accent));
   r.setProperty('--green',th.success);
   r.setProperty('--yellow',th.warning);
   r.setProperty('--red',th.danger);
   // Superficies: solo en oscuro. En claro se quitan para que rija la base del CSS
   // (un fondo oscuro sobre texto oscuro sería ilegible).
-  const surf=prefersDark()?th.dark:null;
+  const surf=dark?th.dark:null;
   SURFACE_KEYS.forEach(k=>{
     const v=surf&&surf[k];
     if(v)r.setProperty('--'+k,v); else r.removeProperty('--'+k);
@@ -241,7 +242,7 @@ function renderTenantPick(){
   tenantsVisibles(selectedTenant).forEach(([code,cfg])=>{
     const b=document.createElement('button');
     b.className='tenant-opt'+(code===selectedTenant?' sel':'');
-    b.style.setProperty('--tb',GRADEHUB_THEME.primary);
+    b.style.setProperty('--tb','var(--primary)');
     b.innerHTML=`${tenantBadge(code,'lg')}
       <span class="tenant-opt-info">
         <span class="tenant-opt-name">${esc(cfg.name)}</span>
