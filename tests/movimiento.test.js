@@ -58,5 +58,35 @@ chk('ningún transition:all', !/transition:\s*all\b/.test(css));
 // Nada en el mundo real aparece de la nada.
 chk('ningún scale(0) exacto', !/scale\(0\)/.test(css));
 
+console.log('\n=== El modal entra y sale ===');
+// Sin comentarios: estos chequeos buscan código, y los comentarios que EXPLICAN
+// un arreglo mencionan justo las palabras que el arreglo eliminó. La primera
+// versión de este test falló contra su propia documentación.
+const sinComentarios = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const app = sinComentarios(fs.readFileSync(path.join(raiz, 'app.js'), 'utf8'));
+const cssCodigo = sinComentarios(css);
+// Antes `.open` solo hacía display:flex — el sheet aparecía y desaparecía de
+// golpe, y por acá pasa todo flujo de la app.
+chk('el sheet parte fuera de pantalla', /\.modal-sheet\{transform:translateY\(100%\)/.test(css));
+// translateY(100%) es la altura del propio elemento: sirve igual con un sheet
+// corto y con uno de 92vh. Un offset en píxeles se rompe con el contenido.
+chk('la salida usa la altura propia, no píxeles', !/\.modal-sheet[^}]*translateY\(\d+px\)/.test(css));
+// Sin @starting-style el navegador no anima la entrada: el elemento pasa de
+// display:none a display:flex y cambia el transform en el mismo fotograma, así
+// que salta al final de una. Lo comprobé en el navegador antes de arreglarlo.
+chk('la entrada declara su estado inicial con @starting-style',
+  /@starting-style\s*\{[\s\S]*?\.modal-overlay\.open \.modal-sheet\s*\{\s*transform:\s*translateY\(100%\)/.test(cssCodigo));
+// Sin allow-discrete, display:none se aplica al empezar y el sheet desaparece
+// antes de bajar: la salida no se ve nunca.
+chk('la salida deja participar a display', /transition:[^;]*display[^;]*allow-discrete/.test(cssCodigo));
+// Y con eso el cierre no necesita JS: ni clase extra ni transitionend.
+chk('closeModal no necesita maquinaria', !/transitionend/.test(app) && !/cerrando/.test(app));
+
+console.log('\n=== El arrastre cierra por velocidad ===');
+// Antes exigía 90px fijos: un flick rápido y corto —que es como se cierra un
+// sheet en serio— rebotaba en vez de cerrar.
+chk('descarta por velocidad, no solo por distancia', /dy\/ms>0\.11/.test(app));
+chk('mide el tiempo del gesto', /startT=Date\.now\(\)/.test(app));
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

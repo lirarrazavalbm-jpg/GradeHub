@@ -470,6 +470,30 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .add-cat-btn:hover{background:var(--primary-light);}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+/* El sheet entra desde abajo y sale por donde entró. Antes `.open` solo hacía
+   `display:flex`: aparecía y desaparecía de golpe, y por acá pasa todo flujo de
+   la app — agregar ramo, agregar evaluación, ajustes, el simulador.
+
+   Las dos piezas que lo hacen funcionar sin JavaScript:
+
+   `@starting-style` da el estado desde el que arranca la transición. Sin esto el
+   navegador no anima nada: el elemento pasa de `display:none` a `display:flex` y
+   cambia el transform en el mismo fotograma, así que salta al final de una.
+
+   `transition-behavior:allow-discrete` deja que `display` participe, y por eso
+   la salida se ve: el `display:none` se aplica AL FINAL de la transición y no al
+   principio. Sin él, el sheet desaparece antes de bajar.
+
+   `translateY(100%)` es la altura del propio elemento, no un número de píxeles:
+   sirve igual con un sheet corto y con uno de 92vh. */
+.modal-overlay{opacity:0;transition:opacity var(--motion-fast) var(--ease-standard),display var(--motion-base) allow-discrete;}
+.modal-overlay.open{opacity:1;}
+.modal-sheet{transform:translateY(100%);transition:transform var(--motion-base) var(--ease-out);}
+.modal-overlay.open .modal-sheet{transform:translateY(0);}
+@starting-style{
+  .modal-overlay.open{opacity:0;}
+  .modal-overlay.open .modal-sheet{transform:translateY(100%);}
+}
 .modal-overlay.open{display:flex;}
 .modal-sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:16px 20px calc(28px + env(safe-area-inset-bottom,0px));width:100%;max-width:430px;box-shadow:0 -4px 32px rgba(0,0,0,.2);max-height:92vh;max-height:92dvh;overflow-y:auto;}
 .modal-drag{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px;}
