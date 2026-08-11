@@ -2901,8 +2901,8 @@ function openModal(){
   document.getElementById('modal').classList.add('open');
   const sheet=document.querySelector('.modal-sheet');
   sheet.scrollTop=0;
-  let startY=0,curY=0,dragging=false;
-  sheet.ontouchstart=e=>{startY=e.touches[0].clientY;curY=startY;dragging=sheet.scrollTop<=0;if(dragging)sheet.style.transition='none';};
+  let startY=0,curY=0,startT=0,dragging=false;
+  sheet.ontouchstart=e=>{startY=e.touches[0].clientY;curY=startY;startT=Date.now();dragging=sheet.scrollTop<=0;if(dragging)sheet.style.transition='none';};
   sheet.ontouchmove=e=>{
     curY=e.touches[0].clientY;
     if(!dragging)return;
@@ -2912,15 +2912,23 @@ function openModal(){
   };
   sheet.ontouchend=()=>{
     if(!dragging)return;dragging=false;
-    sheet.style.transition='transform .2s ease';
-    if(curY-startY>90){closeModal();}
-    else{sheet.style.transform='translateY(0)';}
-    setTimeout(()=>sheet.style.transition='',220);
+    sheet.style.transition='';
+    const dy=curY-startY, ms=Math.max(1,Date.now()-startT);
+    // Cierra por VELOCIDAD o por distancia, no solo por distancia. Antes exigía
+    // 90px fijos: un flick rápido y corto —que es como se cierra un sheet en
+    // serio— rebotaba en vez de cerrar. 0.11 px/ms es el umbral del playbook.
+    if(dy/ms>0.11||dy>110)closeModal();
+    else sheet.style.transform='';
   };
 }
+// El cierre no necesita JavaScript: `transition-behavior:allow-discrete` en el
+// overlay hace que `display:none` se aplique AL FINAL de la transición, así que
+// quitar `.open` basta para que el sheet baje y recién ahí desaparezca.
+// La versión anterior de este arreglo llevaba una clase `.cerrando` y un
+// `transitionend`; sobraba entera.
 function closeModal(){
   const sheet=document.querySelector('.modal-sheet');
-  sheet.style.transform='';
+  sheet.style.transform='';   // suelta lo que dejó el arrastre
   document.getElementById('modal').classList.remove('open');
 }
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
