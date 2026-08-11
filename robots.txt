@@ -1,0 +1,13 @@
+# GradeHub — https://gradehub.cl
+#
+# La app es pública y queremos que se indexe entera: son dos URLs, ninguna con
+# datos de nadie. Las notas viven en localStorage y en Supabase detrás de login,
+# así que no hay nada que un rastreador pueda alcanzar y no debiera.
+User-agent: *
+Allow: /
+
+# El service worker no aporta nada en resultados de búsqueda y se actualiza en
+# cada deploy: indexarlo solo genera ruido.
+Disallow: /sw.js
+
+Sitemap: https://gradehub.cl/sitemap.xml
