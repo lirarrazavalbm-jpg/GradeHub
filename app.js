@@ -987,7 +987,7 @@ function completeOnboarding(){
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
-    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:(preset&&preset.creditos)||null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
   });
   S.onboardingDone=true;save();
   syncProfile();
@@ -1779,7 +1779,7 @@ function addFromCatalog(nombre){
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   S.ramos.push({
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
-    creditos:(preset&&preset.creditos)||null,origen:origenActual(),
+    creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],
   });
   save();track('add_ramo_catalogo',{preset:!!preset});
@@ -1795,6 +1795,26 @@ function renderModalColors(){
 }
 // Matching tolerante: ignora tildes y mayúsculas para encontrar el preset.
 function normName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+
+// Créditos SCT de un ramo. Primero el preset —si existe, es el dato de su
+// programa oficial— y si no, la tabla de créditos de la universidad.
+//
+// Existe porque los dos datos tienen vidas distintas: las ponderaciones cambian
+// cada semestre y hay 10 pautas para 88 ramos FEN, pero los créditos casi no
+// cambian y de Ingeniería UC están los 146. Atar el crédito al preset dejaba sin
+// PPA ponderado a todo el que cargara su malla, que es casi todo el mundo.
+//
+// Devuelve null cuando no se sabe. OJO: 0 no es null. Un laboratorio de 0 SCT es
+// un dato conocido y exacto; null es "no lo tenemos". Confundirlos es lo que
+// haría que un ramo sin dato se colara al promedio con peso cero.
+const CREDITOS_POR_TENANT={uc:CREDITOS_UC};
+function creditosDe(nombre,tenant,preset){
+  if(preset&&typeof preset.creditos==='number')return preset.creditos;
+  const tabla=CREDITOS_POR_TENANT[tenant];
+  if(!tabla)return null;
+  const clave=Object.keys(tabla).find(n=>normName(n)===normName(nombre));
+  return clave?tabla[clave][0]:null;
+}
 
 // \u2500\u2500\u2500 CAT\u00c1LOGO DE RAMOS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 // Capa de consulta sobre MALLA/PRESETS. Todo ramo del cat\u00e1logo pertenece a un
@@ -2133,7 +2153,7 @@ function confirmAddRamo(){
   // Si el nombre coincide con un ramo del catálogo del tenant, carga sus ponderaciones oficiales.
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-  const cr=(preset&&preset.creditos)||null;
+  const cr=creditosDe(presetName||name,S.tenant,preset);
   S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
   showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
