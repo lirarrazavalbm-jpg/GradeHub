@@ -11,19 +11,11 @@ button:active{transform:scale(.97);}
   --green:#0d9488;--green-bg:#e6f7f5;--green-border:#a7ebe1;
   --yellow:#a16207;--yellow-bg:#fdf9e7;
   --red:#c02b3f;--red-bg:#fdecef;
-<<<<<<< HEAD
   /* En claro los extremos se vuelven profundos para seguir leyéndose sobre blanco. */
   --grade-light:30%;--grade-urgent-light:37%;--grade-perfect-light:42%;
-  --muted:#eff3f3;--radius:14px;
-  --shadow:0 1px 2px rgba(11,20,20,.04),0 4px 16px -4px rgba(11,20,20,.08);
-  --shadow-lg:0 8px 30px -8px rgba(11,20,20,.16);
-=======
-  /* En claro baja la luminosidad: incluso el verde 7.0 sigue legible en texto. */
-  --grade-light:30%;
   --muted:#eaf2f4;--radius:14px;
   --shadow:0 1px 2px rgba(7,23,27,.04),0 4px 16px -4px rgba(7,23,27,.08);
   --shadow-lg:0 8px 30px -8px rgba(7,23,27,.16);
->>>>>>> origin/main
   /* Un ritmo compartido evita que cada pantalla "invente" su propia
      transición. Corto a propósito: orienta la interacción, no la retrasa. */
   --motion-press:120ms;--motion-fast:160ms;--motion-base:220ms;
@@ -40,13 +32,8 @@ button:active{transform:scale(.97);}
     --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
-<<<<<<< HEAD
     --grade-light:62%;--grade-urgent-light:58%;--grade-perfect-light:67%;
-    --muted:#1d221a;
-=======
-    --grade-light:62%;
     --muted:#182228;
->>>>>>> origin/main
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
   }
@@ -62,13 +49,8 @@ button:active{transform:scale(.97);}
     --green:#2ee6c8;--green-bg:#07211d;--green-border:#12554b;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
-<<<<<<< HEAD
     --grade-light:62%;--grade-urgent-light:58%;--grade-perfect-light:67%;
-    --muted:#1d221a;
-=======
-    --grade-light:62%;
     --muted:#182228;
->>>>>>> origin/main
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
   }
