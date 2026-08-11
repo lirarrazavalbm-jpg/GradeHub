@@ -590,6 +590,12 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .btn-danger{flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;}
 /* FOOTER */
 .app-footer{text-align:center;padding:16px;font-size:11px;color:var(--fg3);border-top:1px solid var(--border);}
+/* La frase va sobre el crédito, no al lado: es lo que dice de dónde viene la app,
+   y en una línea junto a "hecho en Chile" se leía como una coletilla más. */
+.app-footer-claim{display:block;font-size:12px;font-weight:600;color:var(--fg2);margin-bottom:3px;letter-spacing:-.01em;}
+/* En el onboarding es lo último que se lee antes de escribir el nombre, así que
+   va discreta: acompaña, no interrumpe el paso. */
+.ob-claim{margin:10px 0 0;font-size:12px;font-weight:600;color:var(--primary);letter-spacing:-.01em;}
 .app-footer a{color:var(--fg3);text-decoration:none;}
 .app-footer a:hover{color:var(--primary);}
 /* SCREEN TRANSITIONS */
