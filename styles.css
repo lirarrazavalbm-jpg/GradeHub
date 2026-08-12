@@ -1170,3 +1170,24 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .app{max-width:1180px;}
   #home-ramos{grid-template-columns:1fr 1fr 1fr;}
 }
+
+/* ── Transparencia y contraste ────────────────────────────────────────────────
+   Dos preferencias del sistema que la app ignoraba. El bloque de movimiento
+   reducido ya está más arriba; estas son sus hermanas y venían sin cubrir.
+
+   Con "reducir transparencia", el desenfoque de la topbar y de la barra
+   inferior deja de ser un efecto y pasa a ser un problema: el contenido que
+   pasa por debajo se lee a través de la barra. Se vuelven sólidas.
+
+   Con "más contraste" se suman bordes definidos, porque a esa preferencia no
+   le sirve un borde que se apoya en la transparencia para insinuarse. */
+@media(prefers-reduced-transparency:reduce){
+  .topbar,.bottom-nav{background:var(--bg2);backdrop-filter:none;-webkit-backdrop-filter:none;}
+  .modal-overlay{background:rgba(15,23,42,.82);}
+}
+@media(prefers-contrast:more){
+  .topbar,.bottom-nav{background:var(--bg2);backdrop-filter:none;-webkit-backdrop-filter:none;}
+  .modal-overlay{background:rgba(15,23,42,.9);}
+  .modal-sheet{border:1px solid var(--fg3);}
+  .ramo-row,.insight-card,.stat-card,.eval-row,.eval-group,.cat-card{border-color:var(--fg3);}
+}
