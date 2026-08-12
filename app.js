@@ -3290,7 +3290,7 @@ function openCalculadoraModal(){
   setTimeout(()=>document.getElementById('m-calc-target').focus(),100);
 
   window.calcResult=function(){
-    const target=parseFloat(document.getElementById('m-calc-target').value.replace(',','.'));
+    const target=parseNota(document.getElementById('m-calc-target').value);
     const el=document.getElementById('calc-result');
     if(isNaN(target)||target<1||target>7){el.innerHTML='';return;}
     const descarteAbierto=reglaDescarteConCantidadAbierta(r);
@@ -3381,10 +3381,23 @@ function simGlobalStep(ramoId,delta){
   simGlobalState[ramoId]=simGlobalNormaliza(simGlobalBase(ramoId)+delta);
   renderSimGlobal();
 }
+// Lo tecleado se lee en dos pasos, y el ORDEN es el arreglo.
+//
+// Antes iba directo al clamp, así que "55" no daba error: daba un 7,0
+// silencioso, porque 55 está fuera de escala y el clamp lo baja al tope. El
+// estudiante escribía su 5,5 y se llevaba un 7,0 sin que nada se lo dijera.
+//
+// Primero parseNota, que traduce lo que la gente escribe de verdad: coma
+// ("5,5") y dos dígitos sin punto ("55" → 5,5). Solo lo que sigue fuera de
+// escala después de eso pasa al clamp — que se queda, porque escribir "9" es
+// querer el máximo, no querer nada, y eso ya estaba decidido.
+function simGlobalDesdeTexto(raw){
+  const n=parseNota(raw);
+  if(!isNaN(n))return n;
+  return simGlobalNormaliza(parseFloat(String(raw).replace(',','.')));
+}
 function simGlobalSet(ramoId,raw){
-  // Acepta coma: en Chile la nota se escribe 5,5 y nadie va a cambiar el hábito
-  // porque el input espere un punto.
-  const v=simGlobalNormaliza(parseFloat(String(raw).replace(',','.')));
+  const v=simGlobalDesdeTexto(raw);
   if(v===null)delete simGlobalState[ramoId];
   else simGlobalState[ramoId]=v;
   renderSimGlobal();
@@ -3392,7 +3405,7 @@ function simGlobalSet(ramoId,raw){
 // Mientras escribe NO se vuelve a dibujar la lista: eso le arrancaría el foco
 // del campo en la primera tecla. Solo se actualiza el proyectado de arriba.
 function simGlobalTyping(ramoId,raw){
-  const v=simGlobalNormaliza(parseFloat(String(raw).replace(',','.')));
+  const v=simGlobalDesdeTexto(raw);
   if(v===null)delete simGlobalState[ramoId];
   else simGlobalState[ramoId]=v;
   renderSimGlobalHero();
@@ -3563,10 +3576,10 @@ function renderSimulador(){
 
 function simAddNota(catId){
   const inp=document.getElementById('sim-in-'+catId);if(!inp)return;
-  const val=parseFloat(inp.value.replace(',','.'));
-  if(isNaN(val)||val<1||val>7){showToast('Ingresa una nota entre 1.0 y 7.0',true);return;}
+  const val=parseNota(inp.value);
+  if(isNaN(val)){showToast('Ingresa una nota entre 1.0 y 7.0',true);return;}
   if(!simState[catId])simState[catId]=[];
-  simState[catId].push({id:uid(),valor:Math.round(val*10)/10});
+  simState[catId].push({id:uid(),valor:val});
   renderSimulador();
   setTimeout(()=>{const i=document.getElementById('sim-in-'+catId);if(i)i.focus();},30);
 }
