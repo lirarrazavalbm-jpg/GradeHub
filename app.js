@@ -2591,6 +2591,7 @@ function openSettings(){
   const sections=[
     ['Tu cuenta','perfil','Perfil','Tu nombre en GradeHub'],
     ['Estudio','academico','Información académica','Universidad, carrera y semestre'],
+    ['Estudio','calendario','Calendario','Tus pruebas en Google Calendar'],
     ['Preferencias','apariencia','Apariencia','Cómo se ve la app'],
     ['Datos','datos','Datos y cuenta','Respaldos y acciones de cuenta']
   ];
@@ -2613,6 +2614,18 @@ function openSettings(){
       <label class="modal-label">Semestre de carrera</label>
       <div class="sem-grid" id="s-sem-grid"></div>
       ${guardarBtn()}`;
+    if(section==='calendario')return `
+      <p class="settings-help settings-help-top">Suscribe tus evaluaciones a Google Calendar, Apple Calendar u Outlook. Se agrega una vez y después se actualiza sola: si cambias una fecha acá, se corrige allá.</p>
+      ${currentUser?`
+      <label class="modal-label">Tu URL de suscripción</label>
+      <div class="modal-input"><input type="text" id="s-cal-url" readonly value="Generando…" onclick="this.select()"/></div>
+      <div class="settings-data-actions">
+        <button type="button" onclick="copiarFeedCalendario()">Copiar URL</button>
+        <button type="button" onclick="revocarFeedCalendario()">Generar una nueva</button>
+      </div>
+      <p class="settings-help">En Google Calendar: <b>Otros calendarios · + · Desde URL</b>. Google la consulta cada 8 a 24 horas, así que un cambio de fecha no aparece al tiro.</p>
+      <p class="settings-help">Quien tenga esta URL puede ver tus ramos, tus evaluaciones y sus fechas. <b>Tus notas no salen nunca.</b> Si se te escapa, genera una nueva y la anterior deja de servir al instante.</p>`
+      :`<p class="settings-help">Necesitas iniciar sesión: el feed va atado a tu cuenta, no a este dispositivo.</p>`}`;
     if(section==='apariencia')return `
       <p class="settings-help settings-help-top">Elige cómo prefieres ver GradeHub. Se guarda al elegir.</p>
       <div class="modo-grid" id="s-modo-grid"></div>`;
@@ -2645,6 +2658,7 @@ function openSettings(){
     const back=document.querySelector('.settings-back');if(back)back.onclick=()=>{activeSection='';renderSettings();};
     if(activeSection==='academico'){renderSettingsSemGrid();renderSettingsTenantGrid();renderSettingsCarreraGrid();}
     if(activeSection==='apariencia')renderModoGrid();
+    if(activeSection==='calendario'&&currentUser)pintarFeedCalendario();
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
       if(inp){
@@ -3855,6 +3869,53 @@ function buildICS(){
   });
   lines.push('END:VCALENDAR');
   return lines.join('\r\n');
+}
+
+// ─── FEED SUSCRIBIBLE ────────────────────────────────────────────────────────
+// El .ics de arriba es una foto: si después cambias una fecha, el archivo ya
+// bajado no se entera. El feed es una URL que el calendario consulta solo, así
+// que la suscripción se hace una vez y queda.
+//
+// El .ics lo arma una Cloudflare Pages Function (functions/cal/[token].js), no
+// el navegador: Google lo pide desde sus servidores, sin sesión. El token sale
+// de una RPC `security definer` y va en la ruta, que es el único lugar donde
+// Google puede llevar un secreto.
+let _feedUrl=null;
+
+async function pedirFeedCalendario(regenerar){
+  if(!supabaseClient||!currentUser)return null;
+  const {data,error}=await supabaseClient.rpc(regenerar?'calendar_feed_revoke':'calendar_feed_token');
+  if(error)throw error;
+  _feedUrl=location.origin+'/cal/'+data;
+  return _feedUrl;
+}
+
+async function pintarFeedCalendario(regenerar){
+  const inp=document.getElementById('s-cal-url');if(!inp)return;
+  inp.value=regenerar?'Generando una nueva…':'Generando…';
+  try{
+    inp.value=await pedirFeedCalendario(regenerar);
+  }catch(e){
+    inp.value='';
+    showToast('No pudimos generar tu URL. Intenta de nuevo.',true);
+  }
+}
+
+function copiarFeedCalendario(){
+  const inp=document.getElementById('s-cal-url');
+  if(!inp||!inp.value||!_feedUrl){showToast('Todavía se está generando',true);return;}
+  navigator.clipboard.writeText(_feedUrl)
+    .then(()=>{track('calendar_feed_copiado');showToast('URL copiada — pégala en tu calendario');})
+    .catch(()=>{inp.select();showToast('Cópiala a mano: quedó seleccionada',true);});
+}
+
+// Regenerar rompe la suscripción que ya esté puesta en el calendario, así que se
+// confirma: el estudiante tiene que volver a agregarla en Google.
+function revocarFeedCalendario(){
+  showConfirm('Generar una URL nueva',
+    'La URL actual deja de funcionar al instante. Si ya la agregaste a tu calendario, vas a tener que volver a suscribirte con la nueva.',
+    ()=>{track('calendar_feed_revocado');pintarFeedCalendario(true);},
+    {label:'Generar nueva'});
 }
 
 function exportarCalendario(){
