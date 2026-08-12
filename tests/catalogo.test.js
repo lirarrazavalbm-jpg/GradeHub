@@ -66,10 +66,12 @@ const cargar = ramos => normalize({ ramos: JSON.parse(JSON.stringify(ramos)) }).
 
 const vacios = cargar([
   { id: 'a', nombre: 'Introducción a la Programación', origen: uc, categorias: [], gates: [] },
-  { id: 'b', nombre: 'Laboratorio de Dinámica', origen: uc, categorias: [], gates: [] },
+  { id: 'b', nombre: 'Dinámica', origen: uc, categorias: [], gates: [] },
 ]);
 chk('un ramo del catálogo vacío recibe su pauta al cargar', vacios[0].categorias.length === 8);
-chk('y también sus compuertas', vacios[0].gates.length === 1 && vacios[1].gates.length === 1);
+// Dinámica trae el laboratorio adentro: 7 secciones y tres compuertas.
+chk('y también sus compuertas', vacios[0].gates.length === 1 && vacios[1].gates.length === 3);
+chk('Dinámica llega con su laboratorio incluido', vacios[1].categorias.length === 7);
 
 // El nombre de la malla y el de la pauta no siempre coinciden en mayúsculas.
 const filo = cargar([{ id: 'c', nombre: 'Filosofía: ¿Para Qué?', origen: uc, categorias: [], gates: [] }]);

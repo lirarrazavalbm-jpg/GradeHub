@@ -1,4 +1,4 @@
-// El plan común de Ingeniería UC entra a la malla SIN pautas: son 18 ramos que
+// El plan común de Ingeniería UC entra a la malla SIN pautas: son 17 ramos que
 // el estudiante carga solos y a los que después le pone sus evaluaciones.
 //
 // Lo que se verifica acá no es que los nombres sean lindos, sino las dos cosas
@@ -29,7 +29,7 @@ const todos = Object.values(pc).flat();
 
 console.log('\n=== Plan común de Ingeniería UC ===');
 chk('cubre los cuatro semestres del plan común', [1, 2, 3, 4].every(s => Array.isArray(pc[s]) && pc[s].length));
-chk('son 18 ramos', todos.length === 18);
+chk('son 17 ramos', todos.length === 17);
 chk('ningún nombre repetido', new Set(todos).size === todos.length);
 chk('ningún nombre vacío ni con espacios sueltos', todos.every(n => typeof n === 'string' && n === n.trim() && n.length > 2));
 
@@ -41,8 +41,13 @@ chk('ningún nombre vacío ni con espacios sueltos', todos.every(n => typeof n =
 ].forEach(([nombre, sem]) => chk(`${nombre} está en ${sem}°`, (pc[sem] || []).includes(nombre)));
 
 // Los laboratorios valen 0 créditos pero llevan nota: si se caen, al estudiante
-// le falta un ramo que sí está cursando.
-chk('los tres laboratorios están', todos.filter(n => /^Laboratorio de /.test(n)).length === 3);
+// le falta un ramo que sí está cursando. Son dos y no tres a propósito: el de
+// Dinámica NO va suelto porque es el 30% de la nota de Dinámica, y ofrecerlo
+// aparte lo contaba dos veces. Que esto sea una decisión y no un descuido es
+// justo lo que fija el chequeo de abajo.
+chk('los dos laboratorios sueltos están', todos.filter(n => /^Laboratorio de /.test(n)).length === 2);
+chk('el de Dinámica no está suelto: vive dentro de Dinámica',
+  !todos.includes('Laboratorio de Dinámica') && todos.includes('Dinámica'));
 
 console.log('\n=== Ingeniería Comercial UC: los ocho semestres comunes ===');
 // La mención (Economía o Administración) recién separa la malla en IX y X, así
@@ -79,9 +84,14 @@ chk('Programación carga fechas oficiales en la Agenda',
   programacion.categorias.slice(0,3).map(c=>c.fecha).join('|')==='2026-09-24|2026-10-22|2026-12-10');
 chk('Programación carga la compuerta de evaluaciones principales',
   programacion.gates.some(g=>g.type==='group_min'&&g.min===4&&g.cap===3.9&&g.catIds.length===3));
-const lab=presetRamo('Laboratorio de Dinámica','uc','ING-PC');
-chk('Laboratorio carga el mínimo de evaluación de pares',
-  lab.gates.some(g=>g.type==='min_grade_required'&&g.min===4&&g.cap===3.9));
+// El laboratorio dejó de ser un ramo aparte: entra como el 30% de Dinámica.
+const dinamica=presetRamo('Dinámica','uc','ING-PC');
+chk('Dinámica carga el mínimo de la evaluación de pares del laboratorio',
+  dinamica.gates.some(g=>g.type==='min_grade_required'&&g.min===4&&g.cap===3.9));
+chk('Dinámica carga los dos requisitos cruzados (cátedra y laboratorio)',
+  dinamica.gates.filter(g=>g.type==='group_min'&&g.min===4&&g.cap==='self').length===2);
+chk('Laboratorio de Dinámica ya no se ofrece como ramo suelto',
+  presetRamo('Laboratorio de Dinámica','uc','ING-PC')===null);
 const calculoOrigen={nombre:'Cálculo II',origen:{tenant:'uc',carrera:'ING-PC'}};
 chk('Cálculo II no inventa una pauta sin pesos oficiales',presetRamo('Cálculo II','uc','ING-PC')===null);
 chk('Cálculo II no se anuncia como pauta oficial cargada',findPresetName('Cálculo II','uc','ING-PC')===null);
