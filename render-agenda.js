@@ -130,7 +130,9 @@ function renderAgenda(){
       e.mostrarAlerta=!ramosVistos.has(e.ramo.id);
       ramosVistos.add(e.ramo.id);
     });
-    html+=pendientes.map(agendaItemHTML).join("");
+    // slice(1): la primera ya se muestra arriba como "Tu foco ahora". Sin esto
+    // la evaluación más urgente aparecía dos veces, una encima de la otra.
+    html+=pendientes.slice(1).map(agendaItemHTML).join("");
   } else {
     html+=`<div class="ag-alldone">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
@@ -151,7 +153,7 @@ function renderAgenda(){
           <div class="ag-row-name">${esc(e.cat.nombre)}</div>
           <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
         </div>
-        ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="min-width:auto;font-size:19px;">${fmt(a)}</span>`:""}
+        ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:19px;">${fmt(a)}</span>`:""}
       </button>`;
     }).join("");
   }
