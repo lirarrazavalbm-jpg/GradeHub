@@ -713,18 +713,33 @@ const PRESETS_FEN={
       ['Examen',35],
     ],
   },
+  // Verificado contra el programa oficial ENGEP 155/0, sección 4.2.
   'Gestión de Personas':{
     creditos:6,
-    noCalcula:['Eximición del examen con promedio ≥ 5,5 en Casos: la nota del examen pasa a ser el promedio individual'],
+    noCalcula:['Te eximes del examen si promedias 5,5 o más en los Casos y no tienes ninguna nota bajo 4,0 en dos o más de ellos. En ese caso el examen se reemplaza por el promedio de Casos y ensayos con Participación'],
     // El ajuste sale de cómo te evalúan tus compañeros: es un dato que solo
     // existe cuando el curso lo entrega. La app no puede anticiparlo.
     reglasDelCurso:['La nota del trabajo grupal se ajusta ±10 décimas según la evaluación entre compañeros'],
-    evals:[['Casos y ensayos',40,{slots:5}],['Trabajo en grupo',30],['Participación',20],['Examen Integrativo',10]],
+    // El programa desglosa el 30% del trabajo en grupo y el 20% de participación
+    // en partes con nombre y peso PROPIOS (10/60/30 y 25/50/25 de su bloque). Una
+    // casilla agrupada las promediaría a partes iguales, que no es lo que dice el
+    // programa: van en filas propias con el peso ya llevado al total del ramo.
+    // Casos y ensayos NO lleva slots: el programa nunca dice cuántos son.
+    evals:[
+      ['Casos y ensayos',40],
+      ['Trabajo en grupo: Propuesta',3],
+      ['Trabajo en grupo: Experiencia de aprendizaje',18],
+      ['Trabajo en grupo: Informe Final',9],
+      ['Participación: Asistencia a ayudantías y reuniones',5],
+      ['Participación: Contribuciones en clases',10],
+      ['Participación: Asistencia a clases',5],
+      ['Examen Integrativo',10],
+    ],
     // "Si alguno de los requisitos no se cumple, la nota final será la más baja
     //  entre los dos" → dos compuertas de grupo con tope en su propio promedio.
     grupos:[
-      {nombre:'Trabajo individual',evals:['Casos y ensayos','Participación','Examen Integrativo'],min:4.0,cap:'self'},
-      {nombre:'Trabajo de grupo',evals:['Trabajo en grupo'],min:4.0,cap:'self'},
+      {nombre:'Trabajo individual',evals:['Casos y ensayos','Participación: Asistencia a ayudantías y reuniones','Participación: Contribuciones en clases','Participación: Asistencia a clases','Examen Integrativo'],min:4.0,cap:'self'},
+      {nombre:'Trabajo de grupo',evals:['Trabajo en grupo: Propuesta','Trabajo en grupo: Experiencia de aprendizaje','Trabajo en grupo: Informe Final'],min:4.0,cap:'self'},
     ],
   },
   'Contabilidad':{

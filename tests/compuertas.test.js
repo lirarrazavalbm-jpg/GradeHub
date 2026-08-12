@@ -236,7 +236,9 @@ ctx.document.getElementById=getBeforePauta;ctx.document.querySelector=queryBefor
 // es prometer algo que no va a pasar, así que se verifican por separado.
 const gp={nombre:'Gestión de Personas',origen:{tenant:'fen'}};
 const reglasGp=ctx.reglasNoCalculadas(gp);
-if(reglasGp.length===1&&reglasGp[0].includes('Eximición')){ok++;console.log('  OK   la eximición es deuda nuestra: va en las que todavía no calculamos');}
+// Se busca la raíz, no la palabra exacta: el texto lo lee un estudiante en
+// pantalla, así que su redacción puede cambiar sin que cambie la regla.
+if(reglasGp.length===1&&/exim/i.test(reglasGp[0])){ok++;console.log('  OK   la eximición es deuda nuestra: va en las que todavía no calculamos');}
 else {fail++;console.log('  FAIL reglas no calculadas → '+JSON.stringify(reglasGp));}
 const cursoGp=ctx.reglasDelCurso(gp);
 if(cursoGp.length===1&&cursoGp[0].includes('compañeros')){ok++;console.log('  OK   el ajuste entre compañeros es regla del curso: nunca la vamos a calcular');}
