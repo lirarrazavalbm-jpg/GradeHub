@@ -54,5 +54,40 @@ chk('1º a 4º es el tronco común', ic[1].length > 0 && ic[4].length > 0);
 chk('5º trae ramos de las dos menciones',
   ic[5].includes('Microeconomía I') && ic[5].includes('Gestión de Personas I'));
 
+console.log('\n=== La pauta oficial alcanza a los ramos que ya estaban ===');
+// Las pautas se transcriben DESPUÉS de que el estudiante agregó el ramo. Hasta
+// que esto existió, el preset solo se aplicaba al crearlo: quien tenía
+// Introducción a la Programación desde antes se quedaba en "Sin evaluaciones"
+// para siempre, con la pauta ya publicada. No lanza nada — el ramo nunca se
+// entera— así que solo se caza acá.
+const normalize = run('normalize');
+const uc = { tenant: 'uc', carrera: 'ING-PC' };
+const cargar = ramos => normalize({ ramos: JSON.parse(JSON.stringify(ramos)) }).ramos;
+
+const vacios = cargar([
+  { id: 'a', nombre: 'Introducción a la Programación', origen: uc, categorias: [], gates: [] },
+  { id: 'b', nombre: 'Laboratorio de Dinámica', origen: uc, categorias: [], gates: [] },
+]);
+chk('un ramo del catálogo vacío recibe su pauta al cargar', vacios[0].categorias.length === 8);
+chk('y también sus compuertas', vacios[0].gates.length === 1 && vacios[1].gates.length === 1);
+
+// El nombre de la malla y el de la pauta no siempre coinciden en mayúsculas.
+const filo = cargar([{ id: 'c', nombre: 'Filosofía: ¿Para Qué?', origen: uc, categorias: [], gates: [] }]);
+chk('calza aunque la malla escriba el nombre distinto (¿Para Qué? vs ¿para qué?)', filo[0].categorias.length === 4);
+
+// Lo que NO puede pasar: pisar lo que el estudiante escribió a mano.
+const conNotas = cargar([{
+  id: 'd', nombre: 'Introducción a la Programación', origen: uc, gates: [],
+  categorias: [{ id: 'x', nombre: 'Mi propia prueba', peso: 100, notas: [{ id: 'n', nombre: 'n', valor: 6, peso: 1 }] }],
+}]);
+chk('no toca un ramo donde el estudiante ya puso su pauta', conNotas[0].categorias.length === 1 && conNotas[0].categorias[0].nombre === 'Mi propia prueba');
+
+const manual = cargar([{ id: 'e', nombre: 'Introducción a la Programación', origen: null, categorias: [], gates: [] }]);
+chk('no toca un ramo creado a mano, aunque el nombre calce', manual[0].categorias.length === 0);
+
+// Y un ramo del catálogo SIN pauta publicada sigue sin inventarse una.
+const sinPauta = cargar([{ id: 'f', nombre: 'Cálculo II', origen: uc, categorias: [], gates: [] }]);
+chk('Cálculo II sigue sin pauta: su programa no publica ponderaciones', sinPauta[0].categorias.length === 0);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
