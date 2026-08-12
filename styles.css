@@ -446,7 +446,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 /* Botones de acción del ramo — pill grandes */
 .ramo-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px;}
 .ramo-warning{background:var(--yellow-bg);border:1px solid color-mix(in srgb,var(--yellow),transparent 45%);border-radius:12px;padding:11px 14px;margin:6px 20px 14px;font-size:13px;color:var(--yellow);display:flex;align-items:center;gap:8px;letter-spacing:-.005em;}
-.cat-card{margin:0 16px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+/* La ficha del ramo tenía tres sangrías distintas para la misma columna: el
+   hero y los avisos a 20px, las cat-card a 16px, y las filas de evaluación
+   pegadas al borde de la pantalla, con sus esquinas redondeadas cortadas. La
+   sangría vive acá una sola vez, y los hijos ya no la repiten. */
+#cat-list{padding:0 20px;}
+.cat-card{margin:0 0 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
 .cat-header{display:flex;align-items:center;padding:13px 14px;cursor:pointer;gap:10px;transition:background .1s;}
 .cat-header:active{background:var(--muted);}
 .cat-info{flex:1;}
@@ -914,6 +919,10 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   margin:12px 0;padding:12px 13px;border-radius:12px;
   background:var(--yellow-bg);border:1px solid color-mix(in srgb,var(--yellow),transparent 72%);
   font-size:12.5px;line-height:1.45;color:var(--fg2);letter-spacing:-.005em;text-align:left;}
+/* En el modal este aviso vive dentro de una caja que ya trae sangría, por eso
+   la clase lo declara a ancho completo. En la ficha del ramo cuelga directo del
+   scroll, así que ahí la sangría la pone él y se alinea con el resto. */
+#no-calcula-warning.weight-setup-nudge{width:auto;margin-left:20px;margin-right:20px;}
 .weight-setup-nudge .ic{width:15px;height:15px;color:var(--yellow);flex-shrink:0;margin-top:1px;}
 .weight-setup-nudge b{color:var(--fg);font-weight:600;}
 .weight-setup-nudge button{margin-top:6px;padding:0;border:none;background:none;cursor:pointer;
