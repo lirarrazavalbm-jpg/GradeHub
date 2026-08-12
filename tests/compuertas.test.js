@@ -15,7 +15,12 @@ const ctx = {
   window: { addEventListener() {}, matchMedia: () => ({ matches: true, addEventListener() {}, addListener() {} }) },
   document: { getElementById: () => stub, createElement: () => stub, addEventListener() {}, documentElement: { style: { setProperty() {}, removeProperty() {} }, setAttribute() {}, removeAttribute() {}, getAttribute() { return null } }, querySelector: () => stub, querySelectorAll: () => [], body: stub },
   localStorage: { getItem() { return null }, setItem() {}, removeItem() {} },
-  navigator: {}, location: { origin: '', pathname: '', hash: '' }, setTimeout, clearTimeout, console
+  navigator: {}, location: { origin: '', pathname: '', hash: '' }, setTimeout, clearTimeout, console,
+  // La vuelta del sheet la anima un resorte con requestAnimationFrame. Sin
+  // estas, el harness revienta por faltarle una API del navegador y no por un
+  // error de la app.
+  requestAnimationFrame: fn => setTimeout(() => fn(0), 0), cancelAnimationFrame: clearTimeout,
+  performance: { now: () => 0 }
 };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 
