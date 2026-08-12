@@ -58,6 +58,35 @@ chk('ningún transition:all', !/transition:\s*all\b/.test(css));
 // Nada en el mundo real aparece de la nada.
 chk('ningún scale(0) exacto', !/scale\(0\)/.test(css));
 
+console.log('\n=== El ritmo sale de la escala, no de la memoria ===');
+// La escala es --motion-press/fast/base (120/160/220ms). El problema no era que
+// alguien eligiera mal: era que había 12 duraciones distintas para tres pasos,
+// porque escribir `.15s` es más rápido que buscar cuál token corresponde.
+// Nadie lo iba a notar mirando la pantalla — 150 y 160ms se ven igual — así que
+// se revisa acá.
+//
+// El límite es 220ms, el token más largo. Arriba de eso la escala no opina:
+// el toast y el borde del eval-group duran .3s a propósito y quedan a mano.
+// Abajo de eso, un número escrito a mano es una decisión que ya estaba tomada.
+const duras = [];
+[...css.matchAll(/\b(transition|animation)\s*:\s*([^;{}]+)/g)].forEach(([, prop, valor]) => {
+  [...valor.matchAll(/(?<![\w.-])(\d*\.?\d+)(ms|s)(?![\w-])/g)].forEach(([lit, num, unidad]) => {
+    const ms = unidad === 's' ? parseFloat(num) * 1000 : parseFloat(num);
+    if (ms > 0 && ms <= 220) duras.push(`${prop}: ${lit}`);
+  });
+});
+chk(`ninguna duración a mano dentro de la escala (${duras.length} encontradas)`, duras.length === 0);
+if (duras.length) {
+  console.log('     usa var(--motion-press|fast|base) en vez de:');
+  [...new Set(duras)].forEach(d => console.log('       ' + d));
+}
+// Las dos curvas ya tienen nombre en :root. Copiar el cubic-bezier funciona
+// igual, pero la próxima vez que se ajuste la curva quedan dos verdades.
+const curvasSueltas = [...css.matchAll(/\b(transition|animation)\s*:\s*([^;{}]+)/g)]
+  .flatMap(([, , v]) => v.match(/cubic-bezier\([^)]*\)/g) || []);
+chk(`ninguna curva copiada a mano (${curvasSueltas.length} encontradas)`, curvasSueltas.length === 0);
+if (curvasSueltas.length) [...new Set(curvasSueltas)].forEach(c => console.log('       ' + c));
+
 console.log('\n=== El modal entra y sale ===');
 // Sin comentarios: estos chequeos buscan código, y los comentarios que EXPLICAN
 // un arreglo mencionan justo las palabras que el arreglo eliminó. La primera
