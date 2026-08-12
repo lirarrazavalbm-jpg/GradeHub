@@ -80,6 +80,24 @@ if (sinCredito.length) console.log('     faltan: ' + sinCredito.join(', '));
 const com = Object.values(MALLA_UC['COM']).flat();
 console.log(`     (Ing. Comercial: ${com.filter(n => creditosDe(n, 'uc', null) !== null).length}/${com.length} — su malla es de otra facultad)`);
 
+console.log('\n=== Créditos SCT de la FEN ===');
+const CREDITOS_FEN = val('CREDITOS_FEN'), MALLA = val('MALLA'), PRESETS = val('PRESETS_FEN');
+// Un nombre mal escrito acá no falla: simplemente nunca calza, y el ramo se
+// queda sin crédito para siempre sin que nadie se entere.
+const mallaFen = new Set(Object.values(MALLA).flatMap(c => Object.values(c).flat()));
+const huerfanos = Object.keys(CREDITOS_FEN).filter(n => !mallaFen.has(n));
+chk(`las ${Object.keys(CREDITOS_FEN).length} entradas existen en la malla FEN`, huerfanos.length === 0);
+if (huerfanos.length) console.log('     sobran: ' + huerfanos.join(', '));
+// Dos fuentes para el mismo dato: creditosDe prefiere el preset, así que si se
+// contradicen el número depende de si el ramo trae pauta o no.
+const chocan = Object.entries(PRESETS || {})
+  .filter(([n, p]) => typeof p.creditos === 'number' && CREDITOS_FEN[n] && CREDITOS_FEN[n][0] !== p.creditos)
+  .map(([n, p]) => `${n}: preset ${p.creditos} vs tabla ${CREDITOS_FEN[n][0]}`);
+chk('ningún preset contradice la tabla', chocan.length === 0);
+if (chocan.length) console.log('     ' + chocan.join('\n     '));
+const conCredito = [...mallaFen].filter(n => creditosDe(n, 'fen', null) !== null).length;
+console.log(`     cobertura FEN: ${conCredito}/${mallaFen.size} ramos`);
+
 console.log('\n=== Las tres vías de creación usan la misma función ===');
 // Si una diverge, un ramo agregado por búsqueda tendría créditos y el mismo
 // ramo agregado desde la malla no, y el PPA cambiaría según cómo lo cargaste.
