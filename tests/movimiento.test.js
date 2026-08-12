@@ -44,8 +44,11 @@ chk('el keyframe muerto screenIn ya no existe', !/@keyframes\s+screenIn\b/.test(
 
 console.log('\n=== Los keyframes que existen se usan ===');
 // Un keyframe sin uso es peso muerto que el próximo lector cree vivo.
+// Cuenta las dos formas de usarlo. Buscar solo `animation:` daba por muerto
+// todo lo que se asigna con `animation-name:` — que es como el bloque de
+// movimiento reducido cambia una entrada por su versión sin desplazamiento.
 const definidos = [...css.matchAll(/@keyframes\s+([\w-]+)/g)].map(m => m[1]);
-const huerfanos = definidos.filter(k => !new RegExp(`animation:[^;}]*\\b${k}\\b`).test(css));
+const huerfanos = definidos.filter(k => !new RegExp(`animation(-name)?:[^;}]*\\b${k}\\b`).test(css));
 chk(`ningún @keyframes huérfano (${definidos.length} definidos)`, huerfanos.length === 0);
 if (huerfanos.length) console.log('     huérfanos → ' + huerfanos.join(', '));
 
@@ -86,6 +89,73 @@ const curvasSueltas = [...css.matchAll(/\b(transition|animation)\s*:\s*([^;{}]+)
   .flatMap(([, , v]) => v.match(/cubic-bezier\([^)]*\)/g) || []);
 chk(`ninguna curva copiada a mano (${curvasSueltas.length} encontradas)`, curvasSueltas.length === 0);
 if (curvasSueltas.length) [...new Set(curvasSueltas)].forEach(c => console.log('       ' + c));
+
+console.log('\n=== El rebote al soltar tiene con qué volver ===');
+// `button:active{transform:scale(.97)}` sin transición en `button` hunde el
+// botón y lo devuelve de un salto. No falla nada ni se ve un error: solo se
+// siente barato, y por eso estuvo así tanto tiempo.
+const reglaButton = (css.match(/^button\{([^}]*)\}/m) || [])[1] || '';
+chk('`button` declara la transición del transform', /transition:[^;]*transform/.test(reglaButton));
+// Y las clases que declaran su propio `transition` lo pisan entero: si una es
+// un <button> y omite transform, ese botón se queda sin rebote aunque el de
+// arriba esté puesto.
+const cssCodigoSel = css.replace(/\/\*[\s\S]*?\*\//g, '');
+const fuentes = ['app.js', 'index.html'].map(f => fs.readFileSync(path.join(raiz, f), 'utf8')).join('\n');
+const clasesBoton = new Set([...fuentes.matchAll(/<button[^>]*class="([^"]+)"/g)]
+  .flatMap(m => m[1].split(/\s+/)).filter(Boolean));
+// El bloque de ritmo da transform a una lista larga de superficies tocables.
+// Quien esté ahí ya tiene rebote aunque su propia regla no lo mencione: el
+// bloque va después en el archivo y gana.
+// Sin quitar el comentario que lo precede, el primer "selector" de la lista es
+// el comentario y `.icon-btn` se pierde: el chequeo lo acusaba sin rebote
+// teniéndolo.
+const listaRitmo = new Set(((cssCodigoSel.match(/([^{}]*)\{\s*transition:transform var\(--motion-press\)/) || [])[1] || '')
+  .split(',').map(s => s.trim().replace(/^\./, '')).filter(Boolean));
+const sinRebote = [];
+[...css.matchAll(/(^|[},])\s*(\.[\w-]+)\{([^}]*transition:[^;}]*)/gm)].forEach(([, , sel, cuerpo]) => {
+  const clase = sel.slice(1);
+  if (!clasesBoton.has(clase) || listaRitmo.has(clase)) return;
+  const decl = (cuerpo.match(/transition:([^;}]*)/) || [])[1] || '';
+  if (!/transform/.test(decl)) sinRebote.push(clase);
+});
+chk(`ningún <button> pierde el rebote por declarar su propio transition (${sinRebote.length})`, sinRebote.length === 0);
+if (sinRebote.length) console.log('     sin transform → ' + [...new Set(sinRebote)].join(', '));
+
+console.log('\n=== Movimiento reducido: menos, no cero ===');
+// El bloque nuclear `*{animation-duration:.01ms!important}` apagaba también lo
+// que EXPLICA la pantalla: la nota cambiaba sin ninguna señal de haber
+// cambiado. Con la preferencia activada la app quedaba menos clara que sin
+// ella, que es exactamente al revés de lo que la preferencia pide.
+const bloquesReduce = [];
+[...css.matchAll(/@media[^{]*prefers-reduced-motion[^{]*\{/g)].forEach(m => {
+  let prof = 1, j = m.index + m[0].length;
+  while (j < css.length && prof > 0) { if (css[j] === '{') prof++; else if (css[j] === '}') prof--; j++; }
+  bloquesReduce.push(css.slice(m.index, j));
+});
+chk(`hay tratamiento de movimiento reducido (${bloquesReduce.length} bloques)`, bloquesReduce.length > 0);
+const nuclear = bloquesReduce.filter(b => /\*[^{]*\{[^}]*(animation|transition)-duration:[^;}]*!important/.test(b));
+chk('no se apaga todo con un * y !important', nuclear.length === 0);
+// Cada entrada que se reemplaza bajo la preferencia tiene que seguir diciendo
+// algo: si el reemplazo tampoco cambia la opacidad, da igual que apagarla.
+const reemplazos = bloquesReduce.flatMap(b => [...b.matchAll(/animation-name:\s*([\w-]+)/g)].map(m => m[1]));
+// El cuerpo de un @keyframes tiene llaves adentro, así que se recorta contando
+// llaves. Con una expresión perezosa se cortaba en `from{...}` y el chequeo
+// leía un cuerpo vacío — o sea, pasaba o fallaba por la razón equivocada.
+const cuerpoKeyframe = nombre => {
+  const i = css.search(new RegExp(`@keyframes\\s+${nombre}\\s*\\{`));
+  if (i < 0) return null;
+  let prof = 0, j = css.indexOf('{', i);
+  const ini = j;
+  do { if (css[j] === '{') prof++; else if (css[j] === '}') prof--; j++; } while (j < css.length && prof > 0);
+  return css.slice(ini + 1, j - 1);
+};
+const mudos = reemplazos.filter(k => {
+  const kf = cuerpoKeyframe(k);
+  return kf === null || !/opacity/.test(kf) || /transform/.test(kf);
+});
+chk(`las entradas reducidas conservan el fundido y sueltan el recorrido (${reemplazos.length} reemplazos)`,
+  reemplazos.length > 0 && mudos.length === 0);
+if (mudos.length) console.log('     revisar → ' + mudos.join(', '));
 
 console.log('\n=== El modal entra y sale ===');
 // Sin comentarios: estos chequeos buscan código, y los comentarios que EXPLICAN
