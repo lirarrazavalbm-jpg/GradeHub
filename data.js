@@ -727,6 +727,37 @@ const PRESETS_FEN={
       {nombre:'Trabajo de grupo',evals:['Trabajo en grupo'],min:4.0,cap:'self'},
     ],
   },
+  // Programa oficial ENCOM1005, Primavera 2026. El programa se titula
+  // "Comunicación I"; la clave es 'Comunicación' porque así se llama en la malla.
+  'Comunicación':{
+    creditos:2,
+    // El programa dice que sin 4,0 en lo individual las notas grupales "no son
+    // válidas" Y que el estudiante reprueba, pero nunca dice con qué nota queda.
+    // No es la regla "la final es la más baja entre los dos requisitos": esa sí
+    // se modela; esta cambia QUÉ evaluaciones entran en el promedio, y el motor
+    // no sabe expresarlo. Se declara en vez de forzarla.
+    noCalcula:['Si tu promedio en las evaluaciones individuales queda bajo 4,0, las notas grupales dejan de contar y repruebas el curso. El programa no dice con qué nota, así que este promedio no lo refleja'],
+    reglasDelCurso:[
+      'Necesitas al menos 6 de las 11 actividades hechas en clases para aprobar',
+      'Las notas grupales se ajustan según cómo te evalúan tus compañeros, y pueden moverse hasta un 100%',
+      'Faltar sin justificar al pitch inicial, a las clases de expertos, a la solemne o al examen se evalúa con 1,0',
+      'Cada profesor puede agregar evaluaciones propias de su sección que dan décimas adicionales',
+    ],
+    // El examen final son dos productos con peso propio sobre la nota final
+    // —presentación grupal 20% y video storytelling individual 10%—, no dos
+    // partes de un bloque de 30%. Van en filas propias.
+    evals:[
+      ['Pitch inicial individual',15],
+      ['Columna de opinión',15],
+      ['Solemne: elevator pitch',20],
+      // El único requisito que el programa sí cuantifica: bajo 4,0 acá la final
+      // es "el mínimo entre su promedio final ponderado y 3,8". El tope es 3,8
+      // explícito en el programa, no el 3,9 que usamos cuando no lo dicen.
+      ['Participación y trabajo en clases',20,{min:4.0,cap:3.8}],
+      ['Examen: presentación grupal',20],
+      ['Examen: video storytelling',10],
+    ],
+  },
   'Contabilidad':{
     creditos:6,
     // "Se elimina el 25% de los controles sorpresa rendidos" salió de noCalcula:
