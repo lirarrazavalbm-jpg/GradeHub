@@ -223,6 +223,14 @@ const saltoAprobacion=gradeHue(4.0)-gradeHue(3.9);
 const variacionReprobado=gradeHue(3.9)-gradeHue(1.0);
 chk('3.9 → 4.0 cambia más que todo el rojo reprobado', saltoAprobacion>variacionReprobado);
 chk('el número usa un color calculado, no tres valores fijos', vm.runInContext('getColor(1.0)!==getColor(3.0)&&getColor(3.0)!==getColor(5.0)&&getColor(5.0)!==getColor(7.0)', dark));
+// `.ramo-nota` pinta el número leyendo --grade-color de su style inline. Si un
+// sitio lo emite sin esa variable, el número sale del color del texto y un 2,5
+// se ve igual que un 5,5: el semáforo desaparece sin que nada falle. Pasó en
+// render-agenda.js, que quedó fuera cuando el color pasó a ser calculado.
+[['app.js', APP], ['render-agenda.js', AGENDA]].forEach(([archivo, src]) => {
+  const sinColor = (src.match(/class="ramo-nota[^"]*"(?![^>]*--grade-color)[^>]*>/g) || []);
+  chk(`${archivo}: toda .ramo-nota lleva su --grade-color (${sinColor.length} sin él)`, sinColor.length === 0);
+});
 chk('1.0 usa el rojo urgente, no el rojo regular', vm.runInContext('notaUrgente(1.0)&&getColor(1.0)==="hsl(352 100% var(--grade-urgent-light))"&&!notaUrgente(1.1)', dark));
 // El 7,0 se queda en el verde de aprobado, más vivo, y el oro va en un anillo
 // alrededor del número (styles.css). El dorado anterior era hsl(43…), el mismo
