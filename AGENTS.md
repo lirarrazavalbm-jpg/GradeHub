@@ -30,11 +30,12 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 | promedio de un ramo | `app.js` | `grep -n "function ramoAvg"` |
 | promedio general (GPA, créditos) | `app.js` | `grep -n "function gpa\|totalCreditos"` |
 | compuertas | `app.js` | `grep -n "function gatesActivas\|group_min"` |
-| "¿qué nota necesito?" | `app.js` | `grep -n "function solveForTarget"` |
-| motor de estructura/pesos | `app.js` | `grep -n "function calculateFinalGrade"` |
+| "¿qué nota necesito?" | `engine.js` | `grep -n "function solveForTarget"` |
+| motor de estructura/pesos | `engine.js` | `grep -n "function calculateFinalGrade"` |
 | pantalla principal | `app.js` | `grep -n "function renderHome"` |
 | ficha de un ramo | `app.js` | `grep -n "function renderRamo"` |
-| estadísticas / agenda | `app.js` | `grep -n "function renderStats\|function renderAgenda"` |
+| estadísticas | `app.js` | `grep -n "function renderStats"` |
+| agenda | `render-agenda.js` | `grep -n "function renderAgenda"` |
 | aplicar un tema | `app.js` | `grep -n "function applyTheme"` |
 | cargar preset del catálogo | `app.js` | `grep -n "function presetRamo"` |
 | auth y sync a Supabase | `app.js` | `grep -n "supabaseClient\|function syncToCloud"` |
@@ -42,18 +43,21 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 
 ## Arquitectura
 
-Sin build, sin frameworks. Cuatro archivos que se despliegan tal cual:
+Sin build, sin frameworks. Seis archivos que se despliegan tal cual:
 
 | Archivo | Qué tiene |
 |---|---|
 | `index.html` | Estructura, logo en base64, metadatos |
 | `data.js` | Mallas, carreras, presets, temas, portales — solo literales |
-| `app.js` | Motor de cálculo, render, auth |
+| `engine.js` | El motor: `calculateFinalGrade`, `solveForTarget`, compuertas y descartes |
+| `app.js` | Render, auth y el resto de la interfaz |
+| `render-agenda.js` | `renderAgenda`, separado de `app.js` por tamaño |
 | `styles.css` | Estilos y la base neutra compartida |
 
-`data.js` se carga **antes** que `app.js`: son `<script>` clásicos, así que sus
-`const` quedan en el ámbito léxico global y `app.js` los ve sin imports. Si
-inviertes el orden, `ReferenceError` en el primer render.
+El orden de carga en `index.html` es `data.js` → `engine.js` → `app.js` →
+`render-agenda.js`, y no es decorativo: son `<script>` clásicos, así que sus
+`const` quedan en el ámbito léxico global y cada uno ve a los anteriores sin
+imports. Si inviertes el orden, `ReferenceError` en el primer render.
 
 **Contenido va en `data.js`, comportamiento en `app.js`.** Agregar una malla, una
 carrera o un preset no debería tocar `app.js`. Si tienes que escribir un `if` de
