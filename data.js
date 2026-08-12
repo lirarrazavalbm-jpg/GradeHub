@@ -552,6 +552,49 @@ const CREDITOS_UC={
   'Química Orgánica Fundamental':[10,'QIM200'],
 };
 
+// Siglas de TODOS los ramos UC que hoy se pueden cargar desde una malla.
+//
+// La sigla es la identidad académica de un ramo: los nombres pueden repetirse
+// entre facultades ("Probabilidad y Estadística" es EYP1113 en Ingeniería y
+// EAA1510 en Comercial), pero las siglas no. Por eso el consenso de cambios de
+// pauta usa esta tabla y no junta por accidente dos ramos que solo se llaman
+// parecido.
+//
+// Ingeniería · Plan Común: catálogo C2022 de la Escuela de Ingeniería.
+// Comercial: Resolución VRA N°262/2024, Anexo III, plan vigente 2025
+// (registrosacademicos.uc.cl/m_050014_2025.pdf). No son ponderaciones ni
+// créditos nuevos: solo el identificador oficial del curso.
+const SIGLAS_UC={
+  'ING-PC':{
+    'Cálculo I':'MAT1610', 'Álgebra Lineal':'MAT1203', 'Química para Ingeniería':'QIM100E',
+    'Desafíos de la Ingeniería':'ING1004', 'Filosofía: ¿Para Qué?':'FIL2001',
+    'Cálculo II':'MAT1620', 'Dinámica':'FIS1514', 'Laboratorio de Dinámica':'FIS0154',
+    'Introducción a la Programación':'IIC1103', 'Cálculo III':'MAT1630',
+    'Ecuaciones Diferenciales':'MAT1640', 'Termodinámica':'FIS1523',
+    'Laboratorio de Termodinámica':'FIS0152', 'Introducción a la Economía':'ICS1513',
+    'Práctica I':'ING1001', 'Probabilidades y Estadística':'EYP1113',
+    'Electricidad y Magnetismo':'FIS1533', 'Laboratorio de Electricidad y Magnetismo':'FIS0153',
+  },
+  'COM':{
+    'Cálculo I':'MAT1610', 'Introducción a la Microeconomía':'EAE1110',
+    'Contabilidad':'EAA1210', 'Comportamiento Organizacional':'EAA1110',
+    'Probabilidad y Estadística':'EAA1510', 'Introducción al Álgebra Lineal':'MAT1279',
+    'Cálculo II':'MAT1620', 'Introducción a la Macroeconomía':'EAE1210',
+    'Filosofía: ¿Para Qué?':'FIL2001', 'Inferencia Estadística':'EAA1520',
+    'Aplicaciones Matemáticas para Economía y Negocios':'EAF2010',
+    'Análisis Económico: La Experiencia Chilena':'EAE1220', 'Fundamentos de Finanzas':'EAA1220',
+    'Econometría':'EAE2510', 'Microeconomía I':'EAE2110',
+    'Estrategia de la Organización':'EAA2410', 'Fundamentos de Marketing':'EAA2310',
+    'Introducción a la Programación':'IIC1103', 'Microeconomía II':'EAE2120',
+    'Macroeconomía I':'EAE2210', 'Teoría Financiera':'EAA2210',
+    'Estrategia Competitiva':'EAA2420', 'Competencia y Mercado':'EAE2130',
+    'Contabilidad de Costos':'EAA2220', 'Ética, Economía y Empresa':'ETI209',
+    'Marketing Analytics':'EAA2320', 'Empresas y Legislación':'EAA2240',
+    'Macroeconomía II':'EAE2220', 'Contabilidad Gerencial':'EAA2230',
+    'Dirección de Personas':'EAA2110', 'Práctica Social':'EAF2500',
+  },
+};
+
 // ─── PRESETS FEN ─────────────────────────────────────────────────────────────
 // Tronco común de 2° semestre (Ing. Comercial, Contador Auditor e Ing. en
 // Información y Control de Gestión). Transcritos de los programas oficiales

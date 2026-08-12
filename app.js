@@ -1865,6 +1865,16 @@ function creditosDe(nombre,tenant,preset){
   return clave?tabla[clave][0]:null;
 }
 
+// Identificador oficial de un ramo UC. La carrera solo sirve para resolver un
+// nombre ambiguo al momento de encontrar su sigla; una vez resuelto, el
+// consenso se agrupa por universidad + sigla, nunca por carrera ni semestre.
+function siglaUC(nombre,carrera){
+  const tabla=SIGLAS_UC[carrera];
+  if(!tabla)return null;
+  const clave=Object.keys(tabla).find(n=>normName(n)===normName(nombre));
+  return clave?tabla[clave]:null;
+}
+
 // \u2500\u2500\u2500 CAT\u00c1LOGO DE RAMOS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 // Capa de consulta sobre MALLA/PRESETS. Todo ramo del cat\u00e1logo pertenece a un
 // par (universidad, carrera): nunca se le ofrece a un alumno de la UC un ramo
@@ -1971,6 +1981,15 @@ function huellaEstructura(est){
   return est.map(e=>[normName(e.nombre),e.peso,e.slots||1,e.min||0,e.cap||0].join('~')).join('|');
 }
 
+// La clave del consenso identifica el ramo compartido, no el lugar que ocupa
+// en una malla. En UC la sigla evita confundir cursos homónimos de facultades
+// distintas; fuera de UC se conserva el nombre normalizado hasta tener otro
+// identificador oficial equivalente.
+function claveReporte(r){
+  const o=r&&r.origen;
+  return (o&&o.tenant==='uc'&&siglaUC(r.nombre,o.carrera))||normName(r&&r.nombre);
+}
+
 function openReportModal(ramoId){
   const r=S.ramos.find(x=>x.id===(ramoId||currentRamoId));
   if(!r){showToast('No se encontr\u00f3 el ramo',true);return;}
@@ -2017,16 +2036,17 @@ async function enviarReporte(ramoId){
   const notaEl=document.getElementById('m-rep-nota');
   if(btn){btn.disabled=true;btn.textContent='Enviando\u2026';}
   try{
-    const {error}=await supabaseClient.from('catalog_reports').upsert({
-      user_id:currentUser.id,
-      tenant:S.tenant,
-      carrera:S.carrera,
-      ramo:r.nombre,
-      ramo_norm:normName(r.nombre),
-      estructura:est,
-      huella:huellaEstructura(est),
-      nota:(notaEl&&notaEl.value.trim())||null,
-    },{onConflict:'user_id,tenant,carrera,ramo_norm'});
+    const {error}=await supabaseClient.rpc('submit_catalog_report',{
+      p_tenant:S.tenant,
+      // Se conserva como contexto del reporte, pero no participa del consenso.
+      p_carrera:(r.origen&&r.origen.carrera)||S.carrera,
+      p_ramo:r.nombre,
+      p_ramo_norm:normName(r.nombre),
+      p_ramo_sigla:(r.origen&&r.origen.tenant==='uc'&&siglaUC(r.nombre,r.origen.carrera))||null,
+      p_estructura:est,
+      p_huella:huellaEstructura(est),
+      p_nota:(notaEl&&notaEl.value.trim())||null,
+    });
     if(error)throw error;
     track('reporte_catalogo',{tenant:S.tenant});
     closeModal();
@@ -2048,7 +2068,7 @@ async function cargarConsenso(){
   if(!supabaseClient||!currentUser)return null;
   if(_consensoCache)return _consensoCache;
   try{
-    const {data,error}=await supabaseClient.rpc('catalog_consensus',{p_tenant:S.tenant,p_carrera:S.carrera});
+    const {data,error}=await supabaseClient.rpc('catalog_consensus',{p_tenant:S.tenant});
     if(error)throw error;
     _consensoCache=data||[];
     return _consensoCache;
@@ -2060,7 +2080,7 @@ async function consensoParaRamo(r){
   const cons=await cargarConsenso();
   if(!cons)return null;
   const mine=huellaEstructura(estructuraDe(r));
-  const hit=cons.find(c=>c.ramo_norm===normName(r.nombre)&&c.huella!==mine);
+  const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&c.huella!==mine);
   return hit||null;
 }
 
