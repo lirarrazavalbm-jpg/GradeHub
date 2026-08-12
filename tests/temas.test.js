@@ -143,6 +143,54 @@ chk('texto sobre acento ≥4.5', rFg >= 4.5);
 chk('texto principal sobre card ≥7', rText >= 7);
 console.log('  acento/fondo ' + rBg.toFixed(2) + '  acento/card ' + rCard.toFixed(2) + '  texto/acento ' + rFg.toFixed(2) + '  texto/card ' + rText.toFixed(2));
 
+console.log('\n=== El botón primario se lee en TODO su degradado ===');
+// El botón no es de un color: es un degradado, y el contraste hay que medirlo
+// en los dos extremos. Medido solo en el arranque daba 5.23 y parecía sano
+// mientras la mitad derecha estaba en 2.03 — blanco sobre turquesa claro.
+// Como la interpolación es monótona, con los extremos basta.
+// Los dos modos necesitan lo contrario (claro: texto blanco, degradado que se
+// oscurece; oscuro: texto oscuro, degradado que se aclara), así que se revisan
+// por separado o uno tapa al otro.
+const mezcla = (a, b, pct) => {          // color-mix(in srgb, a, b pct)
+  const h = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+  const [ar, ag, ab] = h(a), [br, bg, bb] = h(b), p = pct / 100;
+  return '#' + [ar * (1 - p) + br * p, ag * (1 - p) + bg * p, ab * (1 - p) + bb * p]
+    .map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+};
+// El valor se LEE del CSS, no se recalcula acá: si se copia la fórmula, el
+// chequeo se aprueba a sí mismo y pasa igual con el degradado roto.
+const gradDe = bloque => {
+  // El segundo color puede ser var(--x), que trae paréntesis propios: acotarlo
+  // con [^)] lo cortaba a la mitad y solo funcionaba con el #000 del modo claro.
+  const m = bloque.match(/--primary-grad:\s*color-mix\(in srgb,\s*([^,]+),\s*(.+?)\s+(\d+)%\)/);
+  if (!m) return null;
+  const tok = t => ({
+    'var(--primary)': [theme.primary, theme.darkPrimary],
+    'var(--accent)': [theme.accent, theme.accent],
+    '#000': ['#000000', '#000000'], '#000000': ['#000000', '#000000'],
+  })[t.trim()] || null;
+  return { a: tok(m[1]), b: tok(m[2]), pct: +m[3] };
+};
+[
+  ['claro', 0, theme.primary, theme.primaryFg, bloqueCss(/:root\{([^}]*)\}/)],
+  ['oscuro', 1, theme.darkPrimary, theme.darkPrimaryFg, bloqueCss(/:root\[data-modo="oscuro"\]\{([^}]*)\}/)],
+].forEach(([modo, i, ini, fg, bloque]) => {
+  const g = gradDe(bloque);
+  if (!g || !g.a || !g.b) { chk(`${modo}: se pudo leer el fin del degradado del CSS`, false); return; }
+  const fin = mezcla(g.a[i], g.b[i], g.pct);
+  const a = ratio(fg, ini), b = ratio(fg, fin);
+  chk(`${modo}: el texto se lee en los dos extremos (${a.toFixed(2)} / ${b.toFixed(2)})`,
+    Math.min(a, b) >= 4.5);
+});
+// Y que el degradado siga saliendo de un token por modo: con un valor único
+// escrito a mano, arreglar un modo rompe el otro. Fue exactamente lo que pasó.
+// `[^)]*` no sirve acá: el propio degradado lleva var(--primary), que cierra
+// paréntesis antes de tiempo. Se busca dentro del bloque de la regla.
+chk('el fin del degradado es un token, no un valor fijo',
+  /var\(--primary-grad\)/.test((css.match(/\.btn-primary\{([^}]*)\}/) || [])[1] || ''));
+chk('cada modo define su propio --primary-grad',
+  (css.match(/--primary-grad:/g) || []).length >= 3);
+
 console.log('\n=== Modo claro y oscuro siguen siendo decisiones separadas ===');
 const light = ctxFor(false), PL = light.__props;
 TENANT_CODES.forEach(code => {
