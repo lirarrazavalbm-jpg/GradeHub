@@ -1712,13 +1712,23 @@ function presetRamo(nombre,tenant,carrera){
   }
   if(tenant!=='uc'||carrera!=='ING-PC')return null;
   const def=PRESETS_UC[nombre];if(!def)return null;
+  const evals=Array.isArray(def)?def:(def.evals||[]);
+  // Un programa puede traer reglas oficiales sin publicar ponderaciones. No se
+  // inventa una pauta vacía: sus reglas se muestran por reglasDelPreset().
+  if(!evals.length)return null;
   const categorias=[],gates=[];
-  def.forEach(([nom,peso,extra])=>{
+  const porNombre={};
+  evals.forEach(([nom,peso,extra])=>{
     const id=uid();
     const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
     if(extra&&extra.slots)cat.slots=extra.slots;
-    categorias.push(cat);
+    if(extra&&extra.fecha)cat.fecha=extra.fecha;
+    categorias.push(cat);porNombre[nom]=id;
     if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
+  });
+  (!Array.isArray(def)&&def.grupos||[]).forEach(g=>{
+    const ids=g.evals.map(n=>porNombre[n]).filter(Boolean);
+    if(ids.length)gates.push({type:'group_min',catIds:ids,min:g.min,cap:g.cap,nombre:g.nombre});
   });
   return {categorias,gates};
 }
@@ -2043,16 +2053,25 @@ function findPresetName(nombre,tenant,carrera){
     return null;
   }
   if(tenant!=='uc'||carrera!=='ING-PC')return null;
-  for(const k in PRESETS_UC){if(normName(k)===target)return k;}
+  for(const k in PRESETS_UC){
+    const def=PRESETS_UC[k];
+    // La estrella y el selector prometen ponderaciones precargadas. Un programa
+    // que solo trae reglas (como Cálculo II) no debe fingir que las tiene.
+    const evals=Array.isArray(def)?def:(def.evals||[]);
+    if(normName(k)===target&&evals.length)return k;
+  }
   return null;
 }
 // Reglas oficiales informativas que todavía no podemos representar en el
 // cálculo. Se recuperan por el origen del ramo para no inventarlas en manuales.
 function reglasDelPreset(ramo,campo){
   const origen=ramo&&ramo.origen;
-  if(!ramo||!origen||origen.tenant!=='fen')return [];
-  const nombre=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(ramo.nombre));
-  const lista=nombre&&PRESETS_FEN[nombre][campo];
+  if(!ramo||!origen)return [];
+  const presets=origen.tenant==='fen'?PRESETS_FEN:(origen.tenant==='uc'&&origen.carrera==='ING-PC'?PRESETS_UC:null);
+  if(!presets)return [];
+  const nombre=Object.keys(presets).find(n=>normName(n)===normName(ramo.nombre));
+  const def=nombre&&presets[nombre];
+  const lista=!Array.isArray(def)&&def&&def[campo];
   return Array.isArray(lista)?lista:[];
 }
 // Reglas que el motor todavía no sabe calcular: deuda nuestra, se van a ir.

@@ -297,9 +297,11 @@ const PORTAL=[
   ]},
 ];
 
-// ─── PRESETS UC (ponderaciones oficiales 2026-1) → auto-carga de secciones ───
-// cats: [nombre, peso%]. Un 3er elemento {min,cap} marca un PISO de aprobación en
-// esa sección (regla min_grade_required): si su nota < min, la final se topa en cap.
+// ─── PRESETS UC (ponderaciones oficiales 2026-2) → auto-carga de secciones ───
+// El formato antiguo puede ser directamente `evals`; los programas con fechas,
+// compuertas o reglas usan {evals, grupos, noCalcula, reglasDelCurso}. Un 3er
+// elemento {min,cap} marca un PISO de aprobación en esa sección (regla
+// min_grade_required): si su nota < min, la final se topa en cap.
 // Caso real: el Podcast de FIL2001. El piso lo aplica ramoAvg vía r.gates.
 // ING1004 NO está aquí: su compuerta es entre GRUPOS anidados (Individual/Grupal)
 // y no cabe en el modelo plano de secciones — necesita el árbol completo (próximo brick).
@@ -308,6 +310,71 @@ const PRESETS_UC={
   'Álgebra Lineal':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
   'Química para Ingeniería':[['Pruebas',44.1],['Ev. de Taller',4.9],['Examen',21],['Informes',18],['Controles',12]],
   'Filosofía: ¿para qué?':[['Prueba 1',30],['Ejercicio de análisis',20],['Prueba 2',30],['Podcast',20,{min:4.0,cap:3.9}]],
+  'Introducción a la Programación':{
+    evals:[
+      ['Interrogación 1',15,{fecha:'2026-09-24'}],['Interrogación 2',20,{fecha:'2026-10-22'}],['Examen',30,{fecha:'2026-12-10'}],
+      ['Tarea 1',5],['Tarea 2',5],['Tarea 3',5],['Nota de participación',16],['Talleres de Inteligencia Artificial',4],
+    ],
+    grupos:[{nombre:'Evaluaciones principales',evals:['Interrogación 1','Interrogación 2','Examen'],min:4.0,cap:3.9}],
+    noCalcula:['Si faltas justificadamente a una interrogación, esa nota se reemplaza por la nota del Examen; solo puedes justificar la inasistencia a una interrogación'],
+    reglasDelCurso:['Si rindes una evaluación presencial pero no registras correctamente tu asistencia, te califican con nota 1,0'],
+  },
+  'Principios de Ecología y Medio Ambiente':{
+    evals:[['Prueba 1',25],['Prueba 2',40],['Prueba 3',35]],
+    noCalcula:[
+      'Si faltas a una Prueba, puedes rendirla en la única fecha destinada a pruebas pendientes al final del curso solo si tu caso es calificado y presentas la justificación médica exigida dentro del plazo',
+      'Si cumples el requisito de tener nota ponderada de las Pruebas superior a 4,0, puedes sumar las décimas obtenidas en talleres a tu nota final, con un máximo de 5 décimas',
+    ],
+    reglasDelCurso:[
+      'No puedes ausentarte a más de dos Pruebas; el programa no indica qué nota final te corresponde si superas ese límite',
+      'Si cometes copia, usas torpedos u otro acto ilícito durante una Prueba, esa Prueba se sanciona con nota 1',
+    ],
+  },
+  // El programa documenta recuperativas e inasistencias, pero no sus pesos.
+  // No se crea una pauta de 0%: el estudiante sigue ingresando la real cuando la
+  // tenga, y estas reglas se muestran porque el ramo sí viene del catálogo.
+  'Cálculo II':{
+    evals:[],
+    noCalcula:[
+      'Si faltas justificadamente a una sola Interrogación, esa nota se reemplaza por la nota del Examen',
+      'Si faltas justificadamente a dos Interrogaciones, la nota del Examen reemplaza la primera que justificaste y debes rendir una evaluación equivalente para reemplazar la segunda',
+      'Si faltas justificadamente a tres Interrogaciones, la nota del Examen reemplaza la primera que justificaste y debes rendir evaluaciones equivalentes para reemplazar las demás',
+      'Si faltas justificadamente al Examen, debes rendir el Examen recuperativo',
+    ],
+    reglasDelCurso:[
+      'Si faltas a una evaluación sin una justificación aceptada por tu unidad académica, obtienes nota 1,0 en esa evaluación',
+      'Si respondes una evaluación sin lápiz pasta, esa evaluación no será corregida; la normativa no indica qué nota se te asigna en ese caso',
+      'Si eres sorprendido durante una evaluación con un dispositivo o apunte no permitido, aunque no lo estés usando, te retiran la evaluación y obtienes nota 1,0',
+      'Si tu situación de inasistencia no está contemplada expresamente en la normativa, la Facultad de Matemáticas revisará tu caso',
+    ],
+  },
+  'Laboratorio de Dinámica':{
+    // El programa pondera los promedios NC, NI y NP, no cada control o informe.
+    evals:[['Nota controles',10],['Notas informes',70],['Nota evaluación de pares',20,{min:4.0,cap:3.9}]],
+    noCalcula:[
+      'Si no realizas un Control, tu nota máxima en el Informe de ese experimento queda en 4,0',
+      'Tu Nota evaluación de pares se calcula promediando la nota asignada por tus compañeros y tu autoevaluación; si no respondes la autoevaluación, esa parte queda con nota 1',
+      'Si faltas sin justificación a un experimento, obtienes nota 1 en el Informe correspondiente',
+      'Si justificas a tiempo una inasistencia, puedes optar a rendir un laboratorio recuperativo',
+    ],
+    reglasDelCurso:[
+      'Si tienes una segunda inasistencia, repruebas el laboratorio; el programa no indica qué nota final numérica te queda y señala que los casos especiales los evalúa coordinación',
+      'Si después de la revisión de Turnitin tu porcentaje de copia sigue siendo superior a 35%, tu grupo obtiene nota 1 en la experiencia completa',
+      'Si obtienes un porcentaje de copia superior a 35% por segunda vez, repruebas el laboratorio',
+      'Si no aportas al trabajo de pares y tu grupo informa tu ausencia de participación, puedes quedar sujeto a cambio de grupo o reprobación del curso',
+    ],
+  },
+  'Revelación y Fe':{
+    evals:[['Evaluación 1',20,{fecha:'2026-09-07'}],['Evaluación 2',20,{fecha:'2026-10-14'}],['Evaluación 3',30,{fecha:'2026-11-16'}],['Examen final',30]],
+    noCalcula:[
+      'Si tienes más de 75% de asistencia y una nota de presentación igual o superior a 6,00, te eximes del Examen final; tu nota de presentación se calcula como el promedio simple de Evaluación 1, Evaluación 2 y Evaluación 3, sin usar sus ponderaciones',
+      'Si te eximes del Examen final, la nota del Examen final se reemplaza por la nota más alta que obtuviste entre Evaluación 1, Evaluación 2 y Evaluación 3',
+      'Si debes dar el Examen final, la nota de esa evaluación es la que obtengas en el examen escrito',
+      'Si faltas a una evaluación, solo puedes rendir una recuperativa si presentas un justificativo aprobado por tu unidad académica dentro de las 48 horas posteriores; si no lo presentas dentro de ese plazo, obtienes nota 1,0',
+      'Si obtienes décimas en los talleres, se agregan al finalizar el semestre a tu nota más baja',
+      'Si presentas voluntariamente uno de los textos del curso cumpliendo las condiciones indicadas, obtienes un 7,0 que se promedia con tu nota más baja entre Evaluación 1, Evaluación 2 y Evaluación 3',
+    ],
+  },
 };
 // IMPORTANTE: los prospectos verificados son del plan común de INGENIERÍA.
 // "Cálculo I" de Comercial es OTRO curso (otra facultad/programa): no hereda estos pesos.
