@@ -26,6 +26,13 @@ button:active{transform:scale(.97);}
      transición. Corto a propósito: orienta la interacción, no la retrasa. */
   --motion-press:120ms;--motion-fast:160ms;--motion-base:220ms;
   --ease-out:cubic-bezier(.22,1,.36,1);--ease-standard:cubic-bezier(.2,.8,.2,1);
+  /* Dónde termina el degradado del botón primario. Es un token y no un valor
+     fijo porque los dos modos necesitan lo contrario: en claro el texto es
+     blanco y el degradado tiene que MANTENERSE oscuro; en oscuro el texto es
+     oscuro y el degradado se aclara. Un solo valor servía a uno y traicionaba
+     al otro — que es justo lo que pasaba. Acá, el mismo 18% de negro que ya
+     usa .ramo-action.primary. */
+  --primary-grad:color-mix(in srgb,var(--primary),#000 18%);
 }
 @media(prefers-color-scheme:dark){
   :root:not([data-modo="claro"]){
@@ -42,6 +49,9 @@ button:active{transform:scale(.97);}
     --muted:#182228;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
+    /* En oscuro el texto del botón es oscuro, así que acá el degradado sí se
+       aclara: es el mismo brillo que tenía antes, sin cambio visible. */
+    --primary-grad:color-mix(in srgb,var(--accent),var(--primary) 25%);
   }
 }
 /* Mismo bloque cuando el estudiante fuerza «oscuro» en Ajustes */
@@ -59,6 +69,9 @@ button:active{transform:scale(.97);}
     --muted:#182228;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
+    /* En oscuro el texto del botón es oscuro, así que acá el degradado sí se
+       aclara: es el mismo brillo que tenía antes, sin cambio visible. */
+    --primary-grad:color-mix(in srgb,var(--accent),var(--primary) 25%);
   }
 body{font-family:'Inter',sans-serif;background:var(--bg);background-image:radial-gradient(1100px 380px at 50% -120px,color-mix(in srgb,var(--primary),transparent 91%),transparent);color:var(--fg);min-height:100vh;min-height:100dvh;}
 /* Página 404: no depende de JavaScript, pero conserva el mismo fondo, acento y
@@ -265,7 +278,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .s-tenant-btn.sel{border-color:var(--primary);color:var(--fg);background:var(--primary-light);}
 .carrera-opt{text-align:left;padding:11px 13px;border-radius:10px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);cursor:pointer;transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard);line-height:1.25;}
 .carrera-opt.sel{background:var(--primary);color:var(--primary-fg);border-color:var(--primary);box-shadow:0 2px 8px color-mix(in srgb,var(--primary),transparent 70%);}
-.btn-primary{width:100%;padding:15px;background:var(--primary);background-image:linear-gradient(135deg,var(--primary) 0%,color-mix(in srgb,var(--accent),var(--primary) 25%) 100%);color:var(--primary-fg);border:none;border-radius:13px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:700;cursor:pointer;transition:transform var(--motion-press),box-shadow var(--motion-base);display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em;box-shadow:0 6px 20px -8px color-mix(in srgb,var(--primary),transparent 40%);}
+.btn-primary{width:100%;padding:15px;background:var(--primary);background-image:linear-gradient(135deg,var(--primary) 0%,var(--primary-grad) 100%);color:var(--primary-fg);border:none;border-radius:13px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:700;cursor:pointer;transition:transform var(--motion-press),box-shadow var(--motion-base);display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em;box-shadow:0 6px 20px -8px color-mix(in srgb,var(--primary),transparent 40%);}
 .btn-primary:disabled{opacity:.35;cursor:default;box-shadow:none;}
 .btn-primary:not(:disabled):hover{box-shadow:0 10px 26px -8px color-mix(in srgb,var(--primary),transparent 25%);}
 .btn-primary:not(:disabled):active{transform:scale(.98);}
