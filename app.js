@@ -1856,7 +1856,7 @@ function normName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0
 // Devuelve null cuando no se sabe. OJO: 0 no es null. Un laboratorio de 0 SCT es
 // un dato conocido y exacto; null es "no lo tenemos". Confundirlos es lo que
 // haría que un ramo sin dato se colara al promedio con peso cero.
-const CREDITOS_POR_TENANT={uc:CREDITOS_UC};
+const CREDITOS_POR_TENANT={uc:CREDITOS_UC,fen:CREDITOS_FEN};
 function creditosDe(nombre,tenant,preset){
   if(preset&&typeof preset.creditos==='number')return preset.creditos;
   const tabla=CREDITOS_POR_TENANT[tenant];

@@ -598,6 +598,63 @@ const CREDITOS_UC={
   'Química Orgánica Fundamental':[10,'QIM200'],
 };
 
+// Créditos SCT de la FEN. Misma forma que CREDITOS_UC: [créditos, sigla].
+//
+// Los 31 primeros salen de la planilla oficial de oferta de secciones de
+// Primavera 2026, con su sigla. Como es la oferta y no la malla, trae varias
+// filas por ramo —una por sección— y las versiones "(DICTADO EN INGLÉS)" del
+// mismo curso: se deduplicaron por nombre, y en todos los casos las secciones
+// de un mismo ramo declaraban los mismos créditos.
+//
+// Los 7 del final los aportó Martín: son ramos que ya cursó, así que no
+// aparecen en la oferta de este semestre. Van sin sigla porque la planilla no
+// los trae, y `creditosDe` solo lee el primer elemento.
+//
+// 38 de los 88 ramos de la malla. El promedio general se pondera por créditos
+// SOLO si todos los ramos con nota los tienen, así que hasta completarla esto
+// no cambia ningún número: prepara el terreno.
+const CREDITOS_FEN={
+  'Comunicación':[2,'COM1005'],
+  'Contabilidad':[6,'CON1005'],
+  'Contabilidad Empresarial I':[6,'CON3005'],
+  'Contabilidad Empresarial II':[6,'CON3505'],
+  'Economía Aplicada':[6,'MIC2505'],
+  'Economía para los Negocios':[6,'NEG3005'],
+  'Estadística I':[6,'MES2005'],
+  'Estadística II':[6,'MES2505'],
+  'Finanzas':[6,'FIN2505'],
+  'Finanzas I':[6,'FIN3505'],
+  'Finanzas II':[6,'FIN4505'],
+  'Gestión de Personas':[6,'GEP1505'],
+  'Gestión de Personas I':[6,'GEP3005'],
+  'Gestión de Personas II':[6,'GEP4505'],
+  'Inglés IV':[4,'IDI3506'],
+  'Introducción a la Macroeconomía':[6,'MAC2005'],
+  'Introducción a la Microeconomía':[6,'MIC1505'],
+  'Introducción al Pensamiento Económico y Político':[4,'CSH2005'],
+  'Marketing':[6,'MKT2005'],
+  'Marketing I':[6,'MKT3505'],
+  'Marketing II':[6,'MKT4505'],
+  'Métodos Cuantitativos I':[6,'MEC3005'],
+  'Métodos Matemáticos II':[6,'MEM1505'],
+  'Métodos Matemáticos III':[6,'MEM2005'],
+  'Métodos Matemáticos IV':[6,'MEM2505'],
+  'Negocios I':[6,'NEG3510'],
+  'Negocios II':[6,'NEG4005'],
+  'Negocios III':[6,'NEG4505'],
+  'Razonamiento Basado en Datos':[6,'GIN2505'],
+  'Taller de Negocios':[2,'NEG3505'],
+  'Tecnología y Sistemas de Información':[6,'GIN1505'],
+  // Sin sigla: no están en la oferta de este semestre.
+  'Gestión y Empresas':[6,null],
+  'Inglés I':[2,null],
+  'Inglés II':[2,null],
+  'Inglés III':[2,null],
+  'Introducción a la Economía':[6,null],
+  'Métodos Matemáticos I':[6,null],
+  'Programación para Analítica de Datos':[6,null],
+};
+
 // Siglas de TODOS los ramos UC que hoy se pueden cargar desde una malla.
 //
 // La sigla es la identidad académica de un ramo: los nombres pueden repetirse
