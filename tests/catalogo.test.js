@@ -89,5 +89,25 @@ chk('no toca un ramo creado a mano, aunque el nombre calce', manual[0].categoria
 const sinPauta = cargar([{ id: 'f', nombre: 'Cálculo II', origen: uc, categorias: [], gates: [] }]);
 chk('Cálculo II sigue sin pauta: su programa no publica ponderaciones', sinPauta[0].categorias.length === 0);
 
+console.log('\n=== Una pauta que nadie puede encontrar no existe ===');
+// Los OFG y electivos no van en la malla a propósito: son una elección, no un
+// ramo de todos. Pero el catálogo se armaba SOLO desde las mallas, así que sus
+// pautas quedaban invisibles — funcionaban tecleando el nombre completo y
+// exacto, o sea solo para quien ya sabía que estaban ahí.
+const buscarUC = (q, car) => run('searchCatalog(' + JSON.stringify(q) + ',"uc",' + JSON.stringify(car) + ',2)');
+['Ecolog', 'Revelaci'].forEach(q => {
+  const r = buscarUC(q, 'ING-PC');
+  chk('Ingeniería UC encuentra "' + q + '" aunque no esté en la malla', r.length > 0 && r[0].tienePreset);
+});
+// Y no al revés: los presets UC son del plan común de Ingeniería. Ofrecérselos
+// a Comercial pondría una estrella de "pauta oficial" sobre un ramo que después
+// se agrega vacío, porque findPresetName los descarta para esa carrera.
+['Ecolog', 'Revelaci'].forEach(q => {
+  chk('Comercial UC NO recibe la pauta de Ingeniería para "' + q + '"', buscarUC(q, 'COM').length === 0);
+});
+// Cálculo II tiene programa pero no ponderaciones: no se ofrece como pauta.
+const c2 = buscarUC('Cálculo II', 'ING-PC').find(r => r.nombre === 'Cálculo II');
+chk('Cálculo II aparece por la malla, pero sin estrella de pauta', !!c2 && !c2.tienePreset);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

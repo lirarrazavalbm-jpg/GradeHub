@@ -1910,7 +1910,34 @@ function catalogRamosUniversidad(tenant,carreraPropia){
       });
     });
   });
+  // Un ramo con pauta oficial que no está en ninguna malla existía y nadie
+  // podía encontrarlo: el catálogo se arma solo desde las mallas, así que
+  // "Revelación y Fe" o "Principios de Ecología y Medio Ambiente" no aparecían
+  // al escribir. La pauta funcionaba —tecleando el nombre completo y exacto—
+  // pero para eso hay que saber de antemano que existe. Los OFG y electivos no
+  // van en la malla a propósito, porque son una elección y no un ramo de todos;
+  // eso no es razón para esconder su pauta.
+  presetsFueraDeMalla(tenant,carreraPropia).forEach(nombre=>{
+    const k=normName(nombre);
+    if(vistos.has(k))return;
+    vistos.add(k);
+    // semestre 0 = fuera de malla. No compite con los del semestre del
+    // estudiante en el orden, porque no le corresponde a nadie en particular.
+    out.push({nombre,semestre:0,propio:false,tienePreset:true});
+  });
   return out;
+}
+// Nombres con pauta oficial que ESTE estudiante puede recibir de verdad. Se
+// pregunta por findPresetName y no por las claves del registro: los presets UC
+// son del plan común de Ingeniería y no valen para Comercial —"Cálculo I" de
+// Comercial es otro curso—, así que listarlos sin filtrar pondría una estrella
+// de "pauta oficial" sobre un ramo que después se agregaría vacío.
+function presetsFueraDeMalla(tenant,carrera){
+  const p=tenant==='fen'?PRESETS_FEN:(tenant==='uc'?PRESETS_UC:null);
+  if(!p)return [];
+  // findPresetName ya descarta los que solo traen reglas y no ponderaciones
+  // (Cálculo II): si no hay pauta que ofrecer, no hay nada que mostrar acá.
+  return Object.keys(p).filter(n=>!!findPresetName(n,tenant,carrera));
 }
 
 // B\u00fasqueda tolerante a tildes. Ordena: exacto > empieza con > contiene;
