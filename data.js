@@ -228,7 +228,11 @@ const CARRERAS_UC={'ING-PC':'Ingeniería · Plan Común','COM':'Ingeniería Come
 const MALLA_UC={
   'ING-PC':{
     1:['Cálculo I','Álgebra Lineal','Química para Ingeniería','Desafíos de la Ingeniería','Filosofía: ¿Para Qué?'],
-    2:['Cálculo II','Dinámica','Laboratorio de Dinámica','Introducción a la Programación'],
+    // "Laboratorio de Dinámica" NO va acá: es el 30% de la nota de Dinámica,
+    // no un ramo aparte (ver el preset de Dinámica). Ofrecerlo por separado
+    // hacía que el estudiante lo agregara dos veces sin darse cuenta: una como
+    // ramo suelto y otra dentro de Dinámica.
+    2:['Cálculo II','Dinámica','Introducción a la Programación'],
     3:['Cálculo III','Ecuaciones Diferenciales','Termodinámica','Laboratorio de Termodinámica','Introducción a la Economía','Práctica I'],
     4:['Probabilidades y Estadística','Electricidad y Magnetismo','Laboratorio de Electricidad y Magnetismo'],
   },
@@ -348,17 +352,59 @@ const PRESETS_UC={
       'Si tu situación de inasistencia no está contemplada expresamente en la normativa, la Facultad de Matemáticas revisará tu caso',
     ],
   },
-  'Laboratorio de Dinámica':{
-    // El programa pondera los promedios NC, NI y NP, no cada control o informe.
-    evals:[['Nota controles',10],['Notas informes',70],['Nota evaluación de pares',20,{min:4.0,cap:3.9}]],
+  // ── Dinámica: un solo ramo, laboratorio incluido ──────────────────────────
+  // El laboratorio (FIS0154, 0 SCT) no es un ramo aparte: es el 30% de la nota
+  // de Dinámica. Los dos programas lo dicen — FIS1514 con la fórmula, el del
+  // lab con "el laboratorio corresponde a un 30% de la nota final del curso de
+  // cátedra". Tenerlos separados obligaba al estudiante a calcular a mano cómo
+  // se juntan, que es justo lo que la app existe para no hacer.
+  //
+  //   NF  = 0,7·NFC + 0,3·NL
+  //   NFC = 0,25·I1 + 0,25·I2 + 0,20·NC + 0,30·NE
+  //   NL  = 0,10·NClab + 0,70·NI + 0,20·NP
+  //
+  // Los pesos de acá son esos multiplicados: 0,7·25 = 17,5 para cada
+  // interrogación, 0,3·70 = 21 para los informes, etc. Suman 100.
+  //
+  // El modelo de secciones es plano, sin anidar, y aun así alcanza: los dos
+  // promedios que la fórmula necesita (NFC y NL) se recuperan con group_min,
+  // que pondera por el peso de cada sección y divide por la suma del grupo.
+  'Dinámica':{
+    evals:[
+      ['Interrogación 1',17.5,{fecha:'2026-09-29'}],
+      ['Interrogación 2',17.5,{fecha:'2026-11-13'}],
+      ['Controles',14,{slots:3}],
+      ['Examen',21,{fecha:'2026-12-01'}],
+      // El lab evalúa 5 experimentos presenciales con control, informe y
+      // evaluación de pares, más un Lab 0 online con informe y pares: 5
+      // controles, 6 informes y 6 evaluaciones de pares.
+      ['Laboratorio · Controles',3,{slots:5}],
+      ['Laboratorio · Informes',21,{slots:6}],
+      ['Laboratorio · Evaluación de pares',6,{slots:6,min:4.0,cap:3.9}],
+    ],
+    // "Si NL ≥ 4,0 y NFC ≥ 4,0 → NF = 0,7·NFC + 0,3·NL; si no → NF =
+    // min(NFC, NL)". Es la misma forma que la regla FEN de dos requisitos: con
+    // cap:'self' el tope es el promedio del propio grupo, así que si un lado
+    // baja de 4,0 la final cae a ese lado, y si bajan los dos, al menor.
+    grupos:[
+      {nombre:'Cátedra',evals:['Interrogación 1','Interrogación 2','Controles','Examen'],min:4.0,cap:'self'},
+      {nombre:'Laboratorio',evals:['Laboratorio · Controles','Laboratorio · Informes','Laboratorio · Evaluación de pares'],min:4.0,cap:'self'},
+    ],
     noCalcula:[
-      'Si no realizas un Control, tu nota máxima en el Informe de ese experimento queda en 4,0',
-      'Tu Nota evaluación de pares se calcula promediando la nota asignada por tus compañeros y tu autoevaluación; si no respondes la autoevaluación, esa parte queda con nota 1',
-      'Si faltas sin justificación a un experimento, obtienes nota 1 en el Informe correspondiente',
-      'Si justificas a tiempo una inasistencia, puedes optar a rendir un laboratorio recuperativo',
+      'Si faltas justificadamente a una interrogación, esa nota se reemplaza por la nota del Examen; si faltas justificadamente a las dos, tu situación se evalúa caso a caso',
+      'Si faltas justificadamente a un control, lo recuperas en un control recuperativo que se rinde en el último taller del semestre',
+      'Si asistes a 8 o más talleres, sumas 5 décimas al promedio de los Controles; para optar a ellas puedes faltar como máximo a 2 talleres, con o sin justificación',
+      'Si no realizas un Control del laboratorio, tu nota máxima en el Informe de ese experimento queda en 4,0',
+      'Tu nota de evaluación de pares se calcula promediando la nota que te asignan tus compañeros y tu autoevaluación; si no respondes la autoevaluación, esa parte queda con nota 1',
+      'Si faltas sin justificación a un experimento del laboratorio, obtienes nota 1 en el Informe correspondiente',
+      'Si justificas a tiempo una inasistencia al laboratorio, puedes optar a rendir un laboratorio recuperativo',
     ],
     reglasDelCurso:[
-      'Si tienes una segunda inasistencia, repruebas el laboratorio; el programa no indica qué nota final numérica te queda y señala que los casos especiales los evalúa coordinación',
+      'No hay eximición del examen final: evalúa los contenidos de todo el semestre',
+      'No se justifican las inasistencias a talleres',
+      'Todas las evaluaciones son de desarrollo: lo que no esté escrito de manera ordenada y legible no se corrige',
+      'Si respondes una misma pregunta dos o más veces sin indicar cuál es la definitiva, solo se corrige la primera hoja con el desarrollo de esa pregunta',
+      'Si tienes una segunda inasistencia al laboratorio, repruebas el laboratorio; el programa no indica qué nota final numérica te queda y señala que los casos especiales los evalúa coordinación',
       'Si después de la revisión de Turnitin tu porcentaje de copia sigue siendo superior a 35%, tu grupo obtiene nota 1 en la experiencia completa',
       'Si obtienes un porcentaje de copia superior a 35% por segunda vez, repruebas el laboratorio',
       'Si no aportas al trabajo de pares y tu grupo informa tu ausencia de participación, puedes quedar sujeto a cambio de grupo o reprobación del curso',
