@@ -45,6 +45,15 @@ function normalize(data) {
       }))
     }))
   }));
+  // Las pautas oficiales llegan DESPUÉS de que el estudiante agregó el ramo.
+  // Hasta acá el preset solo se aplicaba al crearlo, así que quien tenía
+  // Introducción a la Programación desde antes se quedaba en "Sin evaluaciones"
+  // para siempre, aunque su pauta ya estuviera publicada. No falla nada: el
+  // ramo simplemente nunca se entera. Por eso se rellena al cargar.
+  data.ramos.forEach(r => {
+    const p = pautaPendiente(r);
+    if (p) { r.categorias = p.categorias; r.gates = p.gates; }
+  });
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
   data.userName = data.userName || '';
@@ -1691,6 +1700,16 @@ function updateMallaBtn(){
 // Devuelve {categorias, gates} para un ramo del catálogo, o null.
 // Las ponderaciones salen de PRESETS_FEN / PRESETS_UC (data.js): acá solo se
 // traducen a categorías y compuertas con ids frescos.
+// La pauta que a este ramo le corresponde y todavía no tiene. Devuelve null
+// salvo que NO haya nada que perder: solo se rellena un ramo del catálogo que
+// está completamente vacío. Si el estudiante ya escribió aunque sea una
+// evaluación propia, no se toca — su pauta a mano manda sobre la nuestra.
+function pautaPendiente(r){
+  if(!r||!r.origen||!r.origen.tenant)return null;
+  if((r.categorias||[]).length||(r.gates||[]).length)return null;
+  const nombre=findPresetName(r.nombre,r.origen.tenant,r.origen.carrera);
+  return nombre?presetRamo(nombre,r.origen.tenant,r.origen.carrera):null;
+}
 function presetRamo(nombre,tenant,carrera){
   if(tenant==='fen'){
     const def=PRESETS_FEN[nombre];if(!def)return null;
@@ -1737,7 +1756,12 @@ function confirmAddMalla(){
   const elegidos=_mallaList.filter(n=>_mallaSel[n]);
   if(!elegidos.length)return;
   elegidos.forEach(n=>{
-    const preset=presetRamo(n,S.tenant,S.carrera);
+    // Por findPresetName y no por el nombre crudo: la malla dice
+    // "Filosofía: ¿Para Qué?" y el preset "Filosofía: ¿para qué?". Buscando
+    // exacto no calzaban, así que el ramo se agregaba sin pauta — con la
+    // estrella de "pauta oficial" al lado, porque el selector SÍ normaliza.
+    const presetName=findPresetName(n,S.tenant,S.carrera);
+    const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
     S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
   });
   save();track('add_malla_ramos',{count:elegidos.length,carrera:S.carrera,sem:S.careerSemestre});
