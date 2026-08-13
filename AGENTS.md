@@ -240,6 +240,44 @@ hablarías a un compañero, no como un manual.
 
 ## Pendientes conocidos
 
+### Seguridad · auditoría del 13 de agosto de 2026
+
+La rama `codex/security-hardening` corrige lo que sí vive en el repo: limpia
+tokens de recovery de la URL, evita enumerar correos al registrarse, agrega
+HSTS, fija Wrangler con lockfile y pone límites server-side a los reportes.
+Antes de repetir trabajo, revisa si esa rama/PR ya se mergeó.
+
+**Claude de Lucas parte por esto después del merge:**
+
+1. Aplicar manualmente `supabase/catalog_consensus.sql` en el SQL Editor. El
+   deploy de Cloudflare no ejecuta SQL; mergear el archivo sin aplicarlo deja
+   producción con la función antigua y sin los nuevos límites.
+2. En Supabase → Authentication, registrar en el PR los valores reales de
+   Rate Limits, Sessions y Password Security. El repo no puede demostrarlos.
+   Configurar un tiempo de inactividad razonable y confirmar que el JWT no dure
+   más de una hora. No cambiar sesiones existentes a ciegas.
+3. Integrar Cloudflare Turnstile con Supabase Auth para registro y recuperar
+   contraseña; login puede ser adaptativo tras intentos fallidos. Un cooldown en
+   JavaScript no cuenta como rate limiting.
+4. Verificar en producción que `Strict-Transport-Security` llegue realmente y
+   probar recovery completo: el cambio de contraseña funciona y la URL queda
+   sin `access_token`, `refresh_token` ni `type=recovery`.
+5. Hacer una prueba RLS autenticada con dos cuentas propias: A no puede leer,
+   editar ni borrar filas de B. La prueba anónima ya devuelve `[]`, pero no
+   demuestra aislamiento entre dos usuarios autenticados.
+
+**Deuda de hardening, no mezclar con features:** retirar gradualmente handlers
+`onclick` y `innerHTML` para poder sacar `'unsafe-inline'` de la CSP. Mientras
+la sesión de Supabase viva en storage accesible a JavaScript, una XSS podría
+leer notas y actuar como la cuenta aunque `connect-src` limite la exfiltración.
+MFA puede ser opcional para estudiantes; pasa a ser obligatorio si aparece un
+panel administrativo.
+
+**Base de datos actual:** además de las tres tablas históricas existe
+`calendar_feeds`. Su diseño esperado es RLS activa, cero políticas, privilegios
+de tabla revocados y acceso solo por RPC; su FK a `auth.users` debe seguir con
+`ON DELETE CASCADE`. Toda tabla nueva reabre la auditoría RLS y de borrado.
+
 - **Ponderaciones oficiales: 10 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
   están completas (177 ramos FEN, 88 únicos, los 10-11 semestres de las cuatro
   carreras); lo que falta son las pautas de evaluación. A casi todos los

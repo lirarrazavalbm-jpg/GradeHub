@@ -18,11 +18,12 @@ const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
   .map(f => fs.readFileSync(raiz + f, 'utf8')).join('\n');
 
 const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };
+const historyStub = { url: null, replaceState(_state, _title, url) { this.url = url; } };
 const ctx = {
   window: { addEventListener() {}, matchMedia: () => ({ matches: true, addEventListener() {}, addListener() {} }) },
   document: { getElementById: () => stub, createElement: () => stub, addEventListener() {}, documentElement: { style: { setProperty() {}, removeProperty() {} }, setAttribute() {}, removeAttribute() {}, getAttribute() { return null } }, querySelector: () => stub, querySelectorAll: () => [], body: stub },
   localStorage: { getItem() { return null }, setItem() {}, removeItem() {} },
-  navigator: {}, location: { origin: '', pathname: '', hash: '' }, setTimeout, clearTimeout, console,
+  navigator: {}, location: { origin: '', pathname: '/recuperar', search: '?desde=correo', hash: '' }, history: historyStub, setTimeout, clearTimeout, console,
 };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 const val = n => vm.runInContext(n, ctx);
@@ -95,6 +96,20 @@ chk('esc cubre & < > " y \'', esc(`&<>"'`) === '&amp;&lt;&gt;&quot;&#39;');
 // Los colores vienen del respaldo igual que los ids y van a atributos style.
 chk('los colores se escapan en el render',
   !/\$\{[^}]*\.color\}/.test(src));
+
+console.log('\n=== Auth no filtra cuentas ni deja tokens en la URL ===');
+chk('signup no usa identities.length para revelar una cuenta existente',
+  !/identities\.length\s*===\s*0/.test(src));
+chk('el mensaje de registro no confirma si el correo existe',
+  !/Ese usuario ya existe/.test(src));
+chk('recovery limpia el fragmento antes de mostrar la pantalla',
+  /const esRecovery=location\.hash\.includes\('type=recovery'\);\s*limpiarFragmentoAuth\(\);\s*if\(esRecovery\)/.test(src));
+ctx.location.hash='#access_token=secreto&refresh_token=otro&type=recovery';
+val('limpiarFragmentoAuth')();
+chk('la limpieza conserva path y query, pero elimina todo el fragmento',
+  historyStub.url === '/recuperar?desde=correo');
+historyStub.url=null;ctx.location.hash='#seccion-agenda';val('limpiarFragmentoAuth')();
+chk('un hash normal de navegación no se toca', historyStub.url === null);
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
