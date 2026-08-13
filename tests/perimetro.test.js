@@ -78,5 +78,23 @@ chk('no hay clave de servicio de Supabase',
 chk('y el comentario que advierte sobre ella sigue ahí', /sb_secret_/.test(app));
 chk('la clave publicable sigue siendo la publicable', /sb_publishable_/.test(app));
 
+// Las Cloudflare Pages Functions corren en el servidor, así que son el lugar
+// donde una clave de servicio SÍ funcionaría — y por eso el que más tienta.
+// Este feed no la necesita: llama a una RPC `security definer` con la
+// publishable, la misma que ya es pública en el navegador.
+const fnDir = path.join(raiz, 'functions');
+const fns = fs.existsSync(fnDir)
+  ? fs.readdirSync(fnDir, { recursive: true }).filter(f => String(f).endsWith('.js'))
+  : [];
+fns.forEach(f => {
+  const src = fs.readFileSync(path.join(fnDir, String(f)), 'utf8');
+  chk(`functions/${f}: sin clave de servicio`,
+    !/sb_secret_[A-Za-z0-9_-]{8,}/.test(src) && !/["']service_role["']\s*:/.test(src));
+  // El feed va atado a un token, no a un id de usuario que venga de la URL:
+  // aceptar un user_id de fuera sería servir el calendario de cualquiera.
+  chk(`functions/${f}: no acepta un user_id desde la petición`, !/params\.\s*user_?id/i.test(src));
+});
+console.log(`     (${fns.length} Pages Function${fns.length === 1 ? '' : 's'} revisada${fns.length === 1 ? '' : 's'})`);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
