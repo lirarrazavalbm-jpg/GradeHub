@@ -82,5 +82,19 @@ if (!/googletagmanager\.com\/gtag\/js/.test(html)) {
   bien(`index.html carga Google Analytics (${idGA})`);
 }
 
+// ── Un número con % tiene que ser un porcentaje ─────────────────────────────
+// Se revisa acá porque este archivo ya inspecciona el código como texto.
+//
+// `avanceEvaluaciones()` devuelve {total, evaluado, pct}. `evaluado` es la SUMA
+// de los pesos ya evaluados de TODOS los ramos: con diez ramos el total ronda
+// los 1000, no 100. Estaba impreso como `${avance.evaluado}% del peso
+// evaluado`, así que un 2% real se mostraba como 21%. No falla nada: sale un
+// número plausible y equivocado, que es lo peor que puede hacer esta app.
+// El porcentaje es `pct` y ya lo muestra el número grande de la tarjeta.
+const appSrc = require('fs').readFileSync(__dirname + '/../app.js', 'utf8');
+const evaluadoComoPct = /\$\{[^}]*\.evaluado\}\s*%/.test(appSrc);
+if (evaluadoComoPct) mal('avance.evaluado se está imprimiendo con % y es una suma de pesos, no un porcentaje');
+else bien('ningún total de pesos se muestra como porcentaje');
+
 console.log(fallos ? `\nFAIL: ${fallos}` : '\nAnalítica OK: sin datos de usuario y bien enchufada');
 process.exit(fallos ? 1 : 0);
