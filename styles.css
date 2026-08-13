@@ -324,9 +324,19 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
    dibujaba un anillo con ::after y quedaba como una medalla pegada encima.
    El relleno sigue siendo verde —el color que significa aprobado— y el oro solo
    perfila el borde de los dígitos, así que adorna sin decir nada. */
+/* El 7,0 se celebra con un halo dorado, no con un borde.
+   Antes era `-webkit-text-stroke:1.4px #e8b53c` con `paint-order:stroke fill`,
+   y ahí había dos problemas. `paint-order` es de SVG: en texto HTML no hace
+   nada, así que el borde se pintaba ENCIMA del relleno y se comía medio píxel
+   del verde por todos lados — a 96px eso no se lee como medalla, se lee como
+   un número mal renderizado. Y el punto decimal, que es un glifo diminuto,
+   quedaba tapado por su propio borde y aparecía como un cuadrado suelto al
+   lado del número.
+   El drop-shadow sigue la forma real del glifo, respeta el punto y no toca el
+   relleno. */
 .gpa-num.grade-perfect,.ramo-num.grade-perfect{
   background-image:linear-gradient(158deg,#7bffa8 0%,#2ecc40 45%,#12a52c 100%);
-  -webkit-text-stroke:1.4px #e8b53c;paint-order:stroke fill;}
+  filter:drop-shadow(0 0 7px color-mix(in srgb,#e8b53c,transparent 45%));}
 .gpa-num.empty{background-image:none;-webkit-text-fill-color:var(--fg3);color:var(--fg3);font-size:40px;opacity:.4;cursor:default;line-height:1.6;}
 /* Decimal grande, mismo tamaño y gradient que el número. Solo se atenúa con opacity. */
 .gpa-num .gpa-decimal{
