@@ -4011,21 +4011,23 @@ function lecturaDespuesDeNota(ramo){
   return `Vas ${fmt(avg)} · necesitas ${nf(necesita)} en lo pendiente para aprobar`;
 }
 
+// Hasta dónde llega "ahora". Un mes es lo que alguien alcanza a preparar y
+// reorganizar; más allá, saber que un ramo va mal no cambia qué haces hoy.
+const HORIZONTE_FOCO=30;
+
 function withPriority(e){
   const dias=diasHasta(e.fecha);
   const peso=e.cat.peso||0;
   const avg=ramoAvg(e.ramo);
   const necesita=notaNecesaria(e.ramo);
 
-  // Urgencia: decae con los días. Lo vencido pesa más que todo.
-  let urgencia;
-  if(dias<0)urgencia=120;
-  else if(dias===0)urgencia=100;
-  else if(dias<=2)urgencia=85;
-  else if(dias<=7)urgencia=60;
-  else if(dias<=14)urgencia=35;
-  else if(dias<=30)urgencia=18;
-  else urgencia=8;
+  // Urgencia: decae de forma CONTINUA, con vida media de tres semanas.
+  //
+  // Antes eran tramos, y el último —"más de 30 días"— metía en la misma bolsa
+  // algo a cinco semanas y algo a cuatro meses. Ahí el tiempo dejaba de existir
+  // y entre dos evaluaciones lejanas solo competía el peso: un examen de 30% en
+  // diciembre le ganaba a una interrogación de 15% en septiembre.
+  const urgencia=dias<0?120:100*Math.pow(2,-dias/21);
 
   // Riesgo: si el ramo va mal, sus evaluaciones suben de prioridad
   let riesgo=0;
@@ -4039,14 +4041,33 @@ function withPriority(e){
     else if(necesita>5.0)riesgo+=15;
   }
 
-  const score=urgencia+peso*1.2+riesgo;
+  // El riesgo del ramo reordena, pero solo dentro del horizonte que uno puede
+  // preparar: avisar de un examen a cuatro meses porque el ramo va mal es
+  // volver a poner algo lejano en el lugar de "ahora".
+  const riesgoAplicado=(dias>=0&&dias<=HORIZONTE_FOCO)?riesgo:0;
 
-  // Nivel legible para el color de la barra
+  // Los tres factores se MULTIPLICAN, no se suman, y ese es el arreglo de
+  // fondo. Sumando, `peso*1.2` valía 36 puntos fijos para un 30%: como la
+  // urgencia tiende a cero con el tiempo, el peso terminaba ganando siempre si
+  // la evaluación estaba lo bastante lejos. Multiplicando, la cercanía manda y
+  // el peso y el riesgo modulan: un 30% pesa un 30% más que un 0%, esté donde
+  // esté, pero nunca convierte diciembre en "ahora".
+  let score=urgencia*(1+peso/100)*(1+riesgoAplicado/100);
+  // Lo vencido va primero, siempre. Como escalón y no confiando en la
+  // magnitud: sin esto, un 40% que vence hoy le pasaba por encima a algo que
+  // ya venció, y eso es exactamente lo que el modelo anterior evitaba.
+  if(dias<0)score+=1000;
+
+  // Nivel legible para el color de la barra. Va por DÍAS y no por el valor de
+  // `urgencia`: los cortes viejos (85, 35) eran los escalones de la escala
+  // anterior, y con la curva continua "urgencia>=85" pasó de significar dos
+  // días a significar cinco sin que nadie lo decidiera. Los umbrales en días
+  // son los mismos de antes, ahora escritos como lo que siempre fueron.
   let nivel='baja';
   if(dias<0)nivel='vencida';
-  else if(urgencia>=85&&peso>=20)nivel='critica';
-  else if(riesgo>=45||(urgencia>=85))nivel='alta';
-  else if(urgencia>=35||peso>=30)nivel='media';
+  else if(dias<=2&&peso>=20)nivel='critica';
+  else if(riesgo>=45||dias<=2)nivel='alta';
+  else if(dias<=14||peso>=30)nivel='media';
 
   return {...e,dias,score,nivel,avg,necesita};
 }
