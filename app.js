@@ -3202,16 +3202,24 @@ function renderStats(){
     const previo=ultimoHistorialConGpa(S.historial);
     const diff=previo&&g!==null?g-previo.gpa:null;
     const tendencia=diff===null?'':Math.abs(diff)<0.05?'igual que':diff>0?'sobre':'bajo';
+    // El porcentaje lo dice el número grande y NADIE más. Estaba tres veces en
+    // la misma tarjeta —la píldora del encabezado, el número grande y otra vez
+    // al final del detalle—, así que el ojo lo leía como tres datos distintos
+    // que casualmente coincidían.
+    //
+    // Y el del detalle además estaba mal: `avance.evaluado` es la SUMA de los
+    // pesos ya evaluados de todos los ramos, no un porcentaje. Con diez ramos
+    // el total ronda los 1000, así que "21% del peso evaluado" era en realidad
+    // un 2%. El porcentaje es `avance.pct` y ya está arriba.
     const lectura=diff===null
-      ? `${avance.pct}% del semestre ya tiene nota.`
+      ? `Todavía no tienes un semestre archivado con el que compararte.`
       : Math.abs(diff)<0.05?`Vas igual que en ${previo.label||'el semestre anterior'}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${tendencia} ${previo.label||'el semestre anterior'}.`;
     const detalle=diff===null
-      ? `${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''} · ${avance.evaluado}% del peso evaluado`
-      : `Promedio actual ${nf(g)} · antes ${nf(previo.gpa)} · ${avance.pct}% evaluado`;
+      ? `${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}`
+      : `Promedio actual ${nf(g)} · antes ${nf(previo.gpa)}`;
     html+=`
     <div class="section-hd" style="padding:6px 20px 8px;">
       <span class="section-hd-title">Lectura del semestre</span>
-      <span class="ag-count">${avance.pct}%</span>
     </div>
     <div class="stat-card" style="margin:0 20px 16px;">
       <div class="stat-label">Avance de evaluaciones</div>
