@@ -3295,6 +3295,10 @@ function openEditCatModal(catId){
       <input type="date" id="m-cat-fecha" value="${esc(cat.fecha||'')}" autocomplete="off" style="flex:1;"/>
       ${cat.fecha?`<button type="button" onclick="document.getElementById('m-cat-fecha').value='';" style="padding:8px 10px;background:var(--muted);border:none;border-radius:8px;color:var(--fg2);font-size:12px;font-weight:600;cursor:pointer;">Quitar</button>`:''}
     </div>
+    ${cat.fecha?`<a class="ramo-action" href="${esc(googleCalUrl(r,cat))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;margin-bottom:14px;">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
+      Agregar a Google Calendar
+    </a>`:''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="confirmEditCat('${catId}')">Guardar</button>
@@ -3855,6 +3859,28 @@ function buildICS(){
   });
   lines.push('END:VCALENDAR');
   return lines.join('\r\n');
+}
+
+// Una evaluación suelta a Google Calendar, con un toque desde el teléfono.
+//
+// El .ics de acá arriba sirve para todos los calendarios, pero para meterlo a
+// Google hay que entrar a calendar.google.com desde un computador e importar el
+// archivo a mano — en el celular, que es donde está casi todo el mundo, la
+// descarga no lleva a ninguna parte.
+//
+// Esto es la URL de plantilla de Google: abre el evento prellenado y el
+// estudiante solo aprieta Guardar. Sin API, sin OAuth, sin backend y sin
+// permisos nuevos: es un link. No sincroniza — si después cambias la fecha en
+// GradeHub, el evento en Google se queda con la vieja.
+function googleCalUrl(ramo,cat){
+  if(!cat||!cat.fecha)return '';
+  const p=new URLSearchParams({
+    action:'TEMPLATE',
+    text:`${cat.nombre} — ${ramo.nombre}`,
+    dates:`${icsDate(cat.fecha)}/${icsDatePlus1(cat.fecha)}`,
+    details:`Vale ${r2(cat.peso||0)}% de ${ramo.nombre}. Agendado desde GradeHub.`,
+  });
+  return 'https://calendar.google.com/calendar/render?'+p.toString();
 }
 
 function exportarCalendario(){
