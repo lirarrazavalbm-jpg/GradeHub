@@ -61,6 +61,19 @@ chk('X-Content-Type-Options nosniff', /X-Content-Type-Options:\s*nosniff/.test(h
 chk('Referrer-Policy', /Referrer-Policy:\s*strict-origin/.test(headers));
 chk('Permissions-Policy cierra cámara, micrófono y pago', /Permissions-Policy:[^\n]*camera=\(\)/.test(headers));
 chk('aplican a todo el sitio, no a un archivo suelto', /\/\*\n\s*Content-Security-Policy/.test(headers));
+chk('HSTS obliga HTTPS después del primer acceso',
+  /Strict-Transport-Security:\s*max-age=31536000;\s*includeSubDomains/.test(headers));
+
+console.log('\n=== El deploy no ejecuta paquetes flotantes ===');
+const pkg=JSON.parse(fs.readFileSync(path.join(raiz,'package.json'),'utf8'));
+const deploy=fs.readFileSync(path.join(raiz,'.github/workflows/deploy.yml'),'utf8');
+const testsWorkflow=fs.readFileSync(path.join(raiz,'.github/workflows/tests.yml'),'utf8');
+chk('Wrangler está fijado a una versión exacta', /^\d+\.\d+\.\d+$/.test((pkg.devDependencies||{}).wrangler||''));
+chk('los workflows instalan el lockfile con npm ci', /run:\s*npm ci/.test(deploy) && /run:\s*npm ci/.test(testsWorkflow));
+chk('CI usa Wrangler instalado, no descarga latest',
+  /npx --no-install wrangler/.test(deploy) && /npx --no-install wrangler/.test(testsWorkflow));
+chk('CI usa la versión de Node que exige Wrangler',
+  pkg.engines&&pkg.engines.node==='>=22' && !/node-version:\s*20/.test(deploy+testsWorkflow));
 
 console.log('\n=== El service worker no cachea cualquier dominio ===');
 // `hostname.includes('fonts.googleapis.com')` también calza con

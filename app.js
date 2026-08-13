@@ -626,7 +626,10 @@ function enterApp(){
 
 function traduceAuthError(e){
   const m=((e&&e.message)||'').toLowerCase();
-  if(m.includes('already')||m.includes('exists'))return 'Ese usuario ya existe. Inicia sesión.';
+  // No confirmar si un correo ya tiene cuenta: esa diferencia permite enumerar
+  // usuarios y preparar phishing o credential stuffing. Registro existente y
+  // registro aceptado tienen que verse iguales hacia afuera.
+  if(m.includes('already')||m.includes('exists'))return 'Si el correo puede registrarse, te enviaremos las instrucciones para continuar.';
   if(m.includes('invalid login')||m.includes('credentials'))return 'Usuario o contraseña incorrectos.';
   if(m.includes('password'))return 'Contraseña inválida (mínimo 6 caracteres).';
   return 'No se pudo conectar. Revisa tu internet e intenta de nuevo.';
@@ -651,10 +654,7 @@ async function submitAuth(){
     if(authMode==='signup'){
       const {data,error}=await supabaseClient.auth.signUp({email,password:p});
       if(error)throw error;
-      if(data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
-        authError('Ya existe una cuenta con ese correo. Inicia sesión.');btn.disabled=false;btn.textContent=orig;return;
-      }
-      if(!data.session){authError('Te enviamos un correo para confirmar tu cuenta. Ábrelo y luego inicia sesión.','info');btn.disabled=false;btn.textContent=orig;return;}
+      if(!data.session){authError('Si el correo puede registrarse, te enviaremos las instrucciones para continuar.','info');btn.disabled=false;btn.textContent=orig;return;}
       currentUser=data.user;await afterSignup();
     }else{
       const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:p});
@@ -730,6 +730,16 @@ function showResetScreen(){
   document.getElementById('bottom-nav').style.display='none';
   document.getElementById('screen-reset').classList.add('active');
   setTimeout(()=>{const i=document.getElementById('reset-pass');if(i)i.focus();},100);
+}
+
+// Supabase procesa el fragmento antes de que boot() reciba la sesión. Recién
+// después se puede borrar: hacerlo antes rompería OAuth y recovery. Una vez
+// procesado, dejar access_token/refresh_token en la barra o el historial solo
+// aumenta la superficie frente a extensiones, capturas y una futura XSS.
+function limpiarFragmentoAuth(){
+  const h=location.hash||'';
+  if(!/(?:^|[&#])(access_token|refresh_token|type|expires_in|expires_at|token_type)=/.test(h))return;
+  try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
 }
 
 async function afterSignup(){
@@ -826,6 +836,7 @@ async function boot(){
   supabaseClient.auth.onAuthStateChange((event, session)=>{
     if(event==='PASSWORD_RECOVERY'){
       if(session)currentUser=session.user;
+      limpiarFragmentoAuth();
       showResetScreen();
     }
   });
@@ -835,11 +846,9 @@ async function boot(){
       currentUser=session.user;
       // Si venimos de un correo de recuperación, la URL trae "type=recovery" en el hash.
       // Mostrar la pantalla de nueva contraseña en vez de entrar directo a la app.
-      if(location.hash.includes('type=recovery')){showResetScreen();return;}
-      // Al volver de OAuth el hash trae los tokens: se limpia para no dejarlos a la vista
-      if(location.hash.includes('access_token')){
-        try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
-      }
+      const esRecovery=location.hash.includes('type=recovery');
+      limpiarFragmentoAuth();
+      if(esRecovery){showResetScreen();return;}
       await afterLogin();return;
     }
   }catch(e){}

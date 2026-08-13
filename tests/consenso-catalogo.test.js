@@ -61,6 +61,15 @@ chk('las dos RPC requieren sesión y no quedan públicas',
   (sql.match(/security definer/g) || []).length === 2 && /auth\.uid\(\)/.test(sql) &&
   /grant execute on function public\.submit_catalog_report[\s\S]*to authenticated/.test(sql) &&
   /grant execute on function public\.catalog_consensus\(text\) to authenticated/.test(sql));
+chk('la RPC limita largos, cantidad y tamaño aunque se salten la interfaz',
+  /length\(p_tenant\) > 20/.test(sql) &&
+  /jsonb_array_length\(p_estructura\) not between 1 and 30/.test(sql) &&
+  /octet_length\(p_estructura::text\) > 32768/.test(sql));
+chk('pesos, slots y compuertas se validan en el servidor',
+  /peso'[\s\S]*not between 0 and 100/.test(sql) &&
+  /slots'[\s\S]*not between 1 and 100/.test(sql) &&
+  /min'[\s\S]*not between 1 and 7/.test(sql) &&
+  /cap'[\s\S]*not between 1 and 7/.test(sql));
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

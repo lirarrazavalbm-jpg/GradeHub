@@ -50,17 +50,52 @@ begin
     raise exception 'Faltan datos del reporte';
   end if;
 
-  if jsonb_typeof(p_estructura) <> 'array' or jsonb_array_length(p_estructura) = 0 then
-    raise exception 'La estructura debe tener al menos una evaluación';
+  -- La interfaz trae maxlength, pero cualquiera puede llamar la RPC directo.
+  -- Estos límites son la frontera real contra spam y payloads desproporcionados.
+  if length(p_tenant) > 20
+     or length(coalesce(p_carrera, '')) > 80
+     or length(p_ramo) > 160
+     or length(p_ramo_norm) > 160
+     or length(coalesce(p_ramo_sigla, '')) > 40
+     or length(p_huella) > 4000
+     or length(coalesce(p_nota, '')) > 500 then
+    raise exception 'El reporte excede el largo permitido';
+  end if;
+
+  if jsonb_typeof(p_estructura) <> 'array'
+     or jsonb_array_length(p_estructura) not between 1 and 30
+     or octet_length(p_estructura::text) > 32768 then
+    raise exception 'La estructura debe tener entre 1 y 30 evaluaciones y un tamaño razonable';
   end if;
 
   if exists (
     select 1
     from jsonb_array_elements(p_estructura) as e(valor)
     where jsonb_typeof(e.valor) <> 'object'
+       or jsonb_typeof(e.valor->'nombre') <> 'string'
+       or length(trim(e.valor->>'nombre')) not between 1 and 120
        or jsonb_typeof(e.valor->'peso') <> 'number'
+       or case when jsonb_typeof(e.valor->'peso') = 'number'
+          then (e.valor->>'peso')::numeric not between 0 and 100 else false end
+       or (e.valor ? 'slots' and (
+         jsonb_typeof(e.valor->'slots') <> 'number'
+         or case when jsonb_typeof(e.valor->'slots') = 'number'
+            then (e.valor->>'slots')::numeric <> trunc((e.valor->>'slots')::numeric)
+              or (e.valor->>'slots')::numeric not between 1 and 100
+            else false end
+       ))
+       or (e.valor ? 'min' and (
+         jsonb_typeof(e.valor->'min') <> 'number'
+         or case when jsonb_typeof(e.valor->'min') = 'number'
+            then (e.valor->>'min')::numeric not between 1 and 7 else false end
+       ))
+       or (e.valor ? 'cap' and (
+         jsonb_typeof(e.valor->'cap') <> 'number'
+         or case when jsonb_typeof(e.valor->'cap') = 'number'
+            then (e.valor->>'cap')::numeric not between 1 and 7 else false end
+       ))
   ) then
-    raise exception 'Cada evaluación debe tener un peso numérico';
+    raise exception 'La estructura contiene una evaluación inválida';
   end if;
 
   select coalesce(sum((e.valor->>'peso')::numeric), 0)

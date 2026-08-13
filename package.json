@@ -2,6 +2,9 @@
   "name": "gradehub",
   "private": true,
   "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test:sintaxis": "node tests/sintaxis.test.js",
     "test:temas": "node tests/temas.test.js",
@@ -24,6 +27,9 @@
     "test:analitica": "node tests/analitica.test.js",
     "test:ui": "node tests/ui-confirmaciones.test.js",
     "test": "npm run test:sintaxis && npm run test:temas && npm run test:compuertas && npm run test:importar && npm run test:presets && npm run test:descartes && npm run test:malla-uc && npm run test:sim-stepper && npm run test:evaluacion-simple && npm run test:notas-entrada && npm run test:seguridad && npm run test:perimetro && npm run test:creditos-uc && npm run test:vocabulario && npm run test:seo && npm run test:movimiento && npm run test:catalogo && npm run test:consenso-catalogo && npm run test:analitica && npm run test:ui",
-    "deploy": "npx wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true"
+    "deploy": "npx --no-install wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true"
+  },
+  "devDependencies": {
+    "wrangler": "4.123.0"
   }
 }
