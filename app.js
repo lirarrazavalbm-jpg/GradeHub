@@ -24,7 +24,8 @@ function normalize(data) {
     id: idSeguro(r.id),
     color: r.color || '#2563eb',
     // Créditos SCT — opcional. Si todos los ramos lo tienen, el promedio se pondera.
-    creditos: (typeof r.creditos === 'number' && r.creditos > 0) ? r.creditos : null,
+    // El 0 se conserva: es un dato exacto, no un faltante. Ver tieneCreditos().
+    creditos: (typeof r.creditos === 'number' && r.creditos >= 0) ? r.creditos : null,
     // De qué catálogo (universidad + carrera) salió este ramo. null = creado a mano.
     origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
     // Otro ramo aporta parte de esta nota (el laboratorio de Dinámica).
@@ -573,31 +574,43 @@ function esAporteDeOtroRamo(r,ramos){
 function ramosDelPromedio(ramos){
   return (ramos||[]).filter(r=>!esAporteDeOtroRamo(r,ramos));
 }
+// ¿Sabemos cuántos créditos vale este ramo?
+//
+// 0 SCT es un dato conocido y exacto, no un faltante: en Ingeniería UC valen 0
+// los tres laboratorios de Física y Práctica I. Preguntar por `> 0` los trataba
+// como "no tenemos el dato", y con eso UN laboratorio bastaba para tumbar el
+// promedio ponderado de todo el semestre a promedio simple — justo lo que la
+// tabla de créditos existe para evitar.
+function tieneCreditos(r){return typeof r.creditos==='number'&&r.creditos>=0;}
+
 function gpaMode(ramos){
   const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null);
   if(conNota.length===0)return 'empty';
-  return conNota.every(r=>typeof r.creditos==='number'&&r.creditos>0)?'creditos':'simple';
+  return conNota.every(tieneCreditos)?'creditos':'simple';
 }
 function gpa(ramos){
   const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null);
   if(conNota.length===0)return null;
+  const simple=()=>{const a=conNota.map(ramoAvg);return a.reduce((x,y)=>x+y,0)/a.length;};
   if(gpaMode(ramos)==='creditos'){
     let num=0,den=0;
     conNota.forEach(r=>{const a=ramoAvg(r);num+=a*r.creditos;den+=r.creditos;});
-    return den>0?num/den:null;
+    // Todo lo rendido vale 0 SCT (un semestre de puros laboratorios): no hay con
+    // qué ponderar, pero el estudiante igual tiene notas y merece ver su
+    // promedio. Antes devolvía null y la pantalla quedaba sin número.
+    return den>0?num/den:simple();
   }
-  const a=conNota.map(ramoAvg);
-  return a.reduce((x,y)=>x+y,0)/a.length;
+  return simple();
 }
 // Total de créditos inscritos (solo cuenta los que tienen el dato)
 function totalCreditos(ramos){
-  return ramos.reduce((s,r)=>s+(typeof r.creditos==='number'&&r.creditos>0?r.creditos:0),0);
+  return ramos.reduce((s,r)=>s+(tieneCreditos(r)?r.creditos:0),0);
 }
 // La precisión del PPA depende de que cada ramo ya evaluado tenga SCT. Esto
 // solo identifica los datos pendientes para guiar al estudiante: no cambia
 // cómo gpa() calcula ni interpreta el promedio.
 function ramosSinCreditosParaPpa(ramos){
-  return ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null&&!(typeof r.creditos==='number'&&r.creditos>0));
+  return ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null&&!tieneCreditos(r));
 }
 function semester(){
   const now=new Date(),m=now.getMonth(),y=now.getFullYear();
@@ -2842,13 +2855,13 @@ function histRamoAvg(r){
 function recomputeHistGpa(h){
   const conNota=(h.ramos||[]).filter(r=>histRamoAvg(r)!==null);
   if(conNota.length===0){h.gpa=null;return;}
-  const todosConCreditos=conNota.every(r=>typeof r.creditos==='number'&&r.creditos>0);
-  if(todosConCreditos){
+  const simple=()=>conNota.reduce((s,r)=>s+histRamoAvg(r),0)/conNota.length;
+  if(conNota.every(tieneCreditos)){
     let num=0,den=0;
     conNota.forEach(r=>{num+=histRamoAvg(r)*r.creditos;den+=r.creditos;});
-    h.gpa=den>0?num/den:null;
+    h.gpa=den>0?num/den:simple();
   }else{
-    h.gpa=conNota.reduce((s,r)=>s+histRamoAvg(r),0)/conNota.length;
+    h.gpa=simple();
   }
 }
 

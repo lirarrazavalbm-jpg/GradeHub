@@ -28,6 +28,29 @@ const eq = (n, got, exp) => chk(`${n}  (${JSON.stringify(got)})`, got === exp);
 
 const CREDITOS_UC = val('CREDITOS_UC'), creditosDe = val('creditosDe'), MALLA_UC = val('MALLA_UC');
 
+console.log('\n=== Un ramo de 0 SCT no tumba el promedio ponderado ===');
+// Los tres laboratorios de Física y Práctica I valen 0 SCT. Es un dato exacto,
+// no un faltante — pero `creditos > 0` los leía como "no lo sabemos", y con eso
+// UN laboratorio bastaba para que el semestre entero cayera a promedio simple.
+const gpa = val('gpa'), gpaMode = val('gpaMode'), normalize = val('normalize');
+const ramo = (id, creditos, nota) => ({
+  id, nombre: 'R' + id, color: '#22c55e', creditos, origen: null, gates: [],
+  categorias: [{ id: id + 'c', nombre: 'P', peso: 100, notas: [{ id: id + 'n', nombre: 'n', valor: nota, peso: 1 }] }],
+});
+chk('normalize conserva el 0 en vez de convertirlo en null',
+  normalize({ ramos: [ramo('lab', 0, 6.0)] }).ramos[0].creditos === 0);
+const conLab = [ramo('lab', 0, 2.0), ramo('otro', 10, 7.0)];
+eq('con un lab de 0 SCT sigue ponderando', gpaMode(conLab), 'creditos');
+// El lab pesa 0, así que el promedio es el del otro ramo. En simple daría 4,5.
+eq('y el lab no arrastra el promedio', Number(gpa(conLab).toFixed(2)), 7);
+// Un dato que de verdad falta sigue cayendo a simple: eso no cambia.
+eq('un crédito ausente sigue cayendo a simple', gpaMode([ramo('a', 2, 2.0), ramo('b', null, 7.0)]), 'simple');
+// Semestre de puros laboratorios: no hay con qué ponderar, pero hay notas.
+eq('todo en 0 SCT devuelve el promedio simple, no null',
+  Number(gpa([ramo('a', 0, 2.0), ramo('b', 0, 7.0)]).toFixed(2)), 4.5);
+chk('un lab de 0 SCT no se reporta como crédito faltante',
+  val('ramosSinCreditosParaPpa')(conLab).length === 0);
+
 console.log('\n=== La tabla ===');
 const entradas = Object.entries(CREDITOS_UC);
 chk('trae los 146 ramos recogidos de los 34 majors', entradas.length === 146);
