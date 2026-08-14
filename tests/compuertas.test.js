@@ -280,65 +280,90 @@ const act2 = ctx.gatesActivas(gestion(5.0, 5.0, 5.0, 5.0));
 if (act2.length === 0) { ok++; console.log('  OK   sin compuertas activas cuando todo aprueba'); }
 else { fail++; console.log('  FAIL debería estar vacío → ' + JSON.stringify(act2)); }
 
-console.log('\n=== Dinámica: cátedra y laboratorio en un solo ramo ===');
-// El laboratorio (FIS0154, 0 SCT) es el 30% de la nota de Dinámica, no un ramo
-// aparte. La fórmula del programa tiene dos requisitos cruzados:
+console.log('\n=== Dinámica y su laboratorio: dos ramos, una nota ===');
+// Son dos cursos con dos actas, pero la nota de Dinámica se calcula CON la del
+// laboratorio. La fórmula del programa tiene dos requisitos cruzados:
 //
 //   NF = 0,7·NFC + 0,3·NL   si NL ≥ 4,0 Y NFC ≥ 4,0
 //   NF = min(NFC, NL)       si cualquiera de los dos baja de 4,0
 //
-// La app lo arma con secciones planas y dos group_min con cap:'self'. Que eso
-// dé lo mismo que la fórmula no es evidente, y equivocarse acá no lanza nada:
-// entrega un promedio que el estudiante cree.
-// Este archivo reporta con un helper por bloque; acá va el suyo.
+// Que el vínculo entre dos ramos dé exactamente eso no es evidente, y
+// equivocarse no lanza nada: entrega un promedio que el estudiante cree.
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 const presetRamo = vm.runInContext('presetRamo', ctx);
 const ramoAvg = vm.runInContext('ramoAvg', ctx);
+const notaNecesaria = vm.runInContext('notaNecesaria', ctx);
+const setRamos = rs => { ctx.__rs = rs; vm.runInContext('S.ramos=__rs', ctx); };
 
-// La fórmula tal cual la escribe el programa, sin pasar por la app.
+chk('Dinámica declara de dónde viene el 30% que le falta',
+  !!(presetRamo('Dinámica', 'uc', 'ING-PC') || {}).aporta);
+chk('el laboratorio vuelve a existir como ramo propio',
+  !!presetRamo('Laboratorio de Dinámica', 'uc', 'ING-PC'));
+
+// La fórmula del programa, escrita aparte para contrastar.
 function segunElPrograma(I1, I2, NC, NE, NClab, NI, NP) {
   const NFC = 0.25 * I1 + 0.25 * I2 + 0.20 * NC + 0.30 * NE;
   let NL = 0.10 * NClab + 0.70 * NI + 0.20 * NP;
   if (NP < 4.0) NL = Math.min(NL, 3.9); // evaluación de pares reprobatoria
   return (NL >= 4.0 && NFC >= 4.0) ? 0.7 * NFC + 0.3 * NL : Math.min(NFC, NL);
 }
-// Sin esta guarda, si el preset desaparece el archivo revienta con un
-// TypeError y el motivo real queda escondido entre stack frames.
-chk('Dinámica tiene pauta oficial', !!presetRamo('Dinámica', 'uc', 'ING-PC'));
-function segunLaApp(I1, I2, NC, NE, NClab, NI, NP) {
-  const p = presetRamo('Dinámica', 'uc', 'ING-PC');
-  if (!p) return NaN;
-  const val = {
-    'Interrogación 1': I1, 'Interrogación 2': I2, 'Controles': NC, 'Examen': NE,
-    'Laboratorio · Controles': NClab, 'Laboratorio · Informes': NI,
-    'Laboratorio · Evaluación de pares': NP,
-  };
-  p.categorias.forEach(c => { c.notas = [{ id: 'n' + c.id, nombre: c.nombre, valor: val[c.nombre], peso: 1 }]; });
-  return ramoAvg({ id: 'd', nombre: 'Dinámica', color: '#fff', categorias: p.categorias, gates: p.gates });
+function armar(I1, I2, NC, NE, NClab, NI, NP, conLab) {
+  const d = presetRamo('Dinámica', 'uc', 'ING-PC'), l = presetRamo('Laboratorio de Dinámica', 'uc', 'ING-PC');
+  const vD = { 'Interrogación 1': I1, 'Interrogación 2': I2, 'Controles': NC, 'Examen': NE };
+  const vL = { 'Controles': NClab, 'Informes': NI, 'Evaluación de pares': NP };
+  d.categorias.forEach(c => c.notas = vD[c.nombre] == null ? [] : [{ id: 'n' + c.id, nombre: c.nombre, valor: vD[c.nombre], peso: 1 }]);
+  l.categorias.forEach(c => c.notas = vL[c.nombre] == null ? [] : [{ id: 'm' + c.id, nombre: c.nombre, valor: vL[c.nombre], peso: 1 }]);
+  const din = { id: 'din', nombre: 'Dinámica', categorias: d.categorias, gates: d.gates, aporta: d.aporta };
+  const lab = { id: 'lab', nombre: 'Laboratorio de Dinámica', categorias: l.categorias, gates: l.gates };
+  setRamos(conLab === false ? [din] : [din, lab]);
+  return { din, lab };
 }
 [
   ['ambos sobre 4,0 → se ponderan', [5.0, 5.5, 6.0, 4.5, 6.0, 5.0, 6.0]],
-  ['cátedra justo en 4,0', [4.0, 4.0, 4.0, 4.0, 6.0, 6.0, 6.0]],
-  ['cátedra bajo 4,0 → la final cae a la cátedra', [3.0, 3.0, 3.0, 3.0, 6.5, 6.5, 6.5]],
-  ['laboratorio bajo 4,0 → la final cae al lab', [6.0, 6.0, 6.0, 6.0, 2.0, 2.5, 4.5]],
+  ['cátedra justo en 4,0', [4, 4, 4, 4, 6, 6, 6]],
+  ['cátedra bajo 4,0 → la final cae a la cátedra', [3, 3, 3, 3, 6.5, 6.5, 6.5]],
+  ['laboratorio bajo 4,0 → la final cae al lab', [6, 6, 6, 6, 2.0, 2.5, 4.5]],
   ['los dos bajo 4,0 → el menor de ambos', [3.5, 3.5, 3.5, 3.5, 2.0, 2.0, 4.5]],
-  ['evaluación de pares bajo 4,0 → tope 3,9', [6.5, 6.5, 6.5, 6.5, 7.0, 7.0, 3.0]],
+  ['evaluación de pares bajo 4,0 → el lab topa en 3,9', [6.5, 6.5, 6.5, 6.5, 7, 7, 3.0]],
   ['todo 7,0', [7, 7, 7, 7, 7, 7, 7]],
   ['todo 4,0', [4, 4, 4, 4, 4, 4, 4]],
 ].forEach(([nombre, args]) => {
-  const esperado = segunElPrograma(...args), obtenido = segunLaApp(...args);
+  const { din } = armar(...args);
+  const esperado = segunElPrograma(...args), obtenido = ramoAvg(din);
   chk(`${nombre} (programa ${esperado.toFixed(2)} · app ${obtenido.toFixed(2)})`, Math.abs(esperado - obtenido) < 0.0001);
 });
 
-// Y la suma de los pesos aplanados tiene que seguir dando el 70/30 del programa.
-const dina = presetRamo('Dinámica', 'uc', 'ING-PC') || { categorias: [] };
-const peso = n => (dina.categorias.find(c => c.nombre === n) || { peso: 0 }).peso;
-chk('la cátedra pesa 70 del ramo', Math.abs(peso('Interrogación 1') + peso('Interrogación 2') + peso('Controles') + peso('Examen') - 70) < 0.01);
-chk('el laboratorio pesa 30 del ramo', Math.abs(peso('Laboratorio · Controles') + peso('Laboratorio · Informes') + peso('Laboratorio · Evaluación de pares') - 30) < 0.01);
-// El lab dejó de ser un ramo aparte: ofrecerlo por separado lo contaría dos veces.
-const MALLA_UC = vm.runInContext('MALLA_UC', ctx);
-chk('Laboratorio de Dinámica ya no está en la malla como ramo suelto',
-  !Object.values(MALLA_UC['ING-PC']).flat().includes('Laboratorio de Dinámica'));
+// El laboratorio se aprueba o se reprueba por sí solo: por eso tiene nota propia.
+const solo = armar(6, 6, 6, 6, 7, 7, 3.0);
+chk('el laboratorio muestra su propia nota, no la de Dinámica', Math.abs(ramoAvg(solo.lab) - 3.9) < 0.0001);
+
+// Sin el laboratorio agregado, Dinámica no puede inventar el 30%: muestra lo suyo.
+const sinLab = armar(5, 5, 5, 5, null, null, null, false);
+chk('sin el laboratorio agregado, Dinámica no inventa el 30%', Math.abs(ramoAvg(sinLab.din) - 5.0) < 0.0001);
+
+// El laboratorio NO entra por su cuenta al promedio general: su nota ya está
+// adentro de la de Dinámica. Contaba dos veces, y como tiene 0 SCT arrastraba
+// el PPA entero a promedio simple: un curso de cero créditos terminaba pesando
+// igual que uno de diez.
+const gpa = vm.runInContext('gpa', ctx), gpaMode = vm.runInContext('gpaMode', ctx);
+const sinCreditos = vm.runInContext('ramosSinCreditosParaPpa', ctx);
+const ppa = armar(5.0, 5.5, 6.0, 4.5, 6.0, 5.0, 6.0);
+ppa.din.creditos = 10; ppa.lab.creditos = null;   // FIS0154 vale 0 SCT
+const soloDinamica = ramoAvg(ppa.din);
+chk(`el promedio general no cuenta el laboratorio aparte (${gpa([ppa.din, ppa.lab]).toFixed(3)})`,
+  Math.abs(gpa([ppa.din, ppa.lab]) - soloDinamica) < 0.0001);
+chk('y por lo mismo sigue ponderando por créditos, no cayendo a simple',
+  gpaMode([ppa.din, ppa.lab]) === 'creditos');
+chk('tampoco le pide SCT a un ramo que no entra al promedio',
+  sinCreditos([ppa.din, ppa.lab]).length === 0);
+
+// "¿Qué nota necesito?" tiene que contar el 30% del laboratorio. Con la cátedra
+// completa en 3,0 y el lab sin notas, hace falta un 6,33 en el lab para llegar
+// a 4,0: (4,0·100 − 3,0·70) / 30.
+const paraCalc = armar(3, 3, 3, 3, null, null, null);
+const nec = notaNecesaria(paraCalc.din);
+chk(`la nota necesaria cuenta el 30% del laboratorio (${nec === null ? 'null' : nec.toFixed(2)})`,
+  nec !== null && Math.abs(nec - (4.0 * 100 - 3.0 * 70) / 30) < 0.0001);
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

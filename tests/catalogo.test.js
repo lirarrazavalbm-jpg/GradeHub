@@ -69,9 +69,11 @@ const vacios = cargar([
   { id: 'b', nombre: 'Dinámica', origen: uc, categorias: [], gates: [] },
 ]);
 chk('un ramo del catálogo vacío recibe su pauta al cargar', vacios[0].categorias.length === 8);
-// Dinámica trae el laboratorio adentro: 7 secciones y tres compuertas.
-chk('y también sus compuertas', vacios[0].gates.length === 1 && vacios[1].gates.length === 3);
-chk('Dinámica llega con su laboratorio incluido', vacios[1].categorias.length === 7);
+chk('y también sus compuertas', vacios[0].gates.length === 1);
+// Dinámica llega con sus cuatro evaluaciones de cátedra y con el vínculo al
+// laboratorio: sin `aporta`, la nota le quedaría 30% corta y sin avisar.
+chk('Dinámica llega con su vínculo al laboratorio',
+  vacios[1].categorias.length === 4 && !!vacios[1].aporta && vacios[1].aporta.peso === 30);
 
 // El nombre de la malla y el de la pauta no siempre coinciden en mayúsculas.
 const filo = cargar([{ id: 'c', nombre: 'Filosofía: ¿Para Qué?', origen: uc, categorias: [], gates: [] }]);

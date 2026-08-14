@@ -27,6 +27,8 @@ function normalize(data) {
     creditos: (typeof r.creditos === 'number' && r.creditos > 0) ? r.creditos : null,
     // De qué catálogo (universidad + carrera) salió este ramo. null = creado a mano.
     origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
+    // Otro ramo aporta parte de esta nota (el laboratorio de Dinámica).
+    aporta: (r.aporta && r.aporta.ramo && r.aporta.peso) ? {ramo:r.aporta.ramo, peso:r.aporta.peso, min:r.aporta.min} : null,
     categorias: (r.categorias || []).map(c => ({
       ...c,
       id: idSeguro(c.id),
@@ -52,7 +54,7 @@ function normalize(data) {
   // ramo simplemente nunca se entera. Por eso se rellena al cargar.
   data.ramos.forEach(r => {
     const p = pautaPendiente(r);
-    if (p) { r.categorias = p.categorias; r.gates = p.gates; }
+    if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; }
   });
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
@@ -462,7 +464,7 @@ function avgDeGrupo(r,catIds){
 //                        mínimo topa la final. Con cap:'self' el tope es el
 //                        propio promedio del grupo (regla "la nota más baja
 //                        entre los dos requisitos", común en FEN).
-function ramoAvg(r){
+function ramoAvg(r,visitados){
   const res=calculateFinalGrade(ramoToStructure(r),gradesOf(r));
   let v=res.raw;
   if(v!==null && Array.isArray(r.gates)){
@@ -479,9 +481,41 @@ function ramoAvg(r){
       }
     }
   }
-  return v;
+  return combinarConRamoVinculado(r,v,visitados);
 }
 
+// ─── UN RAMO QUE APORTA A OTRO ───────────────────────────────────────────────
+// Dinámica y su laboratorio son dos cursos con dos actas, pero una sola nota
+// final: NF = 0,7·NFC + 0,3·NL, y si cualquiera de los dos baja de 4,0, la
+// final es la MENOR de las dos. Tenerlos como dos ramos sueltos obligaba al
+// estudiante a hacer esa cuenta a mano cada vez que ingresaba una nota.
+//
+// El vínculo se declara en el dato (`aporta` en el preset) y no con un `if` de
+// ramo en el código: el día que aparezca otro par cátedra/laboratorio —hay dos
+// más en la malla— es agregar una línea a data.js.
+function ramoVinculado(r){
+  if(!r||!r.aporta||!r.aporta.ramo)return null;
+  const objetivo=normName(r.aporta.ramo);
+  return (S.ramos||[]).find(x=>x!==r&&normName(x.nombre)===objetivo)||null;
+}
+// `visitados` corta una referencia circular: si alguien declarara A→B y B→A,
+// sin esto la recursión no termina y la app se cae al primer render.
+function combinarConRamoVinculado(r,propio,visitados){
+  const link=r&&r.aporta;
+  if(!link||propio===null)return propio;
+  const vistos=visitados||new Set();
+  if(vistos.has(r.id))return propio;
+  vistos.add(r.id);
+  const otro=ramoVinculado(r);
+  if(!otro)return propio;                      // todavía no agregó el laboratorio
+  const externo=ramoAvg(otro,vistos);
+  if(externo===null)return propio;             // el laboratorio aún no tiene notas
+  const p=(link.peso||0)/100;
+  let v=propio*(1-p)+externo*p;
+  // "Si NL ≤ 4,0 o NFC ≤ 4,0, entonces NF = min(NFC, NL)."
+  if(typeof link.min==='number'&&(propio<link.min||externo<link.min))v=Math.min(propio,externo);
+  return v;
+}
 // Los descartes vienen del motor, pero se explican en la evaluación donde
 // ocurren. La nota sigue visible: solo no participa en ese promedio.
 function textoDescarte(cat,descarte){
@@ -519,13 +553,27 @@ function gatesActivas(r){
 // Promedio general. En Chile el PPA se pondera por créditos (SCT), no es simple.
 // Si TODOS los ramos con nota tienen créditos → ponderado. Si no → simple.
 // Mezclar ambos daría un número engañoso, así que se prefiere lo predecible.
+// Un ramo que APORTA a otro no entra por su cuenta al promedio general: su
+// nota ya está adentro de la del ramo al que aporta. El Laboratorio de
+// Dinámica contaba dos veces —una dentro de Dinámica y otra como ramo suelto—,
+// y encima sus 0 SCT hacían caer el PPA a promedio simple, así que un curso de
+// cero créditos terminaba pesando igual que uno de diez. Nada de eso falla:
+// solo entrega un promedio más alto o más bajo del real.
+function esAporteDeOtroRamo(r,ramos){
+  if(!r)return false;
+  const n=normName(r.nombre);
+  return (ramos||[]).some(x=>x!==r&&x.aporta&&x.aporta.ramo&&normName(x.aporta.ramo)===n);
+}
+function ramosDelPromedio(ramos){
+  return (ramos||[]).filter(r=>!esAporteDeOtroRamo(r,ramos));
+}
 function gpaMode(ramos){
-  const conNota=ramos.filter(r=>ramoAvg(r)!==null);
+  const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null);
   if(conNota.length===0)return 'empty';
   return conNota.every(r=>typeof r.creditos==='number'&&r.creditos>0)?'creditos':'simple';
 }
 function gpa(ramos){
-  const conNota=ramos.filter(r=>ramoAvg(r)!==null);
+  const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null);
   if(conNota.length===0)return null;
   if(gpaMode(ramos)==='creditos'){
     let num=0,den=0;
@@ -543,7 +591,7 @@ function totalCreditos(ramos){
 // solo identifica los datos pendientes para guiar al estudiante: no cambia
 // cómo gpa() calcula ni interpreta el promedio.
 function ramosSinCreditosParaPpa(ramos){
-  return (ramos||[]).filter(r=>ramoAvg(r)!==null&&!(typeof r.creditos==='number'&&r.creditos>0));
+  return ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null&&!(typeof r.creditos==='number'&&r.creditos>0));
 }
 function semester(){
   const now=new Date(),m=now.getMonth(),y=now.getFullYear();
@@ -1020,7 +1068,7 @@ function completeOnboarding(){
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
-    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null});
   });
   S.onboardingDone=true;save();
   syncProfile();
@@ -1754,11 +1802,12 @@ function presetRamo(nombre,tenant,carrera){
     categorias.push(cat);porNombre[nom]=id;
     if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
   });
+  const aporta=(!Array.isArray(def)&&def.aporta)?{...def.aporta}:null;
   (!Array.isArray(def)&&def.grupos||[]).forEach(g=>{
     const ids=g.evals.map(n=>porNombre[n]).filter(Boolean);
     if(ids.length)gates.push({type:'group_min',catIds:ids,min:g.min,cap:g.cap,nombre:g.nombre});
   });
-  return {categorias,gates};
+  return {categorias,gates,aporta};
 }
 
 function confirmAddMalla(){
@@ -1771,7 +1820,7 @@ function confirmAddMalla(){
     // estrella de "pauta oficial" al lado, porque el selector SÍ normaliza.
     const presetName=findPresetName(n,S.tenant,S.carrera);
     const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null});
   });
   save();track('add_malla_ramos',{count:elegidos.length,carrera:S.carrera,sem:S.careerSemestre});
   closeModal();
@@ -1838,7 +1887,7 @@ function addFromCatalog(nombre){
   S.ramos.push({
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
     creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(),
-    categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],
+    categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,
   });
   save();track('add_ramo_catalogo',{preset:!!preset});
   closeModal();renderHome();
@@ -2268,7 +2317,7 @@ function confirmAddRamo(){
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const cr=creditosDe(presetName||name,S.tenant,preset);
-  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[]});
+  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null});
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
   showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
 }
@@ -3997,6 +4046,24 @@ function notaNecesaria(ramo){
   if(total<=0)return null;
   let pesoCon=0,suma=0;
   ramo.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoCon+=c.peso;suma+=a*c.peso;}});
+  // Si otro ramo aporta parte de la nota (el laboratorio de Dinámica), sus
+  // evaluaciones NO están en `categorias` y hay que traerlas a la cuenta. Sin
+  // esto, "¿qué nota necesito?" respondería sobre el 70% de la cátedra como si
+  // fuera el ramo completo: un número más bajo que el real, en la pregunta que
+  // es la razón de existir de la app.
+  const link=ramo.aporta;
+  if(link&&link.peso){
+    const p=link.peso/100;
+    // Todo se lleva a la escala de la nota final: lo propio vale (1-p).
+    let totalF=total*(1-p),sumaF=suma*(1-p),pesoConF=pesoCon*(1-p);
+    totalF+=total*p;
+    const otro=ramoVinculado(ramo);
+    const externo=otro?ramoAvg(otro):null;
+    if(externo!==null){sumaF+=externo*total*p;pesoConF+=total*p;}
+    const faltaF=totalF-pesoConF;
+    if(faltaF<=0)return null;
+    return (4.0*totalF-sumaF)/faltaF;
+  }
   const pesoSin=total-pesoCon;
   if(pesoSin<=0)return null;
   return (4.0*total-suma)/pesoSin;
