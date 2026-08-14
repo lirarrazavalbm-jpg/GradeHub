@@ -95,8 +95,11 @@ chk('Laboratorio de Dinámica ya no se ofrece como ramo suelto',
 const calculoOrigen={nombre:'Cálculo II',origen:{tenant:'uc',carrera:'ING-PC'}};
 chk('Cálculo II no inventa una pauta sin pesos oficiales',presetRamo('Cálculo II','uc','ING-PC')===null);
 chk('Cálculo II no se anuncia como pauta oficial cargada',findPresetName('Cálculo II','uc','ING-PC')===null);
-chk('Cálculo II sí explica las ocho reglas de su programa',
-  reglasNoCalculadas(calculoOrigen).length===4&&reglasDelCurso(calculoOrigen).length===4);
+// Ya no declara reglas: las ocho que tenía eran sustituciones automáticas por
+// inasistencia justificada y sanciones de disciplina. Ninguna es algo que el
+// estudiante pueda usar a su favor, así que llenaban la ficha sin aportar.
+chk('Cálculo II no declara reglas: ninguna pasaba el filtro',
+  reglasNoCalculadas(calculoOrigen).length===0&&reglasDelCurso(calculoOrigen).length===0);
 
 console.log('\n=== El ramo sin pauta lo dice, y la deuda es nuestra ===');
 const render = src.slice(src.indexOf('function renderRamo()'), src.indexOf('function renderRamo()') + 12000);

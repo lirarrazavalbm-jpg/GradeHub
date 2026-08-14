@@ -93,8 +93,19 @@ chk('Dinámica declara los grupos de cátedra y laboratorio',
 // experimentos presenciales más un Lab 0 online.
 chk('las secciones promediadas declaran sus casillas',
   evalsUC(UC['Dinámica']).filter(([, ,x])=>x&&x.slots).map(([, ,x])=>x.slots).join('|')==='3|5|6|6');
-chk('Cálculo II conserva reglas sin inventar ponderaciones',
-  evalsUC(UC['Cálculo II']).length===0&&UC['Cálculo II'].noCalcula.length===4&&UC['Cálculo II'].reglasDelCurso.length===4);
+// Cálculo II ya no es una entrada: su único documento es normativa, no publica
+// ponderaciones, y ninguna de sus reglas pasa el filtro de "puedes hacer algo
+// con esto". Una entrada sin pesos y sin reglas visibles no hace nada.
+chk('Cálculo II no está en el registro: su documento no publica ponderaciones',
+  UC['Cálculo II']===undefined);
+// Ninguna regla visible puede ser de disciplina o formato: eso es reglamento de
+// la universidad, es igual en todos los ramos y no cambia cómo se calcula nada.
+const DISCIPLINA=/copia|torpedo|turnitin|plagio|lápiz pasta|legible|dispositivo|apunte no permitido|registras correctamente tu asistencia|comité de ética/i;
+Object.entries(UC).forEach(([nombre,def])=>{
+  if(Array.isArray(def))return;
+  [...(def.noCalcula||[]),...(def.reglasDelCurso||[])].forEach(r=>
+    chk(nombre+' · no muestra reglamento de disciplina',!DISCIPLINA.test(r)));
+});
 Object.entries(UC).forEach(([nombre, def]) => {
   if(Array.isArray(def))return;
   ['noCalcula','reglasDelCurso'].forEach(campo=>{
