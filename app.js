@@ -922,7 +922,20 @@ let obRamos=[],obRamosKey='',obManualOpen=false;
 
 initSemGrid();renderTenantPick();initCarreraGrid();
 document.getElementById('ob-name').addEventListener('input',checkOb);
-boot();
+
+// boot() termina en showMainApp(), que llama a renderAgenda() — y esa vive en
+// render-agenda.js, que se carga DESPUÉS de este archivo. Llamarlo acá mismo
+// reventaba con un ReferenceError justo en medio de
+// `renderHome();renderStats();renderAgenda()`, así que las tres pantallas
+// quedaban montadas y showTab('home') nunca corría: se veían una encima de otra.
+//
+// Solo se notaba cuando supabaseClient es null, que es la rama local — la que
+// existe precisamente para que la app siga sirviendo si el script de Supabase no
+// carga (bloqueador, red, CDN caída). O sea: el camino de emergencia estaba roto.
+//
+// DOMContentLoaded corre cuando el parser ya ejecutó todos los <script> clásicos
+// del documento, así que renderAgenda ya existe.
+document.addEventListener('DOMContentLoaded',boot);
 
 function initSemGrid(){
   const g=document.getElementById('sem-grid');g.innerHTML='';
