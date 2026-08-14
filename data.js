@@ -200,6 +200,31 @@ const GRADEHUB_THEME={
   // bg es literalmente el fondo de og.png.
   dark:{bg:'#05070a',bg2:'#0a0f13',card:'#111820',border:'#20303a',border2:'#324755',muted:'#151d26'},
 };
+// Acentos elegibles. Las superficies oscuras siguen siendo una sola identidad:
+// cambiar el acento no convierte cada opción en un tema distinto ni toca el
+// semáforo. Turquesa referencia los valores históricos para que la carga fría
+// de styles.css y el primer applyTheme() sigan pintando exactamente lo mismo.
+const ACENTOS={
+  turquesa:{nombre:'Turquesa',...GRADEHUB_THEME},
+  azul:{
+    nombre:'Azul',
+    primary:'#1e40af',primaryFg:'#ffffff',primaryLight:'#e8efff',
+    darkPrimary:'#bfdbfe',darkPrimaryFg:'#071a33',darkPrimaryLight:'#102640',
+    accent:'#93c5fd',secondary:'#1e40af',darkSecondary:'#bfdbfe',
+  },
+  indigo:{
+    nombre:'Índigo',
+    primary:'#3730a3',primaryFg:'#ffffff',primaryLight:'#ecebff',
+    darkPrimary:'#c7d2fe',darkPrimaryFg:'#14143d',darkPrimaryLight:'#202044',
+    accent:'#a5b4fc',secondary:'#3730a3',darkSecondary:'#c7d2fe',
+  },
+  violeta:{
+    nombre:'Violeta',
+    primary:'#5b21b6',primaryFg:'#ffffff',primaryLight:'#f1e9ff',
+    darkPrimary:'#ddd6fe',darkPrimaryFg:'#24113f',darkPrimaryLight:'#291b3d',
+    accent:'#d8b4fe',secondary:'#5b21b6',darkSecondary:'#ddd6fe',
+  },
+};
 const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
 
 // Carreras y mallas por universidad. Presets verificados solo en ING-PC (1er sem).

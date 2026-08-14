@@ -967,6 +967,13 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .modo-opt-name{font-size:13.5px;font-weight:600;color:var(--fg);letter-spacing:-.01em;}
 .modo-opt.sel .modo-opt-name{color:var(--primary);}
 .modo-opt-sub{font-size:10.5px;color:var(--fg3);line-height:1.2;text-align:center;}
+.accent-picker-label{display:block;margin-top:22px;}
+.accent-grid{display:flex;gap:10px;overflow-x:auto;padding:3px 2px 5px;scrollbar-width:none;}
+.accent-grid::-webkit-scrollbar{display:none;}
+.accent-opt{display:flex;min-width:62px;flex:1;flex-direction:column;align-items:center;gap:7px;padding:9px 6px;border:1.5px solid transparent;border-radius:12px;background:transparent;color:var(--fg2);font-family:'Inter',sans-serif;font-size:11px;font-weight:650;cursor:pointer;transition:border-color var(--motion-fast),background var(--motion-fast),color var(--motion-fast);}
+.accent-opt.sel{border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
+.accent-swatch{width:30px;height:30px;border:3px solid var(--card);border-radius:50%;background:linear-gradient(135deg,var(--swatch-light) 0 50%,var(--swatch-dark) 50%);box-shadow:0 0 0 1px var(--border2);}
+.accent-opt.sel .accent-swatch{box-shadow:0 0 0 2px var(--primary),0 3px 10px color-mix(in srgb,var(--primary),transparent 65%);}
 
 /* Aviso de versión nueva. Aparece cuando el service worker nuevo toma el
    control: sin esto el estudiante tendría que recargar dos veces para ver un

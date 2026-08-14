@@ -81,6 +81,7 @@ function normalize(data) {
   // la carrera, así que del 1º al 4º eran idénticas.
   if(data.carrera==='IC-CE'||data.carrera==='IC-AE')data.carrera='IC';
   data.modo = ['claro','oscuro'].includes(data.modo) ? data.modo : 'sistema';
+  data.acento = ACENTOS[data.acento] ? data.acento : 'turquesa';
   data.sortMode = ['manual','avg','name'].includes(data.sortMode) ? data.sortMode : 'manual';
   return data;
 }
@@ -155,9 +156,14 @@ function setModo(m){
   save();aplicarModo();applyTheme();track('set_modo',{modo:S.modo});
   const g=document.getElementById('s-modo-grid');if(g)renderModoGrid();
 }
+function setAcento(acento){
+  S.acento=ACENTOS[acento]?acento:'turquesa';
+  save();applyTheme();track('set_acento',{acento:S.acento});
+  const g=document.getElementById('s-acento-grid');if(g)renderAcentoGrid();
+}
 function applyTheme(){
   aplicarModo();
-  const th={...THEME_BASE,...GRADEHUB_THEME};
+  const th={...THEME_BASE,...(ACENTOS[(S&&S.acento)||'turquesa']||GRADEHUB_THEME)};
   const r=document.documentElement.style;
   const dark=prefersDark();
   // Acentos: valen en ambos modos
@@ -628,7 +634,7 @@ try{
   }
 }catch(e){console.warn('Supabase no inicializado:',e);}
 
-function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema'};}
+function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema',acento:'turquesa'};}
 
 function authError(msg,kind){
   // kind: 'error' (default, rojo) | 'info' (neutro, para mensajes tipo "revisa tu correo")
@@ -2686,7 +2692,9 @@ function openSettings(){
       :`<p class="settings-help">Necesitas iniciar sesión: el feed va atado a tu cuenta, no a este dispositivo.</p>`}`;
     if(section==='apariencia')return `
       <p class="settings-help settings-help-top">Elige cómo prefieres ver GradeHub. Se guarda al elegir.</p>
-      <div class="modo-grid" id="s-modo-grid"></div>`;
+      <div class="modo-grid" id="s-modo-grid"></div>
+      <label class="modal-label accent-picker-label">Color de acento</label>
+      <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>`;
     return `
       <p class="settings-help settings-help-top">Guarda una copia antes de cambiar de dispositivo.</p>
       <div class="settings-data-actions">
@@ -2715,7 +2723,7 @@ function openSettings(){
     document.querySelectorAll('[data-settings-section]').forEach(b=>b.onclick=()=>{activeSection=b.dataset.settingsSection;renderSettings();});
     const back=document.querySelector('.settings-back');if(back)back.onclick=()=>{activeSection='';renderSettings();};
     if(activeSection==='academico'){renderSettingsSemGrid();renderSettingsTenantGrid();renderSettingsCarreraGrid();}
-    if(activeSection==='apariencia')renderModoGrid();
+    if(activeSection==='apariencia'){renderModoGrid();renderAcentoGrid();}
     if(activeSection==='calendario'&&currentUser)pintarFeedCalendario();
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
@@ -2747,6 +2755,18 @@ function openSettings(){
       });
   }
   window.renderModoGrid=renderModoGrid;
+  function renderAcentoGrid(){
+    const g=document.getElementById('s-acento-grid');if(!g)return;g.innerHTML='';
+    Object.entries(ACENTOS).forEach(([key,cfg])=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='accent-opt'+(S.acento===key?' sel':'');
+      b.setAttribute('role','radio');b.setAttribute('aria-checked',S.acento===key?'true':'false');
+      b.setAttribute('aria-label',cfg.nombre);
+      b.innerHTML=`<span class="accent-swatch" style="--swatch-light:${esc(cfg.primary)};--swatch-dark:${esc(cfg.darkPrimary)}"></span><span>${esc(cfg.nombre)}</span>`;
+      b.onclick=()=>setAcento(key);g.appendChild(b);
+    });
+  }
+  window.renderAcentoGrid=renderAcentoGrid;
   function renderSettingsSemGrid(){
     const g=document.getElementById('s-sem-grid');if(!g)return;g.innerHTML='';
     for(let i=1;i<=11;i++){
