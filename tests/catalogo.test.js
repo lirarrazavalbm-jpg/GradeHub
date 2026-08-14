@@ -90,8 +90,8 @@ const manual = cargar([{ id: 'e', nombre: 'Introducción a la Programación', or
 chk('no toca un ramo creado a mano, aunque el nombre calce', manual[0].categorias.length === 0);
 
 // Y un ramo del catálogo SIN pauta publicada sigue sin inventarse una.
-const sinPauta = cargar([{ id: 'f', nombre: 'Cálculo II', origen: uc, categorias: [], gates: [] }]);
-chk('Cálculo II sigue sin pauta: su programa no publica ponderaciones', sinPauta[0].categorias.length === 0);
+const sinPauta = cargar([{ id: 'f', nombre: 'Termodinámica', origen: uc, categorias: [], gates: [] }]);
+chk('un ramo sin programa oficial sigue sin pauta', sinPauta[0].categorias.length === 0);
 
 console.log('\n=== Una pauta que nadie puede encontrar no existe ===');
 // Los OFG y electivos no van en la malla a propósito: son una elección, no un
@@ -109,9 +109,9 @@ const buscarUC = (q, car) => run('searchCatalog(' + JSON.stringify(q) + ',"uc",'
 ['Ecolog', 'Revelaci'].forEach(q => {
   chk('Comercial UC NO recibe la pauta de Ingeniería para "' + q + '"', buscarUC(q, 'COM').length === 0);
 });
-// Cálculo II tiene programa pero no ponderaciones: no se ofrece como pauta.
-const c2 = buscarUC('Cálculo II', 'ING-PC').find(r => r.nombre === 'Cálculo II');
-chk('Cálculo II aparece por la malla, pero sin estrella de pauta', !!c2 && !c2.tienePreset);
+// Un ramo de la malla sin programa oficial aparece, pero sin estrella de pauta.
+const termo = buscarUC('Termodinámica', 'ING-PC').find(r => r.nombre === 'Termodinámica');
+chk('Termodinámica aparece por la malla, pero sin estrella de pauta', !!termo && !termo.tienePreset);
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

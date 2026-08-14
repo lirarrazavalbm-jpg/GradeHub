@@ -345,14 +345,25 @@ const PRESETS_UC={
       'Si tu promedio ponderado de las Pruebas supera 4,0, las décimas que ganes en los talleres se suman a tu nota final, con un máximo de 5 décimas',
     ],
   },
-  // CÁLCULO II NO ESTÁ ACÁ, y es a propósito. El único documento que tenemos
-  // (MAT1620, "Normativa") es reglamento: integridad académica, correcciones,
-  // apelaciones e inasistencias. No publica ni una ponderación, así que no hay
-  // pauta que cargar — y ninguna de sus reglas pasa el filtro de arriba: son
-  // sustituciones automáticas por inasistencia justificada y sanciones de
-  // disciplina. Una entrada sin pesos y sin reglas visibles no hace nada, así
-  // que se saca en vez de dejarla vacía. Si aparece el programa del curso con
-  // sus interrogaciones y pesos, vuelve.
+  // Los pesos y las fechas salen del programa clase a clase (MAT1620-2026-S2),
+  // no del documento de normativa: ese es solo reglamento y no publica ninguna
+  // ponderación. Las cuatro fechas caen lunes en 2026, como dice el programa.
+  //
+  // El Laboratorio pesa 10% y son 3, igual que en Cálculo I. Ojo: eso NO sale
+  // del programa clase a clase —ahí dice "Laboratorio (10%)" y nada más—, lo
+  // confirmó Lucas. Queda anotado porque si mañana alguien lo contrasta contra
+  // el PDF no lo va a encontrar y va a creer que es un número inventado.
+  //
+  // Sin reglas visibles a propósito: las de la normativa son sustituciones
+  // automáticas por inasistencia justificada y sanciones de disciplina, y
+  // ninguna pasa el filtro de arriba.
+  'Cálculo II':[
+    ['Interrogación 1',20,{fecha:'2026-08-31'}],
+    ['Interrogación 2',20,{fecha:'2026-10-05'}],
+    ['Interrogación 3',20,{fecha:'2026-11-02'}],
+    ['Examen',30,{fecha:'2026-11-30'}],
+    ['Laboratorio',10,{slots:3}],
+  ],
   // ── Dinámica y su laboratorio: dos ramos, una nota ────────────────────────
   // La UC los inscribe como dos cursos (FIS1514 y FIS0154) con dos actas, y así
   // se muestran. Pero la nota final de Dinámica se calcula CON la del
