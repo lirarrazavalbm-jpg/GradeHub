@@ -87,11 +87,13 @@ chk('Dinámica carga el vínculo con su laboratorio',
 chk('el laboratorio carga el mínimo de la evaluación de pares',
   labDin.gates.some(g=>g.type==='min_grade_required'&&g.min===4&&g.cap===3.9));
 const calculoOrigen={nombre:'Cálculo II',origen:{tenant:'uc',carrera:'ING-PC'}};
-chk('Cálculo II no inventa una pauta sin pesos oficiales',presetRamo('Cálculo II','uc','ING-PC')===null);
-chk('Cálculo II no se anuncia como pauta oficial cargada',findPresetName('Cálculo II','uc','ING-PC')===null);
-// Ya no declara reglas: las ocho que tenía eran sustituciones automáticas por
-// inasistencia justificada y sanciones de disciplina. Ninguna es algo que el
-// estudiante pueda usar a su favor, así que llenaban la ficha sin aportar.
+const calc2=presetRamo('Cálculo II','uc','ING-PC');
+chk('Cálculo II carga su pauta del programa clase a clase',calc2&&calc2.categorias.length===5);
+chk('y sus cuatro fechas van a la Agenda',
+  calc2.categorias.slice(0,4).map(c=>c.fecha).join('|')==='2026-08-31|2026-10-05|2026-11-02|2026-11-30');
+// Sigue sin declarar reglas: las de su normativa son sustituciones automáticas
+// por inasistencia justificada y sanciones de disciplina, y ninguna pasa el
+// filtro de "puedes hacer algo con esto".
 chk('Cálculo II no declara reglas: ninguna pasaba el filtro',
   reglasNoCalculadas(calculoOrigen).length===0&&reglasDelCurso(calculoOrigen).length===0);
 

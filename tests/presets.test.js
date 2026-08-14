@@ -96,11 +96,16 @@ chk('la cátedra declara sus 3 controles',
   evalsUC(UC['Dinámica']).filter(([, ,x])=>x&&x.slots).map(([, ,x])=>x.slots).join('|')==='3');
 chk('el laboratorio declara sus casillas',
   evalsUC(UC['Laboratorio de Dinámica']).filter(([, ,x])=>x&&x.slots).map(([, ,x])=>x.slots).join('|')==='5|6|6');
-// Cálculo II ya no es una entrada: su único documento es normativa, no publica
-// ponderaciones, y ninguna de sus reglas pasa el filtro de "puedes hacer algo
-// con esto". Una entrada sin pesos y sin reglas visibles no hace nada.
-chk('Cálculo II no está en el registro: su documento no publica ponderaciones',
-  UC['Cálculo II']===undefined);
+// Los pesos de Cálculo II salen del programa clase a clase, no del documento de
+// normativa —ese es solo reglamento y no publica ninguna ponderación—.
+pautaUC('Cálculo II','Interrogación 1:20|Interrogación 2:20|Interrogación 3:20|Examen:30|Laboratorio:10');
+chk('Cálculo II conserva sus cuatro fechas oficiales',
+  evalsUC(UC['Cálculo II']).slice(0,4).map(([, ,x])=>x.fecha).join('|')==='2026-08-31|2026-10-05|2026-11-02|2026-11-30');
+// El programa dice "Laboratorio (10%)" y nada más: no enumera sesiones, así que
+// no puede llevar casillas. Cálculo I y Álgebra sí las tienen porque sus
+// programas sí las enumeran; copiarlas acá sería inventar el número.
+chk('el Laboratorio de Cálculo II no inventa casillas',
+  !(evalsUC(UC['Cálculo II']).find(([n])=>n==='Laboratorio')||[])[2]);
 // Ninguna regla visible puede ser de disciplina o formato: eso es reglamento de
 // la universidad, es igual en todos los ramos y no cambia cómo se calcula nada.
 const DISCIPLINA=/copia|torpedo|turnitin|plagio|lápiz pasta|legible|dispositivo|apunte no permitido|registras correctamente tu asistencia|comité de ética/i;
