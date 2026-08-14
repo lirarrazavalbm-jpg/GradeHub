@@ -2649,6 +2649,7 @@ function openSettings(){
     perfil:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.4 3.5-5.3 7.5-5.3s6.7 1.9 7.5 5.3"/></svg>',
     academico:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg>',
     apariencia:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    sugerencias:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8M8 13h5"/></svg>',
     datos:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v7c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 12v7c0 1.7 3.1 3 7 3s7-1.3 7-3v-7"/></svg>',
     arrow:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>'
   };
@@ -2657,6 +2658,7 @@ function openSettings(){
     ['Estudio','academico','Información académica','Universidad, carrera y semestre'],
     ['Estudio','calendario','Calendario','Tus pruebas en Google Calendar'],
     ['Preferencias','apariencia','Apariencia','Cómo se ve la app'],
+    ['Ayuda','sugerencias','Sugerencias y comentarios','Cuéntanos qué mejorar'],
     ['Datos','datos','Datos y cuenta','Respaldos y acciones de cuenta']
   ];
 
@@ -2695,6 +2697,19 @@ function openSettings(){
       <div class="modo-grid" id="s-modo-grid"></div>
       <label class="modal-label accent-picker-label">Color de acento</label>
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>`;
+    if(section==='sugerencias')return currentUser?`
+      <p class="settings-help settings-help-top">¿Algo no se entiende, está fallando o podría ser mejor? Lo leemos nosotros.</p>
+      <label class="modal-label" for="s-feedback-type">Tipo de comentario</label>
+      <select class="feedback-select" id="s-feedback-type">
+        <option value="sugerencia">Tengo una sugerencia</option>
+        <option value="problema">Encontré un problema</option>
+        <option value="otro">Otro comentario</option>
+      </select>
+      <label class="modal-label" for="s-feedback-message">Cuéntanos</label>
+      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" oninput="actualizarSugerencia()"></textarea>
+      <div class="feedback-meta"><span>Queda asociado a tu cuenta para poder ayudarte.</span><span id="s-feedback-count">0 / 2000</span></div>
+      <button class="btn-primary" id="s-feedback-send" type="button" onclick="enviarSugerencia()" disabled>Enviar comentario</button>`
+      :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>Así evitamos spam y podemos entender a qué cuenta corresponde el comentario.</p></div>`;
     return `
       <p class="settings-help settings-help-top">Guarda una copia antes de cambiar de dispositivo.</p>
       <div class="settings-data-actions">
@@ -2816,6 +2831,38 @@ function openSettings(){
     closeModal();renderHome();renderStats();renderAgenda();
     showToast('Cambios guardados');
   };
+}
+
+function actualizarSugerencia(){
+  const campo=document.getElementById('s-feedback-message');
+  const cuenta=document.getElementById('s-feedback-count');
+  const boton=document.getElementById('s-feedback-send');
+  if(!campo)return;
+  if(cuenta)cuenta.textContent=`${campo.value.length} / 2000`;
+  if(boton)boton.disabled=!(campo.value.trim().length>=3);
+}
+async function enviarSugerencia(){
+  if(!supabaseClient||!currentUser){showToast('Necesitas iniciar sesión para enviar',true);return;}
+  const campo=document.getElementById('s-feedback-message');
+  const selector=document.getElementById('s-feedback-type');
+  const boton=document.getElementById('s-feedback-send');
+  const mensaje=campo?campo.value.trim():'';
+  const categoria=selector&&['sugerencia','problema','otro'].includes(selector.value)?selector.value:'otro';
+  if(!(mensaje.length>=3)){showToast('Cuéntanos un poco más',true);return;}
+  if(boton){boton.disabled=true;boton.textContent='Enviando…';}
+  try{
+    const {error}=await supabaseClient.from('user_feedback').insert({user_id:currentUser.id,categoria,mensaje});
+    if(error)throw error;
+    track('submit_feedback',{categoria});
+    if(campo)campo.value='';
+    actualizarSugerencia();
+    showToast('Gracias · recibimos tu comentario');
+  }catch(e){
+    console.warn('No se pudo enviar el comentario:',e);
+    showToast('No pudimos enviarlo. Intenta de nuevo.',true);
+  }finally{
+    if(boton){boton.textContent='Enviar comentario';actualizarSugerencia();}
+  }
 }
 
 // ─── HISTORIAL EDITABLE ──────────────────────────────────────────────────────

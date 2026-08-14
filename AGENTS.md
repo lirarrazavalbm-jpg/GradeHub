@@ -274,9 +274,12 @@ MFA puede ser opcional para estudiantes; pasa a ser obligatorio si aparece un
 panel administrativo.
 
 **Base de datos actual:** además de las tres tablas históricas existe
-`calendar_feeds`. Su diseño esperado es RLS activa, cero políticas, privilegios
-de tabla revocados y acceso solo por RPC; su FK a `auth.users` debe seguir con
-`ON DELETE CASCADE`. Toda tabla nueva reabre la auditoría RLS y de borrado.
+`calendar_feeds`. La rama `codex/sugerencias-comentarios` agrega
+`user_feedback`, pero no existe en producción hasta aplicar manualmente
+`supabase/user_feedback.sql`: RLS activa, única política INSERT atada a
+`auth.uid()`, sin lectura para clientes y FK a `auth.users` con
+`ON DELETE CASCADE`. `calendar_feeds` mantiene cero políticas y acceso solo por
+RPC. Toda tabla nueva reabre la auditoría RLS y de borrado.
 
 - **Ponderaciones oficiales: 10 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
   están completas (177 ramos FEN, 88 únicos, los 10-11 semestres de las cuatro
