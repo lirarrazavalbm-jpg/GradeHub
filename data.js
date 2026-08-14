@@ -349,9 +349,10 @@ const PRESETS_UC={
   // no del documento de normativa: ese es solo reglamento y no publica ninguna
   // ponderación. Las cuatro fechas caen lunes en 2026, como dice el programa.
   //
-  // El Laboratorio pesa 10% y el programa NO dice de cuántas sesiones sale, así
-  // que no lleva `slots`: Cálculo I y Álgebra sí los tienen porque sus propios
-  // programas los enumeran. Acá el estudiante escribe el promedio que le den.
+  // El Laboratorio pesa 10% y son 3, igual que en Cálculo I. Ojo: eso NO sale
+  // del programa clase a clase —ahí dice "Laboratorio (10%)" y nada más—, lo
+  // confirmó Lucas. Queda anotado porque si mañana alguien lo contrasta contra
+  // el PDF no lo va a encontrar y va a creer que es un número inventado.
   //
   // Sin reglas visibles a propósito: las de la normativa son sustituciones
   // automáticas por inasistencia justificada y sanciones de disciplina, y
@@ -361,7 +362,7 @@ const PRESETS_UC={
     ['Interrogación 2',20,{fecha:'2026-10-05'}],
     ['Interrogación 3',20,{fecha:'2026-11-02'}],
     ['Examen',30,{fecha:'2026-11-30'}],
-    ['Laboratorio',10],
+    ['Laboratorio',10,{slots:3}],
   ],
   // ── Dinámica y su laboratorio: dos ramos, una nota ────────────────────────
   // La UC los inscribe como dos cursos (FIS1514 y FIS0154) con dos actas, y así

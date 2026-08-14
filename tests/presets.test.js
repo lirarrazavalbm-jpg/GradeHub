@@ -101,11 +101,10 @@ chk('el laboratorio declara sus casillas',
 pautaUC('Cálculo II','Interrogación 1:20|Interrogación 2:20|Interrogación 3:20|Examen:30|Laboratorio:10');
 chk('Cálculo II conserva sus cuatro fechas oficiales',
   evalsUC(UC['Cálculo II']).slice(0,4).map(([, ,x])=>x.fecha).join('|')==='2026-08-31|2026-10-05|2026-11-02|2026-11-30');
-// El programa dice "Laboratorio (10%)" y nada más: no enumera sesiones, así que
-// no puede llevar casillas. Cálculo I y Álgebra sí las tienen porque sus
-// programas sí las enumeran; copiarlas acá sería inventar el número.
-chk('el Laboratorio de Cálculo II no inventa casillas',
-  !(evalsUC(UC['Cálculo II']).find(([n])=>n==='Laboratorio')||[])[2]);
+// Son 3, igual que en Cálculo I. No sale del programa clase a clase —ahí dice
+// "Laboratorio (10%)" y nada más—: lo confirmó Lucas.
+chk('el Laboratorio de Cálculo II tiene sus 3 casillas',
+  (evalsUC(UC['Cálculo II']).find(([n])=>n==='Laboratorio')||[])[2].slots===3);
 // Ninguna regla visible puede ser de disciplina o formato: eso es reglamento de
 // la universidad, es igual en todos los ramos y no cambia cómo se calcula nada.
 const DISCIPLINA=/copia|torpedo|turnitin|plagio|lápiz pasta|legible|dispositivo|apunte no permitido|registras correctamente tu asistencia|comité de ética/i;
