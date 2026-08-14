@@ -26,7 +26,14 @@ const withPriority = vm.runInContext('withPriority', ctx);
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
-const iso = d => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+// La fecha se arma con los componentes LOCALES, no con toISOString(). Esa
+// devuelve UTC: en Chile, pasadas las 20:00, `iso(-1)` daba hoy en vez de ayer
+// y los chequeos de "vencida" empezaban a fallar solos. Un test que depende de
+// la hora a la que se corre no prueba nada y hace perder la tarde.
+const iso = d => {
+  const x = new Date(); x.setDate(x.getDate() + d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+};
 // notas: [] deja el ramo sin promedio → riesgo 0. Para un ramo en riesgo se
 // pasa una nota baja, que es como llega de verdad desde la app.
 const evento = (nombre, dias, peso, notaDelRamo) => {

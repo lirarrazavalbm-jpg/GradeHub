@@ -309,6 +309,25 @@ const PORTAL=[
 // Caso real: el Podcast de FIL2001. El piso lo aplica ramoAvg vía r.gates.
 // ING1004 NO está aquí: su compuerta es entre GRUPOS anidados (Individual/Grupal)
 // y no cabe en el modelo plano de secciones — necesita el árbol completo (próximo brick).
+// QUÉ REGLA SE MUESTRA Y CUÁL NO. Transcribimos el programa completo, pero no
+// se muestra completo: una tarjeta con doce reglas no se lee, y lo que importa
+// queda enterrado entre normativa que es igual en toda la universidad.
+//
+// Se muestra una regla solo si el estudiante PUEDE HACER ALGO con ella y eso
+// CAMBIA SU NÚMERO: décimas que se ganan asistiendo, una eximición que se
+// alcanza, un tope que se evita entregando algo a tiempo.
+//
+// No se muestran:
+//   · Disciplina y formato — copia, Turnitin, lápiz pasta, letra legible,
+//     celulares, registrar la asistencia. Es el reglamento de la universidad,
+//     no la pauta del ramo, y no cambia cómo se calcula tu promedio.
+//   · Contingencias automáticas — "si faltas justificadamente a una
+//     interrogación, esa nota se reemplaza por la del examen". No la eliges y
+//     no puedes prepararla; a quien le pase se entera por su profesor.
+//   · Lo que solo describe el curso — "no hay eximición del examen final".
+//
+// Lo que se saca de acá NO se pierde: sigue en el programa oficial, y el ramo
+// muestra "Compáralo con la pauta del curso" justamente por eso.
 const PRESETS_UC={
   'Cálculo I':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
   'Álgebra Lineal':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
@@ -320,38 +339,24 @@ const PRESETS_UC={
       ['Tarea 1',5],['Tarea 2',5],['Tarea 3',5],['Nota de participación',16],['Talleres de Inteligencia Artificial',4],
     ],
     grupos:[{nombre:'Evaluaciones principales',evals:['Interrogación 1','Interrogación 2','Examen'],min:4.0,cap:3.9}],
-    noCalcula:['Si faltas justificadamente a una interrogación, esa nota se reemplaza por la nota del Examen; solo puedes justificar la inasistencia a una interrogación'],
-    reglasDelCurso:['Si rindes una evaluación presencial pero no registras correctamente tu asistencia, te califican con nota 1,0'],
+    // Sin reglas visibles: el programa solo trae la sustitución automática por
+    // inasistencia justificada y la sanción por no registrar asistencia.
+    // Ninguna de las dos es algo que el estudiante pueda usar a su favor.
   },
   'Principios de Ecología y Medio Ambiente':{
     evals:[['Prueba 1',25],['Prueba 2',40],['Prueba 3',35]],
     noCalcula:[
-      'Si faltas a una Prueba, puedes rendirla en la única fecha destinada a pruebas pendientes al final del curso solo si tu caso es calificado y presentas la justificación médica exigida dentro del plazo',
-      'Si cumples el requisito de tener nota ponderada de las Pruebas superior a 4,0, puedes sumar las décimas obtenidas en talleres a tu nota final, con un máximo de 5 décimas',
-    ],
-    reglasDelCurso:[
-      'No puedes ausentarte a más de dos Pruebas; el programa no indica qué nota final te corresponde si superas ese límite',
-      'Si cometes copia, usas torpedos u otro acto ilícito durante una Prueba, esa Prueba se sanciona con nota 1',
+      'Si tu promedio ponderado de las Pruebas supera 4,0, las décimas que ganes en los talleres se suman a tu nota final, con un máximo de 5 décimas',
     ],
   },
-  // El programa documenta recuperativas e inasistencias, pero no sus pesos.
-  // No se crea una pauta de 0%: el estudiante sigue ingresando la real cuando la
-  // tenga, y estas reglas se muestran porque el ramo sí viene del catálogo.
-  'Cálculo II':{
-    evals:[],
-    noCalcula:[
-      'Si faltas justificadamente a una sola Interrogación, esa nota se reemplaza por la nota del Examen',
-      'Si faltas justificadamente a dos Interrogaciones, la nota del Examen reemplaza la primera que justificaste y debes rendir una evaluación equivalente para reemplazar la segunda',
-      'Si faltas justificadamente a tres Interrogaciones, la nota del Examen reemplaza la primera que justificaste y debes rendir evaluaciones equivalentes para reemplazar las demás',
-      'Si faltas justificadamente al Examen, debes rendir el Examen recuperativo',
-    ],
-    reglasDelCurso:[
-      'Si faltas a una evaluación sin una justificación aceptada por tu unidad académica, obtienes nota 1,0 en esa evaluación',
-      'Si respondes una evaluación sin lápiz pasta, esa evaluación no será corregida; la normativa no indica qué nota se te asigna en ese caso',
-      'Si eres sorprendido durante una evaluación con un dispositivo o apunte no permitido, aunque no lo estés usando, te retiran la evaluación y obtienes nota 1,0',
-      'Si tu situación de inasistencia no está contemplada expresamente en la normativa, la Facultad de Matemáticas revisará tu caso',
-    ],
-  },
+  // CÁLCULO II NO ESTÁ ACÁ, y es a propósito. El único documento que tenemos
+  // (MAT1620, "Normativa") es reglamento: integridad académica, correcciones,
+  // apelaciones e inasistencias. No publica ni una ponderación, así que no hay
+  // pauta que cargar — y ninguna de sus reglas pasa el filtro de arriba: son
+  // sustituciones automáticas por inasistencia justificada y sanciones de
+  // disciplina. Una entrada sin pesos y sin reglas visibles no hace nada, así
+  // que se saca en vez de dejarla vacía. Si aparece el programa del curso con
+  // sus interrogaciones y pesos, vuelve.
   // ── Dinámica: un solo ramo, laboratorio incluido ──────────────────────────
   // El laboratorio (FIS0154, 0 SCT) no es un ramo aparte: es el 30% de la nota
   // de Dinámica. Los dos programas lo dicen — FIS1514 con la fórmula, el del
@@ -391,23 +396,9 @@ const PRESETS_UC={
       {nombre:'Laboratorio',evals:['Laboratorio · Controles','Laboratorio · Informes','Laboratorio · Evaluación de pares'],min:4.0,cap:'self'},
     ],
     noCalcula:[
-      'Si faltas justificadamente a una interrogación, esa nota se reemplaza por la nota del Examen; si faltas justificadamente a las dos, tu situación se evalúa caso a caso',
-      'Si faltas justificadamente a un control, lo recuperas en un control recuperativo que se rinde en el último taller del semestre',
       'Si asistes a 8 o más talleres, sumas 5 décimas al promedio de los Controles; para optar a ellas puedes faltar como máximo a 2 talleres, con o sin justificación',
       'Si no realizas un Control del laboratorio, tu nota máxima en el Informe de ese experimento queda en 4,0',
       'Tu nota de evaluación de pares se calcula promediando la nota que te asignan tus compañeros y tu autoevaluación; si no respondes la autoevaluación, esa parte queda con nota 1',
-      'Si faltas sin justificación a un experimento del laboratorio, obtienes nota 1 en el Informe correspondiente',
-      'Si justificas a tiempo una inasistencia al laboratorio, puedes optar a rendir un laboratorio recuperativo',
-    ],
-    reglasDelCurso:[
-      'No hay eximición del examen final: evalúa los contenidos de todo el semestre',
-      'No se justifican las inasistencias a talleres',
-      'Todas las evaluaciones son de desarrollo: lo que no esté escrito de manera ordenada y legible no se corrige',
-      'Si respondes una misma pregunta dos o más veces sin indicar cuál es la definitiva, solo se corrige la primera hoja con el desarrollo de esa pregunta',
-      'Si tienes una segunda inasistencia al laboratorio, repruebas el laboratorio; el programa no indica qué nota final numérica te queda y señala que los casos especiales los evalúa coordinación',
-      'Si después de la revisión de Turnitin tu porcentaje de copia sigue siendo superior a 35%, tu grupo obtiene nota 1 en la experiencia completa',
-      'Si obtienes un porcentaje de copia superior a 35% por segunda vez, repruebas el laboratorio',
-      'Si no aportas al trabajo de pares y tu grupo informa tu ausencia de participación, puedes quedar sujeto a cambio de grupo o reprobación del curso',
     ],
   },
   'Revelación y Fe':{
@@ -415,8 +406,6 @@ const PRESETS_UC={
     noCalcula:[
       'Si tienes más de 75% de asistencia y una nota de presentación igual o superior a 6,00, te eximes del Examen final; tu nota de presentación se calcula como el promedio simple de Evaluación 1, Evaluación 2 y Evaluación 3, sin usar sus ponderaciones',
       'Si te eximes del Examen final, la nota del Examen final se reemplaza por la nota más alta que obtuviste entre Evaluación 1, Evaluación 2 y Evaluación 3',
-      'Si debes dar el Examen final, la nota de esa evaluación es la que obtengas en el examen escrito',
-      'Si faltas a una evaluación, solo puedes rendir una recuperativa si presentas un justificativo aprobado por tu unidad académica dentro de las 48 horas posteriores; si no lo presentas dentro de ese plazo, obtienes nota 1,0',
       'Si obtienes décimas en los talleres, se agregan al finalizar el semestre a tu nota más baja',
       'Si presentas voluntariamente uno de los textos del curso cumpliendo las condiciones indicadas, obtienes un 7,0 que se promedia con tu nota más baja entre Evaluación 1, Evaluación 2 y Evaluación 3',
     ],
