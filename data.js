@@ -228,11 +228,7 @@ const CARRERAS_UC={'ING-PC':'Ingeniería · Plan Común','COM':'Ingeniería Come
 const MALLA_UC={
   'ING-PC':{
     1:['Cálculo I','Álgebra Lineal','Química para Ingeniería','Desafíos de la Ingeniería','Filosofía: ¿Para Qué?'],
-    // "Laboratorio de Dinámica" NO va acá: es el 30% de la nota de Dinámica,
-    // no un ramo aparte (ver el preset de Dinámica). Ofrecerlo por separado
-    // hacía que el estudiante lo agregara dos veces sin darse cuenta: una como
-    // ramo suelto y otra dentro de Dinámica.
-    2:['Cálculo II','Dinámica','Introducción a la Programación'],
+    2:['Cálculo II','Dinámica','Laboratorio de Dinámica','Introducción a la Programación'],
     3:['Cálculo III','Ecuaciones Diferenciales','Termodinámica','Laboratorio de Termodinámica','Introducción a la Economía','Práctica I'],
     4:['Probabilidades y Estadística','Electricidad y Magnetismo','Laboratorio de Electricidad y Magnetismo'],
   },
@@ -357,47 +353,43 @@ const PRESETS_UC={
   // disciplina. Una entrada sin pesos y sin reglas visibles no hace nada, así
   // que se saca en vez de dejarla vacía. Si aparece el programa del curso con
   // sus interrogaciones y pesos, vuelve.
-  // ── Dinámica: un solo ramo, laboratorio incluido ──────────────────────────
-  // El laboratorio (FIS0154, 0 SCT) no es un ramo aparte: es el 30% de la nota
-  // de Dinámica. Los dos programas lo dicen — FIS1514 con la fórmula, el del
-  // lab con "el laboratorio corresponde a un 30% de la nota final del curso de
-  // cátedra". Tenerlos separados obligaba al estudiante a calcular a mano cómo
-  // se juntan, que es justo lo que la app existe para no hacer.
+  // ── Dinámica y su laboratorio: dos ramos, una nota ────────────────────────
+  // La UC los inscribe como dos cursos (FIS1514 y FIS0154) con dos actas, y así
+  // se muestran. Pero la nota final de Dinámica se calcula CON la del
+  // laboratorio, y eso el estudiante no lo puede hacer a mano cada vez:
   //
-  //   NF  = 0,7·NFC + 0,3·NL
-  //   NFC = 0,25·I1 + 0,25·I2 + 0,20·NC + 0,30·NE
-  //   NL  = 0,10·NClab + 0,70·NI + 0,20·NP
+  //   NF  = 0,7·NFC + 0,3·NL      si NL ≥ 4,0 Y NFC ≥ 4,0
+  //   NF  = min(NFC, NL)          si cualquiera de los dos baja de 4,0
   //
-  // Los pesos de acá son esos multiplicados: 0,7·25 = 17,5 para cada
-  // interrogación, 0,3·70 = 21 para los informes, etc. Suman 100.
-  //
-  // El modelo de secciones es plano, sin anidar, y aun así alcanza: los dos
-  // promedios que la fórmula necesita (NFC y NL) se recuperan con group_min,
-  // que pondera por el peso de cada sección y divide por la suma del grupo.
+  // `aporta` es lo que ata los dos ramos: dice de dónde sale el 30% que no está
+  // en las evaluaciones de este ramo, y con qué mínimo. Es el único caso del
+  // catálogo hasta ahora, y por eso vive en el dato y no en un `if` del código.
   'Dinámica':{
+    // Estas cuatro son la NFC del programa y suman 100 entre ellas: el 30% del
+    // laboratorio no está acá, viene por `aporta`.
     evals:[
-      ['Interrogación 1',17.5,{fecha:'2026-09-29'}],
-      ['Interrogación 2',17.5,{fecha:'2026-11-13'}],
-      ['Controles',14,{slots:3}],
-      ['Examen',21,{fecha:'2026-12-01'}],
-      // El lab evalúa 5 experimentos presenciales con control, informe y
-      // evaluación de pares, más un Lab 0 online con informe y pares: 5
-      // controles, 6 informes y 6 evaluaciones de pares.
-      ['Laboratorio · Controles',3,{slots:5}],
-      ['Laboratorio · Informes',21,{slots:6}],
-      ['Laboratorio · Evaluación de pares',6,{slots:6,min:4.0,cap:3.9}],
+      ['Interrogación 1',25,{fecha:'2026-09-29'}],
+      ['Interrogación 2',25,{fecha:'2026-11-13'}],
+      ['Controles',20,{slots:3}],
+      ['Examen',30,{fecha:'2026-12-01'}],
     ],
-    // "Si NL ≥ 4,0 y NFC ≥ 4,0 → NF = 0,7·NFC + 0,3·NL; si no → NF =
-    // min(NFC, NL)". Es la misma forma que la regla FEN de dos requisitos: con
-    // cap:'self' el tope es el promedio del propio grupo, así que si un lado
-    // baja de 4,0 la final cae a ese lado, y si bajan los dos, al menor.
-    grupos:[
-      {nombre:'Cátedra',evals:['Interrogación 1','Interrogación 2','Controles','Examen'],min:4.0,cap:'self'},
-      {nombre:'Laboratorio',evals:['Laboratorio · Controles','Laboratorio · Informes','Laboratorio · Evaluación de pares'],min:4.0,cap:'self'},
-    ],
+    aporta:{ramo:'Laboratorio de Dinámica',peso:30,min:4.0},
     noCalcula:[
       'Si asistes a 8 o más talleres, sumas 5 décimas al promedio de los Controles; para optar a ellas puedes faltar como máximo a 2 talleres, con o sin justificación',
-      'Si no realizas un Control del laboratorio, tu nota máxima en el Informe de ese experimento queda en 4,0',
+    ],
+  },
+  // El laboratorio tiene nota propia: se aprueba o se reprueba por sí solo, y
+  // la evaluación de pares bajo 4,0 lo reprueba aunque el resto vaya bien.
+  // 5 experimentos presenciales con control, informe y evaluación de pares, más
+  // un Lab 0 online con informe y pares: 5 controles, 6 informes, 6 pares.
+  'Laboratorio de Dinámica':{
+    evals:[
+      ['Controles',10,{slots:5}],
+      ['Informes',70,{slots:6}],
+      ['Evaluación de pares',20,{slots:6,min:4.0,cap:3.9}],
+    ],
+    noCalcula:[
+      'Si no realizas un Control, tu nota máxima en el Informe de ese experimento queda en 4,0',
       'Tu nota de evaluación de pares se calcula promediando la nota que te asignan tus compañeros y tu autoevaluación; si no respondes la autoevaluación, esa parte queda con nota 1',
     ],
   },

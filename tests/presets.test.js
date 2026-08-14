@@ -69,12 +69,16 @@ const pautaUC=(nombre,esperada)=>chk(nombre+' conserva sus ponderaciones oficial
   evalsUC(UC[nombre]).map(([n,p])=>n+':'+p).join('|')===esperada);
 pautaUC('Introducción a la Programación','Interrogación 1:15|Interrogación 2:20|Examen:30|Tarea 1:5|Tarea 2:5|Tarea 3:5|Nota de participación:16|Talleres de Inteligencia Artificial:4');
 pautaUC('Principios de Ecología y Medio Ambiente','Prueba 1:25|Prueba 2:40|Prueba 3:35');
-// El laboratorio dejó de ser un ramo aparte: es el 30% de Dinámica. Los pesos
-// de acá son los del programa multiplicados por su parte (0,7·25 = 17,5 por
-// interrogación; 0,3·70 = 21 los informes). La equivalencia con la fórmula
+// Dinámica y su laboratorio son dos cursos con dos actas. Las evaluaciones de
+// acá son la NFC del programa y suman 100 entre ellas: el 30% del laboratorio
+// NO está en esta lista, entra por `aporta`. La equivalencia con la fórmula
 // completa se comprueba en compuertas.test.js, contra ramoAvg.
-pautaUC('Dinámica','Interrogación 1:17.5|Interrogación 2:17.5|Controles:14|Examen:21|Laboratorio · Controles:3|Laboratorio · Informes:21|Laboratorio · Evaluación de pares:6');
-chk('Laboratorio de Dinámica ya no es una pauta suelta', UC['Laboratorio de Dinámica']===undefined);
+pautaUC('Dinámica','Interrogación 1:25|Interrogación 2:25|Controles:20|Examen:30');
+pautaUC('Laboratorio de Dinámica','Controles:10|Informes:70|Evaluación de pares:20');
+// El vínculo es un dato, no un `if` de ramo en el código.
+chk('Dinámica declara de dónde sale el 30% que le falta',
+  UC['Dinámica'].aporta.ramo==='Laboratorio de Dinámica'&&UC['Dinámica'].aporta.peso===30&&UC['Dinámica'].aporta.min===4);
+chk('el ramo que aporta existe en el registro', !!UC[UC['Dinámica'].aporta.ramo]);
 pautaUC('Revelación y Fe','Evaluación 1:20|Evaluación 2:20|Evaluación 3:30|Examen final:30');
 chk('Programación conserva sus tres fechas oficiales',
   evalsUC(UC['Introducción a la Programación']).slice(0,3).map(([, ,x])=>x.fecha).join('|')==='2026-09-24|2026-10-22|2026-12-10');
@@ -84,15 +88,14 @@ chk('Programación conserva la compuerta de evaluaciones principales',
   UC['Introducción a la Programación'].grupos[0].min===4&&UC['Introducción a la Programación'].grupos[0].cap===3.9);
 // "La evaluación de pares es reprobatoria: si el promedio es menor a 4, serán
 // reprobados con nota 3,9, independiente de su nota final en el curso."
-const pares=evalsUC(UC['Dinámica']).find(([n])=>n==='Laboratorio · Evaluación de pares');
+const pares=evalsUC(UC['Laboratorio de Dinámica']).find(([n])=>n==='Evaluación de pares');
 chk('la evaluación de pares conserva su mínimo reprobatorio', pares[2].min===4&&pares[2].cap===3.9);
-// Los dos requisitos cruzados del programa de cátedra (NFC y NL ≥ 4,0).
-chk('Dinámica declara los grupos de cátedra y laboratorio',
-  UC['Dinámica'].grupos.length===2&&UC['Dinámica'].grupos.every(g=>g.min===4&&g.cap==='self'));
 // Las casillas salen de los programas: 3 controles de cátedra, y en el lab 5
-// experimentos presenciales más un Lab 0 online.
-chk('las secciones promediadas declaran sus casillas',
-  evalsUC(UC['Dinámica']).filter(([, ,x])=>x&&x.slots).map(([, ,x])=>x.slots).join('|')==='3|5|6|6');
+// experimentos presenciales más un Lab 0 online (6 informes y 6 pares).
+chk('la cátedra declara sus 3 controles',
+  evalsUC(UC['Dinámica']).filter(([, ,x])=>x&&x.slots).map(([, ,x])=>x.slots).join('|')==='3');
+chk('el laboratorio declara sus casillas',
+  evalsUC(UC['Laboratorio de Dinámica']).filter(([, ,x])=>x&&x.slots).map(([, ,x])=>x.slots).join('|')==='5|6|6');
 // Cálculo II ya no es una entrada: su único documento es normativa, no publica
 // ponderaciones, y ninguna de sus reglas pasa el filtro de "puedes hacer algo
 // con esto". Una entrada sin pesos y sin reglas visibles no hace nada.
