@@ -191,6 +191,29 @@ chk('el fin del degradado es un token, no un valor fijo',
 chk('cada modo define su propio --primary-grad',
   (css.match(/--primary-grad:/g) || []).length >= 3);
 
+console.log('\n=== Cada acento se lee completo en claro y oscuro ===');
+const acentos=vm.runInContext('ACENTOS',dark);
+chk('turquesa conserva exactamente la identidad histórica',
+  ['primary','primaryFg','primaryLight','darkPrimary','darkPrimaryFg','darkPrimaryLight','accent','secondary','darkSecondary']
+    .every(k=>acentos.turquesa[k]===theme[k]));
+chk('hay varias opciones además del default',Object.keys(acentos).length>=4);
+Object.entries(acentos).forEach(([key,a])=>{
+  const finClaro=mezcla(a.primary,'#000000',18);
+  const finOscuro=mezcla(a.accent,a.darkPrimary,25);
+  chk(`${key}: contraste claro en ambos extremos`,
+    Math.min(ratio(a.primaryFg,a.primary),ratio(a.primaryFg,finClaro))>=4.5);
+  chk(`${key}: contraste oscuro en ambos extremos`,
+    Math.min(ratio(a.darkPrimaryFg,a.darkPrimary),ratio(a.darkPrimaryFg,finOscuro))>=4.5);
+  chk(`${key}: no se confunde con ramos ni semáforo`,
+    [a.primary,a.darkPrimary].every(color=>[...vm.runInContext('COLORS',dark),'#2ecc40','#ffc94d','#ff5f7a'].every(c=>separaDe(color,c))));
+});
+vm.runInContext('S.acento="violeta";applyTheme()',dark);
+chk('applyTheme aplica la elección guardada',
+  P['--primary']===acentos.violeta.darkPrimary&&P['--primary-fg']===acentos.violeta.darkPrimaryFg);
+chk('normalize vuelve al default ante una clave desconocida',
+  vm.runInContext('normalize({ramos:[],acento:"inventado"}).acento',dark)==='turquesa');
+vm.runInContext('S.acento="turquesa"',dark);
+
 console.log('\n=== Modo claro y oscuro siguen siendo decisiones separadas ===');
 const light = ctxFor(false), PL = light.__props;
 TENANT_CODES.forEach(code => {
