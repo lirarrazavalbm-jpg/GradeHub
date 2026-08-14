@@ -132,4 +132,18 @@ if (!/authMode\s*===\s*'signup'\s*&&\s*p\.length\s*<\s*PASS_MIN/.test(app)) {
   }
 });
 
-console.log('JS OK · CSS ' + abre + '/' + cierra + ' OK · HTML enlaza bien · data.js sin lógica · instrucciones enlazadas');
+// app.js arranca la app, pero showMainApp() llama a renderAgenda(), que vive en
+// render-agenda.js — el script que carga DESPUÉS. Llamar a boot() en el cuerpo
+// de app.js revienta con un ReferenceError en medio del primer render y deja
+// las tres pantallas montadas una encima de otra. Tiene que esperar a
+// DOMContentLoaded, que corre cuando el parser ya ejecutó todos los <script>.
+if (!/document\.addEventListener\(\s*['"]DOMContentLoaded['"]\s*,\s*boot\s*\)/.test(app)) {
+  console.error('boot() tiene que esperar a DOMContentLoaded: renderAgenda vive en render-agenda.js, que carga después de app.js');
+  process.exit(1);
+}
+if (/^\s*boot\(\);\s*$/m.test(app)) {
+  console.error('boot() se está llamando de forma síncrona en app.js');
+  process.exit(1);
+}
+
+console.log('JS OK · CSS ' + abre + '/' + cierra + ' OK · HTML enlaza bien · data.js sin lógica · instrucciones enlazadas · boot espera al DOM');
