@@ -1547,7 +1547,7 @@ function renderRamo(){
   // Advertencia de ponderación
   const pw=document.getElementById('peso-warning');
   if(r.categorias.length>0 && Math.abs(tp-100)>0.05){
-    pw.style.display='flex';pw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Las evaluaciones suman <b style="margin:0 3px;">${r2(tp)}%</b> — ajústalas para que sumen 100%`;
+    pw.style.display='flex';pw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><div>Las evaluaciones suman <b>${r2(tp)}%</b> — ajústalas para que sumen 100%</div>`;
   } else {pw.style.display='none';}
 
   // La pauta oficial cambió y este ramo sigue con la vieja. No se toca nada sin

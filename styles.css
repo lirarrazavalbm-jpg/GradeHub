@@ -961,6 +961,12 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   margin:12px 0;padding:12px 13px;border-radius:12px;
   background:var(--yellow-bg);border:1px solid color-mix(in srgb,var(--yellow),transparent 72%);
   font-size:12.5px;line-height:1.45;color:var(--fg2);letter-spacing:-.005em;text-align:left;}
+/* CONTRATO: adentro va el icono y UN SOLO bloque con el texto. Si se le pasa
+   texto suelto, flex convierte cada corrida en un ítem anónimo y cada uno
+   envuelve por su cuenta: el aviso de ponderación quedaba con el porcentaje
+   flotando entre dos trozos de frase partidos. La regla de abajo lo fuerza
+   aunque alguien lo olvide. */
+.weight-setup-nudge>div{min-width:0;flex:1;}
 /* En el modal este aviso vive dentro de una caja que ya trae sangría, por eso
    la clase lo declara a ancho completo. En la ficha del ramo cuelga directo del
    scroll, así que ahí la sangría la pone él y se alinea con el resto. */
