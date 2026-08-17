@@ -135,6 +135,13 @@ if (!/id="auth-pass-confirm-wrap"/.test(html) || !/id="auth-pass2"/.test(html)) 
   console.error('falta el campo para repetir la contraseña en el registro');
   process.exit(1);
 }
+if ((html.match(/class="password-toggle"/g) || []).length !== 2 ||
+    !/function togglePasswordVisibility\(inputId,button\)/.test(app) ||
+    !/aria-label="Mostrar contraseña"/.test(html) ||
+    !/button\.setAttribute\('aria-label',mostrar\?'Ocultar contraseña':'Mostrar contraseña'\)/.test(app)) {
+  console.error('los dos campos del registro necesitan un ojo accesible para mostrar y ocultar');
+  process.exit(1);
+}
 const policySource = (app.match(/function passwordPolicyError\(password\)\{[\s\S]*?\n\}/) || [])[0];
 if (!policySource) {
   console.error('no se pudo probar passwordPolicyError');
