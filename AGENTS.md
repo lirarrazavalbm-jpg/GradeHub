@@ -273,10 +273,9 @@ leer notas y actuar como la cuenta aunque `connect-src` limite la exfiltración.
 MFA puede ser opcional para estudiantes; pasa a ser obligatorio si aparece un
 panel administrativo.
 
-**Base de datos actual:** además de las tres tablas históricas existe
-`calendar_feeds`. La rama `codex/sugerencias-comentarios` agrega
-`user_feedback`, pero no existe en producción hasta aplicar manualmente
-`supabase/user_feedback.sql`: RLS activa, única política INSERT atada a
+**Base de datos actual:** además de las tres tablas históricas existen
+`calendar_feeds` y `user_feedback`. El SQL de `user_feedback` se aplicó en
+producción el 17 de agosto de 2026: RLS activa, única política INSERT atada a
 `auth.uid()`, sin lectura para clientes y FK a `auth.users` con
 `ON DELETE CASCADE`. `calendar_feeds` mantiene cero políticas y acceso solo por
 RPC. Toda tabla nueva reabre la auditoría RLS y de borrado.
