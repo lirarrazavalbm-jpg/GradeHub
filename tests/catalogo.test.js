@@ -113,5 +113,68 @@ const buscarUC = (q, car) => run('searchCatalog(' + JSON.stringify(q) + ',"uc",'
 const termo = buscarUC('Termodinámica', 'ING-PC').find(r => r.nombre === 'Termodinámica');
 chk('Termodinámica aparece por la malla, pero sin estrella de pauta', !!termo && !termo.tienePreset);
 
+console.log('\n=== Cuando la pauta oficial cambia ===');
+// Un preset se copia al ramo al crearlo y después queda congelado. Si más tarde
+// se corrige el programa —un examen que pasa de 20% a 30%— el estudiante se
+// queda con los pesos viejos y su promedio deja de ser el real. No falla nada:
+// el número simplemente empieza a estar equivocado, que es la peor forma.
+const cambioDePauta = run('cambioDePauta');
+const huellaPauta = run('huellaPauta');
+const actualizarPauta = run('actualizarPauta');
+const setRamos = rs => { ctx.__rs = rs; run('S.ramos=__rs'); };
+run('S=S||{};S.ramos=[]');
+
+// Se arma un ramo como quedó al crearse, y después se le "envejece" la pauta a
+// mano para simular que el preset cambió después.
+const conPautaVieja = () => {
+  const p = run('presetRamo')('Introducción a la Programación', 'uc', 'ING-PC');
+  const cats = p.categorias.map(c => ({ ...c, notas: [] }));
+  cats[0].peso = 5;                       // la Interrogación 1 valía 5, ahora 15
+  const r = { id: 'r1', nombre: 'Introducción a la Programación', origen: uc,
+              categorias: cats, gates: p.gates, aporta: p.aporta };
+  r.pautaHuella = huellaPauta(cats);      // así se la dimos en su momento
+  return r;
+};
+
+const viejo = conPautaVieja();
+setRamos([viejo]);
+const cambio = cambioDePauta(viejo);
+chk('detecta que la pauta oficial cambió', !!cambio);
+chk('y dice exactamente qué evaluación cambió de peso',
+  !!cambio && cambio.cambios.some(c => c.tipo === 'peso' && c.nombre === 'Interrogación 1' && c.despues === 15));
+
+// Lo que NO puede pasar: opinar sobre una pauta que el estudiante armó él.
+const editado = conPautaVieja();
+editado.categorias[1].peso = 42;          // la tocó a mano después
+setRamos([editado]);
+chk('no opina si el estudiante editó la pauta a mano', cambioDePauta(editado) === null);
+
+// Ni molestar a quien ya está al día.
+const alDia = (() => {
+  const p = run('presetRamo')('Introducción a la Programación', 'uc', 'ING-PC');
+  const r = { id: 'r2', nombre: 'Introducción a la Programación', origen: uc,
+              categorias: p.categorias, gates: p.gates, aporta: p.aporta };
+  r.pautaHuella = huellaPauta(p.categorias);
+  return r;
+})();
+setRamos([alDia]);
+chk('no molesta a quien ya tiene la pauta al día', cambioDePauta(alDia) === null);
+
+// Un ramo creado a mano no tiene pauta oficial contra la cual compararse.
+const manualSinHuella = { id: 'r3', nombre: 'Lo mío', origen: null, categorias: [], gates: [] };
+setRamos([manualSinHuella]);
+chk('un ramo creado a mano nunca recibe el aviso', cambioDePauta(manualSinHuella) === null);
+
+// Y al actualizar, las notas se conservan por NOMBRE: los ids se regeneran.
+const paraActualizar = conPautaVieja();
+paraActualizar.categorias[0].notas = [{ id: 'n1', nombre: 'Interrogación 1', valor: 6.2, peso: 1 }];
+setRamos([paraActualizar]);
+chk('actualizar reporta que sí hizo el cambio', actualizarPauta('r1') === true);
+const despues = run('S.ramos')[0];
+chk('actualizar deja el peso oficial', (despues.categorias.find(c => c.nombre === 'Interrogación 1') || {}).peso === 15);
+chk('y conserva la nota que el estudiante ya tenía',
+  ((despues.categorias.find(c => c.nombre === 'Interrogación 1') || {}).notas || [{}])[0].valor === 6.2);
+chk('y deja de avisar', cambioDePauta(despues) === null);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

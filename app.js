@@ -30,6 +30,9 @@ function normalize(data) {
     origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
     // Otro ramo aporta parte de esta nota (el laboratorio de Dinámica).
     aporta: (r.aporta && r.aporta.ramo && r.aporta.peso) ? {ramo:r.aporta.ramo, peso:r.aporta.peso, min:r.aporta.min} : null,
+    // La forma de la pauta tal como se la dimos. Si difiere de las categorías
+    // actuales, el estudiante la editó y su versión manda.
+    pautaHuella: typeof r.pautaHuella === 'string' ? r.pautaHuella : null,
     categorias: (r.categorias || []).map(c => ({
       ...c,
       id: idSeguro(c.id),
@@ -55,7 +58,7 @@ function normalize(data) {
   // ramo simplemente nunca se entera. Por eso se rellena al cargar.
   data.ramos.forEach(r => {
     const p = pautaPendiente(r);
-    if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; }
+    if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.pautaHuella = huellaPauta(p.categorias); }
   });
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
@@ -1100,7 +1103,7 @@ function completeOnboarding(){
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
-    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null});
+    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   });
   S.onboardingDone=true;save();
   syncProfile();
@@ -1547,6 +1550,18 @@ function renderRamo(){
     pw.style.display='flex';pw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Las evaluaciones suman <b style="margin:0 3px;">${r2(tp)}%</b> — ajústalas para que sumen 100%`;
   } else {pw.style.display='none';}
 
+  // La pauta oficial cambió y este ramo sigue con la vieja. No se toca nada sin
+  // que el estudiante apriete: es su ramo y su promedio va a cambiar.
+  const pcw=document.getElementById('pauta-cambio');
+  if(pcw){
+    const cambio=cambioDePauta(r);
+    if(cambio){
+      const cuantos=cambio.cambios.length;
+      pcw.style.display='flex';pcw.className='weight-setup-nudge';
+      pcw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>La pauta oficial de este ramo cambió.</b><br>${cuantos} ${cuantos===1?'evaluación distinta':'evaluaciones distintas'} a lo que tienes hoy. Tu promedio se calcula con lo que tienes ahora.<div style="margin-top:8px;"><button type="button" class="rep-link" style="width:auto;padding:7px 12px;margin:0;" onclick="verCambioDePauta('${esc(r.id)}')">Ver qué cambia</button></div></div>`;
+    }else{pcw.style.display='none';pcw.innerHTML='';}
+  }
+
   // Algunas reglas del programa no caben aún en el motor. El promedio no está
   // "malo": simplemente no incorpora esas excepciones oficiales.
   const ncw=document.getElementById('no-calcula-warning');
@@ -1793,6 +1808,94 @@ function updateMallaBtn(){
 // salvo que NO haya nada que perder: solo se rellena un ramo del catálogo que
 // está completamente vacío. Si el estudiante ya escribió aunque sea una
 // evaluación propia, no se toca — su pauta a mano manda sobre la nuestra.
+// ─── CUANDO LA PAUTA OFICIAL CAMBIA ─────────────────────────────────────────
+// Un preset se copia al ramo cuando se crea y después queda congelado. Si más
+// tarde corregimos el programa —un examen que pasa de 20% a 30%— el estudiante
+// se queda con los pesos viejos para siempre y su promedio deja de ser el real.
+// No falla nada: el número simplemente empieza a estar equivocado.
+//
+// La huella es la FORMA de la pauta: nombre y peso de cada evaluación, en
+// orden. No incluye ids (son aleatorios) ni notas (son del estudiante). Sirve
+// para responder la única pregunta que importa antes de tocar nada: ¿esta
+// pauta sigue siendo la que le dimos, o el estudiante la editó?
+function huellaPauta(cats){
+  return (cats||[]).map(c=>`${c.nombre}:${r2(Number(c.peso)||0)}`).join('|');
+}
+
+// Devuelve el cambio pendiente, o null. Null significa las tres cosas buenas:
+// no hay pauta oficial, ya está al día, o el estudiante la editó a mano —y en
+// ese caso su versión manda sobre la nuestra, sin preguntar ni avisar.
+function cambioDePauta(r){
+  if(!r||!r.origen||!r.origen.tenant||!r.pautaHuella)return null;
+  const nombre=findPresetName(r.nombre,r.origen.tenant,r.origen.carrera);
+  if(!nombre)return null;
+  const p=presetRamo(nombre,r.origen.tenant,r.origen.carrera);
+  if(!p)return null;
+  const actual=huellaPauta(r.categorias);
+  if(actual!==r.pautaHuella)return null;      // la editó: no se opina
+  const oficial=huellaPauta(p.categorias);
+  if(oficial===actual)return null;            // al día
+  // Qué cambia exactamente, para poder mostrárselo antes de que decida.
+  const antes=new Map((r.categorias||[]).map(c=>[c.nombre,Number(c.peso)||0]));
+  const despues=new Map((p.categorias||[]).map(c=>[c.nombre,Number(c.peso)||0]));
+  const cambios=[];
+  antes.forEach((peso,nom)=>{
+    if(!despues.has(nom))cambios.push({tipo:'se-va',nombre:nom,antes:peso});
+    else if(r2(despues.get(nom))!==r2(peso))cambios.push({tipo:'peso',nombre:nom,antes:peso,despues:despues.get(nom)});
+  });
+  despues.forEach((peso,nom)=>{ if(!antes.has(nom))cambios.push({tipo:'llega',nombre:nom,despues:peso}); });
+  // Una evaluación que desaparece se lleva las notas que el estudiante escribió
+  // ahí. Eso no se hace sin decírselo con todas sus letras.
+  const pierdeNotas=cambios.filter(c=>c.tipo==='se-va')
+    .some(c=>((r.categorias.find(x=>x.nombre===c.nombre)||{}).notas||[]).length>0);
+  return {preset:p,cambios,pierdeNotas};
+}
+
+// Le muestra el cambio antes de decidir. Sin esto, "Actualizar" sería pedirle
+// que confíe a ciegas en que le movamos el promedio.
+function verCambioDePauta(ramoId){
+  const r=(S.ramos||[]).find(x=>x.id===ramoId);if(!r)return;
+  const cambio=cambioDePauta(r);if(!cambio)return;
+  const fila=c=>{
+    if(c.tipo==='peso')return `<li><b>${esc(c.nombre)}</b>: ${r2(c.antes)}% → <b>${r2(c.despues)}%</b></li>`;
+    if(c.tipo==='llega')return `<li><b>${esc(c.nombre)}</b>: nueva, ${r2(c.despues)}%</li>`;
+    return `<li><b>${esc(c.nombre)}</b>: ya no está en la pauta oficial</li>`;
+  };
+  const aviso=cambio.pierdeNotas
+    ? `<div class="modal-warn" style="margin-top:10px;">Alguna de las evaluaciones que desaparecen tiene notas tuyas. Si actualizas, esas notas se pierden.</div>`
+    : `<p class="modal-desc" style="margin-top:10px;">Tus notas se conservan: se reconocen por el nombre de la evaluación.</p>`;
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">La pauta oficial cambió</div>
+    <p class="modal-desc">Esto es lo que cambia respecto de lo que tienes hoy en <b>${esc(r.nombre)}</b>.</p>
+    <ul style="margin:10px 0 0;padding-left:18px;font-size:14px;color:var(--fg2);line-height:1.6;">${cambio.cambios.map(fila).join('')}</ul>
+    ${aviso}
+    <div class="modal-btns" style="margin-top:16px;">
+      <button type="button" class="btn-cancel" onclick="closeModal()">Dejar como está</button>
+      <button type="button" class="btn-confirm" onclick="aplicarPautaNueva('${esc(r.id)}')">Actualizar</button>
+    </div>`;
+  openModal();
+}
+
+// Aplica la pauta nueva conservando las notas por NOMBRE de evaluación: es lo
+// único estable entre las dos versiones, porque los ids se generan de nuevo.
+// El cambio de datos va aparte de la interfaz: así se puede probar sin montar
+// medio navegador, que es lo que obliga a hacer una función que cierra modales.
+function actualizarPauta(ramoId){
+  const r=(S.ramos||[]).find(x=>x.id===ramoId);if(!r)return false;
+  const cambio=cambioDePauta(r);if(!cambio)return false;
+  const notasPorNombre=new Map((r.categorias||[]).map(c=>[c.nombre,c.notas||[]]));
+  r.categorias=cambio.preset.categorias.map(c=>({...c,notas:notasPorNombre.get(c.nombre)||[]}));
+  r.gates=cambio.preset.gates;
+  r.aporta=cambio.preset.aporta||null;
+  r.pautaHuella=huellaPauta(r.categorias);
+  return true;
+}
+function aplicarPautaNueva(ramoId){
+  if(!actualizarPauta(ramoId))return;
+  save();track('pauta_actualizada');closeModal();renderRamo();
+  showToast('Pauta actualizada — tus notas se conservaron');
+}
+
 function pautaPendiente(r){
   if(!r||!r.origen||!r.origen.tenant)return null;
   if((r.categorias||[]).length||(r.gates||[]).length)return null;
@@ -1852,7 +1955,7 @@ function confirmAddMalla(){
     // estrella de "pauta oficial" al lado, porque el selector SÍ normaliza.
     const presetName=findPresetName(n,S.tenant,S.carrera);
     const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null});
+    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   });
   save();track('add_malla_ramos',{count:elegidos.length,carrera:S.carrera,sem:S.careerSemestre});
   closeModal();
@@ -1919,7 +2022,7 @@ function addFromCatalog(nombre){
   S.ramos.push({
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
     creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(),
-    categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,
+    categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
   });
   save();track('add_ramo_catalogo',{preset:!!preset});
   closeModal();renderHome();
@@ -2349,7 +2452,7 @@ function confirmAddRamo(){
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const cr=creditosDe(presetName||name,S.tenant,preset);
-  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null});
+  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
   showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
 }
@@ -2674,6 +2777,7 @@ function openSettings(){
   const icons={
     perfil:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.4 3.5-5.3 7.5-5.3s6.7 1.9 7.5 5.3"/></svg>',
     academico:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    calendario:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',
     apariencia:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
     datos:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v7c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 12v7c0 1.7 3.1 3 7 3s7-1.3 7-3v-7"/></svg>',
     arrow:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>'
@@ -3344,7 +3448,7 @@ function renderStats(){
   if(S.historial && S.historial.length>0){
     const validos=S.historial.filter(h=>h&&Array.isArray(h.ramos));
     if(validos.length>0){
-      html+=`<div class="section-hd" style="padding:0 20px 8px;"><span class="section-hd-title">Historial</span></div>`;
+      html+=`<div class="section-hd stats-history-heading" style="padding:0 20px 8px;"><span class="section-hd-title">Historial</span></div>`;
       validos.forEach(h=>{
         const isOpen=openHist[h.id];
         const gpaColor=h.gpa!==null?getColor(h.gpa):'var(--fg3)';
