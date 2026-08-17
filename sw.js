@@ -14,6 +14,7 @@ const CACHE_NAME = 'gradehub-dev';
 const SHELL = [
   '/',
   '/index.html',
+  '/preguntas.html',
   '/privacidad.html',
   '/data.js',
   '/engine.js',
