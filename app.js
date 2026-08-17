@@ -646,6 +646,26 @@ function passwordPolicyError(password){
   return '';
 }
 
+function togglePasswordVisibility(inputId,button){
+  const input=document.getElementById(inputId);
+  if(!input||!button)return;
+  const mostrar=input.type==='password';
+  input.type=mostrar?'text':'password';
+  button.classList.toggle('is-visible',mostrar);
+  button.setAttribute('aria-pressed',mostrar?'true':'false');
+  button.setAttribute('aria-label',mostrar?'Ocultar contraseña':'Mostrar contraseña');
+  input.focus();
+}
+
+function resetPasswordVisibility(){
+  ['auth-pass','auth-pass2'].forEach(id=>{
+    const input=document.getElementById(id);
+    const button=document.querySelector(`[data-password-for="${id}"]`);
+    if(input)input.type='password';
+    if(button){button.classList.remove('is-visible');button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','Mostrar contraseña');}
+  });
+}
+
 const SUPABASE_URL      = 'https://lsulsnswzesyekpsvlql.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
 
@@ -667,6 +687,7 @@ function authError(msg,kind){
 }
 function toggleAuthMode(){
   authMode=authMode==='login'?'signup':'login';
+  resetPasswordVisibility();
   document.getElementById('auth-sub').textContent=authMode==='login'?'Tus notas, tu promedio y cuánto te falta para aprobar.':'Crea tu cuenta gratis y guarda tus notas en la nube.';
   document.getElementById('auth-btn').textContent=authMode==='login'?'Iniciar sesión':'Crear cuenta';
   document.getElementById('auth-toggle').textContent=authMode==='login'?'¿No tienes cuenta? Crea una':'¿Ya tienes cuenta? Inicia sesión';

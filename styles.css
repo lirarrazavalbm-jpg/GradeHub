@@ -186,6 +186,15 @@ body{font-family:'Inter',sans-serif;background:var(--bg);background-image:radial
 .ob-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px 20px;width:100%;box-shadow:var(--shadow-lg);margin-bottom:16px;}
 .field-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);margin-bottom:8px;display:block;}
 input[type=text],input[type=number],input[type=password],input[type=email]{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;font-family:'Inter',sans-serif;color:var(--fg);background:var(--bg2);outline:none;transition:border var(--motion-fast);}
+.password-input-wrap{position:relative;}
+.password-input-wrap input{padding-right:48px;}
+.password-toggle{position:absolute;top:50%;right:3px;display:flex;width:40px;height:40px;align-items:center;justify-content:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--fg3);cursor:pointer;transition:color var(--motion-fast),background var(--motion-fast),transform var(--motion-press);}
+.password-toggle .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.password-toggle .eye-closed{display:none;}
+.password-toggle.is-visible .eye-open{display:none;}
+.password-toggle.is-visible .eye-closed{display:block;}
+.password-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+@media(hover:hover){.password-toggle:hover{background:var(--muted);color:var(--primary);}}
 input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 85%);}
 /* Neutraliza el amarillo del autofill de Chrome/iOS para que respete el tema */
 input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,input:-webkit-autofill:active{
