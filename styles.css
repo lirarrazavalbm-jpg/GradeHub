@@ -420,6 +420,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 /* RAMOS — sección + filas densas editoriales */
 .section-hd{display:flex;align-items:center;padding:20px 20px 10px;gap:10px;}
 .section-hd-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--fg3);}
+.stats-history-heading{margin-top:18px;}
 .section-hd-action{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--fg3);background:none;border:none;cursor:pointer;letter-spacing:-.01em;padding:2px 0;transition:color var(--motion-fast),transform var(--motion-press) var(--ease-standard);}
 .section-hd-action:hover{color:var(--fg);}
 .section-hd-add{min-height:44px;margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border:0;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 5px 14px -7px color-mix(in srgb,var(--primary),transparent 28%);transition:transform var(--motion-press) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
@@ -694,6 +695,17 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .settings-reset-danger-zone{margin-top:12px;}
 .settings-privacy{margin:16px 0 0;text-align:center;font-size:12px;}
 .settings-privacy a{color:var(--fg3);text-decoration:none;}
+.feedback-select,.feedback-message{width:100%;border:1.5px solid var(--border);border-radius:11px;background:var(--muted);color:var(--fg);font:inherit;outline:none;transition:border-color var(--motion-fast),box-shadow var(--motion-fast);}
+.feedback-select{margin-bottom:17px;padding:11px 12px;cursor:pointer;}
+.feedback-message{display:block;padding:12px 13px;line-height:1.45;resize:vertical;min-height:132px;}
+.feedback-select:focus,.feedback-message:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 84%);}
+.feedback-message::placeholder{color:var(--fg3);}
+.feedback-meta{display:flex;justify-content:space-between;gap:12px;margin:7px 2px 16px;color:var(--fg3);font-size:10.5px;line-height:1.35;}
+.feedback-meta span:first-child{max-width:72%;}
+.feedback-meta span:last-child{white-space:nowrap;}
+.feedback-empty{padding:17px;border:1px solid var(--border);border-radius:12px;background:var(--muted);}
+.feedback-empty b{font-size:14px;color:var(--fg);}
+.feedback-empty p{margin:5px 0 0;color:var(--fg3);font-size:12px;line-height:1.45;}
 @media(max-width:767px){
   .settings-shell.settings-detail-open .settings-nav{display:none;}
   .settings-shell:not(.settings-detail-open) .settings-detail{display:none;}
@@ -949,6 +961,12 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   margin:12px 0;padding:12px 13px;border-radius:12px;
   background:var(--yellow-bg);border:1px solid color-mix(in srgb,var(--yellow),transparent 72%);
   font-size:12.5px;line-height:1.45;color:var(--fg2);letter-spacing:-.005em;text-align:left;}
+/* CONTRATO: adentro va el icono y UN SOLO bloque con el texto. Si se le pasa
+   texto suelto, flex convierte cada corrida en un ítem anónimo y cada uno
+   envuelve por su cuenta: el aviso de ponderación quedaba con el porcentaje
+   flotando entre dos trozos de frase partidos. La regla de abajo lo fuerza
+   aunque alguien lo olvide. */
+.weight-setup-nudge>div{min-width:0;flex:1;}
 /* En el modal este aviso vive dentro de una caja que ya trae sangría, por eso
    la clase lo declara a ancho completo. En la ficha del ramo cuelga directo del
    scroll, así que ahí la sangría la pone él y se alinea con el resto. */
