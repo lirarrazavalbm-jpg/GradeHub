@@ -640,6 +640,12 @@ function greeting(){
 // aceptando 6 aunque el cliente no lo ofrezca.
 const PASS_MIN = 8;
 
+function passwordPolicyError(password){
+  if(password.length<PASS_MIN)return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres.';
+  if(!/[A-Za-z]/.test(password)||!/\d/.test(password))return 'La contraseña debe incluir al menos una letra y un número.';
+  return '';
+}
+
 const SUPABASE_URL      = 'https://lsulsnswzesyekpsvlql.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
 
@@ -665,9 +671,13 @@ function toggleAuthMode(){
   document.getElementById('auth-btn').textContent=authMode==='login'?'Iniciar sesión':'Crear cuenta';
   document.getElementById('auth-toggle').textContent=authMode==='login'?'¿No tienes cuenta? Crea una':'¿Ya tienes cuenta? Inicia sesión';
   document.getElementById('auth-pass').setAttribute('autocomplete',authMode==='login'?'current-password':'new-password');
+  const confirmWrap=document.getElementById('auth-pass-confirm-wrap');
+  confirmWrap.style.display=authMode==='signup'?'block':'none';
+  confirmWrap.setAttribute('aria-hidden',authMode==='signup'?'false':'true');
+  document.getElementById('auth-pass2').value='';
   // Al iniciar sesión no se anuncia un mínimo: sería mentirle a quien creó su
   // cuenta cuando el mínimo era otro.
-  document.getElementById('auth-pass').placeholder=authMode==='login'?'Tu contraseña':'Mínimo '+PASS_MIN+' caracteres';
+  document.getElementById('auth-pass').placeholder=authMode==='login'?'Tu contraseña':PASS_MIN+'+ caracteres, letras y números';
   document.getElementById('auth-fp').style.display=authMode==='login'?'block':'none';
   authError('');
 }
@@ -701,21 +711,26 @@ function traduceAuthError(e){
   // registro aceptado tienen que verse iguales hacia afuera.
   if(m.includes('already')||m.includes('exists'))return 'Si el correo puede registrarse, te enviaremos las instrucciones para continuar.';
   if(m.includes('invalid login')||m.includes('credentials'))return 'Usuario o contraseña incorrectos.';
-  if(m.includes('password'))return 'Contraseña inválida (mínimo 6 caracteres).';
+  if(m.includes('password'))return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres e incluir letras y números.';
   return 'No se pudo conectar. Revisa tu internet e intenta de nuevo.';
 }
 
 async function submitAuth(){
   const email=(document.getElementById('auth-user').value||'').trim().toLowerCase();
   const p=document.getElementById('auth-pass').value;
+  const p2=document.getElementById('auth-pass2').value;
   authError('');
   const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if(!emailRe.test(email)){authError('Ingresa un correo electrónico válido.');return;}
   // El mínimo se exige SOLO al crear la cuenta. Al iniciar sesión no se valida
   // el largo: quien se registró cuando el mínimo era 6 tiene que poder entrar,
   // y validarlo acá lo dejaría fuera de su propia cuenta con un error engañoso.
-  if(authMode==='signup' && p.length<PASS_MIN){authError('La contraseña debe tener al menos '+PASS_MIN+' caracteres.');return;}
   if(!p){authError('Escribe tu contraseña.');return;}
+  if(authMode==='signup'){
+    const policyError=passwordPolicyError(p);
+    if(policyError){authError(policyError);return;}
+    if(p!==p2){authError('Las contraseñas no coinciden.');return;}
+  }
   if(!supabaseClient){authError('Falta configurar Supabase (URL y clave) en el código.');return;}
 
   const btn=document.getElementById('auth-btn');const orig=btn.textContent;
@@ -777,7 +792,8 @@ async function submitNewPassword(){
   const p2=document.getElementById('reset-pass2').value;
   const err=document.getElementById('reset-error');
   err.style.display='none';
-  if(p1.length<PASS_MIN){err.textContent='La contraseña debe tener al menos '+PASS_MIN+' caracteres.';err.style.display='block';return;}
+  const policyError=passwordPolicyError(p1);
+  if(policyError){err.textContent=policyError;err.style.display='block';return;}
   if(p1!==p2){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
   if(!supabaseClient){err.textContent='Supabase no está configurado.';err.style.display='block';return;}
   const btn=document.getElementById('reset-btn');const orig=btn.textContent;
