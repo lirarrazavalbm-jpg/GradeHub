@@ -188,7 +188,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);background-image:radial
 input[type=text],input[type=number],input[type=password],input[type=email]{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:16px;font-family:'Inter',sans-serif;color:var(--fg);background:var(--bg2);outline:none;transition:border var(--motion-fast);}
 .password-input-wrap{position:relative;}
 .password-input-wrap input{padding-right:48px;}
-.password-toggle{position:absolute;top:50%;right:3px;display:flex;width:40px;height:40px;align-items:center;justify-content:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--fg3);cursor:pointer;transition:color var(--motion-fast),background var(--motion-fast),transform var(--motion-press);}
+.password-toggle{position:absolute;top:2px;right:3px;display:flex;width:40px;height:40px;align-items:center;justify-content:center;padding:0;border:0;border-radius:9px;background:transparent;color:var(--fg3);cursor:pointer;transition:color var(--motion-fast),background var(--motion-fast),transform var(--motion-press);}
 .password-toggle .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .password-toggle .eye-closed{display:none;}
 .password-toggle.is-visible .eye-open{display:none;}
