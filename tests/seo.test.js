@@ -66,6 +66,15 @@ chk('todas las respuestas tienen texto', (faqDatos.mainEntity || []).every(q => 
 // Se llega desde la pantalla de login: es donde duda quien todavía no tiene cuenta.
 chk('la app enlaza a las preguntas', /href="\/preguntas\.html"/.test(leer('index.html')));
 
+console.log('\n=== Promesas de privacidad ===');
+const privacidad = leer('privacidad.html');
+chk('la política no usa absolutos que el modelo futuro podría romper',
+  !/\b(nunca|jamás|siempre)\b/i.test(privacidad));
+chk('declara la posible personalización según rendimiento',
+  /rangos de notas[\s\S]*perfilamiento[\s\S]*publicidad/i.test(privacidad));
+chk('aclara que anticiparlo no equivale a activarlo ni autorizarlo',
+  /no activa publicidad ni constituye una\s+autorización/i.test(privacidad));
+
 console.log('\n=== Página 404 ===');
 const pagina404=leer('404.html');
 const titulo404=(pagina404.match(/<title>([^<]+)<\/title>/)||[])[1]||'';
