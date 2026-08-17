@@ -420,6 +420,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 /* RAMOS — sección + filas densas editoriales */
 .section-hd{display:flex;align-items:center;padding:20px 20px 10px;gap:10px;}
 .section-hd-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--fg3);}
+.stats-history-heading{margin-top:18px;}
 .section-hd-action{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--fg3);background:none;border:none;cursor:pointer;letter-spacing:-.01em;padding:2px 0;transition:color var(--motion-fast),transform var(--motion-press) var(--ease-standard);}
 .section-hd-action:hover{color:var(--fg);}
 .section-hd-add{min-height:44px;margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border:0;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-family:'Inter',sans-serif;font-size:12.5px;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 5px 14px -7px color-mix(in srgb,var(--primary),transparent 28%);transition:transform var(--motion-press) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
