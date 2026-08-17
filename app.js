@@ -245,11 +245,14 @@ function carrerasFor(t){
   if(t==='uandes')return CARRERAS_UANDES;
   return CARRERAS;
 }
+// Solo devuelve una malla si la tenemos verificada para ESA universidad. El
+// default era `MALLA`, la de la FEN: cualquier universidad que no fuera UC
+// recibía las mallas de Economía y Negocios de la Chile. Con dos tenants
+// visibles no se notaba; al agregar el tercero, sí.
 function mallaFor(t){
   if(t==='uc')return MALLA_UC;
-  // Sin mallas oficiales verificadas todavía: el estudiante arma sus ramos
-  if(t==='uai'||t==='uandes')return {};
-  return MALLA;
+  if(t==='fen')return MALLA;
+  return {};   // sin malla verificada: el estudiante arma sus ramos
 }
 function selectTenant(t){
   selectedTenant=t;selectedCarrera=null;applyTheme();renderTenantPick();initCarreraGrid();checkOb();
@@ -2544,11 +2547,19 @@ function plantillasPauta(tenant){
 // Son atajos de escritura, no una pauta sugerida: el estudiante elige el
 // nombre y siempre define sus propios pesos. UC y FEN usan vocabularios
 // distintos en sus programas, por eso no se mezclan en la misma lista.
+// Tres vocabularios, no dos. El tercero es el que faltaba: para una
+// universidad que no conocemos NO se puede elegir entre el de la FEN y el de
+// la UC — hay que no usar ninguno. Antes el default era el de FEN, así que a
+// cualquier universidad nueva le habrían aparecido "Solemne 1, Solemne 2", que
+// es la señal más rápida de que la app no es para ti.
+//
+// El neutro usa solo nombres que no pertenecen a una institución: nada de
+// "Solemne" (FEN) ni de "Interrogación" (UC).
 function sugerenciasEvaluacion(tenant){
   const comunes=['Laboratorio','Informe','Taller','Proyecto','Tarea','Presentación','Examen'];
-  return tenant==='uc'
-    ?['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control',...comunes]
-    :['Solemne 1','Solemne 2','Solemne 3','Control 1','Control 2','Control 3','Prueba sorpresa','Casos y ensayos','Trabajo individual','Trabajo en grupo','Participación',...comunes];
+  if(tenant==='uc')return ['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control',...comunes];
+  if(tenant==='fen')return ['Solemne 1','Solemne 2','Solemne 3','Control 1','Control 2','Control 3','Prueba sorpresa','Casos y ensayos','Trabajo individual','Trabajo en grupo','Participación',...comunes];
+  return ['Prueba 1','Prueba 2','Prueba 3','Control 1','Control 2','Control 3',...comunes];
 }
 function opcionesSugerenciasEvaluacion(tenant){
   return sugerenciasEvaluacion(tenant).map(nombre=>`<option value="${esc(nombre)}"></option>`).join('');
