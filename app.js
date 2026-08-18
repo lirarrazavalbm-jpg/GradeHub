@@ -2022,7 +2022,7 @@ function presetRamo(nombre,tenant,carrera){
     return {categorias,gates,creditos:def.creditos||null};
   }
   if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
-  const def=PRESETS_UC[nombre];if(!def)return null;
+  const def=PRESETS_UC[claveUc(nombre)];if(!def)return null;
   const evals=Array.isArray(def)?def:(def.evals||[]);
   // Un programa puede traer reglas oficiales sin publicar ponderaciones. No se
   // inventa una pauta vacía: sus reglas se muestran por reglasDelPreset().
@@ -2410,10 +2410,27 @@ function ramoEsDeOtroCatalogo(r){
   if(!r||!r.origen)return false;
   return r.origen.tenant!==S.tenant||r.origen.carrera!==S.carrera;
 }
+// La malla y el registro de presets escriben el mismo ramo distinto: en la
+// malla es "Filosofía: ¿Para Qué?" y la clave del preset es
+// 'Filosofía: ¿para qué?'. Buscar por igualdad exacta hacía que el onboarding
+// prometiera la estrella de pauta oficial —esa la calcula findPresetName, que
+// sí normaliza— y después creara el ramo vacío. No falla nada: el estudiante
+// entra y ve "Todavía no tenemos la pauta de este ramo" en un ramo que sí la
+// tiene.
+//
+// No sirve reusar findPresetName acá: esa exige que el preset traiga
+// ponderaciones y deja fuera a los que solo traen reglas, como Cálculo II.
+function claveUc(nombre){
+  if(PRESETS_UC[nombre])return nombre;
+  const target=normName(nombre);
+  for(const k in PRESETS_UC){if(normName(k)===target)return k;}
+  return null;
+}
 function presetUcDisponible(nombre,carrera){
-  if(carrera==='ING-PC')return !!PRESETS_UC[nombre];
+  const clave=claveUc(nombre);if(!clave)return false;
+  if(carrera==='ING-PC')return true;
   if(carrera!=='COM')return false;
-  return PRESETS_UC_COM.some(n=>normName(n)===normName(nombre));
+  return PRESETS_UC_COM.some(n=>normName(n)===normName(clave));
 }
 function findPresetName(nombre,tenant,carrera){
   const target=normName(nombre);
