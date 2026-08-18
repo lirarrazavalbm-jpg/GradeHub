@@ -1118,10 +1118,19 @@ function obAgregarManual(){
   if(!obTieneRamo(nombre))obRamos.push({nombre,manual:true});
   obManualOpen=false;renderObCoursePicker();obRender();
 }
+function obRamosVisibles(sugeridos,elegidos){
+  const visibles=[...(sugeridos||[])];
+  (elegidos||[]).forEach(r=>{
+    const nombre=typeof r==='string'?r:(r&&r.nombre);
+    if(nombre&&!visibles.some(n=>normName(n)===normName(nombre)))visibles.push(nombre);
+  });
+  return visibles;
+}
 function renderObCoursePicker(){
   const box=document.getElementById('ob-course-picker');if(!box)return;
   const sugeridos=obRamosActuales();
-  const rows=sugeridos.length?sugeridos.map(nombre=>`
+  const visibles=obRamosVisibles(sugeridos,obRamos);
+  const rows=visibles.length?visibles.map(nombre=>`
     <label style="display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" ${obTieneRamo(nombre)?'checked':''} onchange="obToggleRamoCodificado('${encodeURIComponent(nombre)}',this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
       <span style="font-size:14px;color:var(--fg);">${esc(nombre)}</span>
@@ -1131,7 +1140,7 @@ function renderObCoursePicker(){
     <div class="course-picker">
       <p class="course-picker-intro">Partimos con una sugerencia según tu avance. Puedes sumar ramos de cualquier otro semestre.</p>
       <div class="course-picker-section">
-        <label class="modal-label">Sugeridos para ${selectedSem}° semestre</label>
+        <label class="modal-label">Ramos para este semestre</label>
         ${rows}
       </div>
       <div class="course-picker-section">
