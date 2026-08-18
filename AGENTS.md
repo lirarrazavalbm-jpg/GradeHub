@@ -329,26 +329,18 @@ durante la revisión estética, `styles.css`.
 skill `improve-animations` sobre `styles.css` y `app.js` el 2026-08-11. Se
 arreglaron tres defectos (#90: hover pegado en táctil, 340ms de `screenIn` que
 nunca corrían, dos `transition:all`) y el modal, que aparecía y desaparecía de
-golpe (#91). Queda:
+golpe (#91).
 
-1. **Las duraciones no usan los tokens.** 54 escritas a mano contra 7 con
-   `var(--motion-*)`, en 12 valores distintos para una escala de tres. Seis
-   copian `cubic-bezier(.22,1,.36,1)`, que es `--ease-out` literal. Es refactor
-   puro y va en su propio PR: acá un refactor no viaja con una feature.
-   Ojo: `.15s` aparece 45 veces y no está en la escala (120/160/220), así que
-   mapearla cambia el número. Hay que decidir si se mueve a 160 o si la escala
-   necesita un valor más.
-2. **Dos barras de progreso animan `width`.** `.ob-progress-bar` y
-   `.ramo-progress-fill`. Anima layout en cada actualización; va `transform:
-   scaleX()` con `transform-origin:left`.
-3. **`button:active{transform:scale(.97)}` sin transición.** El rebote al soltar
-   es instantáneo en toda la app.
-4. **`prefers-reduced-motion` es nuclear.** `*{animation-duration:.01ms!important}`
-   mata todo, incluido lo que ayuda a comprender. El criterio es menos
-   movimiento, no cero: conservar opacidad y color, eliminar desplazamientos.
+**La lista de cuatro pendientes está cerrada.** Las duraciones salen de la escala
+(#99), `prefers-reduced-motion` dejó de ser nuclear (#95), `button:active` ya
+tiene su transición, y las dos barras de progreso pasaron de animar `width` a
+`scaleX()`. Queda dicho porque la lista sobrevivió a tres de sus arreglos: un
+traspaso que enumera trabajo ya hecho manda a rehacerlo.
 
-`tests/movimiento.test.js` fija lo ya arreglado y tres reglas más (nada de
-`ease-in`, nada de `scale(0)`, ningún `@keyframes` huérfano).
+`tests/movimiento.test.js` fija lo arreglado y cuatro reglas más: nada de
+`ease-in`, nada de `transition:all`, nada de `scale(0)`, ningún `@keyframes`
+huérfano, y ninguna transición sobre propiedades de layout — `width`, `height`,
+`top`, `margin` y compañía recalculan el layout en cada fotograma.
 
 **Dos cosas que hacen perder tiempo al verificar movimiento**, y que costaron
 descubrir: un documento oculto pausa el compositor, así que si mides una

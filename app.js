@@ -1112,7 +1112,7 @@ function obRender(){
     el.style.display=(Number(el.dataset.step)===obStep)?'block':'none';
   });
   const bar=document.getElementById('ob-progress-bar');
-  if(bar)bar.style.width=obProgressPct(obStep)+'%';
+  if(bar)bar.style.transform='scaleX('+(obProgressPct(obStep)/100)+')';
   const back=document.getElementById('ob-back');
   if(back)back.style.visibility=obStep>1?'visible':'hidden';
   const next=document.getElementById('ob-next');
@@ -1494,7 +1494,7 @@ function renderHome(){
       metaHtml=`<span class="ramo-meta-text">${nc} ${nc===1?'evaluación':'evaluaciones'}</span>`;
     } else {
       const pctLabel=prog.pct===100?'completo':`${prog.pct}% evaluado`;
-      metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="width:${prog.pct}%"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
+      metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="transform:scaleX(${prog.pct/100})"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
     }
     const div=document.createElement('div');div.className='ramo-row';div.onclick=()=>openRamo(r.id);
     div.style.setProperty('--ramo-tint',r.color);
