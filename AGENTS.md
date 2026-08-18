@@ -305,10 +305,15 @@ personas distintas), `calendar_feed.sql` aplicado y verificado de punta a punta
 aplicado, `user_feedback.sql` aplicado el 2026-08-17. HSTS y CSP verificados en
 producción.
 
-**Lo que falta es todo manual, y lo lleva Martín**, que desde el 2026-08-17
-tiene acceso de administrador a Supabase y a Cloudflare. Ningún deploy hace
-nada de esto: Cloudflare publica archivos estáticos y no ejecuta SQL ni toca la
+**Lo que falta es todo manual, lo lleva Martín, y va PRIMERO.** Desde el
+2026-08-17 tiene administrador en Supabase y Cloudflare. Ningún deploy hace nada
+de esto: Cloudflare publica archivos estáticos y no ejecuta SQL ni toca la
 configuración de Auth.
+
+Que vaya primero es una decisión de Lucas del 2026-08-18, y tiene una razón
+concreta: el repositorio es público, así que esta lista de pendientes también lo
+es. Cerrarlos es lo que la vuelve inofensiva. Cualquier otra tarea de la cola
+espera.
 
 1. En Supabase → Authentication, dejar y **anotar** los valores de Sessions,
    Rate Limits y Password Security. El repo no puede demostrarlos. JWT ≤ 1 h,
@@ -489,15 +494,12 @@ quien entra ve una lista de archivos sueltos. Se pide dejarlo presentable —qu�
 es GradeHub, para quién, cómo se corre, cómo se contribuye— y de paso decidir la
 licencia, porque sin una, un repo público no otorga ningún permiso de uso.
 
-Antes de invitar a nadie a mirar, hay una decisión pendiente: este mismo archivo
-es público en github.com, **con la lista de lo que todavía no está asegurado**.
-Es el mapa que se sacó del sitio en #146, publicado por la otra puerta. No hay
-secretos —la publishable key es pública por diseño y la `sb_secret_*` nunca
-estuvo acá—, pero una lista fechada de huecos abiertos no es lo mismo que
-código abierto. Las salidas son tres: repo privado hasta cerrar los cuatro
-puntos de la auditoría, o sacar esa lista del archivo y guardarla donde solo la
-vean ellos —ojo, los issues de un repo público también son públicos—, o dejarlo
-así asumiendo que la respuesta correcta es cerrar los huecos y no taparlos.
+Ojo con una cosa al hacerlo: este mismo archivo es público en github.com, **con
+la lista de lo que todavía no está asegurado**. Lucas lo decidió el 2026-08-18:
+**el repo se queda público**, y la respuesta es cerrar los huecos, no taparlos.
+Por eso los cuatro puntos de la auditoría de seguridad pasan a ser lo PRIMERO
+que hace Martín, antes que cualquier cosa de esta cola. Mientras sigan abiertos,
+están descritos en un archivo que cualquiera puede leer.
 
 **Arreglar la verificación por correo.** Está desactivada porque el SMTP
 integrado de Supabase despacha dos correos por hora. No se puede reactivar antes
