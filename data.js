@@ -576,6 +576,27 @@ const PRESETS_UC={
       'Si no cumples el mínimo de Memes o de los cuatro mejores Controles, no tienes derecho a rendir el Examen',
     ],
   },
+  // Fuente viva del curso: github.com/IIC2115/Syllabus, programa 2026-2.
+  // Son cuatro laboratorios, uno por capítulo, y el propio programa declara
+  // que L es su promedio simple: separarlos en cuatro filas de 20% conserva la
+  // fórmula exacta y permite llevar las fechas publicadas a Agenda.
+  'Programación como Herramienta para la Ingeniería':{
+    creditos:10,
+    evals:[
+      ['Laboratorio 1',20,{fecha:'2026-08-24'}],
+      ['Laboratorio 2',20,{fecha:'2026-09-28'}],
+      ['Laboratorio 3',20,{fecha:'2026-10-26'}],
+      ['Laboratorio 4',20,{fecha:'2026-11-23'}],
+      ['Participación',20,{slots:10,dropLowest:{count:2}}],
+    ],
+    grupos:[
+      {nombre:'Laboratorios',evals:['Laboratorio 1','Laboratorio 2','Laboratorio 3','Laboratorio 4'],min:3.95,cap:3.9},
+      {nombre:'Participación',evals:['Participación'],min:3.95,cap:3.9},
+    ],
+    reglasDelCurso:[
+      'Si tienes 2 o más ausencias justificadas a sesiones con ticket, el equipo docente ajustará la regla de Participación; el programa no publica la fórmula de ese ajuste',
+    ],
+  },
   // ── Dinámica y su laboratorio: dos ramos, una nota ────────────────────────
   // La UC los inscribe como dos cursos (FIS1514 y FIS0154) con dos actas, y así
   // se muestran. Pero la nota final de Dinámica se calcula CON la del
@@ -975,6 +996,7 @@ const SIGLAS_UC={
     // rótulo interno ICT3103 que contradice ambos y no se usa para renombrarlo.
     'Econometría Aplicada':'ICS2563', 'Métodos de Optimización':'ICS2121',
     'Ingeniería de Sistemas de Transporte':'ICT2904',
+    'Programación como Herramienta para la Ingeniería':'IIC2115',
   },
   'COM':{
     'Cálculo I':'MAT1610', 'Introducción a la Microeconomía':'EAE1110',

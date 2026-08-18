@@ -143,6 +143,23 @@ chk('los programas de Ingeniería no se ofrecen como pautas de Comercial',
   ['Econometría Aplicada','Métodos de Optimización','Ingeniería de Sistemas de Transporte']
     .every(nombre=>presetRamo(nombre,'uc','COM')===null));
 
+const herramienta=presetRamo('Programación como Herramienta para la Ingeniería','uc','ING-PC');
+chk('Programación como Herramienta conserva cuatro laboratorios al 20%',
+  herramienta&&herramienta.categorias.slice(0,4).map(c=>c.nombre+':'+c.peso).join('|')==='Laboratorio 1:20|Laboratorio 2:20|Laboratorio 3:20|Laboratorio 4:20');
+chk('sus cuatro laboratorios llevan las fechas del calendario oficial',
+  herramienta&&herramienta.categorias.slice(0,4).map(c=>c.fecha).join('|')==='2026-08-24|2026-09-28|2026-10-26|2026-11-23');
+const participacionHerramienta=herramienta&&herramienta.categorias.find(c=>c.nombre==='Participación');
+chk('Participación usa los ocho mejores de diez tickets',
+  participacionHerramienta&&participacionHerramienta.peso===20&&participacionHerramienta.slots===10&&participacionHerramienta.dropLowest.count===2);
+chk('el ramo conserva mínimos separados de 3,95 para laboratorios y participación',
+  herramienta&&herramienta.gates.length===2&&herramienta.gates.every(g=>g.type==='group_min'&&g.min===3.95&&g.cap===3.9));
+chk('Programación como Herramienta queda identificada y disponible en el buscador',
+  creditosDe('Programación como Herramienta para la Ingeniería','uc',herramienta)===10&&
+  siglaUC('Programación como Herramienta para la Ingeniería','ING-PC')==='IIC2115'&&
+  catalogoIng.some(r=>r.nombre==='Programación como Herramienta para la Ingeniería'&&r.tienePreset));
+chk('la pauta IIC2115 no se hereda a Comercial',
+  presetRamo('Programación como Herramienta para la Ingeniería','uc','COM')===null);
+
 console.log('\n=== Ingeniería Comercial UC · segundo semestre ===');
 [
   ['Introducción al Álgebra Lineal',4],
