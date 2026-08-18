@@ -751,7 +751,7 @@ function enterOnboarding(){
     const n=(m.full_name||m.name||'').trim();
     if(n)nameInput.value=n.split(' ')[0];
   }
-  obStep=1;obRender();
+  obIniciar();
 }
 function enterApp(){
   document.getElementById('screen-auth').classList.remove('active');
@@ -973,7 +973,7 @@ async function boot(){
     // Sin configurar Supabase → funciona en modo local (fallback)
     document.getElementById('screen-auth').classList.remove('active');
     if(S.onboardingDone)showMainApp();
-    else {document.getElementById('screen-onboard').classList.add('active');obStep=1;obRender();}
+    else {document.getElementById('screen-onboard').classList.add('active');obIniciar();}
     return;
   }
   // Suscribirse a cambios de auth: el evento PASSWORD_RECOVERY viene cuando
@@ -1009,6 +1009,14 @@ selectedTenant=S.tenant||'fen';applyTheme();
 // y la app crasheaba si Supabase no cargaba.
 let obStep=1;
 const OB_TOTAL=5;
+// Etiquetas fijas nuestras, de lista cerrada: no son texto del estudiante, y
+// hacen legible el embudo sin tener que traducir números mirando el código.
+const OB_ETAPAS=['nombre','universidad','carrera','semestre','ramos'];
+// Hasta qué paso llegó en ESTA pasada por el onboarding. El embudo cuenta
+// cuántos alcanzan cada paso, así que cada uno se emite una sola vez: si
+// volver atrás y volver a avanzar reemitiera, los primeros pasos saldrían
+// inflados y la caída real quedaría escondida.
+let obMaxPasoVisto=0;
 let obRamos=[],obRamosKey='',obManualOpen=false;
 
 initSemGrid();renderTenantPick();initCarreraGrid();
@@ -1177,8 +1185,21 @@ function renderObCourseResults(q){
   }).join('');
 }
 
+// Un evento por paso ALCANZADO. Sin esto solo se sabe cuántos terminaron, no
+// dónde se fue el que no terminó — y "se aburrió eligiendo carrera" y "no
+// encontró sus ramos" se arreglan distinto.
+function obTrackPaso(){
+  if(obStep<=obMaxPasoVisto)return;
+  obMaxPasoVisto=obStep;
+  track('onboarding_step',{paso:obStep,etapa:OB_ETAPAS[obStep-1]});
+}
+// Entrar al onboarding reinicia el embudo: si alguien cierra sesión y entra con
+// otra cuenta sin recargar, su paso 1 tiene que volver a contarse.
+function obIniciar(){obStep=1;obMaxPasoVisto=0;obRender();}
+
 function obRender(){
   if(obStep===5)prepararObRamos();
+  obTrackPaso();
   document.querySelectorAll('.ob-step').forEach(el=>{
     el.style.display=(Number(el.dataset.step)===obStep)?'block':'none';
   });
