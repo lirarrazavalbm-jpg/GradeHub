@@ -23,7 +23,7 @@ const val = n => vm.runInContext(n, ctx);
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
-const MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), presetRamo = val('presetRamo'), findPresetName = val('findPresetName'), reglasNoCalculadas = val('reglasNoCalculadas'), reglasDelCurso = val('reglasDelCurso'), claveUc = val('claveUc');
+const MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), presetRamo = val('presetRamo'), findPresetName = val('findPresetName'), reglasNoCalculadas = val('reglasNoCalculadas'), reglasDelCurso = val('reglasDelCurso'), claveUc = val('claveUc'), siglaUC = val('siglaUC'), creditosDe = val('creditosDe'), catalogoUniversidad = val('catalogRamosUniversidad');
 const pc = MALLA_UC['ING-PC'];
 const todos = Object.values(pc).flat();
 
@@ -101,6 +101,47 @@ chk('y sus cuatro fechas van a la Agenda',
 // filtro de "puedes hacer algo con esto".
 chk('Cálculo II no declara reglas: ninguna pasaba el filtro',
   reglasNoCalculadas(calculoOrigen).length===0&&reglasDelCurso(calculoOrigen).length===0);
+
+console.log('\n=== Programas de especialidad UC · segundo semestre 2026 ===');
+const econometria=presetRamo('Econometría Aplicada','uc','ING-PC');
+chk('Econometría Aplicada conserva su pauta 25 · 25 · 25 · 25',
+  econometria&&econometria.categorias.map(c=>c.peso).join('|')==='25|25|25|25');
+chk('Econometría Aplicada lleva las tres fechas fijas a la Agenda',
+  econometria&&econometria.categorias.slice(0,3).map(c=>c.fecha).join('|')==='2026-08-31|2026-10-16|2026-11-30');
+chk('Econometría Aplicada conserva sus dos requisitos de aprobación',
+  econometria&&econometria.gates.length===2&&econometria.gates.every(g=>g.type==='group_min'&&g.min===3.95&&g.cap===3.9));
+
+const metodos=presetRamo('Métodos de Optimización','uc','ING-PC');
+chk('Métodos de Optimización aplana exactamente NP 80% y NT 20%',
+  metodos&&metodos.categorias.map(c=>c.nombre+':'+c.peso).join('|')==='Interrogación 1:20|Interrogación 2:28|Examen:32|Tarea 1:6|Tarea 2:6|Tarea 3:8');
+chk('Métodos de Optimización conserva sus dos compuertas de 4,0',
+  metodos&&metodos.gates.length===2&&metodos.gates.every(g=>g.type==='group_min'&&g.min===4&&g.cap===3.9));
+chk('Métodos de Optimización lleva sus fechas fijas a la Agenda',
+  metodos&&metodos.categorias.slice(0,3).map(c=>c.fecha).join('|')==='2026-09-07|2026-11-09|2026-12-02');
+
+const transporte=presetRamo('Ingeniería de Sistemas de Transporte','uc','ING-PC');
+const controlesTransporte=transporte&&transporte.categorias.find(c=>c.nombre==='Controles');
+chk('Transporte conserva cinco controles y descarta el peor',
+  controlesTransporte&&controlesTransporte.slots===5&&controlesTransporte.dropLowest.count===1&&controlesTransporte.peso===45);
+chk('Transporte separa los cuatro memes con sus fechas',
+  transporte&&transporte.categorias.slice(1,5).map(c=>c.peso+':'+c.fecha).join('|')==='5:2026-08-24|5:2026-09-25|5:2026-10-23|5:2026-11-20');
+chk('Transporte conserva examen y tres requisitos calculables',
+  transporte&&transporte.categorias.at(-1).peso===35&&transporte.categorias.at(-1).fecha==='2026-12-02'&&transporte.gates.length===4);
+
+const catalogoIng=catalogoUniversidad('uc','ING-PC');
+['Econometría Aplicada','Métodos de Optimización','Ingeniería de Sistemas de Transporte'].forEach(nombre=>
+  chk(nombre+' aparece en el buscador UC con pauta oficial',
+    catalogoIng.some(r=>r.nombre===nombre&&r.tienePreset)));
+chk('los tres programas conservan sus créditos y siglas oficiales',
+  creditosDe('Econometría Aplicada','uc',econometria)===10&&
+  creditosDe('Métodos de Optimización','uc',metodos)===10&&
+  creditosDe('Ingeniería de Sistemas de Transporte','uc',transporte)===10&&
+  siglaUC('Econometría Aplicada','ING-PC')==='ICS2563'&&
+  siglaUC('Métodos de Optimización','ING-PC')==='ICS2121'&&
+  siglaUC('Ingeniería de Sistemas de Transporte','ING-PC')==='ICT2904');
+chk('los programas de Ingeniería no se ofrecen como pautas de Comercial',
+  ['Econometría Aplicada','Métodos de Optimización','Ingeniería de Sistemas de Transporte']
+    .every(nombre=>presetRamo(nombre,'uc','COM')===null));
 
 console.log('\n=== Ingeniería Comercial UC · segundo semestre ===');
 [
