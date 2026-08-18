@@ -74,12 +74,12 @@ Está escrita para que se entienda, no para cubrirnos las espaldas.</p>
 
 <div class="caja">
 <p><strong>El resumen, si no quieres leer todo:</strong> guardamos tu correo,
-tu nombre si lo escribes, tu carrera y tus notas. Hoy las usamos para operar la
-app y para las finalidades que se explican abajo. Actualmente no mostramos
-publicidad ni vendemos datos personales. En el futuro podríamos incorporar
-funciones pagadas, auspicios o publicidad, incluso anuncios elegidos según
-información académica como tus ramos o tu rendimiento. Antes de activar un uso
-nuevo informaremos cómo funciona, quién participa y qué controles tendrás.</p>
+tu nombre si lo escribes, tu carrera y tus notas, y las usamos para que la app
+funcione. No las vendemos ni se las pasamos a tu universidad ni a nadie más.
+Hoy no hay publicidad; algún día la app va a tener que financiarse, y si es con
+auspicios o con funciones pagadas te lo avisamos antes. Usar tus notas para
+elegir qué anuncio ves es otra cosa: eso necesitaría tu permiso explícito, y sin
+él la app te funciona igual. Puedes pedir que borremos todo escribiéndonos.</p>
 </div>
 
 <h2>Quién es responsable</h2>
@@ -152,11 +152,11 @@ en tu navegador. No son de publicidad y no las usamos para perseguirte por otros
 sitios, pero son cookies igual y preferimos decirlo derecho. Puedes bloquearlas
 desde tu navegador o con cualquier bloqueador y la app sigue funcionando
 exactamente igual.</p>
-<p><strong>La configuración actual de analítica no incluye tus notas.</strong>
-A Google Analytics no le enviamos notas, nombres de ramos, nombres de
-evaluaciones ni texto escrito por ti. Contamos cuántas veces pasa algo, no el
-contenido académico asociado. Un test automático bloquea la publicación si un
-evento de analítica intenta incluir esos datos.</p>
+<p><strong>Tus notas no salen de ahí.</strong> A la analítica no le mandamos
+notas, ni nombres de ramos, ni nombres de evaluaciones, ni nada que hayas
+escrito tú. Contamos cuántas veces pasa algo, no qué le pasó a quién. Esto no es
+una intención: hay un test automático que revienta la publicación si alguien
+intenta agregar un evento que se lleve datos tuyos.</p>
 
 <h2>Dónde viven tus datos</h2>
 <p>En dos lugares, y conviene entender la diferencia:</p>
@@ -177,20 +177,22 @@ extranjero.</p>
 la base de datos misma, no por el código de la app. Ningún usuario puede ver las
 notas de otro.</p>
 
-<h2>Quién procesa tus datos</h2>
-<p>Actualmente tu universidad no recibe tus datos y no vendemos bases de datos
-personales. Las siguientes empresas participan como proveedores técnicos:</p>
+<h2>Con quién se comparten</h2>
+<p><strong>Con nadie.</strong> No vendemos, arrendamos ni cedemos tus datos
+personales, y tu universidad no recibe nada. Esto no depende de cómo se financie
+la app: hay una sección sobre publicidad más abajo y ahí también rige.</p>
+<p>Las únicas empresas que participan son las que necesitamos para que la app
+exista, y solo en su rol técnico:</p>
 <ul>
   <li><strong>Supabase</strong> — base de datos y cuentas.</li>
   <li><strong>Cloudflare</strong> — servidor del sitio.</li>
-  <li><strong>Google Analytics</strong> — estadísticas de uso. Puede recibir
-      identificadores técnicos y eventos del tipo «alguien abrió el simulador»;
-      la configuración actual no
-      le envía tus notas ni tu identidad dentro de GradeHub.</li>
+  <li><strong>Google Analytics</strong> — estadísticas de uso. Recibe
+      identificadores técnicos y eventos del tipo «alguien abrió el simulador»,
+      nunca tus notas ni tu identidad dentro de GradeHub.</li>
   <li><strong>Google Fonts y jsDelivr</strong> — entregan las tipografías y una
       librería que la app necesita. Al cargar la página, tu navegador les pide
       esos archivos directamente, y en esa petición ellos ven tu dirección IP.
-      Actualmente no reciben tus notas ni tu identidad dentro de GradeHub.</li>
+      No reciben ninguna de tus notas ni tu identidad dentro de GradeHub.</li>
   <li><strong>Google</strong> — solo si eliges iniciar sesión con tu cuenta Google.</li>
 </ul>
 <p>Podríamos entregar datos si una obligación legal u orden de autoridad lo
@@ -198,28 +200,18 @@ exige. Si incorporamos proveedores de publicidad u otros destinatarios,
 actualizaremos esta sección antes de que empiecen a recibir información.</p>
 
 <h2>Publicidad y cómo se financia la app</h2>
-<p>Hoy puedes usar GradeHub sin pagar y la app no muestra publicidad. El modelo
-podría cambiar: podríamos incorporar funciones pagadas, auspicios, publicidad
-general o publicidad personalizada.</p>
-<p>Una posibilidad es elegir anuncios usando información que ya está en
-GradeHub, como universidad, carrera, ramos, evaluaciones, rangos de notas o si
-un ramo aparece aprobado, en riesgo o reprobado. Eso constituye perfilamiento
-con fines publicitarios y requiere un tratamiento distinto al cálculo normal de
-tu promedio.</p>
-<p>Antes de activar publicidad personalizada tendremos que informar dentro de
-la app, de forma separada y entendible:</p>
-<ul>
-  <li>qué datos o categorías se usarán para elegir anuncios;</li>
-  <li>si la selección la hace GradeHub o un proveedor externo y qué información
-      recibirá ese proveedor;</li>
-  <li>la base legal aplicable y, cuando corresponda, una opción para aceptar,
-      rechazar o retirar la personalización;</li>
-  <li>cómo oponerte al uso de tus datos para marketing directo;</li>
-  <li>las protecciones para menores de edad. Como hoy no recogemos edad, este
-      punto debe resolverse antes de habilitar anuncios basados en notas.</li>
-</ul>
-<p>Cambiar esta política por sí solo no activa publicidad ni constituye una
-autorización para usar tus notas con ese fin.</p>
+<p>Hoy la app es gratis y no muestra publicidad. Tampoco es caridad: GradeHub
+cuesta horas y plata, y en algún momento va a tener que financiarse. Lo más
+probable es que sea con funciones pagadas o con auspicios, y preferimos
+decírtelo ahora en vez de cambiarte el trato después. Cuando pase, te avisamos
+dentro de la app y no escondido en esta página.</p>
+<p>Lo que no va a aparecer de un día para otro es que usemos tus notas para
+elegir lo que ves. Si alguna vez quisiéramos hacerlo, tendríamos que pedírtelo
+aparte, en un aviso separado de esta política, diciendo qué dato se usa y quién
+lo recibe. <strong>Si dices que no, la app te sigue funcionando exactamente
+igual</strong>, y sin ese permiso tuyo tus notas no entran en la ecuación.</p>
+<p>Que cambiemos esta página no activa nada de eso por sí solo, ni cuenta como
+tu autorización.</p>
 
 <h2>Cuánto tiempo los guardamos</h2>
 <p>Mientras tengas la cuenta activa. Si nos pides que la borremos, eliminamos
@@ -234,9 +226,10 @@ si están mal, a pedir que los borremos y a oponerte a que los usemos. Para
 ejercer cualquiera de esos derechos, escríbenos a
 <a href="mailto:gradehub.app@gmail.com">gradehub.app@gmail.com</a> desde el mismo correo con
 el que creaste tu cuenta. Respondemos dentro de los plazos que fija la ley.</p>
-<p>También puedes oponerte al uso de tus datos para publicidad o marketing
-directo. Si en el futuro incorporamos personalización publicitaria, indicaremos
-en esta página y dentro de la app cómo ejercer ese control.</p>
+<p>Entre esos derechos está oponerte a que usemos tus datos para publicidad o
+marketing directo. Hoy no hacemos ninguna de las dos cosas; si alguna vez las
+hiciéramos, el control para decir que no va dentro de la app, no escondido
+acá.</p>
 
 <div class="caja">
 <p><strong>Borrar tu cuenta:</strong> lo haces tú, desde la app: Ajustes →

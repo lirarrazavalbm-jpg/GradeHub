@@ -68,12 +68,22 @@ chk('la app enlaza a las preguntas', /href="\/preguntas\.html"/.test(leer('index
 
 console.log('\n=== Promesas de privacidad ===');
 const privacidad = leer('privacidad.html');
-chk('la política no usa absolutos que el modelo futuro podría romper',
-  !/\b(nunca|jamás|siempre)\b/i.test(privacidad));
-chk('declara la posible personalización según rendimiento',
-  /rangos de notas[\s\S]*perfilamiento[\s\S]*publicidad/i.test(privacidad));
+// Dos clases de promesa que se confunden y no cuestan lo mismo. Prometer que
+// la app será gratis o sin publicidad para siempre ata el negocio y hay que
+// romperla el día que el proyecto tenga que financiarse. Prometer que las
+// notas de alguien no se usan sin su permiso no ata nada: se puede cobrar,
+// auspiciar y vender funciones sin tocarlas. La primera no va; la segunda es
+// el producto.
+chk('no promete que la app será gratis ni sin publicidad para siempre',
+  !/(gratis|sin publicidad|no (habrá|habra|mostrar[eé]mos)[^.]*publicidad)[^.]*\b(nunca|jamás|siempre)\b/i.test(privacidad));
+chk('deja dicho que la app va a tener que financiarse',
+  /financiarse/i.test(privacidad) && /(funciones pagadas|auspicios)/i.test(privacidad));
+chk('usar las notas para elegir anuncios exige permiso explícito',
+  /permiso explícito/i.test(privacidad) || /tendríamos que pedírtelo/i.test(privacidad));
+chk('y decir que no deja la app funcionando igual',
+  /sigue funcionando exactamente\s*igual/i.test(privacidad));
 chk('aclara que anticiparlo no equivale a activarlo ni autorizarlo',
-  /no activa publicidad ni constituye una\s+autorización/i.test(privacidad));
+  /no activa nada de eso por sí solo, ni cuenta como\s+tu autorización/i.test(privacidad));
 
 console.log('\n=== Página 404 ===');
 const pagina404=leer('404.html');
