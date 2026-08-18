@@ -111,8 +111,13 @@ const buscarUC = (q, car) => run('searchCatalog(' + JSON.stringify(q) + ',"uc",'
 // Y no al revés: los presets UC son del plan común de Ingeniería. Ofrecérselos
 // a Comercial pondría una estrella de "pauta oficial" sobre un ramo que después
 // se agrega vacío, porque findPresetName los descarta para esa carrera.
+// Comercial puede ver estos cursos —los OFG los toma cualquier estudiante UC—,
+// lo que no puede es recibirlos CON ESTRELLA: la pauta es del plan común de
+// Ingeniería y findPresetName la descarta para esa carrera, así que la estrella
+// prometería ponderaciones que después no se cargan.
 ['Ecolog', 'Revelaci'].forEach(q => {
-  chk('Comercial UC NO recibe la pauta de Ingeniería para "' + q + '"', buscarUC(q, 'COM').length === 0);
+  chk('Comercial UC NO recibe la pauta de Ingeniería para "' + q + '"',
+    buscarUC(q, 'COM').every(r => !r.tienePreset));
 });
 // Un ramo de la malla sin programa oficial aparece, pero sin estrella de pauta.
 const termo = buscarUC('Termodinámica', 'ING-PC').find(r => r.nombre === 'Termodinámica');
