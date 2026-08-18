@@ -716,7 +716,7 @@ const CREDITOS_UC={
 
 // Créditos SCT de la FEN. Misma forma que CREDITOS_UC: [créditos, sigla].
 //
-// Los 31 primeros salen de la planilla oficial de oferta de secciones de
+// Los 32 primeros salen de la planilla oficial de oferta de secciones de
 // Primavera 2026, con su sigla. Como es la oferta y no la malla, trae varias
 // filas por ramo —una por sección— y las versiones "(DICTADO EN INGLÉS)" del
 // mismo curso: se deduplicaron por nombre, y en todos los casos las secciones
@@ -726,11 +726,14 @@ const CREDITOS_UC={
 // aparecen en la oferta de este semestre. Van sin sigla porque la planilla no
 // los trae, y `creditosDe` solo lee el primer elemento.
 //
-// 38 de los 88 ramos de la malla. El promedio general se pondera por créditos
+// 39 de los 88 ramos de la malla. El promedio general se pondera por créditos
 // SOLO si todos los ramos con nota los tienen, así que hasta completarla esto
 // no cambia ningún número: prepara el terreno.
 const CREDITOS_FEN={
   'Comunicación':[2,'COM1005'],
+  // La planilla lo lista como "COMUNICACIÓN I" (prerrequisito COM1005) y la
+  // malla lo llama "Comunicación II". Martín confirmó que son el mismo ramo.
+  'Comunicación II':[2,'COM3005'],
   'Contabilidad':[6,'CON1005'],
   'Contabilidad Empresarial I':[6,'CON3005'],
   'Contabilidad Empresarial II':[6,'CON3505'],

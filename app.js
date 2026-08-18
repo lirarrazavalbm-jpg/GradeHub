@@ -258,11 +258,14 @@ function carrerasFor(t){
   if(t==='uandes')return CARRERAS_UANDES;
   return CARRERAS;
 }
+// Solo devuelve una malla si la tenemos verificada para ESA universidad. El
+// default era `MALLA`, la de la FEN: cualquier universidad que no fuera UC
+// recibía las mallas de Economía y Negocios de la Chile. Con dos tenants
+// visibles no se notaba; al agregar el tercero, sí.
 function mallaFor(t){
   if(t==='uc')return MALLA_UC;
-  // Sin mallas oficiales verificadas todavía: el estudiante arma sus ramos
-  if(t==='uai'||t==='uandes')return {};
-  return MALLA;
+  if(t==='fen')return MALLA;
+  return {};   // sin malla verificada: el estudiante arma sus ramos
 }
 function selectTenant(t){
   selectedTenant=t;selectedCarrera=null;applyTheme();renderTenantPick();initCarreraGrid();checkOb();
@@ -653,6 +656,32 @@ function greeting(){
 // aceptando 6 aunque el cliente no lo ofrezca.
 const PASS_MIN = 8;
 
+function passwordPolicyError(password){
+  if(password.length<PASS_MIN)return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres.';
+  if(!/[A-Za-z]/.test(password)||!/\d/.test(password))return 'La contraseña debe incluir al menos una letra y un número.';
+  return '';
+}
+
+function togglePasswordVisibility(inputId,button){
+  const input=document.getElementById(inputId);
+  if(!input||!button)return;
+  const mostrar=input.type==='password';
+  input.type=mostrar?'text':'password';
+  button.classList.toggle('is-visible',mostrar);
+  button.setAttribute('aria-pressed',mostrar?'true':'false');
+  button.setAttribute('aria-label',mostrar?'Ocultar contraseña':'Mostrar contraseña');
+  input.focus();
+}
+
+function resetPasswordVisibility(){
+  ['auth-pass','auth-pass2'].forEach(id=>{
+    const input=document.getElementById(id);
+    const button=document.querySelector(`[data-password-for="${id}"]`);
+    if(input)input.type='password';
+    if(button){button.classList.remove('is-visible');button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','Mostrar contraseña');}
+  });
+}
+
 const SUPABASE_URL      = 'https://lsulsnswzesyekpsvlql.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
 
@@ -674,13 +703,18 @@ function authError(msg,kind){
 }
 function toggleAuthMode(){
   authMode=authMode==='login'?'signup':'login';
+  resetPasswordVisibility();
   document.getElementById('auth-sub').textContent=authMode==='login'?'Tus notas, tu promedio y cuánto te falta para aprobar.':'Crea tu cuenta gratis y guarda tus notas en la nube.';
   document.getElementById('auth-btn').textContent=authMode==='login'?'Iniciar sesión':'Crear cuenta';
   document.getElementById('auth-toggle').textContent=authMode==='login'?'¿No tienes cuenta? Crea una':'¿Ya tienes cuenta? Inicia sesión';
   document.getElementById('auth-pass').setAttribute('autocomplete',authMode==='login'?'current-password':'new-password');
+  const confirmWrap=document.getElementById('auth-pass-confirm-wrap');
+  confirmWrap.style.display=authMode==='signup'?'block':'none';
+  confirmWrap.setAttribute('aria-hidden',authMode==='signup'?'false':'true');
+  document.getElementById('auth-pass2').value='';
   // Al iniciar sesión no se anuncia un mínimo: sería mentirle a quien creó su
   // cuenta cuando el mínimo era otro.
-  document.getElementById('auth-pass').placeholder=authMode==='login'?'Tu contraseña':'Mínimo '+PASS_MIN+' caracteres';
+  document.getElementById('auth-pass').placeholder=authMode==='login'?'Tu contraseña':PASS_MIN+'+ caracteres, letras y números';
   document.getElementById('auth-fp').style.display=authMode==='login'?'block':'none';
   authError('');
 }
@@ -714,21 +748,26 @@ function traduceAuthError(e){
   // registro aceptado tienen que verse iguales hacia afuera.
   if(m.includes('already')||m.includes('exists'))return 'Si el correo puede registrarse, te enviaremos las instrucciones para continuar.';
   if(m.includes('invalid login')||m.includes('credentials'))return 'Usuario o contraseña incorrectos.';
-  if(m.includes('password'))return 'Contraseña inválida (mínimo 6 caracteres).';
+  if(m.includes('password'))return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres e incluir letras y números.';
   return 'No se pudo conectar. Revisa tu internet e intenta de nuevo.';
 }
 
 async function submitAuth(){
   const email=(document.getElementById('auth-user').value||'').trim().toLowerCase();
   const p=document.getElementById('auth-pass').value;
+  const p2=document.getElementById('auth-pass2').value;
   authError('');
   const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if(!emailRe.test(email)){authError('Ingresa un correo electrónico válido.');return;}
   // El mínimo se exige SOLO al crear la cuenta. Al iniciar sesión no se valida
   // el largo: quien se registró cuando el mínimo era 6 tiene que poder entrar,
   // y validarlo acá lo dejaría fuera de su propia cuenta con un error engañoso.
-  if(authMode==='signup' && p.length<PASS_MIN){authError('La contraseña debe tener al menos '+PASS_MIN+' caracteres.');return;}
   if(!p){authError('Escribe tu contraseña.');return;}
+  if(authMode==='signup'){
+    const policyError=passwordPolicyError(p);
+    if(policyError){authError(policyError);return;}
+    if(p!==p2){authError('Las contraseñas no coinciden.');return;}
+  }
   if(!supabaseClient){authError('Falta configurar Supabase (URL y clave) en el código.');return;}
 
   const btn=document.getElementById('auth-btn');const orig=btn.textContent;
@@ -790,7 +829,8 @@ async function submitNewPassword(){
   const p2=document.getElementById('reset-pass2').value;
   const err=document.getElementById('reset-error');
   err.style.display='none';
-  if(p1.length<PASS_MIN){err.textContent='La contraseña debe tener al menos '+PASS_MIN+' caracteres.';err.style.display='block';return;}
+  const policyError=passwordPolicyError(p1);
+  if(policyError){err.textContent=policyError;err.style.display='block';return;}
   if(p1!==p2){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
   if(!supabaseClient){err.textContent='Supabase no está configurado.';err.style.display='block';return;}
   const btn=document.getElementById('reset-btn');const orig=btn.textContent;
@@ -1112,7 +1152,7 @@ function obRender(){
     el.style.display=(Number(el.dataset.step)===obStep)?'block':'none';
   });
   const bar=document.getElementById('ob-progress-bar');
-  if(bar)bar.style.width=obProgressPct(obStep)+'%';
+  if(bar)bar.style.transform='scaleX('+(obProgressPct(obStep)/100)+')';
   const back=document.getElementById('ob-back');
   if(back)back.style.visibility=obStep>1?'visible':'hidden';
   const next=document.getElementById('ob-next');
@@ -1499,7 +1539,7 @@ function renderHome(){
       metaHtml=`<span class="ramo-meta-text">${nc} ${nc===1?'evaluación':'evaluaciones'}</span>`;
     } else {
       const pctLabel=prog.pct===100?'completo':`${prog.pct}% evaluado`;
-      metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="width:${prog.pct}%"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
+      metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="transform:scaleX(${prog.pct/100})"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
     }
     const div=document.createElement('div');div.className='ramo-row';div.onclick=()=>openRamo(r.id);
     div.style.setProperty('--ramo-tint',r.color);
@@ -2589,11 +2629,19 @@ function plantillasPauta(tenant){
 // Son atajos de escritura, no una pauta sugerida: el estudiante elige el
 // nombre y siempre define sus propios pesos. UC y FEN usan vocabularios
 // distintos en sus programas, por eso no se mezclan en la misma lista.
+// Tres vocabularios, no dos. El tercero es el que faltaba: para una
+// universidad que no conocemos NO se puede elegir entre el de la FEN y el de
+// la UC — hay que no usar ninguno. Antes el default era el de FEN, así que a
+// cualquier universidad nueva le habrían aparecido "Solemne 1, Solemne 2", que
+// es la señal más rápida de que la app no es para ti.
+//
+// El neutro usa solo nombres que no pertenecen a una institución: nada de
+// "Solemne" (FEN) ni de "Interrogación" (UC).
 function sugerenciasEvaluacion(tenant){
   const comunes=['Laboratorio','Informe','Taller','Proyecto','Tarea','Presentación','Examen'];
-  return tenant==='uc'
-    ?['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control',...comunes]
-    :['Solemne 1','Solemne 2','Solemne 3','Control 1','Control 2','Control 3','Prueba sorpresa','Casos y ensayos','Trabajo individual','Trabajo en grupo','Participación',...comunes];
+  if(tenant==='uc')return ['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control',...comunes];
+  if(tenant==='fen')return ['Solemne 1','Solemne 2','Solemne 3','Control 1','Control 2','Control 3','Prueba sorpresa','Casos y ensayos','Trabajo individual','Trabajo en grupo','Participación',...comunes];
+  return ['Prueba 1','Prueba 2','Prueba 3','Control 1','Control 2','Control 3',...comunes];
 }
 function opcionesSugerenciasEvaluacion(tenant){
   return sugerenciasEvaluacion(tenant).map(nombre=>`<option value="${esc(nombre)}"></option>`).join('');

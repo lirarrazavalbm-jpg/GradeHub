@@ -97,12 +97,32 @@
       <label class="field-label" id="auth-user-label">Correo electrónico</label>
       <input type="email" id="auth-user" placeholder="tu@correo.com" maxlength="60" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" onkeydown="if(event.key==='Enter')document.getElementById('auth-pass').focus()"/>
       <label class="field-label" style="margin-top:14px;">Contraseña</label>
-      <input type="password" id="auth-pass" placeholder="Tu contraseña" maxlength="60" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()"/>
+      <div class="password-input-wrap">
+        <input type="password" id="auth-pass" placeholder="Tu contraseña" maxlength="60" autocomplete="current-password" onkeydown="if(event.key==='Enter'){if(document.getElementById('auth-pass-confirm-wrap').style.display!=='none')document.getElementById('auth-pass2').focus();else submitAuth()}"/>
+        <button class="password-toggle" type="button" data-password-for="auth-pass" aria-label="Mostrar contraseña" aria-pressed="false" onclick="togglePasswordVisibility('auth-pass',this)">
+          <svg class="ic eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.5"/></svg>
+          <svg class="ic eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 6.1A10.5 10.5 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.1 2.7M6.2 6.2C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.7-.3 3.8-.8M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+        </button>
+      </div>
+      <div id="auth-pass-confirm-wrap" style="display:none;">
+        <label class="field-label" style="margin-top:14px;">Repetir contraseña</label>
+        <div class="password-input-wrap">
+          <input type="password" id="auth-pass2" placeholder="Repite tu contraseña" maxlength="60" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitAuth()"/>
+          <button class="password-toggle" type="button" data-password-for="auth-pass2" aria-label="Mostrar contraseña" aria-pressed="false" onclick="togglePasswordVisibility('auth-pass2',this)">
+            <svg class="ic eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"/><circle cx="12" cy="12" r="2.5"/></svg>
+            <svg class="ic eye-closed" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 6.1A10.5 10.5 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.1 2.7M6.2 6.2C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.7-.3 3.8-.8M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+          </button>
+        </div>
+      </div>
       <div id="auth-error" style="display:none;font-size:12px;color:var(--red);margin-top:10px;line-height:1.4;"></div>
     </div>
     <button class="btn-primary" id="auth-btn" onclick="submitAuth()">Iniciar sesión</button>
     <button class="auth-link" id="auth-fp" onclick="forgotPassword()">¿Olvidaste tu contraseña?</button>
     <button class="auth-link auth-link-primary" id="auth-toggle" onclick="toggleAuthMode()">¿No tienes cuenta? Crea una</button>
+    <!-- Quien llega sin que se la recomienden ve un login y nada más. Este es el
+         único enlace de la pantalla que responde "¿qué es esto y me conviene?"
+         antes de pedirle una cuenta. -->
+    <p class="auth-legal"><a href="/preguntas.html">¿Qué es GradeHub? Preguntas frecuentes</a></p>
     <p class="auth-legal">Al crear tu cuenta aceptas nuestra <a href="/privacidad.html">política de privacidad</a>.</p>
   </div>
 </div>
