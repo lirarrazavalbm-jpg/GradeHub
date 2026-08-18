@@ -63,6 +63,10 @@ function normalize(data) {
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
   data.userName = data.userName || '';
+  // Lo que el estudiante DECLARÓ que estudia. Es lo único que hay cuando su
+  // carrera no tiene malla, y es el dato que dice qué malla construir después.
+  data.carreraNombre = typeof data.carreraNombre === 'string' && data.carreraNombre.trim()
+    ? data.carreraNombre.trim().slice(0, 120) : null;
   // El historial guarda ramos completos y sus ids llegan a los mismos atributos
   // onclick (`toggleHist('<id>')`), así que necesita el mismo saneo. Antes se
   // aceptaba tal cual: un respaldo importado con historial era el mismo agujero.
@@ -239,6 +243,15 @@ function nextRamoColor(nombre){
 // ─── CATÁLOGO · ACCESO ───────────────────────────────────────────────────────
 // Carreras, mallas y portales viven en data.js. Acá solo se elige cuál aplica
 // según el tenant.
+// Todas las carreras que se pueden DECLARAR, con las que tienen malla primero.
+// Si no tenemos la oferta de esa universidad, cae a las que sí tienen malla:
+// nunca devuelve vacío, porque un paso obligatorio sin opciones deja al
+// estudiante encerrado en el onboarding.
+function carrerasDeclarables(t){
+  const lista=(typeof CARRERAS_DECLARABLES!=='undefined'&&CARRERAS_DECLARABLES[t])||null;
+  if(lista&&lista.length)return lista.slice().sort((a,b)=>(b.malla?1:0)-(a.malla?1:0)||a.n.localeCompare(b.n,'es'));
+  return Object.entries(carrerasFor(t)).filter(([c])=>c!=='OTRA').map(([malla,n])=>({n,malla}));
+}
 function carrerasFor(t){
   if(t==='uc')return CARRERAS_UC;
   if(t==='uai')return CARRERAS_UAI;
@@ -281,7 +294,7 @@ function portalFor(tenant){return tenant==='uc'?PORTAL_UC:PORTAL;}
 
 // ─── ESTADO ──────────────────────────────────────────────────────────────────
 let S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema'};
-let currentRamoId=null,openCats={},selectedSem=1,selectedCarrera=null,modalColor=COLORS[0];
+let currentRamoId=null,openCats={},selectedSem=1,selectedCarrera=null,selectedCarreraNombre=null,carreraFiltro='',modalColor=COLORS[0];
 let openHist={};
 
 let _toastTimer=null;
@@ -679,7 +692,7 @@ try{
   }
 }catch(e){console.warn('Supabase no inicializado:',e);}
 
-function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema',acento:'turquesa'};}
+function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema',acento:'turquesa',carreraNombre:null};}
 
 function authError(msg,kind){
   // kind: 'error' (default, rojo) | 'info' (neutro, para mensajes tipo "revisa tu correo")
@@ -915,7 +928,11 @@ async function syncProfile(){
       id:currentUser.id,
       nombre:S.userName||null,
       universidad:(TENANTS[S.tenant]&&TENANTS[S.tenant].name)||null,
-      carrera:S.carrera||null,
+      // Se manda lo DECLARADO, no el código: 'Derecho' vale para saber qué
+      // malla construir; 'null' —que es lo que había cuando no tenemos su
+      // malla— no vale para nada. Los códigos viejos siguen siendo válidos y
+      // se distinguen porque están en CARRERAS_DECLARABLES.
+      carrera:S.carreraNombre||S.carrera||null,
       semestre:S.careerSemestre||null,
     });
   }catch(e){}
@@ -1003,21 +1020,43 @@ function initSemGrid(){
     g.appendChild(b);
   }
 }
+// Con 71 carreras en la UC una grilla de botones no se puede recorrer. Es una
+// lista buscable, y las que tienen malla van arriba marcadas: son el caso
+// común y tienen que estar a un toque, pero el resto ahora EXISTE — antes un
+// estudiante de Derecho no tenía cómo decir qué estudiaba.
 function initCarreraGrid(){
   const g=document.getElementById('carrera-grid');if(!g)return;g.innerHTML='';
-  Object.entries(carrerasFor(selectedTenant)).forEach(([code,label])=>{
+  const todas=carrerasDeclarables(selectedTenant);
+  const q=normName(carreraFiltro||'');
+  const vistas=q?todas.filter(c=>normName(c.n).includes(q)):todas;
+  vistas.slice(0,q?12:60).forEach(c=>{
+    const elegida=c.malla?c.malla===selectedCarrera:(!selectedCarrera&&c.n===selectedCarreraNombre);
     const b=document.createElement('button');
-    b.className='carrera-opt'+(code===selectedCarrera?' sel':'');
-    b.textContent=label;
+    b.className='carrera-opt'+(elegida?' sel':'');
+    b.innerHTML=esc(c.n)+(c.malla?' <span class="carrera-tiene-malla">tu malla se carga sola</span>':'');
     b.onclick=()=>{
-      selectedCarrera=code;initCarreraGrid();checkOb();
+      // `carrera` sigue siendo el código de la malla y manda en todo lo que ya
+      // existe. `carreraNombre` es lo declarado, y es lo único que hay cuando
+      // no tenemos su malla.
+      selectedCarrera=c.malla||null;selectedCarreraNombre=c.n;
+      initCarreraGrid();checkOb();
       if(typeof obStep!=='undefined' && obStep===3 && document.getElementById('screen-onboard').classList.contains('active')){
         setTimeout(()=>{if(obStep===3)obNext();},260);
       }
     };
     g.appendChild(b);
   });
+  // La lista oficial envejece: una carrera nueva no puede dejar a alguien sin
+  // poder declararse en un paso obligatorio.
+  if(q&&!vistas.length){
+    const b=document.createElement('button');
+    b.className='carrera-opt'+(!selectedCarrera&&carreraFiltro.trim()===selectedCarreraNombre?' sel':'');
+    b.innerHTML='Usar «'+esc(carreraFiltro.trim())+'»';
+    b.onclick=()=>{selectedCarrera=null;selectedCarreraNombre=carreraFiltro.trim();initCarreraGrid();checkOb();};
+    g.appendChild(b);
+  }
 }
+function filtrarCarreras(v){carreraFiltro=v;initCarreraGrid();}
 // ─── ONBOARDING POR PASOS ────────────────────────────────────────────────────
 
 // La validación es independiente por paso: la lista sugerida nunca obliga a
@@ -1025,11 +1064,12 @@ function initCarreraGrid(){
 function obStepValid(step,datos){
   const d=datos||{
     nombre:(document.getElementById('ob-name')||{}).value||'',
-    tenant:selectedTenant,carrera:selectedCarrera,semestre:selectedSem
+    tenant:selectedTenant,carrera:selectedCarrera,semestre:selectedSem,
+    carreraNombre:selectedCarreraNombre
   };
   if(step===1)return !!String(d.nombre||'').trim();
   if(step===2)return !!d.tenant;
-  if(step===3)return !!d.carrera;
+  if(step===3)return !!(d.carrera||String(d.carreraNombre||'').trim());
   if(step===4)return !!d.semestre;
   if(step===5)return true;
   return false;
@@ -1139,7 +1179,7 @@ function checkOb(){
 
 function completeOnboarding(){
   const name=document.getElementById('ob-name').value.trim();if(!name||!selectedCarrera)return;
-  S.userName=name;S.careerSemestre=selectedSem;S.carrera=selectedCarrera;S.tenant=selectedTenant;
+  S.userName=name;S.careerSemestre=selectedSem;S.carrera=selectedCarrera;S.carreraNombre=selectedCarreraNombre;S.tenant=selectedTenant;
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
@@ -1147,7 +1187,12 @@ function completeOnboarding(){
   });
   S.onboardingDone=true;save();
   syncProfile();
-  track('onboarding_complete',{semestre:selectedSem,carrera:selectedCarrera,ramos:obRamos.length});
+  // `carrera` es un código de una lista cerrada y puede viajar. El nombre
+  // declarado NO: es texto escrito por el estudiante y la analítica no recibe
+  // texto suyo — lo prohíbe tests/analitica.test.js y lo promete la política.
+  // La bandera dice lo único que la analítica necesita: si le pudimos cargar la
+  // malla o no. Quién estudia qué se cuenta en la base, no acá.
+  track('onboarding_complete',{semestre:selectedSem,carrera:selectedCarrera,con_malla:!!selectedCarrera,ramos:obRamos.length});
   enterApp();
   const oficiales=obRamos.filter(item=>!item.manual&&!!presetRamo(item.nombre,selectedTenant,selectedCarrera)).length;
   mostrarRamosCargados(obRamos.length,oficiales);

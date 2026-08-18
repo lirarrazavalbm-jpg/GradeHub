@@ -176,5 +176,37 @@ chk('y conserva la nota que el estudiante ya tenía',
   ((despues.categorias.find(c => c.nombre === 'Interrogación 1') || {}).notas || [{}])[0].valor === 6.2);
 chk('y deja de avisar', cambioDePauta(despues) === null);
 
+console.log('\n=== Todos pueden decir qué estudian ===');
+// Antes solo se podía declarar una carrera CON malla: FEN ofrecía dos y UC
+// tres. Alguien de Derecho UC no tenía cómo decirlo, así que elegía una que no
+// era la suya o se quedaba fuera — y nosotros no teníamos manera de saber que
+// hay cuarenta esperando esa malla, que es el dato que decide cuál construir.
+const DECL = run('CARRERAS_DECLARABLES');
+const declarables = run('carrerasDeclarables');
+chk('la oferta de pregrado completa de las dos universidades visibles',
+  DECL.uc.length > 40 && DECL.fen.length === 3);
+chk('las que tienen malla siguen apuntando a su código',
+  DECL.uc.find(c => c.n === 'Ingeniería').malla === 'ING-PC' &&
+  DECL.fen.find(c => c.n === 'Ingeniería Comercial').malla === 'IC');
+// Contador Auditor conserva su malla en MALLA pero se sacó de la oferta a
+// propósito: se declara, no se carga. Reactivarla sería una decisión, no un
+// efecto colateral de esto.
+chk('Contador Auditor se declara pero no carga malla',
+  !DECL.fen.find(c => c.n === 'Contador Auditor').malla);
+// Toda carrera que diga tener malla tiene que tenerla de verdad, o el
+// estudiante la elige esperando que se cargue sola y no pasa nada.
+['uc', 'fen'].forEach(t => {
+  const mallas = run('mallaFor')(t);
+  chk(`en ${t}, toda carrera marcada con malla existe en la malla`,
+    DECL[t].filter(c => c.malla).every(c => !!mallas[c.malla]));
+});
+// Las que tienen malla van primero: son el caso común y tienen que estar a un
+// toque, aunque la lista tenga 71 entradas.
+const ordenUC = declarables('uc');
+chk('las que cargan malla salen primero', !!ordenUC[0].malla && !!ordenUC[1].malla);
+// Una universidad sin oferta cargada no puede quedar sin opciones: un paso
+// obligatorio sin nada que elegir deja al estudiante encerrado.
+chk('una universidad sin oferta declarada igual ofrece algo', declarables('uai').length > 0);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

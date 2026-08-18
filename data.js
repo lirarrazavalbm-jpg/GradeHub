@@ -228,6 +228,105 @@ const ACENTOS={
 const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
 
 // Carreras y mallas por universidad. Presets verificados solo en ING-PC (1er sem).
+// ─── CARRERAS QUE SE PUEDEN DECLARAR ─────────────────────────────────────────
+// Distinto de CARRERAS y CARRERAS_UC, que son las que tienen MALLA verificada y
+// por eso se pueden cargar solas. Acá va la oferta completa de pregrado, para
+// que cualquier estudiante pueda decir qué estudia aunque no tengamos su malla.
+//
+// POR QUÉ IMPORTA QUE ESTÉN TODAS. Sin esto, alguien de Derecho UC no tenía
+// cómo declararse: elegía una carrera que no era la suya o se quedaba fuera. Y
+// nosotros no teníamos manera de saber que hay cuarenta esperando esa malla,
+// que es justo el dato que decide cuál construir después.
+//
+// `malla` aparece SOLO en las que ya tienen una cargada, y su valor es el
+// código que usan MALLA / MALLA_UC. Las demás no llevan código: se declaran y
+// el estudiante arma sus ramos a mano.
+//
+// DE DÓNDE SALEN. UC: admision.uc.cl/carreras (71 programas de pregrado).
+// FEN: fen.uchile.cl/es/pregrado (3). Ninguna se escribió de memoria — un
+// nombre inventado acá no falla, se queda en la base y después manda a
+// construir la malla equivocada.
+const CARRERAS_DECLARABLES={
+  fen:[
+    {n:'Ingeniería Comercial',malla:'IC'},
+    {n:'Ingeniería en Información y Control de Gestión',malla:'IICG'},
+    {n:'Contador Auditor'},
+  ],
+  uc:[
+    {n:'Ingeniería',malla:'ING-PC'},
+    {n:'Actuación'},
+    {n:'Administración Pública'},
+    {n:'Agronomía'},
+    {n:'Antropología'},
+    {n:'Arqueología'},
+    {n:'Arquitectura'},
+    {n:'Arte'},
+    {n:'Astronomía'},
+    {n:'Bachillerato Inicia en Ciencias Naturales y Matemática'},
+    {n:'Bachillerato Inicia en Ciencias Naturales y Matemática - Campus Villarrica'},
+    {n:'Bachillerato Inicia en Ciencias Sociales'},
+    {n:'Bachillerato Inicia en Ciencias Sociales - Campus Villarrica'},
+    {n:'Biología'},
+    {n:'Biología Marina'},
+    {n:'Bioquímica'},
+    {n:'Ciencia Política'},
+    {n:'College Artes y Humanidades'},
+    {n:'College Ciencias Naturales y Matemáticas'},
+    {n:'College Ciencias Sociales'},
+    {n:'Construcción Civil'},
+    {n:'Derecho'},
+    {n:'Dirección Audiovisual'},
+    {n:'Diseño'},
+    {n:'Enfermería'},
+    {n:'Estadística'},
+    {n:'Estética'},
+    {n:'Filosofía'},
+    {n:'Física'},
+    {n:'Fonoaudiología'},
+    {n:'Geografía'},
+    {n:'Historia'},
+    {n:'Ingeniería Comercial',malla:'COM'},
+    {n:'Ingeniería en Recursos Naturales'},
+    {n:'Ingeniería Forestal'},
+    {n:'Interpretación Musical'},
+    {n:'Kinesiología'},
+    {n:'Letras Hispánicas'},
+    {n:'Letras Inglesas'},
+    {n:'Licenciatura en Ingeniería en Ciencia de Datos'},
+    {n:'Licenciatura en Ingeniería en Ciencia de la Computación'},
+    {n:'Matemática'},
+    {n:'Medicina'},
+    {n:'Medicina Veterinaria'},
+    {n:'Música'},
+    {n:'Nutrición y Dietética'},
+    {n:'Odontología'},
+    {n:'Pedagogía en Educación Especial'},
+    {n:'Pedagogía en Educación Física y Salud para Educación Básica y Media'},
+    {n:'Pedagogía en Educación General Básica - Santiago'},
+    {n:'Pedagogía en Educación Media'},
+    {n:'Pedagogía en Educación Media en Ciencias Naturales y Biología'},
+    {n:'Pedagogía en Educación Media en Física'},
+    {n:'Pedagogía en Educación Media en Matemática'},
+    {n:'Pedagogía en Educación Media en Química'},
+    {n:'Pedagogía en Educación Parvularia - Santiago'},
+    {n:'Pedagogía en Educación Parvularia - Villarrica'},
+    {n:'Pedagogía en Inglés para Educación Básica y Media'},
+    {n:'Pedagogía en Religión Católica'},
+    {n:'Pedagogía General Básica - Campus Villarrica'},
+    {n:'Periodismo'},
+    {n:'Planificación Urbana'},
+    {n:'Programa de Pedagogía para Profesionales'},
+    {n:'Psicología'},
+    {n:'Publicidad'},
+    {n:'Química'},
+    {n:'Química y Farmacia'},
+    {n:'Sociología'},
+    {n:'Teología'},
+    {n:'Terapia Ocupacional'},
+    {n:'Trabajo Social'},
+  ],
+};
+
 const CARRERAS_UC={'ING-PC':'Ingeniería · Plan Común','COM':'Ingeniería Comercial','OTRA':'Otra carrera'};
 // Plan común de Ingeniería UC, currículum C2022. Los nombres y los créditos
 // salen del catálogo oficial vía la API de mallas.ing.uc.cl (la herramienta de
