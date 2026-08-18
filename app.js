@@ -2992,7 +2992,9 @@ function openSettings(){
       <div class="modo-grid" id="s-modo-grid"></div>
       <label class="modal-label accent-picker-label">Color de acento</label>
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>`;
-    if(section==='sugerencias')return currentUser?`
+    if(section==='sugerencias'){
+      const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a href="mailto:gradehub.app@gmail.com">gradehub.app@gmail.com</a></p>`;
+      return currentUser?`
       <p class="settings-help settings-help-top">¿Algo no se entiende, está fallando o podría ser mejor? Lo leemos nosotros.</p>
       <label class="modal-label" for="s-feedback-type">Tipo de comentario</label>
       <select class="feedback-select" id="s-feedback-type">
@@ -3001,10 +3003,12 @@ function openSettings(){
         <option value="otro">Otro comentario</option>
       </select>
       <label class="modal-label" for="s-feedback-message">Cuéntanos</label>
-      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" oninput="actualizarSugerencia()"></textarea>
-      <div class="feedback-meta"><span>Queda asociado a tu cuenta para poder ayudarte.</span><span id="s-feedback-count">0 / 2000</span></div>
-      <button class="btn-primary" id="s-feedback-send" type="button" onclick="enviarSugerencia()" disabled>Enviar comentario</button>`
-      :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>Así evitamos spam y podemos entender a qué cuenta corresponde el comentario.</p></div>`;
+      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" aria-describedby="s-feedback-help s-feedback-count" oninput="actualizarSugerencia()"></textarea>
+      <div class="feedback-meta"><span class="feedback-help pending" id="s-feedback-help" aria-live="polite">Mínimo 3 caracteres · queda asociado a tu cuenta.</span><span id="s-feedback-count">0 / 2000</span></div>
+      <button class="btn-primary feedback-send" id="s-feedback-send" type="button" onclick="enviarSugerencia()">Enviar comentario</button>
+      ${contacto}`
+      :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>Así evitamos spam y podemos entender a qué cuenta corresponde el comentario.</p></div>${contacto}`;
+    }
     return `
       <p class="settings-help settings-help-top">Guarda una copia antes de cambiar de dispositivo.</p>
       <div class="settings-data-actions">
@@ -3131,10 +3135,17 @@ function openSettings(){
 function actualizarSugerencia(){
   const campo=document.getElementById('s-feedback-message');
   const cuenta=document.getElementById('s-feedback-count');
-  const boton=document.getElementById('s-feedback-send');
+  const ayuda=document.getElementById('s-feedback-help');
   if(!campo)return;
   if(cuenta)cuenta.textContent=`${campo.value.length} / 2000`;
-  if(boton)boton.disabled=!(campo.value.trim().length>=3);
+  const faltan=Math.max(0,3-campo.value.trim().length);
+  if(ayuda){
+    ayuda.textContent=faltan
+      ?`Mínimo 3 caracteres · te ${faltan===1?'falta 1 carácter':'faltan '+faltan+' caracteres'} para enviarlo.`
+      :'Queda asociado a tu cuenta para poder ayudarte.';
+    ayuda.classList.toggle('pending',faltan>0);
+  }
+  if(!faltan)campo.removeAttribute('aria-invalid');
 }
 async function enviarSugerencia(){
   if(!supabaseClient||!currentUser){showToast('Necesitas iniciar sesión para enviar',true);return;}
@@ -3143,7 +3154,10 @@ async function enviarSugerencia(){
   const boton=document.getElementById('s-feedback-send');
   const mensaje=campo?campo.value.trim():'';
   const categoria=selector&&['sugerencia','problema','otro'].includes(selector.value)?selector.value:'otro';
-  if(!(mensaje.length>=3)){showToast('Cuéntanos un poco más',true);return;}
+  if(!(mensaje.length>=3)){
+    if(campo){campo.setAttribute('aria-invalid','true');actualizarSugerencia();campo.focus();}
+    showToast('Escribe al menos 3 caracteres',true);return;
+  }
   if(boton){boton.disabled=true;boton.textContent='Enviando…';}
   try{
     const {error}=await supabaseClient.from('user_feedback').insert({user_id:currentUser.id,categoria,mensaje});
@@ -3156,7 +3170,7 @@ async function enviarSugerencia(){
     console.warn('No se pudo enviar el comentario:',e);
     showToast('No pudimos enviarlo. Intenta de nuevo.',true);
   }finally{
-    if(boton){boton.textContent='Enviar comentario';actualizarSugerencia();}
+    if(boton){boton.disabled=false;boton.textContent='Enviar comentario';actualizarSugerencia();}
   }
 }
 
