@@ -1996,6 +1996,7 @@ function presetRamo(nombre,tenant,carrera){
       const id=uid();
       const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
       if(extra&&extra.slots)cat.slots=extra.slots;
+      if(extra&&extra.lista)cat.directNota=false; // lista abierta: el estudiante agrega las notas que le tomaron
       if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
       categorias.push(cat);porNombre[nom]=id;
       if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
@@ -2018,6 +2019,7 @@ function presetRamo(nombre,tenant,carrera){
     const id=uid();
     const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
     if(extra&&extra.slots)cat.slots=extra.slots;
+    if(extra&&extra.lista)cat.directNota=false;
     if(extra&&extra.fecha)cat.fecha=extra.fecha;
     categorias.push(cat);porNombre[nom]=id;
     if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});

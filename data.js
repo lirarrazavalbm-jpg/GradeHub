@@ -958,26 +958,21 @@ const PRESETS_FEN={
     // Sin noCalcula: no queda ninguna regla pendiente de implementar.
     reglasDelCurso:['Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9'],
     evals:[
-      // Los controles de lectura y los de ejercicios tienen fecha propia cada uno
-      // y evalúan lecturas distintas, así que van en filas separadas. Los tres de
-      // lectura: 7 de agosto, 28 de agosto y 6 de noviembre. Los cuatro de
-      // ejercicios: 21 de agosto, 11 de septiembre, 16 de octubre y 30 de octubre.
+      // Ni los de lectura ni los de ejercicios tienen un número fijo: cambia de
+      // semestre a semestre. Por eso van como lista abierta (`lista:true`) y no
+      // como filas fijas ni con `slots` — el estudiante agrega los que
+      // realmente le tomaron, igual que los Controles Sorpresa.
       //
-      // El 10% de los de lectura no se divide exacto en tres. El tercero lleva
-      // 3,34 en vez de 3,33 para que la suma dé 100 justo: es un centésimo de
-      // punto porcentual, invisible en cualquier nota, y la alternativa era
-      // dejarlos agrupados y perder las tres fechas.
-      ['Control de Lectura 1',3.33,{min:1.5,cap:3.9}],
-      ['Control de Lectura 2',3.33,{min:1.5,cap:3.9}],
-      ['Control de Lectura 3',3.34,{min:1.5,cap:3.9}],
-      ['Control de Ejercicios 1',10,{min:1.5,cap:3.9}],
-      ['Control de Ejercicios 2',10,{min:1.5,cap:3.9}],
-      ['Control de Ejercicios 3',10,{min:1.5,cap:3.9}],
-      ['Control de Ejercicios 4',10,{min:1.5,cap:3.9}],
+      // El precio es la compuerta: el mínimo 1,5 se mide contra el promedio del
+      // grupo y no contra cada control. Es la misma aproximación que ya usaban
+      // los Sorpresa, y la alternativa —una fila por control— exige inventar
+      // cuántos son.
+      ['Controles de Lectura',10,{lista:true,min:1.5,cap:3.9}],
+      ['Controles de Ejercicios',40,{lista:true,min:1.5,cap:3.9}],
       // El programa dice "entre 4 y 6 durante el semestre": el número exacto NO
       // está. Sin slots, el estudiante agrega los que realmente le tomaron.
       // Antes decía slots:4 — un dato plausible pero inventado.
-      ['Controles Sorpresa',5,{min:1.5,cap:3.9,dropLowest:{fraction:0.25}}],
+      ['Controles Sorpresa',5,{lista:true,min:1.5,cap:3.9,dropLowest:{fraction:0.25}}],
       ['Solemne',20,{min:1.5,cap:3.9}],
       ['Examen',25,{min:3.0,cap:3.4}],
     ],
@@ -1006,7 +1001,7 @@ const PRESETS_FEN={
     ],
     evals:[
       ['Solemne',25],
-      ['Controles',25],
+      ['Controles',25,{lista:true}],
       ['Trabajo Práctico',25],
       ['Examen Final',25,{min:3.0,cap:3.9}],
     ],
@@ -1111,7 +1106,7 @@ const PRESETS_FEN={
     ],
     evals:[
       ['Solemne',25],
-      ['Controles de Lectura',20,{dropLowest:{count:1}}],
+      ['Controles de Lectura',20,{lista:true,dropLowest:{count:1}}],
       ['Proyecto Empresa',25,{min:3.0,cap:3.9}],
       ['Examen Final',30,{min:3.0,cap:3.9}],
     ],

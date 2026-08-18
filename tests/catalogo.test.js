@@ -208,5 +208,22 @@ chk('las que cargan malla salen primero', !!ordenUC[0].malla && !!ordenUC[1].mal
 // obligatorio sin nada que elegir deja al estudiante encerrado.
 chk('una universidad sin oferta declarada igual ofrece algo', declarables('uai').length > 0);
 
+console.log('\n=== `lista:true` abre la evaluación a N notas ===');
+// Sin esto la fila sale como nota única y el estudiante no puede cargar los
+// controles que le tomaron — ni `dropLowest` tiene entre qué descartar.
+const contaPreset = run('presetRamo')('Contabilidad', 'fen', null);
+const catPorNombre = n => contaPreset.categorias.find(c => c.nombre === n);
+['Controles de Lectura', 'Controles de Ejercicios', 'Controles Sorpresa'].forEach(n => {
+  const c = catPorNombre(n);
+  chk('Contabilidad · ' + n + ' es lista abierta', !!c && c.directNota === false && !c.slots);
+});
+// Y lo que NO cambia: una evaluación normal sigue siendo una sola nota.
+chk('Contabilidad · el Examen sigue siendo nota única', catPorNombre('Examen').directNota === true);
+// Los otros dos ramos donde el número de controles tampoco es fijo.
+[['Gestión y Empresas', 'Controles de Lectura'], ['Marketing', 'Controles']].forEach(([ramo, ev]) => {
+  const c = run('presetRamo')(ramo, 'fen', null).categorias.find(x => x.nombre === ev);
+  chk(ramo + ' · ' + ev + ' es lista abierta', !!c && c.directNota === false);
+});
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
