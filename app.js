@@ -657,13 +657,19 @@ function greeting(){
 const PASS_MIN = 8;
 
 // UN SOLO TEXTO para dos caminos que tienen que verse iguales desde afuera: el
-// registro que salió bien y espera confirmación, y el correo que YA tenía
-// cuenta. Si difieren, mandar un correo al formulario y comparar las dos
-// respuestas dice quién está registrado en GradeHub — que es media
-// credencial servida, y con las notas de esa persona al otro lado.
-// Por eso es una constante y no dos literales: separarlos reabre la
-// enumeración sin que falle nada. Lo fija `tests/seguridad.test.js`.
-const MSG_VERIFICA = 'Te enviamos un correo para verificar tu cuenta. Si no llega, revisa spam.';
+// registro que no devolvió sesión y el correo que YA tenía cuenta. Si difieren,
+// mandar un correo al formulario y comparar las dos respuestas dice quién está
+// registrado en GradeHub — que es media credencial servida, y con las notas de
+// esa persona al otro lado. Por eso es una constante y no dos literales:
+// separarlos reabre la enumeración sin que falle nada.
+//
+// NO PROMETE UN CORREO. La confirmación por correo está desactivada en
+// Supabase, así que el registro nuevo entra directo y este aviso queda casi
+// siempre para el correo que ya tenía cuenta: mandarlo a esperar un mail que
+// nadie despacha lo deja botado sin saberlo. Lo que dice es cierto en los dos
+// casos y sigue sin distinguirlos. Si algún día se reactiva la confirmación,
+// hay que volver a redactarlo. Lo fija `tests/seguridad.test.js`.
+const MSG_VERIFICA = 'Ya puedes entrar con ese correo y tu contraseña.';
 
 function passwordPolicyError(password){
   if(password.length<PASS_MIN)return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres.';
