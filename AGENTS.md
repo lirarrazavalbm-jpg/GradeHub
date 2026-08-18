@@ -119,7 +119,9 @@ guarda los dejó pasar a los tres porque comparaba contra la base del PR, no
 contra el `main` del momento del merge.
 
 El deploy manual sigue existiendo por si el CI está caído (`npm run deploy`),
-pero necesita Wrangler autenticado y solo Lucas lo tiene.
+pero necesita Wrangler autenticado en la máquina de quien lo corra. Lucas y
+Martín tienen acceso de administrador a la cuenta de Cloudflare; tener Wrangler
+autenticado localmente es otra cosa y se hace aparte.
 
 ## Modelo de datos
 
@@ -242,29 +244,41 @@ hablarías a un compañero, no como un manual.
 
 ### Seguridad · auditoría del 13 de agosto de 2026
 
-La rama `codex/security-hardening` corrige lo que sí vive en el repo: limpia
-tokens de recovery de la URL, evita enumerar correos al registrarse, agrega
-HSTS, fija Wrangler con lockfile y pone límites server-side a los reportes.
-Antes de repetir trabajo, revisa si esa rama/PR ya se mergeó.
+La rama `codex/security-hardening` ya está en producción: limpia tokens de
+recovery de la URL, evita enumerar correos al registrarse, agrega HSTS, fija
+Wrangler con lockfile y pone límites server-side a los reportes.
 
-**Claude de Lucas parte por esto después del merge:**
+**Ya hecho, no lo repitas:** `catalog_consensus.sql` aplicado (y borrada la
+sobrecarga vieja `catalog_consensus(text,text)`, que contaba filas en vez de
+personas distintas), `calendar_feed.sql` aplicado y verificado de punta a punta
+(el feed devuelve un `.ics` con 10 eventos y sin notas), `eliminar_mi_cuenta`
+aplicado, `user_feedback.sql` aplicado el 2026-08-17. HSTS y CSP verificados en
+producción.
 
-1. Aplicar manualmente `supabase/catalog_consensus.sql` en el SQL Editor. El
-   deploy de Cloudflare no ejecuta SQL; mergear el archivo sin aplicarlo deja
-   producción con la función antigua y sin los nuevos límites.
-2. En Supabase → Authentication, registrar en el PR los valores reales de
-   Rate Limits, Sessions y Password Security. El repo no puede demostrarlos.
-   Configurar un tiempo de inactividad razonable y confirmar que el JWT no dure
-   más de una hora. No cambiar sesiones existentes a ciegas.
-3. Integrar Cloudflare Turnstile con Supabase Auth para registro y recuperar
-   contraseña; login puede ser adaptativo tras intentos fallidos. Un cooldown en
-   JavaScript no cuenta como rate limiting.
-4. Verificar en producción que `Strict-Transport-Security` llegue realmente y
-   probar recovery completo: el cambio de contraseña funciona y la URL queda
-   sin `access_token`, `refresh_token` ni `type=recovery`.
-5. Hacer una prueba RLS autenticada con dos cuentas propias: A no puede leer,
-   editar ni borrar filas de B. La prueba anónima ya devuelve `[]`, pero no
-   demuestra aislamiento entre dos usuarios autenticados.
+**Lo que falta es todo manual, y lo lleva Martín**, que desde el 2026-08-17
+tiene acceso de administrador a Supabase y a Cloudflare. Ningún deploy hace
+nada de esto: Cloudflare publica archivos estáticos y no ejecuta SQL ni toca la
+configuración de Auth.
+
+1. En Supabase → Authentication, dejar y **anotar** los valores de Sessions,
+   Rate Limits y Password Security. El repo no puede demostrarlos. JWT ≤ 1 h,
+   rotación de refresh tokens, y el mínimo de contraseña en 8 para que calce
+   con `PASS_MIN` en `app.js`. No cambiar sesiones existentes a ciegas.
+2. Turnstile en registro y recuperar contraseña. **El orden importa:** activar
+   el CAPTCHA en Supabase antes de que el código mande el `captchaToken` deja
+   registro, recuperación y login caídos para todos, y falla del lado del
+   servidor, así que ningún test del repo lo atrapa. La CSP necesita
+   `https://challenges.cloudflare.com` en `script-src` **y** una directiva
+   `frame-src` nueva: hoy no existe, la cubre `default-src 'self'` y el iframe
+   del widget queda bloqueado. Turnstile no pide `'unsafe-inline'`.
+3. Prueba RLS autenticada con dos cuentas: A no puede leer, editar ni borrar
+   filas de B. La prueba anónima devuelve `[]` y no demuestra nada —
+   `auth.uid()` es NULL para anon, así que ninguna política calza. La prueba
+   vale solo si además se comprueba que B **sí** ve lo suyo con la misma
+   consulta; si no, un `[]` puede ser aislamiento o un UID mal escrito.
+4. Recovery completo en producción: que el correo llegue, que el cambio
+   funcione y que la URL quede sin `access_token`, `refresh_token` ni
+   `type=recovery` (van en el fragmento, así que hay que mirar `location.hash`).
 
 **Deuda de hardening, no mezclar con features:** retirar gradualmente handlers
 `onclick` y `innerHTML` para poder sacar `'unsafe-inline'` de la CSP. Mientras
@@ -278,7 +292,9 @@ panel administrativo.
 producción el 17 de agosto de 2026: RLS activa, única política INSERT atada a
 `auth.uid()`, sin lectura para clientes y FK a `auth.users` con
 `ON DELETE CASCADE`. `calendar_feeds` mantiene cero políticas y acceso solo por
-RPC. Toda tabla nueva reabre la auditoría RLS y de borrado.
+RPC. Toda tabla nueva reabre la auditoría RLS y de borrado — y el `CASCADE` no
+se da por bueno porque esté escrito: se comprueba borrando una cuenta de prueba
+y mirando que no queden filas suyas en ninguna tabla.
 
 - **Ponderaciones oficiales: 10 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
   están completas (177 ramos FEN, 88 únicos, los 10-11 semestres de las cuatro
@@ -325,30 +341,20 @@ movimiento) y 2 (el momento de la nota) ya están en producción. Sigue jerarqu�
 de Home, después los vacíos, estadísticas y Agenda. Su carril es `app.js` y,
 durante la revisión estética, `styles.css`.
 
-**Claude de Lucas — terminar la auditoría de movimiento.** Salió de correr la
-skill `improve-animations` sobre `styles.css` y `app.js` el 2026-08-11. Se
-arreglaron tres defectos (#90: hover pegado en táctil, 340ms de `screenIn` que
-nunca corrían, dos `transition:all`) y el modal, que aparecía y desaparecía de
-golpe (#91). Queda:
+**La auditoría de movimiento está cerrada.** Salió de correr la skill
+`improve-animations` sobre `styles.css` y `app.js` el 2026-08-11. Se arreglaron
+tres defectos (#90: hover pegado en táctil, 340ms de `screenIn` que nunca
+corrían, dos `transition:all`) y el modal, que aparecía y desaparecía de golpe
+(#91). Después cayeron los cuatro pendientes: las duraciones salen de la escala
+(#99), `prefers-reduced-motion` dejó de ser nuclear (#95), `button:active` ya
+tiene su transición, y las dos barras de progreso pasaron de animar `width` a
+`scaleX()`. Queda dicho porque la lista sobrevivió a tres de sus arreglos: un
+traspaso que enumera trabajo ya hecho manda a rehacerlo.
 
-1. **Las duraciones no usan los tokens.** 54 escritas a mano contra 7 con
-   `var(--motion-*)`, en 12 valores distintos para una escala de tres. Seis
-   copian `cubic-bezier(.22,1,.36,1)`, que es `--ease-out` literal. Es refactor
-   puro y va en su propio PR: acá un refactor no viaja con una feature.
-   Ojo: `.15s` aparece 45 veces y no está en la escala (120/160/220), así que
-   mapearla cambia el número. Hay que decidir si se mueve a 160 o si la escala
-   necesita un valor más.
-2. **Dos barras de progreso animan `width`.** `.ob-progress-bar` y
-   `.ramo-progress-fill`. Anima layout en cada actualización; va `transform:
-   scaleX()` con `transform-origin:left`.
-3. **`button:active{transform:scale(.97)}` sin transición.** El rebote al soltar
-   es instantáneo en toda la app.
-4. **`prefers-reduced-motion` es nuclear.** `*{animation-duration:.01ms!important}`
-   mata todo, incluido lo que ayuda a comprender. El criterio es menos
-   movimiento, no cero: conservar opacidad y color, eliminar desplazamientos.
-
-`tests/movimiento.test.js` fija lo ya arreglado y tres reglas más (nada de
-`ease-in`, nada de `scale(0)`, ningún `@keyframes` huérfano).
+`tests/movimiento.test.js` fija lo arreglado y cuatro reglas más: nada de
+`ease-in`, nada de `transition:all`, nada de `scale(0)`, ningún `@keyframes`
+huérfano, y ninguna transición sobre propiedades de layout — `width`, `height`,
+`top`, `margin` y compañía recalculan el layout en cada fotograma.
 
 **Dos cosas que hacen perder tiempo al verificar movimiento**, y que costaron
 descubrir: un documento oculto pausa el compositor, así que si mides una
@@ -368,11 +374,13 @@ solo deja leer las filas propias, así que necesita una vista agregada o una
 función `security definer` que exponga el conteo sin exponer quién reportó qué,
 versionada en `supabase/`.
 
-**Claude de Martín — pautas oficiales, y las preguntas frecuentes.** El detalle
-de las FAQ está en el issue #86: es la única pieza de contenido que falta del
-sitio y la única que no puede escribir alguien que no conozca a los usuarios.
-Hoy quien llega a gradehub.cl ve un login y nada que responda "¿qué hace esto?"
-o "¿me van a vender mis notas?".
+**Martín — las pegas manuales de Supabase y Cloudflare.** Desde el 2026-08-17
+tiene administrador en los dos paneles, así que los cinco puntos de la auditoría
+de seguridad de más arriba son suyos. Ninguno se puede hacer desde el repo y el
+primero arregla algo que está roto en producción hoy.
+
+Las preguntas frecuentes (issue #86) ya se mergearon: están en
+`/preguntas.html`.
 
 **Claude de Martín — pautas oficiales.** El traspaso anterior decía que el
 consenso de reportes era "lo único" que podía llevar el catálogo a 88 porque no
@@ -384,9 +392,14 @@ sale del carril de contenido.
 
 ### Lo que espera una decisión, no un agente
 
-**Monetización.** No es una tarea, es una decisión de producto. Si va a haber
-plan pago afecta qué se construye ahora, qué dice la política de privacidad y
-hasta el onboarding. Conviene resolverla antes de seguir agregando features.
+**Monetización.** Decidida a medias y a propósito. El modelo no se define hasta
+tener el dato de frecuencia de uso (DAU/MAU): sin eso ni la suscripción ni el
+auspicio se pueden evaluar, se eligen por corazonada.
+
+Lo que sí se decidió y ya está publicado: la política dejó de prometer "nunca
+habrá publicidad" —una promesa que no se puede sostener— y ahora promete tres
+cosas exigibles: igual para todos, nunca según tus notas, sin entregar nada
+tuyo. No hay publicidad hoy ni está decidido que la haya.
 
 ### Las reglas que el motor todavía no calcula
 

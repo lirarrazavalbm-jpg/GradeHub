@@ -288,6 +288,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .s-tenant-btn:hover{color:var(--fg);border-color:var(--border2);}
 .s-tenant-btn.sel{border-color:var(--primary);color:var(--fg);background:var(--primary-light);}
 .carrera-opt{text-align:left;padding:11px 13px;border-radius:10px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--muted);color:var(--fg2);cursor:pointer;transition:border-color var(--motion-fast) var(--ease-standard),background-color var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard);line-height:1.25;}
+.carrera-tiene-malla{display:block;margin-top:2px;font-size:11px;font-weight:600;color:var(--primary);letter-spacing:0;}
+.carrera-opt.sel .carrera-tiene-malla{color:var(--primary-fg);opacity:.85;}
 .carrera-opt.sel{background:var(--primary);color:var(--primary-fg);border-color:var(--primary);box-shadow:0 2px 8px color-mix(in srgb,var(--primary),transparent 70%);}
 .btn-primary{width:100%;padding:15px;background:var(--primary);background-image:linear-gradient(135deg,var(--primary) 0%,var(--primary-grad) 100%);color:var(--primary-fg);border:none;border-radius:13px;font-family:'Inter',sans-serif;font-size:15.5px;font-weight:700;cursor:pointer;transition:transform var(--motion-press),box-shadow var(--motion-base);display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em;box-shadow:0 6px 20px -8px color-mix(in srgb,var(--primary),transparent 40%);}
 .btn-primary:disabled{opacity:.35;cursor:default;box-shadow:none;}
@@ -297,7 +299,10 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 /* ONBOARDING POR PASOS */
 .ob-wrap-steps{justify-content:flex-start;padding-top:calc(28px + env(safe-area-inset-top,0px));}
 .ob-progress{width:100%;max-width:340px;height:3px;background:var(--muted);border-radius:3px;overflow:hidden;margin:16px 0 26px;}
-.ob-progress-bar{height:100%;width:25%;border-radius:3px;background-image:linear-gradient(90deg,var(--primary),var(--accent));transition:width .35s var(--ease-out);}
+/* Ancho completo y se encoge con scaleX: animar `width` recalcula el layout en
+   cada fotograma, y `transform` lo resuelve el compositor. El contenedor recorta
+   con overflow:hidden, así que se ve igual. El avance lo pone obRender(). */
+.ob-progress-bar{height:100%;width:100%;transform:scaleX(.25);transform-origin:left;border-radius:3px;background-image:linear-gradient(90deg,var(--primary),var(--accent));transition:transform .35s var(--ease-out);}
 .ob-step{width:100%;max-width:340px;animation:obStepIn .32s var(--ease-out);}
 @keyframes obStepIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
 .ob-step-num{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--primary);margin-bottom:10px;}
@@ -446,7 +451,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .ramo-name{font-size:16px;font-weight:600;color:var(--fg);letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ramo-meta{font-size:12.5px;color:var(--fg3);margin-top:3px;letter-spacing:-.005em;display:flex;align-items:center;gap:8px;}
 .ramo-progress{flex:1;max-width:96px;height:3px;background:color-mix(in srgb,var(--fg3),transparent 78%);border-radius:2px;overflow:hidden;}
-.ramo-progress-fill{height:100%;background:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 25%);border-radius:2px;transition:width .3s ease;}
+/* Mismo motivo que .ob-progress-bar: scaleX en vez de width. Esta se repinta por
+   cada ramo en cada render de Home, así que es la que más se nota. */
+.ramo-progress-fill{height:100%;width:100%;transform-origin:left;background:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 25%);border-radius:2px;transition:transform .3s ease;}
 .ramo-meta-text{white-space:nowrap;}
 .ramo-nota{font-family:'Sora','Inter',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;transition:color .3s ease;line-height:1;min-width:52px;text-align:right;}
 .ramo-nota.good,.ramo-nota.warn,.ramo-nota.bad{color:var(--grade-color);}

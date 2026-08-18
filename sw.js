@@ -67,10 +67,14 @@ self.addEventListener('fetch', event => {
       event.respondWith(
         caches.open(CACHE_NAME).then(cache =>
           cache.match(request).then(cached => {
+            // Si la red falla hay que devolver ALGO igual: una promesa
+            // rechazada acá se transforma en un error de red para la página y
+            // la hoja de estilos no se aplica. Pasó con la CSP bloqueando el
+            // fetch, y pasa igual sin conexión y con la primera visita.
             const networkFetch = fetch(request).then(response => {
               cache.put(request, response.clone());
               return response;
-            });
+            }).catch(() => cached || new Response('', { status: 504, statusText: 'sin red' }));
             return cached || networkFetch;
           })
         )
