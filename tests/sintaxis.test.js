@@ -116,8 +116,48 @@ if (/length\s*<\s*[0-9]/.test(app)) {
   console.error('quedó un mínimo de contraseña hardcodeado: usa PASS_MIN');
   process.exit(1);
 }
-if (!/authMode\s*===\s*'signup'\s*&&\s*p\.length\s*<\s*PASS_MIN/.test(app)) {
-  console.error('el mínimo de contraseña debe exigirse SOLO en registro, no al iniciar sesión');
+if (!/function passwordPolicyError\(password\)/.test(app) ||
+    !/password\.length\s*<\s*PASS_MIN/.test(app) ||
+    !/\[A-Za-z\].*\\d/.test(app)) {
+  console.error('la política debe exigir PASS_MIN, al menos una letra y un número');
+  process.exit(1);
+}
+if (!/authMode\s*===\s*'signup'[\s\S]{0,160}passwordPolicyError\(p\)/.test(app)) {
+  console.error('la política de contraseña debe exigirse al registrarse, no al iniciar sesión');
+  process.exit(1);
+}
+if (!/const p2=document\.getElementById\('auth-pass2'\)\.value/.test(app) ||
+    !/if\(p!==p2\).*Las contraseñas no coinciden/s.test(app)) {
+  console.error('el registro debe pedir y comparar la contraseña repetida');
+  process.exit(1);
+}
+if (!/id="auth-pass-confirm-wrap"/.test(html) || !/id="auth-pass2"/.test(html)) {
+  console.error('falta el campo para repetir la contraseña en el registro');
+  process.exit(1);
+}
+if ((html.match(/class="password-toggle"/g) || []).length !== 2 ||
+    !/function togglePasswordVisibility\(inputId,button\)/.test(app) ||
+    !/aria-label="Mostrar contraseña"/.test(html) ||
+    !/button\.setAttribute\('aria-label',mostrar\?'Ocultar contraseña':'Mostrar contraseña'\)/.test(app)) {
+  console.error('los dos campos del registro necesitan un ojo accesible para mostrar y ocultar');
+  process.exit(1);
+}
+if (!/\.password-toggle\{[^}]*top:2px;[^}]*height:40px/.test(css)) {
+  console.error('el ojo debe quedar completo dentro del campo, no partir desde su mitad');
+  process.exit(1);
+}
+const policySource = (app.match(/function passwordPolicyError\(password\)\{[\s\S]*?\n\}/) || [])[0];
+if (!policySource) {
+  console.error('no se pudo probar passwordPolicyError');
+  process.exit(1);
+}
+const policyCtx = { PASS_MIN: Number(min) };
+vm.createContext(policyCtx);
+vm.runInContext(policySource, policyCtx);
+if (!policyCtx.passwordPolicyError('12345678').includes('letra') ||
+    !policyCtx.passwordPolicyError('abcdefgh').includes('número') ||
+    policyCtx.passwordPolicyError('clave123') !== '') {
+  console.error('la política no distingue números solos, letras solas y una contraseña válida');
   process.exit(1);
 }
 

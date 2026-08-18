@@ -16,12 +16,23 @@
 # silencio. Los que hay hoy: jsDelivr (supabase-js), Google Fonts, Google
 # Analytics, el proyecto de Supabase y Cloudflare Insights.
 #
+# GOOGLE FONTS APARECE DOS VECES, Y NO ES REDUNDANCIA. `style-src` cubre la
+# hoja pedida por el `<link>` del HTML; `connect-src` cubre el `fetch()` que el
+# service worker hace del MISMO archivo para cachearlo, porque una petición
+# nacida de `fetch` se rige por `connect-src` sea cual sea su destino. Faltando
+# en `connect-src`, el navegador la bloquea, el `respondWith` del SW responde
+# con un error de red y las fuentes no cargan para NADIE — ni siquiera para
+# quien nunca estuvo sin conexión. Se ve como la app en fuente de sistema, sin
+# que falle nada más. Lo mismo va a pasar con cualquier otro dominio que el SW
+# intercepte: si lo agregas allá, agrégalo acá. `tests/fuentes-csp.test.js` lo
+# comprueba.
+#
 # OJO CON CLOUDFLARE INSIGHTS: Pages inyecta ese script en el edge, no está en
 # el index.html. Por eso ningún test que lea el repo lo puede encontrar, y la
 # primera CSP lo bloqueó. La única forma de verlo es abrir el sitio desplegado
 # con la consola. Si mañana Pages inyecta algo más, va a pasar lo mismo.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://static.cloudflareinsights.com; connect-src 'self' https://lsulsnswzesyekpsvlql.supabase.co wss://lsulsnswzesyekpsvlql.supabase.co https://www.google-analytics.com https://region1.google-analytics.com https://cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com https://www.google-analytics.com https://static.cloudflareinsights.com; connect-src 'self' https://lsulsnswzesyekpsvlql.supabase.co wss://lsulsnswzesyekpsvlql.supabase.co https://www.google-analytics.com https://region1.google-analytics.com https://cloudflareinsights.com https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()

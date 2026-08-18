@@ -58,6 +58,18 @@ chk('ningún ease-in en transiciones ni animaciones',
   !/(transition|animation)[^;}]*\bease-in\b(?!-out)/.test(css));
 // transition:all anima propiedades no buscadas fuera de la GPU.
 chk('ningún transition:all', !/transition:\s*all\b/.test(css));
+// Animar width o height obliga al navegador a recalcular el layout en CADA
+// fotograma; transform y opacity los resuelve el compositor. Una barra de
+// progreso se hace con scaleX() y transform-origin:left, no estirando el ancho.
+// No falla de forma visible: solo va a tirones en un teléfono lento.
+// Se compara el NOMBRE de cada propiedad, no el texto completo: `border-left-color`
+// contiene "left" y es pintura, no layout.
+const LAYOUT = ['width', 'height', 'top', 'left', 'right', 'bottom', 'margin', 'padding'];
+const layoutAnimado = [...css.matchAll(/transition:([^;}]*)/g)]
+  .flatMap(m => m[1].split(',').map(p => p.trim().split(/\s+/)[0]))
+  .filter(prop => LAYOUT.includes(prop));
+chk(`ninguna transición sobre propiedades de layout (${layoutAnimado.length})`, layoutAnimado.length === 0);
+if (layoutAnimado.length) console.log('     anima: ' + [...new Set(layoutAnimado)].join(', '));
 // Nada en el mundo real aparece de la nada.
 chk('ningún scale(0) exacto', !/scale\(0\)/.test(css));
 
