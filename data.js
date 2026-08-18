@@ -451,6 +451,19 @@ const PORTAL=[
 const PRESETS_UC={
   'Cálculo I':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
   'Álgebra Lineal':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
+  // Ingeniería Comercial · 2° semestre. Transcripción de la pauta 2026-2
+  // confirmada por Lucas el 17-08-2026. La regla de aprobación de Álgebra
+  // aparece cortada en la fuente, así que no se modela ni se muestra.
+  'Introducción al Álgebra Lineal':[
+    ['Interrogación 1',20],['Interrogación 2',25],['Interrogación 3',25],['Examen',30],
+  ],
+  'Introducción a la Macroeconomía':[
+    ['C1',16],['P1',22],['P2',22],['PP',10],['Examen',30],
+  ],
+  'Probabilidad y Estadística':[
+    ['C1',8],['P1',20],['C2',8],['P2',20],['C3',8],['Examen',30],
+    ['Control sorpresa 1',2],['Control sorpresa 2',2],['Control sorpresa 3',2],
+  ],
   'Química para Ingeniería':[['Pruebas',44.1],['Ev. de Taller',4.9],['Examen',21],['Informes',18],['Controles',12]],
   'Filosofía: ¿para qué?':[['Prueba 1',30],['Ejercicio de análisis',20],['Prueba 2',30],['Podcast',20,{min:4.0,cap:3.9}]],
   'Introducción a la Programación':{
@@ -538,6 +551,17 @@ const PRESETS_UC={
     ],
   },
 };
+
+// PRESETS_UC nació con la malla de Ingeniería. Comercial usa el mismo registro
+// solo para estos ramos confirmados: compartir todo por nombre podría aplicar
+// la pauta de otra facultad a un curso homónimo.
+const PRESETS_UC_COM=[
+  'Introducción al Álgebra Lineal',
+  'Cálculo II',
+  'Introducción a la Macroeconomía',
+  'Probabilidad y Estadística',
+  'Filosofía: ¿para qué?',
+];
 // IMPORTANTE: los prospectos verificados son del plan común de INGENIERÍA.
 // "Cálculo I" de Comercial es OTRO curso (otra facultad/programa): no hereda estos pesos.
 

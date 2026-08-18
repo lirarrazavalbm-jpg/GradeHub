@@ -2015,7 +2015,7 @@ function presetRamo(nombre,tenant,carrera){
     });
     return {categorias,gates,creditos:def.creditos||null};
   }
-  if(tenant!=='uc'||carrera!=='ING-PC')return null;
+  if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
   const def=PRESETS_UC[nombre];if(!def)return null;
   const evals=Array.isArray(def)?def:(def.evals||[]);
   // Un programa puede traer reglas oficiales sin publicar ponderaciones. No se
@@ -2404,19 +2404,24 @@ function ramoEsDeOtroCatalogo(r){
   if(!r||!r.origen)return false;
   return r.origen.tenant!==S.tenant||r.origen.carrera!==S.carrera;
 }
+function presetUcDisponible(nombre,carrera){
+  if(carrera==='ING-PC')return !!PRESETS_UC[nombre];
+  if(carrera!=='COM')return false;
+  return PRESETS_UC_COM.some(n=>normName(n)===normName(nombre));
+}
 function findPresetName(nombre,tenant,carrera){
   const target=normName(nombre);
   if(tenant==='fen'){
     for(const k in PRESETS_FEN){if(normName(k)===target)return k;}
     return null;
   }
-  if(tenant!=='uc'||carrera!=='ING-PC')return null;
+  if(tenant!=='uc'||!MALLA_UC[carrera])return null;
   for(const k in PRESETS_UC){
     const def=PRESETS_UC[k];
     // La estrella y el selector prometen ponderaciones precargadas. Un programa
     // que solo trae reglas (como Cálculo II) no debe fingir que las tiene.
     const evals=Array.isArray(def)?def:(def.evals||[]);
-    if(normName(k)===target&&evals.length)return k;
+    if(normName(k)===target&&evals.length&&presetUcDisponible(k,carrera))return k;
   }
   return null;
 }
@@ -2425,7 +2430,7 @@ function findPresetName(nombre,tenant,carrera){
 function reglasDelPreset(ramo,campo){
   const origen=ramo&&ramo.origen;
   if(!ramo||!origen)return [];
-  const presets=origen.tenant==='fen'?PRESETS_FEN:(origen.tenant==='uc'&&origen.carrera==='ING-PC'?PRESETS_UC:null);
+  const presets=origen.tenant==='fen'?PRESETS_FEN:(origen.tenant==='uc'&&presetUcDisponible(ramo.nombre,origen.carrera)?PRESETS_UC:null);
   if(!presets)return [];
   const nombre=Object.keys(presets).find(n=>normName(n)===normName(ramo.nombre));
   const def=nombre&&presets[nombre];
