@@ -1079,6 +1079,47 @@ const PRESETS_FEN={
       ['Examen',25,{min:3.0,cap:3.4}],
     ],
   },
+  // Tecnologías y Sistemas de Información · ENGIN1505/05 · programa oficial
+  // Primavera 2026 (sección 05, profesora Mónica Stambuk). La clave es
+  // 'Tecnología y Sistemas de Información' —en singular— porque así se llama en
+  // la malla; el programa lo titula "Tecnologías".
+  //
+  // Este reemplaza la presentación de la clase 1 que teníamos, que declaraba su
+  // propia ponderación como provisoria y por eso nunca se transcribió.
+  //
+  // El programa da la fórmula cerrada y suma 100 exacto:
+  //   NF = 20% NS1 + 20% NS2 + 5% JITT + 10% NC + 15% NTF + 30% NE
+  //
+  // Las dos solemnes van en filas propias porque el programa les da peso propio
+  // (20% cada una, no un bloque de 40%), igual que en Métodos Matemáticos II: si
+  // falta una y el examen ya está puesto, filas separadas reponderan sobre lo
+  // rendido en vez de asumir que la que falta saldrá como la otra.
+  //
+  // Los Controles sí llevan `slots:2`: el número no se dedujo, el programa dice
+  // "dos controles en el semestre" y define NC como su promedio.
+  //
+  // OJO con las fechas: el programa las da como rangos que fijan las Escuelas de
+  // Pregrado (solemne 1 entre el 21 de septiembre y el 3 de octubre; examen entre
+  // el 18 de noviembre y el 2 de diciembre) y la solemne 2 está por confirmar.
+  // Un rango no es una fecha, así que no va ninguna a la agenda.
+  'Tecnología y Sistemas de Información':{
+    creditos:6,
+    // Ninguna evaluación tiene nota mínima propia ni hay eximición: el único
+    // requisito que da el programa es el 4,0 de aprobación, que la app ya sabe.
+    // Sin `noCalcula`: no queda nada pendiente de implementar.
+    reglasDelCurso:[
+      'Las dos solemnes y el examen comparten una única recuperativa, que se rinde después del examen y a la que solo accede quien justificó su inasistencia',
+      'La asistencia a las ayudantías es obligatoria, y los controles se rinden en ese horario',
+    ],
+    evals:[
+      ['Just in Time Teaching',5],
+      ['Controles',10,{slots:2}],
+      ['Trabajo Final',15],
+      ['Solemne 1',20],
+      ['Solemne 2',20],
+      ['Examen',30],
+    ],
+  },
   // Marketing · ENMKT205 · programa oficial Primavera 2026 (Ing. Comercial).
   // Cuatro evaluaciones de 25% parejo, sin sorpresas en las ponderaciones.
   //
