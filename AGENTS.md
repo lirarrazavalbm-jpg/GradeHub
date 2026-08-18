@@ -7,9 +7,11 @@ importa: *¿qué nota necesito para aprobar?*
 
 ## Ya está lanzada: hay personas reales adentro
 
-GradeHub está públicamente lanzada. Al **17 de agosto de 2026** Lucas confirmó
-**30 usuarios activos**, y el número puede haber crecido desde entonces. No es
-una demo, un piloto vacío ni un entorno donde se pueda partir de cero.
+GradeHub se lanzó al público el **17 de agosto de 2026** y tiene usuarios
+activos. No es una demo, un piloto vacío ni un entorno donde se pueda partir de
+cero. Acá no va el número de usuarios: un dato así envejece en días y nadie
+vuelve a editarlo, y lo que cambia cómo trabajas es que haya gente adentro, no
+cuánta.
 
 Esto cambia cómo se trabaja:
 
@@ -139,6 +141,13 @@ Wrangler autenticado en su máquina.
 Para republicar sin un commit nuevo (reintentar un deploy caído): pestaña
 Actions → `deploy` → *Run workflow*.
 
+**Si un deploy sale malo, primero se vuelve atrás y después se investiga.**
+Cloudflare Pages guarda los despliegues anteriores y deja volver a uno desde su
+panel: es inmediato y no depende de que el CI esté sano, que es justo lo que no
+se puede asumir en ese momento. Ojo con la trampa: eso NO toca el repo. Si no
+revierte también el commit en `main`, el próximo merge vuelve a publicar lo
+mismo y el sitio se rompe de nuevo sin que nadie entienda por qué.
+
 **El `CACHE_NAME` de `sw.js` ya no se toca.** Lo sella el deploy con el SHA del
 commit; en el repo dice `gradehub-dev` y así se queda. Si tu PR cambia `sw.js`
 solo para subir un número, sácalo del diff.
@@ -148,6 +157,16 @@ seis conflictos, uno publicó un service worker con marcadores de conflicto
 adentro, y la última vez tres PRs reclamaron `gradehub-v73` en paralelo. La
 guarda los dejó pasar a los tres porque comparaba contra la base del PR, no
 contra el `main` del momento del merge.
+
+**El deploy publica `dist/`, no el repo.** El workflow copia los archivos de la
+app a `dist/` y excluye `tests/`, `supabase/`, `bin/`, los `.md` y los
+`package*.json`. Antes se le pasaba `.` a Wrangler y gradehub.cl servía el repo
+completo: `AGENTS.md` con la lista de lo que todavía no está asegurado, el
+esquema en `supabase/*.sql` y los tests, que describen los vectores conocidos
+con carga útil incluida. La lista es de exclusión y no de inclusión a propósito
+— si alguien agrega un archivo y olvida esta lista, se publica igual en vez de
+desaparecer del sitio sin que nadie lo note —, y hay una comprobación que
+revienta el deploy si falta cualquier archivo de la app.
 
 El deploy manual sigue existiendo por si el CI está caído (`npm run deploy`),
 pero necesita Wrangler autenticado en la máquina de quien lo corra. Lucas y
@@ -406,9 +425,9 @@ función `security definer` que exponga el conteo sin exponer quién reportó qu
 versionada en `supabase/`.
 
 **Martín — las pegas manuales de Supabase y Cloudflare.** Desde el 2026-08-17
-tiene administrador en los dos paneles, así que los cinco puntos de la auditoría
-de seguridad de más arriba son suyos. Ninguno se puede hacer desde el repo y el
-primero arregla algo que está roto en producción hoy.
+tiene administrador en los dos paneles, así que los cuatro puntos de la
+auditoría de seguridad de más arriba son suyos. Ninguno se puede hacer desde el
+repo: Cloudflare publica archivos estáticos y no ejecuta SQL ni toca Auth.
 
 Las preguntas frecuentes (issue #86) ya se mergearon: están en
 `/preguntas.html`.
@@ -428,9 +447,12 @@ tener el dato de frecuencia de uso (DAU/MAU): sin eso ni la suscripción ni el
 auspicio se pueden evaluar, se eligen por corazonada.
 
 Lo que sí se decidió y ya está publicado: la política dejó de prometer "nunca
-habrá publicidad" —una promesa que no se puede sostener— y ahora promete tres
-cosas exigibles: igual para todos, nunca según tus notas, sin entregar nada
-tuyo. No hay publicidad hoy ni está decidido que la haya.
+habrá publicidad" —una promesa que no se puede sostener— y dice derecho que la
+app va a tener que financiarse, probablemente con funciones pagadas o auspicios.
+Lo que no se promete por "nunca" sino que se ata a una condición: usar las notas
+de alguien para elegir qué anuncio ve exige su permiso explícito, aparte de la
+política, y negarse no degrada la app. Eso es exigible y no cierra ninguna
+puerta. No hay publicidad hoy ni está decidido que la haya.
 
 ### Las reglas que el motor todavía no calcula
 
