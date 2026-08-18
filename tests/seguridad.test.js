@@ -111,5 +111,24 @@ chk('la limpieza conserva path y query, pero elimina todo el fragmento',
 historyStub.url=null;ctx.location.hash='#seccion-agenda';val('limpiarFragmentoAuth')();
 chk('un hash normal de navegación no se toca', historyStub.url === null);
 
+// Registrarse con un correo ajeno y leer la respuesta no puede decir si esa
+// persona tiene cuenta. Los dos caminos —registro aceptado a la espera de
+// confirmación, y correo que ya existía— tienen que responder EXACTAMENTE lo
+// mismo. Se desincronizan sin que falle nada: basta que alguien reescriba uno
+// de los dos textos para "mejorarlo".
+console.log('\n=== Registrarse no revela quién ya tiene cuenta ===');
+// Defensivo a propósito: si la constante desaparece, esto tiene que FALLAR con
+// un FAIL legible, no reventar con un ReferenceError. Un crash no imprime la
+// línea de fallo y se confunde con todo verde cuando alguien lee la salida.
+let MSG = null, traduce = () => null;
+try { MSG = val('MSG_VERIFICA'); traduce = val('traduceAuthError'); } catch (e) {}
+chk('el mensaje existe y habla de verificar la cuenta', /verificar tu cuenta/i.test(MSG || ''));
+chk('"ese correo ya existe" responde el mismo texto',
+  traduce({ message: 'User already registered' }) === MSG);
+chk('y el registro a la espera de confirmación también',
+  /if\(!data\.session\)\{authError\(MSG_VERIFICA,'info'\)/.test(src));
+chk('el texto vive en una constante, no copiado en dos lados',
+  src.split(MSG).length - 1 === 1);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

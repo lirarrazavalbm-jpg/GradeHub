@@ -656,6 +656,15 @@ function greeting(){
 // aceptando 6 aunque el cliente no lo ofrezca.
 const PASS_MIN = 8;
 
+// UN SOLO TEXTO para dos caminos que tienen que verse iguales desde afuera: el
+// registro que salió bien y espera confirmación, y el correo que YA tenía
+// cuenta. Si difieren, mandar un correo al formulario y comparar las dos
+// respuestas dice quién está registrado en GradeHub — que es media
+// credencial servida, y con las notas de esa persona al otro lado.
+// Por eso es una constante y no dos literales: separarlos reabre la
+// enumeración sin que falle nada. Lo fija `tests/seguridad.test.js`.
+const MSG_VERIFICA = 'Te enviamos un correo para verificar tu cuenta. Si no llega, revisa spam.';
+
 function passwordPolicyError(password){
   if(password.length<PASS_MIN)return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres.';
   if(!/[A-Za-z]/.test(password)||!/\d/.test(password))return 'La contraseña debe incluir al menos una letra y un número.';
@@ -746,7 +755,7 @@ function traduceAuthError(e){
   // No confirmar si un correo ya tiene cuenta: esa diferencia permite enumerar
   // usuarios y preparar phishing o credential stuffing. Registro existente y
   // registro aceptado tienen que verse iguales hacia afuera.
-  if(m.includes('already')||m.includes('exists'))return 'Si el correo puede registrarse, te enviaremos las instrucciones para continuar.';
+  if(m.includes('already')||m.includes('exists'))return MSG_VERIFICA;
   if(m.includes('invalid login')||m.includes('credentials'))return 'Usuario o contraseña incorrectos.';
   if(m.includes('password'))return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres e incluir letras y números.';
   return 'No se pudo conectar. Revisa tu internet e intenta de nuevo.';
@@ -776,7 +785,7 @@ async function submitAuth(){
     if(authMode==='signup'){
       const {data,error}=await supabaseClient.auth.signUp({email,password:p});
       if(error)throw error;
-      if(!data.session){authError('Si el correo puede registrarse, te enviaremos las instrucciones para continuar.','info');btn.disabled=false;btn.textContent=orig;return;}
+      if(!data.session){authError(MSG_VERIFICA,'info');btn.disabled=false;btn.textContent=orig;return;}
       currentUser=data.user;await afterSignup();
     }else{
       const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:p});
