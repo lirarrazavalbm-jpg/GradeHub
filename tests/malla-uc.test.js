@@ -97,6 +97,17 @@ chk('y sus cuatro fechas van a la Agenda',
 chk('Cálculo II no declara reglas: ninguna pasaba el filtro',
   reglasNoCalculadas(calculoOrigen).length===0&&reglasDelCurso(calculoOrigen).length===0);
 
+console.log('\n=== Ingeniería Comercial UC · segundo semestre ===');
+[
+  ['Introducción al Álgebra Lineal',4],
+  ['Introducción a la Macroeconomía',5],
+  ['Probabilidad y Estadística',9],
+  ['Cálculo II',5],
+].forEach(([nombre,cantidad])=>{
+  const ramo=presetRamo(nombre,'uc','COM');
+  chk(nombre+' carga su pauta',ramo&&ramo.categorias.length===cantidad);
+});
+
 console.log('\n=== El ramo sin pauta lo dice, y la deuda es nuestra ===');
 const render = src.slice(src.indexOf('function renderRamo()'), src.indexOf('function renderRamo()') + 12000);
 chk('distingue el ramo del catálogo del creado a mano', /const delCatalogo=/.test(render));
