@@ -5,6 +5,37 @@ App de notas para estudiantes universitarios chilenos. En producción: **gradehu
 Calcula el promedio ponderado, simula escenarios y responde la pregunta que
 importa: *¿qué nota necesito para aprobar?*
 
+## Ya está lanzada: hay personas reales adentro
+
+GradeHub está públicamente lanzada. Al **17 de agosto de 2026** Lucas confirmó
+**30 usuarios activos**, y el número puede haber crecido desde entonces. No es
+una demo, un piloto vacío ni un entorno donde se pueda partir de cero.
+
+Esto cambia cómo se trabaja:
+
+- Cada cambio a `main` llega a producción y puede afectar notas, sesiones y
+  decisiones académicas reales en ese momento.
+- No asumas un estado nuevo ni una base vacía. Todo cambio del modelo debe leer
+  correctamente los datos que ya existen en `gradehub_v1` y en Supabase.
+- No renombres, elimines ni reinterpretes campos persistidos sin una migración
+  explícita, compatible hacia atrás y acordada antes de escribirla.
+- Auth, onboarding, carga de ramos, ingreso de notas, sincronización y
+  recuperación son caminos críticos: un usuario existente debe poder seguir
+  entrando y viendo exactamente sus datos después del deploy.
+- Un preset nuevo no puede alterar silenciosamente la pauta que alguien ya
+  personalizó. Las actualizaciones de catálogo deben conservar notas y pedir
+  una acción explícita cuando corresponda.
+- Antes de mergear, además de `npm test`, revisa el riesgo para datos ya
+  guardados y deja en la PR cómo se comporta con cuentas existentes. Si cambia
+  auth, persistencia, cálculo, caché o Supabase, hace falta una prueba específica
+  del camino afectado; “funciona en una cuenta nueva” no basta.
+- No uses usuarios reales, correos reales ni notas reales como fixtures o para
+  depurar. Usa datos sintéticos y una cuenta de prueba.
+
+Si hay que elegir entre publicar rápido y proteger datos existentes, se protege
+lo existente. Una feature se puede retrasar; una nota perdida o un promedio
+incorrecto rompe la confianza del producto.
+
 ## Arranca acá
 
 ```bash
