@@ -1100,6 +1100,10 @@ function prepararObRamos(){
   renderObCoursePicker();
 }
 function obTieneRamo(nombre){return obRamos.some(r=>normName(r.nombre)===normName(nombre));}
+// encodeURIComponent deja el apóstrofo intacto. Como el valor entra en un
+// literal JS delimitado por comillas simples dentro del atributo, se codifica
+// también para que un nombre manual no pueda cerrar el handler.
+function obCodificarNombre(nombre){return encodeURIComponent(nombre).replace(/'/g,'%27');}
 function obToggleRamo(nombre,checked){
   if(checked&&!obTieneRamo(nombre))obRamos.push({nombre,manual:false});
   if(!checked)obRamos=obRamos.filter(r=>normName(r.nombre)!==normName(nombre));
@@ -1132,7 +1136,7 @@ function renderObCoursePicker(){
   const visibles=obRamosVisibles(sugeridos,obRamos);
   const rows=visibles.length?visibles.map(nombre=>`
     <label style="display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;">
-      <input type="checkbox" ${obTieneRamo(nombre)?'checked':''} onchange="obToggleRamoCodificado('${encodeURIComponent(nombre)}',this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
+      <input type="checkbox" ${obTieneRamo(nombre)?'checked':''} onchange="obToggleRamoCodificado('${obCodificarNombre(nombre)}',this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
       <span style="font-size:14px;color:var(--fg);">${esc(nombre)}</span>
     </label>`).join(''):
     '<p class="course-picker-reassurance">No encontramos ramos sugeridos para este semestre. Puedes buscarlos o agregarlos a mano.</p>';
@@ -1163,7 +1167,7 @@ function renderObCourseResults(q){
   if(!res.length){box.innerHTML='<p class="course-picker-reassurance">No aparece en tu malla. Puedes agregarlo a mano.</p>';return;}
   box.innerHTML=res.map(r=>{
     const tengo=obTieneRamo(r.nombre),otro=r.semestre!==selectedSem;
-    return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${encodeURIComponent(r.nombre)}')"`}>
+    return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${obCodificarNombre(r.nombre)}')"`}>
       <span class="course-picker-result-info"><span class="course-picker-result-name">${esc(r.nombre)}</span><span class="course-picker-result-meta">${r.semestre}° semestre${r.tienePreset?' · con ponderaciones oficiales':''}</span></span>
       <span class="chevron-r">${tengo?'✓':'+'}</span>
     </button>${otro?'<p class="course-picker-reassurance">Que sea de otro semestre está bien.</p>':''}`;

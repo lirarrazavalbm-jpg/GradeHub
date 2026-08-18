@@ -188,6 +188,13 @@ if(elegidosDespues.join('|')==='Cálculo II'){
 }else{
   fail++;console.log('  FAIL desmarcar no actualiza obRamos → '+JSON.stringify(elegidosDespues));
 }
+const nombreHostil="Ramo');alert(1);//";
+const nombreCodificado=ctx.obCodificarNombre(nombreHostil);
+if(!nombreCodificado.includes("'")&&decodeURIComponent(nombreCodificado)===nombreHostil){
+  ok++;console.log('  OK   un nombre manual no puede cerrar el handler del checkbox');
+}else{
+  fail++;console.log('  FAIL el nombre manual rompe el atributo → '+nombreCodificado);
+}
 
 console.log('\n=== Pauta manual y reglas no calculadas ===');
 const pautaParcial=ctx.estadoPauta([{peso:30},{peso:40}]);
