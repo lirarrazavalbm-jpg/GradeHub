@@ -122,7 +122,12 @@ console.log('\n=== Registrarse no revela quién ya tiene cuenta ===');
 // línea de fallo y se confunde con todo verde cuando alguien lee la salida.
 let MSG = null, traduce = () => null;
 try { MSG = val('MSG_VERIFICA'); traduce = val('traduceAuthError'); } catch (e) {}
-chk('el mensaje existe y habla de verificar la cuenta', /verificar tu cuenta/i.test(MSG || ''));
+chk('el mensaje existe', (MSG || '').length > 10);
+// La confirmación por correo está apagada: prometer un ENVÍO deja esperando a
+// quien ya tenía cuenta, que es justo quien ve este aviso. Nombrar el correo
+// como dirección está bien; lo que no puede es anunciar que sale uno.
+chk('y no anuncia un envío que nadie despacha',
+  !/(enviamos|enviaremos|mandamos|te llega|revisa (tu |el )?(correo|bandeja|spam))/i.test(MSG || ''));
 chk('"ese correo ya existe" responde el mismo texto',
   traduce({ message: 'User already registered' }) === MSG);
 chk('y el registro a la espera de confirmación también',
