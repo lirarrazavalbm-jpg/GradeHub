@@ -128,7 +128,10 @@ const MALLA={
 // tipografía de GradeHub. Nunca reproducir marcas registradas acá.
 const TENANTS={
   fen:{name:'U. de Chile · FEN', short:'FEN', mono:'FEN', sub:'Economía y Negocios'},
-  uc :{name:'U. Católica · Ingeniería', short:'UC', mono:'UC', sub:'Ingeniería'},
+  // `name` ya está persistido en profiles.universidad. Se conserva para no
+  // partir los conteos existentes; `sub` aclara que la opción no es solo para
+  // Ingeniería mientras se diseña una migración al código estable `uc`.
+  uc :{name:'U. Católica · Ingeniería', short:'UC', mono:'UC', sub:'Ingeniería, Comercial y más carreras'},
   // oculto:true → no se ofrece al elegir universidad, pero sigue funcionando
   // completo (tema, carreras, presets) para quien ya lo tenga seleccionado.
   // Quitar la marca cuando se quiera lanzar.

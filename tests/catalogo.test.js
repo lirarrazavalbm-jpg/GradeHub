@@ -17,6 +17,11 @@ const buscar = (q, car) => run('searchCatalog(' + JSON.stringify(q) + ',"fen",' 
 let ok = 0, fail = 0;
 const chk = (n, cond) => { if (cond) ok++; else { fail++; console.log('  FAIL ' + n); } };
 
+console.log('\n=== Elegir universidad no excluye carreras ===');
+const tenants = run('TENANTS');
+chk('UC nombra Comercial en la primera pantalla', /Comercial/i.test(tenants.uc.sub));
+chk('el nombre persistido de UC no cambia sin migrar profiles', tenants.uc.name === 'U. Católica · Ingeniería');
+
 console.log('\n=== Buscar cubre toda la universidad, no solo tu carrera ===');
 const hist = buscar('Historia', 'IICG');
 chk('IICG encuentra un ramo que solo está en Comercial', hist.some(r => r.nombre === 'Historia Económica'));
