@@ -2228,7 +2228,7 @@ function catalogRamosUniversidad(tenant,carreraPropia){
   });
   // Un ramo con pauta oficial que no está en ninguna malla existía y nadie
   // podía encontrarlo: el catálogo se arma solo desde las mallas, así que
-  // "Revelación y Fe" o "Principios de Ecología y Medio Ambiente" no aparecían
+  // "Revelación y Fe" o "Principios Ecológicos y Medio Ambiente" no aparecían
   // al escribir. La pauta funcionaba —tecleando el nombre completo y exacto—
   // pero para eso hay que saber de antemano que existe. Los OFG y electivos no
   // van en la malla a propósito, porque son una elección y no un ramo de todos;

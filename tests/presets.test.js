@@ -68,7 +68,7 @@ console.log('\n=== Programas UC transcritos ===');
 const pautaUC=(nombre,esperada)=>chk(nombre+' conserva sus ponderaciones oficiales',
   evalsUC(UC[nombre]).map(([n,p])=>n+':'+p).join('|')===esperada);
 pautaUC('Introducción a la Programación','Interrogación 1:15|Interrogación 2:20|Examen:30|Tarea 1:5|Tarea 2:5|Tarea 3:5|Nota de participación:16|Talleres de Inteligencia Artificial:4');
-pautaUC('Principios de Ecología y Medio Ambiente','Prueba 1:25|Prueba 2:40|Prueba 3:35');
+pautaUC('Principios Ecológicos y Medio Ambiente','Prueba 1:25|Prueba 2:40|Prueba 3:35');
 pautaUC('Introducción al Álgebra Lineal','Interrogación 1:20|Interrogación 2:25|Interrogación 3:25|Examen:30');
 pautaUC('Introducción a la Macroeconomía','C1:16|P1:22|P2:22|PP:10|Examen:30');
 pautaUC('Probabilidad y Estadística','C1:8|P1:20|C2:8|P2:20|C3:8|Examen:30|Control sorpresa 1:2|Control sorpresa 2:2|Control sorpresa 3:2');

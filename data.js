@@ -479,7 +479,7 @@ const PRESETS_UC={
     // inasistencia justificada y la sanción por no registrar asistencia.
     // Ninguna de las dos es algo que el estudiante pueda usar a su favor.
   },
-  'Principios de Ecología y Medio Ambiente':{
+  'Principios Ecológicos y Medio Ambiente':{
     evals:[['Prueba 1',25],['Prueba 2',40],['Prueba 3',35]],
     noCalcula:[
       'Si tu promedio ponderado de las Pruebas supera 4,0, las décimas que ganes en los talleres se suman a tu nota final, con un máximo de 5 décimas',
@@ -831,12 +831,11 @@ const CREDITOS_FEN={
 // mal escrito.
 //
 // DOS CURSOS DE ESTA CLASE NO ESTÁN ACÁ y es a propósito: "Revelación y Fe"
-// (TTF012) y "Principios de Ecología y Medio Ambiente" (BIO143M) ya tienen su
+// (TTF012) y "Principios Ecológicos y Medio Ambiente" (BIO143M) ya tienen su
 // pauta oficial en PRESETS_UC y entran al buscador por `presetsFueraDeMalla`.
 // Repetirlos acá los mostraría dos veces, una con ponderaciones y otra sin
-// ellas. Ojo: BuscaCursos llama al segundo "Principios Ecológicos y Medio
-// Ambiente"; el preset usa el otro nombre y no se toca, porque hay estudiantes
-// que ya lo tienen cargado así.
+// ellas. El segundo se llamaba "Principios de Ecología y Medio Ambiente" hasta
+// que se comprobó contra BuscaCursos que su nombre oficial es este.
 //
 // SOLO NOMBRE Y SIGLA. Ninguno trae pauta: no tenemos sus programas, y
 // rellenar ponderaciones plausibles es exactamente lo que no se hace acá. Si
