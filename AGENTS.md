@@ -442,9 +442,13 @@ sale del carril de contenido.
 
 ### Pedidas por Lucas, sin dueño todavía
 
-Están acá para que no se pierdan, no porque alguien las esté haciendo. El
-contexto de cada una sale de mirar el código, no del pedido: sirve para dimensionar
-antes de empezar.
+Están acá para que no se pierdan, no porque alguien las esté haciendo. **Las
+puede tomar cualquiera de los dos lados** —Lucas o Martín, con sus agentes—; lo
+único que se respeta es el carril del archivo que toque. Avisa antes de partir
+para que no la tomen dos.
+
+El contexto de cada una sale de mirar el código, no del pedido: sirve para
+dimensionar antes de empezar.
 
 **La Agenda necesita orden y jerarquía.** Hoy `renderAgenda` pinta una sola
 lista con un orden fijo. Se pide poder elegir entre tres: por fecha (lo que
@@ -478,6 +482,22 @@ o "reprobado".
 qué son exactamente es parte del trabajo. Un punto de partida honesto: hoy la
 app sabe cuánto falta por evaluar, qué ramos están al borde y qué nota se
 necesita para aprobar cada uno — eso es más accionable que un promedio histórico.
+
+**El repositorio no le dice nada a quien llega.** Es **público** y no tiene
+README, ni descripción, ni sitio en el campo de GitHub, ni licencia, ni topics:
+quien entra ve una lista de archivos sueltos. Se pide dejarlo presentable —qué
+es GradeHub, para quién, cómo se corre, cómo se contribuye— y de paso decidir la
+licencia, porque sin una, un repo público no otorga ningún permiso de uso.
+
+Antes de invitar a nadie a mirar, hay una decisión pendiente: este mismo archivo
+es público en github.com, **con la lista de lo que todavía no está asegurado**.
+Es el mapa que se sacó del sitio en #146, publicado por la otra puerta. No hay
+secretos —la publishable key es pública por diseño y la `sb_secret_*` nunca
+estuvo acá—, pero una lista fechada de huecos abiertos no es lo mismo que
+código abierto. Las salidas son tres: repo privado hasta cerrar los cuatro
+puntos de la auditoría, o sacar esa lista del archivo y guardarla donde solo la
+vean ellos —ojo, los issues de un repo público también son públicos—, o dejarlo
+así asumiendo que la respuesta correcta es cerrar los huecos y no taparlos.
 
 **Arreglar la verificación por correo.** Está desactivada porque el SMTP
 integrado de Supabase despacha dos correos por hora. No se puede reactivar antes
