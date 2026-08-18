@@ -11,6 +11,9 @@ function track(event, params){
 
 // ─── STORAGE ─────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'gradehub_v1';
+// Nombres de ramos y evaluaciones: 40 cortaba nombres oficiales a mitad de
+// palabra. 80 cubre holgadamente el catálogo actual y mantiene el dato acotado.
+const NOMBRE_MAX = 80;
 // De quién es la caché local. Evita que un usuario vea los datos del anterior
 // si comparten navegador y la carga desde la nube falla.
 const CACHE_OWNER_KEY = 'gradehub_cache_owner';
@@ -1137,7 +1140,7 @@ function renderObCoursePicker(){
   const rows=visibles.length?visibles.map(nombre=>`
     <label style="display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" ${obTieneRamo(nombre)?'checked':''} onchange="obToggleRamoCodificado('${obCodificarNombre(nombre)}',this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
-      <span style="font-size:14px;color:var(--fg);">${esc(nombre)}</span>
+      <span class="course-picker-selected-name">${esc(nombre)}</span>
     </label>`).join(''):
     '<p class="course-picker-reassurance">No encontramos ramos sugeridos para este semestre. Puedes buscarlos o agregarlos a mano.</p>';
   box.innerHTML=`
@@ -1149,11 +1152,11 @@ function renderObCoursePicker(){
       </div>
       <div class="course-picker-section">
         <label class="modal-label" for="ob-course-search">Buscar otro ramo</label>
-        <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="ob-course-search" type="text" placeholder="Ej.: Inglés IV, Cálculo II" maxlength="40" autocomplete="off" autocapitalize="none"/></div>
+        <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="ob-course-search" type="text" placeholder="Ej.: Inglés IV, Cálculo II" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
         <div id="ob-course-results"></div>
       </div>
       <button class="course-picker-manual" type="button" onclick="obToggleManual()">¿No aparece? Agregar un ramo a mano</button>
-      ${obManualOpen?'<div class="course-picker-search" style="margin-top:8px;"><input id="ob-manual-name" type="text" placeholder="Ej.: Electivo de cine" maxlength="40" autocomplete="off"/><button type="button" onclick="obAgregarManual()" style="border:0;background:none;color:var(--primary);font:inherit;font-weight:700;">Agregar</button></div>':''}
+      ${obManualOpen?`<div class="course-picker-search" style="margin-top:8px;"><input id="ob-manual-name" type="text" placeholder="Ej.: Electivo de cine" maxlength="${NOMBRE_MAX}" autocomplete="off"/><button type="button" onclick="obAgregarManual()" style="border:0;background:none;color:var(--primary);font:inherit;font-weight:700;">Agregar</button></div>`:''}
     </div>`;
   const search=document.getElementById('ob-course-search');
   if(search){const pintar=()=>renderObCourseResults(search.value);search.addEventListener('input',pintar);pintar();}
@@ -2086,7 +2089,7 @@ function openAddRamoModal(){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Agregar ramo</div>
     <label class="modal-label">Nombre del ramo${hayCatalogo&&uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· lo buscamos en la malla ${esc(uni)}</span>`:''}</label>
-    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="Ej: Microeconomía I" maxlength="40" autocomplete="off" autocapitalize="none"/></div>
+    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="Ej: Microeconomía I" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
     ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
@@ -2596,7 +2599,7 @@ function openAddCatModal(prefillDate){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Nueva evaluación</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-cat-name" placeholder="Ej: Prueba 1, Tarea 2, Laboratorio" maxlength="40" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-cat-name" placeholder="Ej: Prueba 1, Tarea 2, Laboratorio" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     ${pesoControlHTML(30,null)}
     <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
     <div class="modal-input"><input type="date" id="m-cat-fecha" value="${esc(prefillDate||'')}" autocomplete="off"/></div>
@@ -2744,7 +2747,7 @@ function renderPautaManualModal(){
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>`
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 32px;gap:8px;align-items:center;margin:8px 0;">
-      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="40" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
+      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="${NOMBRE_MAX}" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
       <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:13px;pointer-events:none;">%</span></div>
       <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
     </div>`).join('');
@@ -2807,7 +2810,7 @@ function openAddNotaModal(catId){
     <div class="modal-title">Nueva nota — ${esc(cat.nombre)}</div>
     ${pauta.lista?'':`<div class="weight-setup-nudge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M3 8h18"/><path d="M4 8l2 10h12l2-10"/></svg><div><b>Tu pauta suma ${r2(pauta.total)}%.</b><br>Esta nota se guarda igual. Completa el resto cuando tengas la pauta.<br><button type="button" onclick="abrirPautaDesdeNota()">Editar pauta</button></div></div>`}
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-nota-name" placeholder="Ej: Prueba 1" maxlength="40" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-nota-name" placeholder="Ej: Prueba 1" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     <label class="modal-label">Nota (1.0 – 7.0)</label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" placeholder="Ej: 5.5"/></div>
     <div class="toggle-row">
@@ -3680,7 +3683,7 @@ function openEditRamoModal(){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar ramo</div>
     <label class="modal-label">Nombre del ramo</label>
-    <div class="modal-input"><input type="text" id="m-ramo-name" value="${esc(r.nombre)}" maxlength="40" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-ramo-name" value="${esc(r.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     <label class="modal-label">Créditos <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(SCT — opcional)</span></label>
     <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-creditos" value="${r.creditos!=null?r.creditos:''}" placeholder="Ej: 10" maxlength="3" autocomplete="off"/></div>
     <label class="modal-label">Color</label>
@@ -3708,7 +3711,7 @@ function openEditCatModal(catId){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar evaluación</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-cat-name" value="${esc(cat.nombre)}" maxlength="40" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-cat-name" value="${esc(cat.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     ${pesoControlHTML(cat.peso,catId)}
     <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
     <div class="modal-input" style="display:flex;gap:8px;align-items:center;">
@@ -3747,7 +3750,7 @@ function openEditNotaModal(catId,notaId){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar nota</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(n.nombre)}" maxlength="40" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(n.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     <label class="modal-label">Nota (1.0 – 7.0)</label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
     <div class="toggle-row">

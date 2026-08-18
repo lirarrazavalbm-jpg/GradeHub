@@ -124,7 +124,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);background-image:radial
 .screen{display:none;flex:1;flex-direction:column;}
 .screen.active{display:flex;}
 .topbar{display:flex;align-items:center;gap:10px;padding:14px 16px 12px;background:var(--bg2);background:color-mix(in srgb,var(--bg2),transparent 12%);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
-.topbar-title{font-size:17px;font-weight:700;flex:1;color:var(--fg);letter-spacing:-.3px;}
+.topbar-title{font-size:17px;font-weight:700;flex:1;min-width:0;color:var(--fg);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .back-btn{width:32px;height:32px;border-radius:10px;border:none;background:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:16px;}
 .icon-btn{width:36px;height:36px;border-radius:11px;border:1px solid transparent;background:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--fg2);font-size:16px;font-weight:600;transition:background var(--motion-fast),color var(--motion-fast),border-color var(--motion-fast);}
 .icon-btn:hover{background:color-mix(in srgb,var(--muted),var(--primary) 12%);color:var(--fg);}
@@ -613,7 +613,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .stat-icon-wrap.stat-icon-bad{color:var(--red);background:var(--red-bg);}
 .stat-label{font-size:10.5px;color:var(--fg3);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;}
 .stat-val{font-family:'Sora','Inter',sans-serif;font-size:28px;font-weight:800;letter-spacing:-.035em;color:var(--fg);line-height:1;font-variant-numeric:tabular-nums;}
-.stat-sub{font-size:12px;color:var(--fg3);margin-top:6px;line-height:1.35;letter-spacing:-.005em;}
+.stat-sub{font-size:12px;color:var(--fg3);margin-top:6px;line-height:1.35;letter-spacing:-.005em;overflow-wrap:anywhere;}
 /* AGENDA */
 .ag-section{margin-bottom:22px;}
 .ag-section-label{font-family:'Sora','Inter',sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:10px;padding:0 2px;}
@@ -649,7 +649,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-row-peso{margin-left:auto;font-family:'Sora','Inter',sans-serif;font-size:12px;font-weight:700;color:var(--fg2);background:var(--muted);border-radius:6px;padding:2px 8px;font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
 .ag-row-peso.heavy{color:var(--secondary);background:color-mix(in srgb,var(--secondary),transparent 80%);border:1px solid color-mix(in srgb,var(--secondary),transparent 70%);padding:1px 7px;}
 .ag-row-name{font-size:15.5px;font-weight:600;color:var(--fg);letter-spacing:-.015em;line-height:1.25;}
-.ag-row-sub{font-size:12.5px;color:var(--fg3);margin-top:3px;display:flex;align-items:center;gap:6px;letter-spacing:-.005em;}
+.ag-row-sub{font-size:12.5px;color:var(--fg3);margin-top:3px;display:flex;align-items:center;gap:6px;letter-spacing:-.005em;overflow-wrap:anywhere;}
 .ag-alert{display:flex;align-items:center;gap:6px;margin-top:8px;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;line-height:1.3;letter-spacing:-.005em;}
 .ag-alert .ic{width:13px;height:13px;flex-shrink:0;}
 .ag-alert.bad{background:var(--red-bg);color:var(--red);}
@@ -804,7 +804,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .hist-ramo-row:last-child{border-bottom:none;}
 .hist-ramo-row:hover{background:color-mix(in srgb,var(--muted),transparent 35%);}
 .hist-ramo-row:hover .hist-pencil{opacity:.75;}
-.hist-ramo-name{flex:1;min-width:0;color:var(--fg2);display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.hist-ramo-name{flex:1;min-width:0;color:var(--fg2);display:flex;align-items:center;gap:7px;flex-wrap:wrap;overflow-wrap:anywhere;}
 .hist-ramo-val{font-family:'Sora','Inter',sans-serif;font-weight:700;font-variant-numeric:tabular-nums;font-size:14.5px;letter-spacing:-.02em;}
 .hist-pencil{width:13px;height:13px;color:var(--fg3);opacity:0;transition:opacity var(--motion-fast);flex-shrink:0;}
 .hist-cr{font-size:10.5px;font-weight:600;color:var(--fg3);background:var(--muted);border-radius:5px;padding:1px 6px;letter-spacing:-.01em;}
@@ -936,6 +936,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .course-picker-result-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
 .course-picker-result-name{font-size:14.5px;font-weight:600;color:var(--fg);letter-spacing:-.01em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.course-picker-selected-name{flex:1;min-width:0;font-size:14px;color:var(--fg);overflow-wrap:anywhere;}
 
 /* "5° semestre" es contexto, no advertencia. Gris neutro a propósito: en
    ámbar se leería como "ojo, esto está mal", que es lo contrario. */

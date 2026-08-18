@@ -107,6 +107,34 @@ if (!/grep -q "'gradehub-dev'" sw\.js/.test(deployYml)) {
 // resto. Y el largo NO puede exigirse al iniciar sesión — quien creó su cuenta
 // con el mínimo anterior tiene que poder entrar.
 const app = fs.readFileSync(path.join(raiz, 'app.js'), 'utf8');
+
+// Los nombres oficiales superan los 40 caracteres (p. ej. Relaciones
+// Internacionales). Todos los formularios que crean o editan nombres deben
+// compartir un límite suficiente, sin volver a cortar datos en silencio.
+const nombreMax = Number((app.match(/const NOMBRE_MAX\s*=\s*(\d+)/) || [])[1]);
+if (nombreMax !== 80) {
+  console.error('NOMBRE_MAX debe ser 80 para admitir nombres académicos largos');
+  process.exit(1);
+}
+if ((app.match(/maxlength="\$\{NOMBRE_MAX\}"/g) || []).length !== 9 || /maxlength="40"/.test(app)) {
+  console.error('los 9 campos de nombres deben usar NOMBRE_MAX, sin límites antiguos de 40');
+  process.exit(1);
+}
+if (!/class="course-picker-selected-name"/.test(app)) {
+  console.error('los ramos elegidos en onboarding necesitan una clase que controle nombres largos');
+  process.exit(1);
+}
+const topbarTitleCss = (css.match(/\.topbar-title\{[^}]*\}/) || [])[0] || '';
+if (!/min-width:0/.test(topbarTitleCss) || !/white-space:nowrap/.test(topbarTitleCss) ||
+    !/overflow:hidden/.test(topbarTitleCss) || !/text-overflow:ellipsis/.test(topbarTitleCss)) {
+  console.error('el título del ramo debe truncarse visualmente sin ensanchar la barra superior');
+  process.exit(1);
+}
+if (!/\.course-picker-selected-name\{[^}]*min-width:0;[^}]*overflow-wrap:anywhere/.test(css)) {
+  console.error('el selector del onboarding debe envolver nombres largos sin desbordarse');
+  process.exit(1);
+}
+
 const min = (app.match(/const PASS_MIN\s*=\s*(\d+)/) || [])[1];
 if (!min || Number(min) < 8) {
   console.error('PASS_MIN tiene que existir y ser >= 8 (es ' + min + ')');
