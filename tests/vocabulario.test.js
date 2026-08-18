@@ -83,5 +83,20 @@ chk(`las plantillas de UC no dicen solemnes  (${plUC.map(p => p.label).join(' ·
 chk('las plantillas de FEN no dicen interrogaciones',
   !plFEN.some(p => SOLO_UC.test(p.label)));
 
+console.log('\n=== Una universidad que no conocemos no hereda el idioma de otra ===');
+// El default de sugerenciasEvaluacion era la lista de FEN, así que a cualquier
+// universidad nueva le habrían aparecido "Solemne 1, Solemne 2". Con dos
+// tenants visibles no se notaba; al agregar el tercero, sí — y es la señal más
+// rápida de que la app no es para ti.
+const neutro = llamar('sugerenciasEvaluacion', 'usach');
+chk('no le ofrece el vocabulario de FEN', !neutro.some(s => /solemne/i.test(s)));
+chk('ni el de la UC', !neutro.some(s => /interrogaci/i.test(s)));
+chk('pero sí le ofrece algo utilizable', neutro.length > 3);
+// mallaFor devolvía la malla de la FEN por defecto: un estudiante de otra
+// universidad habría visto los ramos de Economía y Negocios de la Chile.
+chk('tampoco hereda la malla de FEN', Object.keys(llamar('mallaFor', 'usach')).length === 0);
+chk('y las dos que sí tenemos siguen intactas',
+  Object.keys(llamar('mallaFor', 'fen')).length > 0 && Object.keys(llamar('mallaFor', 'uc')).length > 0);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
