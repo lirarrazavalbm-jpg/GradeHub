@@ -2241,6 +2241,17 @@ function catalogRamosUniversidad(tenant,carreraPropia){
     // estudiante en el orden, porque no le corresponde a nadie en particular.
     out.push({nombre,semestre:0,propio:false,tienePreset:true});
   });
+  // Y los cursos que existen sin pertenecer a un semestre ni traer pauta: los
+  // optativos y OFG. Entran por el mismo camino que los presets fuera de
+  // malla, con `tienePreset:false` porque no hay ponderaciones que prometer.
+  // Sin esto el estudiante tiene que escribir "biocel" a mano y la app lo
+  // guarda como un ramo inventado por él, sin sigla y sin forma de agrupar.
+  if(tenant==='uc')CURSOS_UC.forEach(([,nombre])=>{
+    const k=normName(nombre);
+    if(vistos.has(k))return;
+    vistos.add(k);
+    out.push({nombre,semestre:0,propio:false,tienePreset:false});
+  });
   return out;
 }
 // Nombres con pauta oficial que ESTE estudiante puede recibir de verdad. Se
@@ -2281,6 +2292,12 @@ function searchCatalog(q,tenant,carrera,semActual){
     // Los de tu propia malla primero: son los más probables. Los de otras
     // carreras siguen apareciendo, solo más abajo.
     if(a.propio!==b.propio)return a.propio?-1:1;
+    // Con pauta antes que sin ella. Al entrar los OFG y optativos al catálogo,
+    // buscar "Ecolog" devolvía primero "Cristianismo y Crisis Ecológica" —el
+    // alfabético desempataba— y dejaba abajo el único que trae ponderaciones
+    // oficiales. Entre dos que calzan igual, sirve más el que llega con su
+    // pauta puesta.
+    if(a.tienePreset!==b.tienePreset)return a.tienePreset?-1:1;
     const da=Math.abs(a.semestre-(semActual||0)),db=Math.abs(b.semestre-(semActual||0));
     if(da!==db)return da-db;
     return a.nombre.localeCompare(b.nombre);

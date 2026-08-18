@@ -813,6 +813,82 @@ const CREDITOS_FEN={
 // Comercial: Resolución VRA N°262/2024, Anexo III, plan vigente 2025
 // (registrosacademicos.uc.cl/m_050014_2025.pdf). No son ponderaciones ni
 // créditos nuevos: solo el identificador oficial del curso.
+// ─── CURSOS UC SIN SEMESTRE ──────────────────────────────────────────────────
+// Cursos que existen en la UC pero que NO pertenecen a un semestre de ninguna
+// malla: los OFG y los optativos son una elección, no un ramo que curse todo
+// el mundo. Van acá para que el buscador los encuentre; la malla no los carga
+// sola y nadie los recibe sin pedirlos.
+//
+// No es una lista teórica. De los quince ramos que los estudiantes escribieron
+// a mano en la primera noche, nueve eran de esta clase: tres pidieron
+// "biocel" —cada uno con una grafía distinta— y tres pidieron un teológico.
+// Tenían que escribirlo porque la app solo conocía ramos de malla.
+//
+// Fuente: BuscaCursos UC (buscacursos.uc.cl), oferta 2026-2, consultada el
+// 2026-08-18. Se corrigieron tildes y mayúsculas rotas que trae el sistema
+// ("Revelacion" → "Revelación", "Siglo Xxi" → "Siglo XXI"); eso no afecta la
+// búsqueda, que compara sin tildes, y evita mostrarle al estudiante un nombre
+// mal escrito.
+//
+// DOS CURSOS DE ESTA CLASE NO ESTÁN ACÁ y es a propósito: "Revelación y Fe"
+// (TTF012) y "Principios de Ecología y Medio Ambiente" (BIO143M) ya tienen su
+// pauta oficial en PRESETS_UC y entran al buscador por `presetsFueraDeMalla`.
+// Repetirlos acá los mostraría dos veces, una con ponderaciones y otra sin
+// ellas. Ojo: BuscaCursos llama al segundo "Principios Ecológicos y Medio
+// Ambiente"; el preset usa el otro nombre y no se toca, porque hay estudiantes
+// que ya lo tienen cargado así.
+//
+// SOLO NOMBRE Y SIGLA. Ninguno trae pauta: no tenemos sus programas, y
+// rellenar ponderaciones plausibles es exactamente lo que no se hace acá. Si
+// más adelante aparece el programa de uno, su pauta va a PRESETS_UC como
+// cualquier otra. Si aparece el dato de a qué semestre pertenece, pasa a la
+// malla y sale de esta lista.
+const CURSOS_UC=[
+  // Optativos biológicos — los cuatro que pidieron los estudiantes
+  ['BIO110C','Biología de Organismos y Comunidades'],
+  ['BIO141C','Biología de la Célula'],
+  ['BIO141T','Taller de Biología de la Célula'],
+  // Formación Teológica (OFG). Un estudiante cursa uno de estos, no todos.
+  ['TTF010','Teología Fundamental'],
+  ['TTF013','Tópicos de Ética Social Cristiana'],
+  ['TTF019','Psicología y Religión Cristiana'],
+  ['TTF026','Introducción a la Biblia'],
+  ['TTF036','La Biblia de Jesús'],
+  ['TTF047','Dios en el Siglo XXI'],
+  ['TTF068','El Matrimonio Cristiano Hoy'],
+  ['TTF073','Fin de los Tiempos. Mitos y Realidad'],
+  ['TTF079','Experiencia Cristiana y Compromiso Social'],
+  ['TTF081','Cristianismo y Disidencia: Una Mirada Histórica'],
+  ['TTF083','Cristianismo y Derechos Humanos'],
+  ['TTF087','¿Está Dios en el Escenario Humano?'],
+  ['TTF091','Leer el Evangelio en el Siglo XXI'],
+  ['TTF100','Arte y Revelación'],
+  ['TTF109','La Belleza de la Fragilidad Humana'],
+  ['TTF111','Ética Teológica de la Tecnología Moderna'],
+  ['TTF115','Virgen María y Feminismo: ¿Diálogo o Confrontación?'],
+  ['TTF116','Arquitectura Sacra'],
+  ['TTF118','Esperanza Cristiana, Muerte y Más Allá'],
+  ['TTF202','Búsquedas Religiosas y Cristianismo'],
+  ['TTF205','¿Quién Es Jesús de Nazareth?'],
+  ['TTF206','El Padrenuestro: la Oración de Jesús'],
+  ['TTF207','Doctrina Social de la Iglesia'],
+  ['TTF208','Fe y Razón: Una Perspectiva Histórica'],
+  ['TTF210','Experiencia Creyente y Secularismo'],
+  ['TTF211','Para Pensar la Muerte'],
+  ['TTF213','Espiritualidad Laical y Cultura Moderna'],
+  ['TTF215','Teología y Ecología'],
+  ['TTF216','¿Creer o No Creer?'],
+  ['TTF217','¿Es Necesaria la Iglesia?'],
+  ['TTF218','Lectura Contemporánea de la Biblia'],
+  ['TTF219','Existencia Humana y la Búsqueda de Sentido'],
+  ['TTF220','Teología del Cuerpo Humano'],
+  ['TTF222','Cristianismo y Crisis Ecológica'],
+  ['TTF225','Fe y Ciencia'],
+  ['TTF226','Religión y Política'],
+  ['TTF232','Teología Feminista: Un Signo de los Tiempos'],
+  ['TTF233','Teología y Literatura'],
+];
+
 const SIGLAS_UC={
   'ING-PC':{
     'Cálculo I':'MAT1610', 'Álgebra Lineal':'MAT1203', 'Química para Ingeniería':'QIM100E',
