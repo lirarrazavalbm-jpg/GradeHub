@@ -169,6 +169,33 @@ else {fail++;console.log('  FAIL validación de pasos del onboarding');}
 if(!ctx.obStepValid(1,{tenant:'fen'})&&!ctx.obStepValid(2,{nombre:'Antonia'})&&!ctx.obStepValid(3,{tenant:'fen'})&&!ctx.obStepValid(4,{carrera:'ING'})&&ctx.obStepValid(5,{})){ok++;console.log('  OK   ramos sugeridos no son obligatorios');}
 else {fail++;console.log('  FAIL cada paso debería ser independiente');}
 
+console.log('\n=== Onboarding · ramos agregados siguen visibles ===');
+const unirOb=typeof ctx.obRamosVisibles==='function'?ctx.obRamosVisibles:null;
+const visibles=unirOb?unirOb(
+  ['Cálculo II','Álgebra Lineal'],
+  [{nombre:'Termodinámica',manual:true},{nombre:'calculo ii',manual:false}]
+):[];
+if(visibles.join('|')==='Cálculo II|Álgebra Lineal|Termodinámica'){
+  ok++;console.log('  OK   une sugeridos y agregados sin duplicar por mayúsculas o tildes');
+}else{
+  fail++;console.log('  FAIL un ramo manual o de otro semestre queda invisible → '+JSON.stringify(visibles));
+}
+vm.runInContext("obRamos=[{nombre:'Termodinámica',manual:true},{nombre:'Cálculo II',manual:false}]",ctx);
+ctx.obToggleRamo('TERMODINAMICA',false);
+const elegidosDespues=vm.runInContext('obRamos.map(r=>r.nombre)',ctx);
+if(elegidosDespues.join('|')==='Cálculo II'){
+  ok++;console.log('  OK   desmarcar el ramo visible lo elimina con la misma comparación normalizada');
+}else{
+  fail++;console.log('  FAIL desmarcar no actualiza obRamos → '+JSON.stringify(elegidosDespues));
+}
+const nombreHostil="Ramo');alert(1);//";
+const nombreCodificado=ctx.obCodificarNombre(nombreHostil);
+if(!nombreCodificado.includes("'")&&decodeURIComponent(nombreCodificado)===nombreHostil){
+  ok++;console.log('  OK   un nombre manual no puede cerrar el handler del checkbox');
+}else{
+  fail++;console.log('  FAIL el nombre manual rompe el atributo → '+nombreCodificado);
+}
+
 console.log('\n=== Pauta manual y reglas no calculadas ===');
 const pautaParcial=ctx.estadoPauta([{peso:30},{peso:40}]);
 if(pautaParcial.total===70&&pautaParcial.diferencia===30&&!pautaParcial.lista){ok++;console.log('  OK   una pauta parcial se puede identificar sin bloquearla');}
