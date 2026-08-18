@@ -305,10 +305,15 @@ personas distintas), `calendar_feed.sql` aplicado y verificado de punta a punta
 aplicado, `user_feedback.sql` aplicado el 2026-08-17. HSTS y CSP verificados en
 producción.
 
-**Lo que falta es todo manual, y lo lleva Martín**, que desde el 2026-08-17
-tiene acceso de administrador a Supabase y a Cloudflare. Ningún deploy hace
-nada de esto: Cloudflare publica archivos estáticos y no ejecuta SQL ni toca la
+**Lo que falta es todo manual, lo lleva Martín, y va PRIMERO.** Desde el
+2026-08-17 tiene administrador en Supabase y Cloudflare. Ningún deploy hace nada
+de esto: Cloudflare publica archivos estáticos y no ejecuta SQL ni toca la
 configuración de Auth.
+
+Que vaya primero es una decisión de Lucas del 2026-08-18, y tiene una razón
+concreta: el repositorio es público, así que esta lista de pendientes también lo
+es. Cerrarlos es lo que la vuelve inofensiva. Cualquier otra tarea de la cola
+espera.
 
 1. En Supabase → Authentication, dejar y **anotar** los valores de Sessions,
    Rate Limits y Password Security. El repo no puede demostrarlos. JWT ≤ 1 h,
@@ -440,6 +445,69 @@ documentado y probado. Mientras sigan apareciendo programas, transcribirlos es
 más rápido y más exacto que cualquier consenso, y además es `data.js` puro: no
 sale del carril de contenido.
 
+### Pedidas por Lucas, sin dueño todavía
+
+Están acá para que no se pierdan, no porque alguien las esté haciendo. **Las
+puede tomar cualquiera de los dos lados** —Lucas o Martín, con sus agentes—; lo
+único que se respeta es el carril del archivo que toque. Avisa antes de partir
+para que no la tomen dos.
+
+El contexto de cada una sale de mirar el código, no del pedido: sirve para
+dimensionar antes de empezar.
+
+**La Agenda necesita orden y jerarquía.** Hoy `renderAgenda` pinta una sola
+lista con un orden fijo. Se pide poder elegir entre tres: por fecha (lo que
+viene más cerca), por peso, y el "recomendado" que es la mezcla que ya se usa
+—o sea el orden actual pasa a ser una opción con nombre, no el único—. Y que
+lo que importa se vea distinto: las dos evaluaciones más importantes en un
+formato más grande y más cuadrado, quizá mitad y mitad, en vez de dos filas
+iguales al resto. El bloque de evaluaciones sin fecha (`agendaSinFecha`) tiene
+que seguir visible —es la puerta para completar fechas— pero sin robarle la
+atención a lo que sí está fechado.
+
+**El orden manual del inicio no se puede arrastrar.** `S.sortMode` tiene tres
+valores (`manual`, `avg`, `name`) y el manual no ofrece forma de mover un ramo:
+se pide arrastrar y soltar. Ojo con el móvil, que es donde está casi todo el
+mundo: arrastrar compite con el scroll y hay que sostener antes de mover.
+Además, la etiqueta del botón es `'Manual ↕'` (`app.js`, cerca de
+`labels={manual:...}`) y ese carácter lo dibujan a color muchos sistemas, así
+que se ve como emoji suelto en una app donde todos los íconos son SVG en línea.
+Va reemplazado por un ícono del mismo lenguaje que el resto.
+
+**Faltan colores distintos en Apariencia.** `ACENTOS` en `data.js` tiene cuatro:
+turquesa (#0d7a6b), azul (#1e40af), índigo (#3730a3) y violeta (#5b21b6). Los
+cuatro viven en el mismo lado del espectro, así que elegir entre ellos casi no
+se nota. Faltan acentos cálidos. Cada uno declara sus variantes para claro y
+oscuro, y el semáforo verde/ámbar/rojo es semántico y no se tiñe: un acento
+nuevo no puede acercarse tanto al verde o al rojo que se confunda con "aprobado"
+o "reprobado".
+
+**Las estadísticas tienen que decir algo que importe.** `renderStats` en
+`app.js`. El pedido es que muestren cosas que de verdad le sirvan al estudiante;
+qué son exactamente es parte del trabajo. Un punto de partida honesto: hoy la
+app sabe cuánto falta por evaluar, qué ramos están al borde y qué nota se
+necesita para aprobar cada uno — eso es más accionable que un promedio histórico.
+
+**El repositorio no le dice nada a quien llega.** Es **público** y no tiene
+README, ni descripción, ni sitio en el campo de GitHub, ni licencia, ni topics:
+quien entra ve una lista de archivos sueltos. Se pide dejarlo presentable —qué
+es GradeHub, para quién, cómo se corre, cómo se contribuye— y de paso decidir la
+licencia, porque sin una, un repo público no otorga ningún permiso de uso.
+
+Ojo con una cosa al hacerlo: este mismo archivo es público en github.com, **con
+la lista de lo que todavía no está asegurado**. Lucas lo decidió el 2026-08-18:
+**el repo se queda público**, y la respuesta es cerrar los huecos, no taparlos.
+Por eso los cuatro puntos de la auditoría de seguridad pasan a ser lo PRIMERO
+que hace Martín, antes que cualquier cosa de esta cola. Mientras sigan abiertos,
+están descritos en un archivo que cualquiera puede leer.
+
+**Arreglar la verificación por correo.** Está desactivada porque el SMTP
+integrado de Supabase despacha dos correos por hora. No se puede reactivar antes
+de tener correo propio con dominio verificado — issue #150, asignado a Martín —
+y cuando se reactive hay que volver a redactar el aviso del registro, que hoy
+dice "Ya puedes entrar con ese correo y tu contraseña" justamente porque no se
+manda ningún correo. Está anotado en `app.js`, junto a `MSG_VERIFICA`.
+
 ### Lo que espera una decisión, no un agente
 
 **Monetización.** Decidida a medias y a propósito. El modelo no se define hasta
@@ -453,6 +521,21 @@ Lo que no se promete por "nunca" sino que se ata a una condición: usar las nota
 de alguien para elegir qué anuncio ve exige su permiso explícito, aparte de la
 política, y negarse no degrada la app. Eso es exigible y no cierra ninguna
 puerta. No hay publicidad hoy ni está decidido que la haya.
+
+**Tres formas concretas que Lucas quiere evaluar**, y que siguen esperando el
+mismo dato de uso, no una implementación:
+
+- **Un botón de donación.** Es el único de los tres que no toca la política ni
+  pide nada del estudiante, así que es el más barato de probar.
+- **Una página de avisos de clases particulares, donde el anunciante paga por
+  estar.** Ojo: esto es publicidad, y la política ya fijó las condiciones —
+  igual para todos y sin usar las notas de nadie para elegir qué se muestra. Un
+  aviso de "clases de Cálculo II" elegido según quién va mal en Cálculo II es
+  exactamente lo que se prometió no hacer sin permiso explícito. Un tablón igual
+  para todos no lo es.
+- **Una franja de avisos en la versión de computador.** Mismo marco. Y conviene
+  mirar primero cuánta gente entra desde el computador: si la app se usa casi
+  toda en el teléfono, la franja rinde poco y gasta confianza igual.
 
 ### Las reglas que el motor todavía no calcula
 

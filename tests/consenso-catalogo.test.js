@@ -19,6 +19,8 @@ const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail
 
 const MALLA_UC = val('MALLA_UC'), SIGLAS_UC = val('SIGLAS_UC');
 const siglaUC = val('siglaUC'), claveReporte = val('claveReporte');
+const estructuraReporte = val('estructuraReporte'), aplicarPesoReporte = val('aplicarPesoReporte');
+const estadoReporte = val('estadoReporte');
 
 console.log('\n=== Siglas UC ===');
 ['ING-PC', 'COM'].forEach(carrera => {
@@ -43,6 +45,37 @@ chk('el mismo ramo UC coincide aunque venga de mallas distintas',
   claveReporte(calculoIng) === 'MAT1610' && claveReporte(calculoCom) === 'MAT1610');
 chk('un ramo FEN conserva nombre normalizado hasta tener una sigla oficial',
   claveReporte({ nombre: 'Contabilidad', origen: { tenant: 'fen', carrera: 'IC' } }) === 'contabilidad');
+
+console.log('\n=== El reporte corrige porcentajes sin tocar el ramo ===');
+const ramoReporte = {
+  categorias: [
+    { id: 'i1', nombre: 'Interrogación 1', peso: 30 },
+    { id: 'ex', nombre: 'Examen', peso: 70 },
+  ],
+  gates: [],
+};
+const borradorReporte = estructuraReporte(ramoReporte);
+aplicarPesoReporte(borradorReporte, 0, '40,5');
+aplicarPesoReporte(borradorReporte, 1, '59.5');
+chk('acepta coma y punto decimal en los porcentajes',
+  borradorReporte[0].peso === 40.5 && borradorReporte[1].peso === 59.5);
+chk('editar el reporte no modifica la pauta ni los promedios del estudiante',
+  ramoReporte.categorias[0].peso === 30 && ramoReporte.categorias[1].peso === 70);
+chk('el total vivo reconoce cuándo la propuesta suma 100',
+  estadoReporte(borradorReporte).lista && estadoReporte(borradorReporte).total === 100);
+aplicarPesoReporte(borradorReporte, 1, '50');
+chk('el total vivo dice cuánto falta',
+  !estadoReporte(borradorReporte).lista && estadoReporte(borradorReporte).diferencia === 9.5);
+const bordesReporte = estructuraReporte(ramoReporte);
+aplicarPesoReporte(bordesReporte, 0, '-5');
+aplicarPesoReporte(bordesReporte, 1, '150');
+chk('cada porcentaje queda dentro del rango que acepta Supabase',
+  bordesReporte[0].peso === 0 && bordesReporte[1].peso === 100);
+chk('la interfaz usa campos editables y envía el borrador, no la pauta original',
+  /class="rep-peso-input"/.test(src) &&
+  /const est=reporteRamoId===ramoId\?reporteDraft/.test(src));
+chk('un total distinto de 100 se explica antes de llamar a Supabase',
+  /if\(!est\.length\|\|!estado\.lista\)\{[\s\S]{0,280}showToast/.test(src));
 
 console.log('\n=== RPC segura y agregada ===');
 const consenso = sql.slice(sql.indexOf('create or replace function public.catalog_consensus'));

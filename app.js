@@ -2357,6 +2357,52 @@ function huellaEstructura(est){
   return est.map(e=>[normName(e.nombre),e.peso,e.slots||1,e.min||0,e.cap||0].join('~')).join('|');
 }
 
+// El reporte tiene su propio borrador: corregir lo que se envía al catálogo no
+// puede cambiar la pauta, las notas ni los promedios guardados del estudiante.
+let reporteDraft=[],reporteRamoId=null;
+function estructuraReporte(r){return estructuraDe(r).map(e=>({...e}));}
+function parsePesoReporte(raw){
+  const txt=String(raw==null?'':raw).trim().replace(',','.');
+  const n=Number(txt);
+  return Number.isFinite(n)?r2(Math.max(0,Math.min(100,n))):0;
+}
+function aplicarPesoReporte(est,i,raw){
+  if(!est||!est[i])return est;
+  est[i]={...est[i],peso:parsePesoReporte(raw)};return est;
+}
+function estadoReporte(est){
+  const total=r2((est||[]).reduce((s,e)=>s+(Number(e.peso)||0),0));
+  const diferencia=r2(100-total);
+  return {total,diferencia,lista:Math.abs(diferencia)<0.05};
+}
+function textoEstadoReporte(estado){
+  if(estado.lista)return'Lista para enviar.';
+  return estado.diferencia>0
+    ?`Falta ${r2(estado.diferencia)}% para llegar a 100.`
+    :`Te pasas por ${r2(Math.abs(estado.diferencia))}%.`;
+}
+function pintarEstadoReporte(){
+  const estado=estadoReporte(reporteDraft);
+  const total=document.getElementById('m-rep-total');
+  const suma=document.getElementById('m-rep-suma');
+  const balance=document.getElementById('m-rep-balance');
+  if(total)total.className=`rep-total ${estado.lista?'ok':'warn'}`;
+  if(suma)suma.textContent=`${r2(estado.total)}%`;
+  if(balance){balance.textContent=textoEstadoReporte(estado);balance.className=`rep-balance ${estado.lista?'ok':'warn'}`;}
+}
+function actualizarReportePeso(i,input){
+  if(!input)return;
+  let limpio=String(input.value||'').replace(',','.').replace(/[^0-9.]/g,'');
+  const punto=limpio.indexOf('.');
+  if(punto>=0)limpio=limpio.slice(0,punto+1)+limpio.slice(punto+1).replace(/\./g,'').slice(0,1);
+  if(Number(limpio)>100)limpio='100';
+  input.value=limpio;
+  aplicarPesoReporte(reporteDraft,i,limpio);pintarEstadoReporte();
+}
+function normalizarReportePeso(i,input){
+  if(input&&reporteDraft[i])input.value=r2(reporteDraft[i].peso);
+}
+
 // La clave del consenso identifica el ramo compartido, no el lugar que ocupa
 // en una malla. En UC la sigla evita confundir cursos homónimos de facultades
 // distintas; fuera de UC se conserva el nombre normalizado hasta tener otro
@@ -2369,28 +2415,29 @@ function claveReporte(r){
 function openReportModal(ramoId){
   const r=S.ramos.find(x=>x.id===(ramoId||currentRamoId));
   if(!r){showToast('No se encontr\u00f3 el ramo',true);return;}
-  const est=estructuraDe(r);
+  const est=estructuraReporte(r);
   if(est.length===0){showToast('Agrega las evaluaciones antes de reportar',true);return;}
-  const suma=est.reduce((s,e)=>s+e.peso,0);
-  const filas=est.map(e=>`
+  reporteDraft=est;reporteRamoId=r.id;
+  const estado=estadoReporte(est);
+  const filas=est.map((e,i)=>`
     <div class="rep-row">
-      <span class="rep-name">${esc(e.nombre)}${e.slots?` <span class="rep-tag">${e.slots} notas</span>`:''}${e.min?` <span class="rep-tag">m\u00edn ${nf(e.min)}</span>`:''}</span>
-      <span class="rep-peso">${r2(e.peso)}%</span>
+      <label class="rep-name" for="m-rep-peso-${i}">${esc(e.nombre)}${e.slots?` <span class="rep-tag">${e.slots} notas</span>`:''}${e.min?` <span class="rep-tag">m\u00edn ${nf(e.min)}</span>`:''}</label>
+      <span class="rep-peso-field"><input class="rep-peso-input" type="text" inputmode="decimal" id="m-rep-peso-${i}" name="ponderacion-${i}" value="${r2(e.peso)}" maxlength="5" autocomplete="off" aria-describedby="m-rep-balance" oninput="actualizarReportePeso(${i},this)" onblur="normalizarReportePeso(${i},this)"/><span class="rep-peso-suffix" aria-hidden="true">%</span></span>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Reportar ponderaciones</div>
     <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin-bottom:14px;">
-      Env\u00edas c\u00f3mo est\u00e1n configuradas <b>${esc(r.nombre)}</b> hoy en tu app. Si varios
+      Ajusta los porcentajes de <b>${esc(r.nombre)}</b> para que calcen con tu curso. Si varios
       estudiantes reportan lo mismo, pasa a ser la versi\u00f3n sugerida del cat\u00e1logo.
     </p>
     <div class="rep-box">
       ${filas}
-      <div class="rep-total ${Math.abs(suma-100)<0.05?'ok':'warn'}">
-        <span>Suma</span><span>${r2(suma)}%</span>
+      <div class="rep-total ${estado.lista?'ok':'warn'}" id="m-rep-total" role="status" aria-live="polite" tabindex="-1">
+        <span>Suma</span><span id="m-rep-suma">${r2(estado.total)}%</span>
       </div>
     </div>
-    ${Math.abs(suma-100)>=0.05?`<p style="font-size:12px;color:var(--yellow);margin:10px 0 0;line-height:1.4;">Tus ponderaciones no suman 100%. Corr\u00edgelas antes de reportar para que el aporte sirva.</p>`:''}
-    <label class="modal-label" style="margin-top:16px;">Comentario <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional)</span></label>
+    <p class="rep-balance ${estado.lista?'ok':'warn'}" id="m-rep-balance">${textoEstadoReporte(estado)}</p>
+    <label class="modal-label" for="m-rep-nota" style="margin-top:16px;">Comentario <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional)</span></label>
     <div class="modal-input"><input type="text" id="m-rep-nota" placeholder="Ej: el profe cambi\u00f3 el examen a 40%" maxlength="120" autocomplete="off"/></div>
     <p style="font-size:11.5px;color:var(--fg3);line-height:1.45;margin:-4px 0 14px;">
       Se env\u00eda solo la estructura del ramo y tu universidad. Nunca tus notas.
@@ -2408,7 +2455,12 @@ async function enviarReporte(ramoId){
   if(!supabaseClient||!currentUser){
     showToast('Necesitas tener sesi\u00f3n iniciada para reportar',true);return;
   }
-  const est=estructuraDe(r);
+  const est=reporteRamoId===ramoId?reporteDraft.map(e=>({...e})):[];
+  const estado=estadoReporte(est);
+  if(!est.length||!estado.lista){
+    const total=document.getElementById('m-rep-total');if(total)total.focus();
+    showToast(est.length?textoEstadoReporte(estado):'Vuelve a abrir el reporte',true);return;
+  }
   const notaEl=document.getElementById('m-rep-nota');
   if(btn){btn.disabled=true;btn.textContent='Enviando\u2026';}
   try{
@@ -2426,6 +2478,7 @@ async function enviarReporte(ramoId){
     if(error)throw error;
     track('reporte_catalogo',{tenant:S.tenant});
     closeModal();
+    reporteDraft=[];reporteRamoId=null;
     showToast('Gracias \u00b7 tu reporte qued\u00f3 registrado');
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent='Enviar reporte';}
@@ -3013,7 +3066,9 @@ function openSettings(){
       <div class="modo-grid" id="s-modo-grid"></div>
       <label class="modal-label accent-picker-label">Color de acento</label>
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>`;
-    if(section==='sugerencias')return currentUser?`
+    if(section==='sugerencias'){
+      const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a href="mailto:gradehub.app@gmail.com">gradehub.app@gmail.com</a></p>`;
+      return currentUser?`
       <p class="settings-help settings-help-top">¿Algo no se entiende, está fallando o podría ser mejor? Lo leemos nosotros.</p>
       <label class="modal-label" for="s-feedback-type">Tipo de comentario</label>
       <select class="feedback-select" id="s-feedback-type">
@@ -3022,10 +3077,12 @@ function openSettings(){
         <option value="otro">Otro comentario</option>
       </select>
       <label class="modal-label" for="s-feedback-message">Cuéntanos</label>
-      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" oninput="actualizarSugerencia()"></textarea>
-      <div class="feedback-meta"><span>Queda asociado a tu cuenta para poder ayudarte.</span><span id="s-feedback-count">0 / 2000</span></div>
-      <button class="btn-primary" id="s-feedback-send" type="button" onclick="enviarSugerencia()" disabled>Enviar comentario</button>`
-      :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>Así evitamos spam y podemos entender a qué cuenta corresponde el comentario.</p></div>`;
+      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" aria-describedby="s-feedback-help s-feedback-count" oninput="actualizarSugerencia()"></textarea>
+      <div class="feedback-meta"><span class="feedback-help pending" id="s-feedback-help" aria-live="polite">Mínimo 3 caracteres · queda asociado a tu cuenta.</span><span id="s-feedback-count">0 / 2000</span></div>
+      <button class="btn-primary feedback-send" id="s-feedback-send" type="button" onclick="enviarSugerencia()">Enviar comentario</button>
+      ${contacto}`
+      :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>Así evitamos spam y podemos entender a qué cuenta corresponde el comentario.</p></div>${contacto}`;
+    }
     return `
       <p class="settings-help settings-help-top">Guarda una copia antes de cambiar de dispositivo.</p>
       <div class="settings-data-actions">
@@ -3152,10 +3209,17 @@ function openSettings(){
 function actualizarSugerencia(){
   const campo=document.getElementById('s-feedback-message');
   const cuenta=document.getElementById('s-feedback-count');
-  const boton=document.getElementById('s-feedback-send');
+  const ayuda=document.getElementById('s-feedback-help');
   if(!campo)return;
   if(cuenta)cuenta.textContent=`${campo.value.length} / 2000`;
-  if(boton)boton.disabled=!(campo.value.trim().length>=3);
+  const faltan=Math.max(0,3-campo.value.trim().length);
+  if(ayuda){
+    ayuda.textContent=faltan
+      ?`Mínimo 3 caracteres · te ${faltan===1?'falta 1 carácter':'faltan '+faltan+' caracteres'} para enviarlo.`
+      :'Queda asociado a tu cuenta para poder ayudarte.';
+    ayuda.classList.toggle('pending',faltan>0);
+  }
+  if(!faltan)campo.removeAttribute('aria-invalid');
 }
 async function enviarSugerencia(){
   if(!supabaseClient||!currentUser){showToast('Necesitas iniciar sesión para enviar',true);return;}
@@ -3164,7 +3228,10 @@ async function enviarSugerencia(){
   const boton=document.getElementById('s-feedback-send');
   const mensaje=campo?campo.value.trim():'';
   const categoria=selector&&['sugerencia','problema','otro'].includes(selector.value)?selector.value:'otro';
-  if(!(mensaje.length>=3)){showToast('Cuéntanos un poco más',true);return;}
+  if(!(mensaje.length>=3)){
+    if(campo){campo.setAttribute('aria-invalid','true');actualizarSugerencia();campo.focus();}
+    showToast('Escribe al menos 3 caracteres',true);return;
+  }
   if(boton){boton.disabled=true;boton.textContent='Enviando…';}
   try{
     const {error}=await supabaseClient.from('user_feedback').insert({user_id:currentUser.id,categoria,mensaje});
@@ -3177,7 +3244,7 @@ async function enviarSugerencia(){
     console.warn('No se pudo enviar el comentario:',e);
     showToast('No pudimos enviarlo. Intenta de nuevo.',true);
   }finally{
-    if(boton){boton.textContent='Enviar comentario';actualizarSugerencia();}
+    if(boton){boton.disabled=false;boton.textContent='Enviar comentario';actualizarSugerencia();}
   }
 }
 
