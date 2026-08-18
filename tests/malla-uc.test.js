@@ -23,7 +23,7 @@ const val = n => vm.runInContext(n, ctx);
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
-const MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), presetRamo = val('presetRamo'), findPresetName = val('findPresetName'), reglasNoCalculadas = val('reglasNoCalculadas'), reglasDelCurso = val('reglasDelCurso');
+const MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), presetRamo = val('presetRamo'), findPresetName = val('findPresetName'), reglasNoCalculadas = val('reglasNoCalculadas'), reglasDelCurso = val('reglasDelCurso'), claveUc = val('claveUc');
 const pc = MALLA_UC['ING-PC'];
 const todos = Object.values(pc).flat();
 
@@ -68,8 +68,13 @@ console.log('\n=== Ningún ramo de la malla trae una pauta inventada ===');
 // La malla dice qué cursa el estudiante; la pauta dice cómo se calcula su nota.
 // Meter una pauta sin el programa oficial sería inventar ponderaciones.
 const conPauta = [...todos, ...Object.values(MALLA_UC['COM']).flat()].filter(n => presetRamo(n, 'uc', 'ING-PC'));
+// Se resuelve por nombre normalizado, no por igualdad exacta: la malla escribe
+// "Filosofía: ¿Para Qué?" y el registro 'Filosofía: ¿para qué?'. Exigir la
+// clave idéntica acá fijaba justamente el bug que hacía que ese ramo se
+// cargara vacío. Lo que importa sigue igual de firme: toda pauta que llegue a
+// un ramo tiene que salir de PRESETS_UC y no de ninguna otra parte.
 chk('los ramos sin programa oficial no traen pauta',
-  conPauta.every(n => !!PRESETS_UC[n]));
+  conPauta.every(n => !!PRESETS_UC[claveUc(n)]));
 chk('las pautas UC que existen siguen saliendo de PRESETS_UC',
   Object.keys(PRESETS_UC).length > 0);
 
