@@ -504,6 +504,99 @@ const PRESETS_UC={
     ['Examen',30,{fecha:'2026-11-30'}],
     ['Laboratorio',10,{slots:3}],
   ],
+  // Programas oficiales de especialidad · Ingeniería UC · 2026-2.
+  //
+  // Econometría publica 25% para el conjunto de tres tareas, pero no reparte
+  // ese porcentaje entre T1/T2/T3. Se conserva como una sola categoría con
+  // tres casillas: dividirla en 8,33% sería inventar una igualdad que el
+  // programa no declara. Por la misma razón, las fechas preliminares de los
+  // informes no se fuerzan como fechas de tres evaluaciones independientes.
+  'Econometría Aplicada':{
+    creditos:10,
+    evals:[
+      ['Interrogación 1',25,{fecha:'2026-08-31'}],
+      ['Interrogación 2',25,{fecha:'2026-10-16'}],
+      ['Examen',25,{fecha:'2026-11-30'}],
+      ['Tareas',25,{slots:3}],
+    ],
+    grupos:[
+      {nombre:'Interrogaciones y Examen',evals:['Interrogación 1','Interrogación 2','Examen'],min:3.95,cap:3.9},
+      {nombre:'Tareas',evals:['Tareas'],min:3.95,cap:3.9},
+    ],
+    noCalcula:[
+      'Los tickets de participación pueden sumar hasta 2 décimas a cada interrogación o al examen, según la cantidad completada en su período',
+      'Si rindes ambas interrogaciones, cumples los tickets y tu peor interrogación es al menos 2,0, puedes reemplazarla por la nota del examen',
+    ],
+  },
+  // NP pesa 80%: I1 25%, I2 35% y Examen 40% dentro de NP. NT pesa 20%:
+  // T1 30%, T2 30% y T3 40% dentro de NT. Los pesos de abajo son el producto
+  // exacto de ambos niveles, no una aproximación; así las compuertas de NP y
+  // NT siguen calculándose con su proporción interna correcta.
+  'Métodos de Optimización':{
+    creditos:10,
+    evals:[
+      ['Interrogación 1',20,{fecha:'2026-09-07'}],
+      ['Interrogación 2',28,{fecha:'2026-11-09'}],
+      ['Examen',32,{fecha:'2026-12-02'}],
+      ['Tarea 1',6],['Tarea 2',6],['Tarea 3',8],
+    ],
+    grupos:[
+      {nombre:'Pruebas',evals:['Interrogación 1','Interrogación 2','Examen'],min:4.0,cap:3.9},
+      {nombre:'Tareas',evals:['Tarea 1','Tarea 2','Tarea 3'],min:4.0,cap:3.9},
+    ],
+    noCalcula:[
+      'El Control optativo del 9 de octubre puede mejorar la Interrogación 2: si su nota es mayor, aporta un 30% y la Interrogación 2 conserva el 70%',
+    ],
+    reglasDelCurso:[
+      'Las actividades de taller pueden bonificar una nota final aprobada; la regla de acumulación se informa durante el semestre en Canvas',
+    ],
+  },
+  // El programa define C4 mejores como el promedio de los cuatro mejores de
+  // cinco controles. Deben seguir juntos: cinco filas de 9% impedirían que el
+  // motor descarte una nota entre ellas. Por eso sus fechas quedan en el
+  // programa y el Examen y los cuatro Memes sí entran individualmente a Agenda.
+  'Ingeniería de Sistemas de Transporte':{
+    creditos:10,
+    evals:[
+      ['Controles',45,{slots:5,dropLowest:{count:1}}],
+      ['Meme 1',5,{fecha:'2026-08-24'}],
+      ['Meme 2',5,{fecha:'2026-09-25'}],
+      ['Meme 3',5,{fecha:'2026-10-23'}],
+      ['Meme 4',5,{fecha:'2026-11-20'}],
+      ['Examen',35,{fecha:'2026-12-02',min:3.0,cap:3.9}],
+    ],
+    grupos:[
+      {nombre:'Cuatro mejores controles',evals:['Controles'],min:3.0,cap:'self'},
+      {nombre:'Promedio de Memes',evals:['Meme 1','Meme 2','Meme 3','Meme 4'],min:4.0,cap:'self'},
+      {nombre:'Evaluaciones escritas',evals:['Controles','Examen'],min:4.0,cap:'self'},
+    ],
+    noCalcula:[
+      'Si el promedio de los cinco Controles es al menos 5,5, puedes eximirte del Examen y la nota final se recalcula solo con Controles y Memes',
+      'Si rindes el Examen, puedes usar su nota para reemplazar la nota de un Control',
+      'Si no cumples el mínimo de Memes o de los cuatro mejores Controles, no tienes derecho a rendir el Examen',
+    ],
+  },
+  // Fuente viva del curso: github.com/IIC2115/Syllabus, programa 2026-2.
+  // Son cuatro laboratorios, uno por capítulo, y el propio programa declara
+  // que L es su promedio simple: separarlos en cuatro filas de 20% conserva la
+  // fórmula exacta y permite llevar las fechas publicadas a Agenda.
+  'Programación como Herramienta para la Ingeniería':{
+    creditos:10,
+    evals:[
+      ['Laboratorio 1',20,{fecha:'2026-08-24'}],
+      ['Laboratorio 2',20,{fecha:'2026-09-28'}],
+      ['Laboratorio 3',20,{fecha:'2026-10-26'}],
+      ['Laboratorio 4',20,{fecha:'2026-11-23'}],
+      ['Participación',20,{slots:10,dropLowest:{count:2}}],
+    ],
+    grupos:[
+      {nombre:'Laboratorios',evals:['Laboratorio 1','Laboratorio 2','Laboratorio 3','Laboratorio 4'],min:3.95,cap:3.9},
+      {nombre:'Participación',evals:['Participación'],min:3.95,cap:3.9},
+    ],
+    reglasDelCurso:[
+      'Si tienes 2 o más ausencias justificadas a sesiones con ticket, el equipo docente ajustará la regla de Participación; el programa no publica la fórmula de ese ajuste',
+    ],
+  },
   // ── Dinámica y su laboratorio: dos ramos, una nota ────────────────────────
   // La UC los inscribe como dos cursos (FIS1514 y FIS0154) con dos actas, y así
   // se muestran. Pero la nota final de Dinámica se calcula CON la del
@@ -898,6 +991,12 @@ const SIGLAS_UC={
     'Laboratorio de Termodinámica':'FIS0152', 'Introducción a la Economía':'ICS1513',
     'Práctica I':'ING1001', 'Probabilidades y Estadística':'EYP1113',
     'Electricidad y Magnetismo':'FIS1533', 'Laboratorio de Electricidad y Magnetismo':'FIS0153',
+    // Cursos de especialidad con programa oficial 2026-2. ICT2904 conserva la
+    // sigla del catálogo y del nombre del archivo recibido: el PDF contiene un
+    // rótulo interno ICT3103 que contradice ambos y no se usa para renombrarlo.
+    'Econometría Aplicada':'ICS2563', 'Métodos de Optimización':'ICS2121',
+    'Ingeniería de Sistemas de Transporte':'ICT2904',
+    'Programación como Herramienta para la Ingeniería':'IIC2115',
   },
   'COM':{
     'Cálculo I':'MAT1610', 'Introducción a la Microeconomía':'EAE1110',
