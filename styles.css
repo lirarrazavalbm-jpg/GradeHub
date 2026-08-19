@@ -232,7 +232,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .rep-tag{font-size:10.5px;font-weight:700;color:var(--fg3);background:var(--card);
   border-radius:5px;padding:1px 6px;margin-left:4px;white-space:nowrap;}
 .rep-peso-field{position:relative;display:block;width:78px;flex-shrink:0;}
-.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9px 25px 9px 9px;
+input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9px 25px 9px 9px;
   border:1.5px solid var(--border2);border-radius:10px;background:var(--bg2);color:var(--fg);
   font-family:'Sora','Inter',sans-serif;font-size:16px;font-weight:700;text-align:right;
   font-variant-numeric:tabular-nums;outline:none;transition:border-color var(--motion-fast),box-shadow var(--motion-fast);}
