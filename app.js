@@ -2842,7 +2842,7 @@ function openAddCatModal(prefillDate){
     <label class="modal-label">Nombre</label>
     <div class="modal-input"><input type="text" id="m-cat-name" placeholder="Ej: Prueba 1, Tarea 2, Laboratorio" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     ${pesoControlHTML(30,null)}
-    <label class="modal-label" style="display:flex;align-items:center;gap:10px;text-transform:none;font-weight:500;letter-spacing:0;cursor:pointer;">
+    <label class="modal-label" style="display:flex;align-items:center;gap:10px;text-transform:none;font-weight:500;letter-spacing:0;cursor:pointer;margin:2px 0 14px;line-height:1.35;">
       <input type="checkbox" id="m-cat-varias" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
       <span>Son varias notas que se promedian <span style="color:var(--fg3);">(controles, laboratorios, tareas)</span></span>
     </label>
@@ -2886,8 +2886,8 @@ function openPautaManualModal(){
   // Además de normalizar al cargar, el editor tolera un ramo legado incompleto.
   // Es el camino mayoritario: los ramos sin preset parten sin evaluaciones.
   if(!Array.isArray(r.categorias))r.categorias=[];
-  pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0}));
-  if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false});
+  pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0,varias:c.directNota===false}));
+  if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false});
   renderPautaManualModal();openModal();
   setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-0');if(i)i.focus();},100);
 }
@@ -2996,9 +2996,12 @@ function renderPautaManualModal(){
     <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px 'Inter',sans-serif;cursor:pointer;">Usar pauta</button></div>
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>`
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 32px;gap:8px;align-items:center;margin:8px 0;">
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 30px 30px;gap:6px;align-items:center;margin:8px 0;">
       <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="${NOMBRE_MAX}" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
       <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:13px;pointer-events:none;">%</span></div>
+      <label title="Son varias notas que se promedian" style="display:flex;align-items:center;justify-content:center;height:40px;cursor:pointer;">
+        <input type="checkbox" ${fila.varias?'checked':''} onchange="actualizarPautaVarias(${i},this.checked)" aria-label="${esc(fila.nombre||'Evaluación')}: son varias notas que se promedian" style="width:18px;height:18px;accent-color:var(--primary);"/>
+      </label>
       <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
@@ -3008,6 +3011,9 @@ function renderPautaManualModal(){
     ${duplicar}
     <datalist id="m-pauta-sugerencias">${sugerencias}</datalist>
     <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:13px;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 30px 30px;gap:6px;font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">
+      <span>Evaluación</span><span>Peso</span><span title="Son varias notas que se promedian" style="text-align:center;">Varias</span><span></span>
+    </div>
     <div>${filas}</div>
     <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Inter',sans-serif;cursor:pointer;">+ Otra evaluación</button>
     <div class="modal-btns" style="margin-top:14px;">
@@ -3016,6 +3022,7 @@ function renderPautaManualModal(){
     </div>`;
 }
 function actualizarPautaNombre(i,valor){if(pautaDraft[i])pautaDraft[i].nombre=valor;}
+function actualizarPautaVarias(i,valor){if(pautaDraft[i])pautaDraft[i].varias=!!valor;}
 function actualizarPautaPeso(i,valor){
   if(!pautaDraft[i])return;
   const limpio=String(valor||'').replace(/[^0-9]/g,'');
@@ -3025,7 +3032,7 @@ function actualizarPautaPeso(i,valor){
   const total=document.getElementById('m-pauta-total');if(total)total.textContent=pautaResumen();
 }
 function agregarPautaFila(){
-  pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false});renderPautaManualModal();
+  pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false});renderPautaManualModal();
   setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-'+(pautaDraft.length-1));if(i)i.focus();},0);
 }
 function quitarPautaFila(i){
@@ -3045,8 +3052,15 @@ function guardarPautaManual(){
   r.categorias=r.categorias.filter(c=>ids.has(c.id)||(c.notas||[]).length>0);
   filas.forEach(f=>{
     const existente=f.id&&r.categorias.find(c=>c.id===f.id);
-    if(existente){existente.nombre=f.nombre.trim();existente.peso=f.peso;}
-    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:true,notas:[]});
+    // Pasar a fila simple una que ya tiene dos o más notas escondería todas
+    // menos la primera, así que ahí se respeta lo que hay. Es la misma regla
+    // que aplica normalize() al abrir la app.
+    if(existente){
+      existente.nombre=f.nombre.trim();existente.peso=f.peso;
+      if(f.varias)existente.directNota=false;
+      else if((existente.notas||[]).length<=1)existente.directNota=true;
+    }
+    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:!f.varias,notas:[]});
   });
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
   showToast(estado.lista?'✓ Listo, ya suma 100%':'Guardado · puedes completar el resto después');
@@ -3977,6 +3991,10 @@ function openEditCatModal(catId){
     <label class="modal-label">Nombre</label>
     <div class="modal-input"><input type="text" id="m-cat-name" value="${esc(cat.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     ${pesoControlHTML(cat.peso,catId)}
+    ${cat.slots>1?'':`<label class="modal-label" style="display:flex;align-items:center;gap:10px;text-transform:none;font-weight:500;letter-spacing:0;cursor:pointer;margin:2px 0 14px;line-height:1.35;${(cat.notas||[]).length>1?'opacity:.55;cursor:not-allowed;':''}">
+      <input type="checkbox" id="m-cat-varias" ${cat.directNota===false?'checked':''} ${(cat.notas||[]).length>1?'disabled':''} style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
+      <span>Son varias notas que se promedian ${(cat.notas||[]).length>1?'<span style="color:var(--fg3);">(ya tiene varias notas: para volver a una sola, bórralas)</span>':'<span style="color:var(--fg3);">(controles, laboratorios, tareas)</span>'}</span>
+    </label>`}
     <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
     <div class="modal-input" style="display:flex;gap:8px;align-items:center;">
       <input type="date" id="m-cat-fecha" value="${esc(cat.fecha||'')}" autocomplete="off" style="flex:1;"/>
@@ -4002,7 +4020,12 @@ function confirmEditCat(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   cat.nombre=name;cat.peso=peso;cat.fecha=fecha;
-  save();track('edit_categoria',{tiene_fecha:!!fecha});closeModal();renderRamo();
+  // La casilla no existe en las de casillas fijas (`slots`), y viene desactivada
+  // cuando ya hay dos o más notas: volver a fila simple mostraría una y
+  // escondería el resto sin decirlo.
+  const casilla=document.getElementById('m-cat-varias');
+  if(casilla&&!casilla.disabled)cat.directNota=!casilla.checked;
+  save();track('edit_categoria',{tiene_fecha:!!fecha,varias_notas:cat.directNota===false});closeModal();renderRamo();
 }
 
 // ─── EDITAR NOTA ─────────────────────────────────────────────────────────────
