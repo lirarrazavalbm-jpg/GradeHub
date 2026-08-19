@@ -527,11 +527,12 @@ reprobó confiando en el número. Y si se busca peso legal de verdad —con la l
 del consumidor chilena— eso lo tiene que revisar alguien que sepa; un texto
 escrito por un agente sirve para que se entienda, no para ganar un juicio.
 
-**El repositorio no le dice nada a quien llega.** Es **público** y no tiene
-README, ni descripción, ni sitio en el campo de GitHub, ni licencia, ni topics:
-quien entra ve una lista de archivos sueltos. Se pide dejarlo presentable —qué
-es GradeHub, para quién, cómo se corre, cómo se contribuye— y de paso decidir la
-licencia, porque sin una, un repo público no otorga ningún permiso de uso.
+**Los metadatos y la licencia del repositorio siguen pendientes.** El README ya
+explica qué es GradeHub, cómo correrlo y cómo contribuir, pero GitHub todavía no
+tiene descripción, sitio ni topics. Tampoco hay un archivo `LICENSE`: que el
+repo sea público permite verlo y bifurcarlo dentro de GitHub, pero no concede
+un permiso general de uso, modificación o distribución. Lucas tiene que elegir
+la licencia antes de agregarla; ningún agente debe decidirla por su cuenta.
 
 Ojo con una cosa al hacerlo: este mismo archivo es público en github.com, **con
 la lista de lo que todavía no está asegurado**. Lucas lo decidió el 2026-08-18:
