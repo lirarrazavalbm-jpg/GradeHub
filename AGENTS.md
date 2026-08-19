@@ -110,6 +110,8 @@ plausible.
 
 **El semáforo es semántico.** Verde/ámbar/rojo significan aprobado / al borde /
 reprobado. No se tiñen por tema ni por decoración.
+El 100% de avance solo significa que el ramo quedó completamente evaluado: se
+comunica como cierre y nunca como aprobación o celebración verde.
 
 **Ojo con la especificidad de los campos.** La regla base `input[type=text]`
 gana contra una clase sola aunque aparezca antes; un padding especializado usa

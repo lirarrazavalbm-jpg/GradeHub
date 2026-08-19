@@ -471,11 +471,21 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .ramo-info{flex:1;min-width:0;}
 .ramo-name{font-size:16px;font-weight:600;color:var(--fg);letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ramo-meta{font-size:12.5px;color:var(--fg3);margin-top:3px;letter-spacing:-.005em;display:flex;align-items:center;gap:8px;}
-.ramo-progress{flex:1;max-width:96px;height:3px;background:color-mix(in srgb,var(--fg3),transparent 78%);border-radius:2px;overflow:hidden;}
+.ramo-progress{position:relative;flex:1;min-width:64px;max-width:160px;height:7px;background:color-mix(in srgb,var(--fg3),transparent 76%);border-radius:999px;}
 /* Mismo motivo que .ob-progress-bar: scaleX en vez de width. Esta se repinta por
    cada ramo en cada render de Home, así que es la que más se nota. */
-.ramo-progress-fill{height:100%;width:100%;transform-origin:left;background:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 25%);border-radius:2px;transition:transform .3s ease;}
+.ramo-progress-fill{height:100%;width:100%;transform-origin:left;background:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 25%);border-radius:999px;transition:transform var(--motion-base) var(--ease-out),opacity var(--motion-fast) var(--ease-standard);}
+.ramo-progress.is-complete{background:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 82%);}
+/* El punto final dice "se cerró" usando la identidad del ramo. No usa check ni
+   verde: cerrar el 100% de las evaluaciones no significa haber aprobado. */
+.ramo-progress.is-complete::after{content:'';position:absolute;width:9px;height:9px;right:-2px;top:50%;transform:translateY(-50%);border:2px solid var(--card);border-radius:50%;background:var(--ramo-tint,var(--primary));box-shadow:0 0 0 1px color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 58%);}
+.ramo-progress.is-complete .ramo-progress-fill{background:var(--ramo-tint,var(--primary));}
+.ramo-progress.just-completed .ramo-progress-fill{animation:ramo-progress-close var(--motion-base) var(--ease-out);}
+.ramo-progress.just-completed + .ramo-meta-text{animation:ramo-progress-label-close var(--motion-base) var(--ease-out);}
+@keyframes ramo-progress-close{from{opacity:.42;transform:scaleX(.86);}to{opacity:1;transform:scaleX(1);}}
+@keyframes ramo-progress-label-close{from{opacity:.42;}to{opacity:1;}}
 .ramo-meta-text{white-space:nowrap;}
+.ramo-meta-text.is-complete{color:var(--fg2);font-weight:700;}
 .ramo-nota{font-family:'Sora','Inter',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;transition:color .3s ease;line-height:1;min-width:52px;text-align:right;}
 .ramo-nota.good,.ramo-nota.warn,.ramo-nota.bad{color:var(--grade-color);}
 .ramo-nota.neutral{color:var(--fg3);opacity:.45;font-weight:500;font-size:20px;}
@@ -1258,10 +1268,14 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .screen.active{animation-name:screen-rise-reduce;}
   .user-menu.open{animation-name:um-in-reduce;}
   .ob-step{animation-name:ob-step-in-reduce;}
+  /* El cierre conserva el fundido que confirma el cambio, pero la barra deja
+     de recorrer el último tramo. El color final del ramo permanece intacto. */
+  .ramo-progress.just-completed .ramo-progress-fill{animation-name:ramo-progress-close-reduce;}
 }
 @keyframes screen-rise-reduce{from{opacity:0;}to{opacity:1;}}
 @keyframes um-in-reduce{from{opacity:0;}to{opacity:1;}}
 @keyframes ob-step-in-reduce{from{opacity:0;}to{opacity:1;}}
+@keyframes ramo-progress-close-reduce{from{opacity:.42;}to{opacity:1;}}
 /* El levantarse al apuntar solo existe detrás de la barrera táctil, así que
    anularlo también va detrás: fuera de ella no hay nada que anular, y una
    regla `:hover` suelta con transform es justo lo que el test prohíbe. */

@@ -1,7 +1,7 @@
 // El movimiento de la app. Nada de esto rompe la pantalla si falla: la app se
 // ve igual, solo se siente peor o se comporta mal en un teléfono. Por eso se
 // revisa acá y no a ojo.
-const fs = require('fs'), path = require('path');
+const fs = require('fs'), path = require('path'), vm = require('vm');
 const raiz = path.join(__dirname, '..');
 const css = fs.readFileSync(path.join(raiz, 'styles.css'), 'utf8');
 
@@ -176,6 +176,30 @@ console.log('\n=== El modal entra y sale ===');
 const sinComentarios = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const app = sinComentarios(fs.readFileSync(path.join(raiz, 'app.js'), 'utf8'));
 const cssCodigo = sinComentarios(css);
+
+console.log('\n=== Cerrar un ramo no significa aprobarlo ===');
+const reglaProgreso = (cssCodigo.match(/\.ramo-progress\{([^}]*)\}/) || [])[1] || '';
+const altoProgreso = parseFloat((reglaProgreso.match(/height:\s*([\d.]+)px/) || [])[1] || 0);
+const anchoProgreso = parseFloat((reglaProgreso.match(/max-width:\s*([\d.]+)px/) || [])[1] || 0);
+chk(`la barra se puede percibir (${altoProgreso}px por hasta ${anchoProgreso}px)`,
+  altoProgreso >= 6 && anchoProgreso >= 140);
+const fnCierre = (app.match(/function ramoRecienCerrado\([^)]*\)\{[^}]*\}/) || [])[0] || '';
+const ramoRecienCerrado = fnCierre ? vm.runInNewContext(`(${fnCierre})`) : null;
+chk('el efecto ocurre solo al cruzar desde menos de 100 a 100',
+  !!ramoRecienCerrado && ramoRecienCerrado(99, 100) &&
+  !ramoRecienCerrado(undefined, 100) && !ramoRecienCerrado(100, 100) && !ramoRecienCerrado(80, 90));
+chk('Home conserva el avance anterior en el DOM para no repetir el efecto al volver a renderizar',
+  /querySelectorAll\(['"]\.ramo-row\[data-progress\]/.test(app) &&
+  /dataset\.progress\s*=\s*String\(prog\.pct\)/.test(app));
+chk('el 100% se nombra como cierre y no como aprobación',
+  /100%\s*·\s*cerrado/.test(app) && !/prog\.pct===100[^;\n]*(aprob|éxito|logro)/i.test(app));
+const reglaCierre = (cssCodigo.match(/\.ramo-progress\.is-complete\{([^}]*)\}/) || [])[1] || '';
+chk('el cierre usa la identidad del ramo y no el semáforo académico',
+  /var\(--ramo-tint/.test(reglaCierre) && !/var\(--(?:green|yellow|red)/.test(reglaCierre));
+chk('la llegada al cierre tiene una versión reducida que conserva opacidad sin recorrido',
+  /\.ramo-progress\.just-completed[^}]*animation-name:\s*ramo-progress-close-reduce/.test(cssCodigo) &&
+  /@keyframes\s+ramo-progress-close-reduce\{[^}]*opacity:[^}]*\}[^}]*\}/.test(cssCodigo) &&
+  !/@keyframes\s+ramo-progress-close-reduce\{[^}]*transform/.test(cssCodigo));
 // Antes `.open` solo hacía display:flex — el sheet aparecía y desaparecía de
 // golpe, y por acá pasa todo flujo de la app.
 chk('el sheet parte fuera de pantalla', /\.modal-sheet\{transform:translateY\(100%\)/.test(css));

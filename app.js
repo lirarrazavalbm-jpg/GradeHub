@@ -1719,21 +1719,30 @@ function renderHome(){
   if(S.sortMode==='avg') ramos.sort((a,b)=>{const da=ramoAvg(a)??-1,db=ramoAvg(b)??-1;return db-da;});
   else if(S.sortMode==='name') ramos.sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
-  const c=document.getElementById('home-ramos');c.innerHTML='';
+  const c=document.getElementById('home-ramos');
+  // La lista sigue montada mientras la persona entra a un ramo. Leer el avance
+  // anterior desde esas filas permite distinguir un cierre real de un ramo que
+  // ya venía en 100%, sin guardar estado nuevo ni repetir el efecto en cada render.
+  const progresosAnteriores=new Map([...c.querySelectorAll('.ramo-row[data-progress]')]
+    .map(fila=>[fila.dataset.ramoId,Number(fila.dataset.progress)]));
+  c.innerHTML='';
   ramos.forEach(r=>{
     const avg=ramoAvg(r);const nc=r.categorias.length;
     const nn=r.categorias.reduce((a,c)=>a+c.notas.length,0);
     const prog=ramoProgress(r);
+    const completo=prog.pct===100;
+    const recienCerrado=ramoRecienCerrado(progresosAnteriores.get(r.id),prog.pct);
     let metaHtml;
     if(nc===0){
       metaHtml=`<span class="ramo-meta-text">Sin evaluaciones</span>`;
     } else if(nn===0){
       metaHtml=`<span class="ramo-meta-text">${nc} ${nc===1?'evaluación':'evaluaciones'}</span>`;
     } else {
-      const pctLabel=prog.pct===100?'completo':`${prog.pct}% evaluado`;
-      metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="transform:scaleX(${prog.pct/100})"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
+      const pctLabel=completo?'100% · cerrado':`${prog.pct}% evaluado`;
+      metaHtml=`<div class="ramo-progress${completo?' is-complete':''}${recienCerrado?' just-completed':''}" aria-hidden="true"><div class="ramo-progress-fill" style="transform:scaleX(${prog.pct/100})"></div></div><span class="ramo-meta-text${completo?' is-complete':''}">${pctLabel}</span>`;
     }
     const div=document.createElement('div');div.className='ramo-row';div.dataset.ramoId=r.id;div.onclick=()=>openRamo(r.id);
+    div.dataset.progress=String(prog.pct);
     if(S.sortMode==='manual')div.dataset.reorderable='true';
     div.style.setProperty('--ramo-tint',r.color);
     const control=S.sortMode==='manual'
@@ -4459,6 +4468,7 @@ function ramoProgress(r){
   });
   return {pct:Math.round(done/total*100),pending:total-done,total};
 }
+function ramoRecienCerrado(anterior,actual){return Number.isFinite(anterior)&&anterior<100&&actual===100;}
 
 function agendaEvents(){
   const out=[];
