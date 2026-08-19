@@ -20,6 +20,34 @@ const CACHE_OWNER_KEY = 'gradehub_cache_owner';
 function setCacheOwner(uid){try{if(uid)localStorage.setItem(CACHE_OWNER_KEY,uid);}catch(e){}}
 function getCacheOwner(){try{return localStorage.getItem(CACHE_OWNER_KEY);}catch(e){return null;}}
 
+// Las fechas del programa se agregaron después de que miles de ramos ya
+// existían, y  solo mira nombre y peso: una fecha nueva no cuenta
+// como "la pauta cambió", así que el aviso de actualizar nunca se dispara por
+// ella y el ramo se quedaría sin fecha para siempre. Por eso se rellena al
+// cargar, igual que la pauta pendiente de acá abajo.
+//
+// SOLO rellena lo que está vacío. La fecha que escribió el estudiante manda
+// sobre la nuestra: puede saber algo que el programa no dice —un cambio
+// anunciado en clases, la fecha real de su sección— y pisarla sería moverle la
+// Agenda por debajo.
+function completarFechasOficiales(r){
+  if(!r||!r.origen||!r.origen.tenant||!Array.isArray(r.categorias))return;
+  const presets=r.origen.tenant==='fen'?PRESETS_FEN:(r.origen.tenant==='uc'?PRESETS_UC:null);
+  if(!presets)return;
+  const clave=Object.keys(presets).find(n=>normName(n)===normName(r.nombre));
+  const def=clave&&presets[clave];
+  if(!def)return;
+  const evals=Array.isArray(def)?def:(def.evals||[]);
+  const porNombre=new Map();
+  evals.forEach(([nom,,extra])=>{if(extra&&extra.fecha)porNombre.set(normName(nom),extra.fecha);});
+  if(!porNombre.size)return;
+  r.categorias.forEach(c=>{
+    if(c.fecha)return;
+    const f=porNombre.get(normName(c.nombre));
+    if(f)c.fecha=f;
+  });
+}
+
 function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
   data.ramos = (data.ramos || []).map(r => ({
@@ -62,6 +90,7 @@ function normalize(data) {
   data.ramos.forEach(r => {
     const p = pautaPendiente(r);
     if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.pautaHuella = huellaPauta(p.categorias); }
+    completarFechasOficiales(r);
   });
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
@@ -2196,6 +2225,7 @@ function presetRamo(nombre,tenant,carrera){
       const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
       if(extra&&extra.slots)cat.slots=extra.slots;
       if(extra&&extra.lista)cat.directNota=false; // lista abierta: el estudiante agrega las notas que le tomaron
+      if(extra&&extra.fecha)cat.fecha=extra.fecha;
       if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
       categorias.push(cat);porNombre[nom]=id;
       if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});

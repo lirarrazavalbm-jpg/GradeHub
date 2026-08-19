@@ -223,12 +223,39 @@ console.log('\n=== `lista:true` abre la evaluación a N notas ===');
 // controles que le tomaron — ni `dropLowest` tiene entre qué descartar.
 const contaPreset = run('presetRamo')('Contabilidad', 'fen', null);
 const catPorNombre = n => contaPreset.categorias.find(c => c.nombre === n);
-['Controles de Lectura', 'Controles de Ejercicios', 'Controles Sorpresa'].forEach(n => {
+// Solo los Sorpresa: el programa fija cuántos son los de lectura y los de
+// ejercicios, así que esos van en filas propias con su fecha.
+['Controles Sorpresa'].forEach(n => {
   const c = catPorNombre(n);
   chk('Contabilidad · ' + n + ' es lista abierta', !!c && c.directNota === false && !c.slots);
 });
 // Y lo que NO cambia: una evaluación normal sigue siendo una sola nota.
 chk('Contabilidad · el Examen sigue siendo nota única', catPorNombre('Examen').directNota === true);
+
+console.log('\n=== Las fechas del programa llegan al ramo ===');
+// Sin esto la Agenda y el feed de calendario quedan vacíos aunque el programa
+// traiga las fechas: el constructor de presets FEN las ignoraba.
+chk('Contabilidad · el preset trae las fechas de los controles',
+  catPorNombre('Control de Lectura 1').fecha === '2026-08-07' &&
+  catPorNombre('Control de Ejercicios 4').fecha === '2026-10-30');
+// Una compuerta por control, no una sobre el promedio del grupo.
+chk('Contabilidad · cada control lleva su propio mínimo de 1,5',
+  contaPreset.gates.filter(g => g.min === 1.5).length === 9);
+
+// Un ramo creado antes de que existieran las fechas: se rellenan al cargar,
+// porque huellaPauta no mira la fecha y el aviso de "la pauta cambió" nunca se
+// dispararía por ella.
+const ramoSinFechas = run('normalize')({ ramos: [{
+  id: 'v1', nombre: 'Contabilidad', origen: { tenant: 'fen', carrera: null },
+  categorias: [
+    { id: 'a', nombre: 'Control de Lectura 1', peso: 3.33, notas: [] },
+    { id: 'b', nombre: 'Control de Ejercicios 1', peso: 10, fecha: '2026-12-25', notas: [] },
+  ], gates: [] }] }).ramos[0];
+chk('un ramo viejo recibe la fecha que le faltaba',
+  ramoSinFechas.categorias[0].fecha === '2026-08-07');
+// Lo que el estudiante escribió manda: puede saber algo que el programa no dice.
+chk('y la fecha que puso el estudiante no se pisa',
+  ramoSinFechas.categorias[1].fecha === '2026-12-25');
 // Los otros dos ramos donde el número de controles tampoco es fijo.
 [['Gestión y Empresas', 'Controles de Lectura'], ['Marketing', 'Controles']].forEach(([ramo, ev]) => {
   const c = run('presetRamo')(ramo, 'fen', null).categorias.find(x => x.nombre === ev);
