@@ -1549,6 +1549,10 @@ function renderHome(){
 
   const sortBtn=document.getElementById('sort-btn');
   if(sortBtn){
+    // Los íconos van en SVG como todo el resto: '↕' y '↓' son caracteres con
+    // presentación emoji y muchos sistemas los dibujan a color, así que
+    // quedaban como emoji sueltos en una interfaz que no usa ninguno. `.ic`
+    // mide 1em y ya está alineado para ir dentro de una línea de texto.
     const labels={manual:'Manual',avg:'Por nota',name:'A-Z'};
     const iconos={
       manual:'<path d="M7 6h13M7 12h13M7 18h13"/><circle cx="3.5" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r=".8" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r=".8" fill="currentColor" stroke="none"/>',

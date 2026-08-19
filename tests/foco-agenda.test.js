@@ -22,6 +22,7 @@ const ctx = {
 };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 const withPriority = vm.runInContext('withPriority', ctx);
+const funcionAgenda = nombre => vm.runInContext(`typeof ${nombre} === 'function' ? ${nombre} : null`, ctx);
 
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
@@ -81,6 +82,44 @@ chk('alta: dos días o menos con poco peso', withPriority(evento('x', 1, 5)).niv
 chk('alta: ramo reprobado', withPriority(evento('x', 10, 5, 2.0)).nivel === 'alta');
 chk('media: dentro de dos semanas', withPriority(evento('x', 14, 5)).nivel === 'media');
 chk('baja: lejos y liviana', withPriority(evento('x', 90, 10)).nivel === 'baja');
+
+console.log('\n=== La Agenda permite cambiar el orden sin perder su criterio propio ===');
+const ordenarAgenda = funcionAgenda('ordenarAgenda');
+const destacadasAgenda = funcionAgenda('destacadasAgenda');
+const agendaOrdenHTML = funcionAgenda('agendaOrdenHTML');
+const pendientes = [
+  evento('cercana', 3, 10),
+  evento('pesada', 40, 50),
+  evento('intermedia', 12, 20),
+].map(withPriority);
+const nombres = xs => xs.map(e => e.cat.nombre).join(',');
+chk('Recomendado conserva exactamente el orden por score que ya existía',
+  !!ordenarAgenda && nombres(ordenarAgenda(pendientes, 'recomendado')) === nombres([...pendientes].sort((a,b)=>b.score-a.score)));
+chk('Fecha pone primero lo que ocurre antes',
+  !!ordenarAgenda && nombres(ordenarAgenda(pendientes, 'fecha')) === 'cercana,intermedia,pesada');
+chk('Peso pone primero el porcentaje más alto',
+  !!ordenarAgenda && nombres(ordenarAgenda(pendientes, 'peso')) === 'pesada,intermedia,cercana');
+chk('las dos destacadas salen del criterio completo de fecha, peso y nota necesaria',
+  !!destacadasAgenda && destacadasAgenda(pendientes).length === 2 &&
+  nombres(destacadasAgenda(pendientes)) === nombres([...pendientes].sort((a,b)=>b.score-a.score).slice(0,2)));
+
+const controles = agendaOrdenHTML ? agendaOrdenHTML('recomendado') : '';
+chk('el selector ofrece Recomendado, Fecha y Peso',
+  /Recomendado/.test(controles) && />Fecha</.test(controles) && />Peso</.test(controles));
+chk('el orden activo se expone a tecnologías de asistencia',
+  /aria-pressed="true"/.test(controles) && /role="group"/.test(controles));
+
+console.log('\n=== Completar fechas sigue disponible sin competir con las prioridades ===');
+vm.runInContext(`S={ramos:[{
+  id:'agenda-ui',nombre:'Ramo agenda',color:'#2563eb',gates:[],categorias:[
+    {id:'con-fecha',nombre:'Prueba fechada',peso:30,fecha:'${iso(3)}',notas:[]},
+    {id:'sin-fecha',nombre:'Prueba sin fecha',peso:20,notas:[]}
+  ]
+}]};`, ctx);
+stub.innerHTML = '';
+vm.runInContext('renderAgenda()', ctx);
+chk('el bloque sin fecha se renderiza después de las evaluaciones destacadas',
+  stub.innerHTML.indexOf('ag-undated') > stub.innerHTML.indexOf('ag-priority-grid'));
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
