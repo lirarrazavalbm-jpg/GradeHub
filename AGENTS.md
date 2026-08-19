@@ -566,6 +566,30 @@ select split_part(email,'@',2) as dominio, count(*) from auth.users
 where deleted_at is null group by 1 order by 2 desc;
 ```
 
+**Las pautas tienen fecha de vencimiento y la app no lo sabe.** Hoy nueve
+evaluaciones del catálogo traen fecha fija —`fecha:'2026-09-24'` y compañía— y
+ningún preset declara a qué semestre pertenece. En marzo de 2027, un estudiante
+que agregue Introducción a la Programación va a recibir en su Agenda las fechas
+de septiembre de 2026, presentadas con la misma estrella de "pauta oficial" que
+todo lo demás. No falla nada: son fechas válidas, de otro semestre.
+
+Se piden dos cosas y conviene no confundirlas, porque tienen vida útil distinta:
+
+- **Mostrar, en chico, de cuándo es la pauta.** Un "pauta del 2026-2" junto a la
+  estrella basta. No es adorno: es lo que le permite al estudiante decidir si le
+  cree, y es la misma lógica del descargo — el número vale lo que valen sus
+  datos, así que hay que decir de cuándo son.
+- **Que la app sepa que un semestre terminó.** Requiere un campo de período en
+  el preset. Con eso puede dejar de ofrecer fechas viejas como si fueran de
+  ahora, y avisar que la pauta es de otro semestre en vez de callarlo.
+
+**Las ponderaciones y las fechas NO envejecen igual.** Los porcentajes de un
+programa suelen repetirse entre semestres; las fechas de las pruebas cambian
+siempre. Así que la pauta de 2026-2 probablemente sigue sirviendo en 2027-1 y
+sus fechas con seguridad no. Tratarlas como una sola cosa lleva a descartar
+pautas todavía buenas o a cargar fechas falsas: son dos decisiones separadas y
+el modelo tiene que poder decirlas por separado.
+
 **Notificaciones.** Primer paso concreto de la dirección nueva y el único que no
 depende de la App Store. Falta el handler de push en `sw.js`, pedir el permiso
 en el momento correcto —no al entrar, sino cuando ya hay algo que avisar— y el
