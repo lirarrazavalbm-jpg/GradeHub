@@ -1399,6 +1399,135 @@ function goHome(){showTab('home');}
   document.addEventListener('touchcancel',onEnd,{passive:true});
 })();
 
+// ─── ORDEN MANUAL DE RAMOS ─────────────────────────────────────────────────
+// En touch, mover al primer contacto vuelve imposible hacer scroll desde una
+// tarjeta. La espera separa las dos intenciones: deslizar antes de 420 ms sigue
+// siendo scroll; sostener activa el arrastre. Mouse no necesita esa defensa.
+const RAMO_LONG_PRESS_MS=420;
+const RAMO_MOVE_TOLERANCE=8;
+function esperaReordenRamo(pointerType){return pointerType==='touch'?RAMO_LONG_PRESS_MS:0;}
+function movimientoCancelaReorden(dx,dy){return Math.hypot(dx,dy)>RAMO_MOVE_TOLERANCE;}
+
+function guardarOrdenRamos(ids){
+  if(!Array.isArray(ids)||ids.length!==S.ramos.length||new Set(ids).size!==ids.length)return false;
+  const porId=new Map(S.ramos.map(r=>[r.id,r]));
+  if(ids.some(id=>!porId.has(id)))return false;
+  if(ids.every((id,i)=>S.ramos[i].id===id))return false;
+  S.ramos=ids.map(id=>porId.get(id));
+  save();
+  track('reorder_ramos',{count:S.ramos.length});
+  return true;
+}
+
+function moverRamoConTeclado(id,delta){
+  if(S.sortMode!=='manual')return;
+  const ids=S.ramos.map(r=>r.id),desde=ids.indexOf(id),hasta=desde+delta;
+  if(desde<0||hasta<0||hasta>=ids.length)return;
+  [ids[desde],ids[hasta]]=[ids[hasta],ids[desde]];
+  if(!guardarOrdenRamos(ids))return;
+  renderHome();
+  requestAnimationFrame(()=>{
+    const fila=[...document.querySelectorAll('#home-ramos .ramo-row')].find(el=>el.dataset.ramoId===id);
+    const handle=fila&&fila.querySelector('.ramo-drag-handle');
+    if(handle)handle.focus();
+  });
+}
+
+function activarReordenRamos(container){
+  const scroll=container.closest('.scroll');
+  [...container.querySelectorAll('.ramo-drag-handle')].forEach(handle=>{
+    const row=handle.closest('.ramo-row');
+    let timer=null,drag=null,startX=0,startY=0;
+
+    function moverGhost(x,y){
+      if(!drag)return;
+      drag.x=x;drag.y=y;
+      drag.ghost.style.left=(x-drag.offsetX)+'px';
+      drag.ghost.style.top=(y-drag.offsetY)+'px';
+    }
+
+    function reubicar(x,y){
+      if(!drag)return;
+      moverGhost(x,y);
+      if(scroll){
+        const sr=scroll.getBoundingClientRect();
+        if(y<sr.top+64)scroll.scrollTop-=12;
+        else if(y>sr.bottom-64)scroll.scrollTop+=12;
+      }
+      const hit=document.elementFromPoint(x,y);
+      const target=hit&&hit.closest&&hit.closest('#home-ramos .ramo-row');
+      if(!target||target===row||target.parentElement!==container)return;
+      const filas=[...container.querySelectorAll('.ramo-row')];
+      const desde=filas.indexOf(row),hasta=filas.indexOf(target);
+      if(desde<hasta)container.insertBefore(row,target.nextSibling);
+      else container.insertBefore(row,target);
+    }
+
+    function iniciar(x,y){
+      if(drag||S.sortMode!=='manual')return;
+      const rect=row.getBoundingClientRect();
+      const ghost=row.cloneNode(true);
+      ghost.classList.add('ramo-drag-ghost');
+      ghost.setAttribute('aria-hidden','true');
+      ghost.style.width=rect.width+'px';
+      document.body.appendChild(ghost);
+      drag={ghost,offsetX:x-rect.left,offsetY:y-rect.top,x,y};
+      row.classList.add('ramo-drag-source');
+      container.classList.add('ramo-reordering');
+      document.body.classList.add('ramo-drag-active');
+      moverGhost(x,y);
+    }
+
+    function terminar(){
+      clearTimeout(timer);timer=null;
+      if(!drag)return;
+      drag.ghost.remove();drag=null;
+      row.classList.remove('ramo-drag-source');
+      container.classList.remove('ramo-reordering');
+      document.body.classList.remove('ramo-drag-active');
+      guardarOrdenRamos([...container.querySelectorAll('.ramo-row')].map(el=>el.dataset.ramoId));
+    }
+
+    handle.addEventListener('touchstart',e=>{
+      if(e.touches.length!==1)return;
+      e.stopPropagation();
+      const t=e.touches[0];startX=t.clientX;startY=t.clientY;
+      clearTimeout(timer);
+      timer=setTimeout(()=>iniciar(startX,startY),esperaReordenRamo('touch'));
+    },{passive:true});
+    handle.addEventListener('touchmove',e=>{
+      if(e.touches.length!==1)return;
+      const t=e.touches[0];
+      if(!drag&&movimientoCancelaReorden(t.clientX-startX,t.clientY-startY)){
+        clearTimeout(timer);timer=null;
+        return; // no preventDefault: este gesto sigue siendo scroll
+      }
+      if(!drag)return;
+      e.preventDefault();e.stopPropagation();
+      reubicar(t.clientX,t.clientY);
+    },{passive:false});
+    handle.addEventListener('touchend',e=>{e.stopPropagation();terminar();},{passive:true});
+    handle.addEventListener('touchcancel',terminar,{passive:true});
+
+    handle.addEventListener('mousedown',e=>{
+      if(e.button!==0)return;
+      e.preventDefault();e.stopPropagation();
+      iniciar(e.clientX,e.clientY);
+      const move=ev=>{ev.preventDefault();reubicar(ev.clientX,ev.clientY);};
+      const up=()=>{document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);terminar();};
+      document.addEventListener('mousemove',move);
+      document.addEventListener('mouseup',up);
+    });
+    handle.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();});
+    handle.addEventListener('contextmenu',e=>e.preventDefault());
+    handle.addEventListener('keydown',e=>{
+      const delta=(e.key==='ArrowUp'||e.key==='ArrowLeft')?-1:(e.key==='ArrowDown'||e.key==='ArrowRight')?1:0;
+      if(!delta)return;
+      e.preventDefault();e.stopPropagation();moverRamoConTeclado(row.dataset.ramoId,delta);
+    });
+  });
+}
+
 function renderHome(){
   const g=gpa(S.ramos);
   const gpael=document.getElementById('home-gpa');
@@ -1420,15 +1549,19 @@ function renderHome(){
 
   const sortBtn=document.getElementById('sort-btn');
   if(sortBtn){
-    // Las flechas van en SVG como todo el resto de los íconos. '↕' y '↓' son
-    // caracteres con presentación emoji: muchos sistemas los dibujan a color y
-    // quedaban como dos emoji sueltos en una interfaz que no usa ninguno.
-    // `.ic` mide 1em y ya está alineado para ir dentro de una línea de texto.
-    const IC_REORDENAR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16"/><path d="m5 7 3-3 3 3"/><path d="M16 20V4"/><path d="m13 17 3 3 3-3"/></svg>';
-    const IC_DESCENDENTE='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg>';
-    const labels={manual:'Manual '+IC_REORDENAR,avg:'Por nota '+IC_DESCENDENTE,name:'A-Z'};
-    // innerHTML y no textContent: es marcado fijo de acá, sin nada del usuario.
-    sortBtn.innerHTML=labels[S.sortMode]||labels.manual;
+    // Los íconos van en SVG como todo el resto: '↕' y '↓' son caracteres con
+    // presentación emoji y muchos sistemas los dibujan a color, así que
+    // quedaban como emoji sueltos en una interfaz que no usa ninguno. `.ic`
+    // mide 1em y ya está alineado para ir dentro de una línea de texto.
+    const labels={manual:'Manual',avg:'Por nota',name:'A-Z'};
+    const iconos={
+      manual:'<path d="M7 6h13M7 12h13M7 18h13"/><circle cx="3.5" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r=".8" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r=".8" fill="currentColor" stroke="none"/>',
+      avg:'<path d="M5 6h14M8 12h11M11 18h8"/>',
+      name:'<path d="M5 7h6M5 17h6M16 5v14M13 16l3 3 3-3"/>'
+    };
+    const label=labels[S.sortMode]||labels.manual;
+    sortBtn.innerHTML=`<span>${label}</span><svg class="ic sort-mode-icon" viewBox="0 0 24 24" aria-hidden="true">${iconos[S.sortMode]||iconos.manual}</svg>`;
+    sortBtn.setAttribute('aria-label',`Orden actual: ${label}. Cambiar orden`);
   }
 
   const simGlobalBtn=document.getElementById('sim-global-btn');
@@ -1600,14 +1733,21 @@ function renderHome(){
       const pctLabel=prog.pct===100?'completo':`${prog.pct}% evaluado`;
       metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="transform:scaleX(${prog.pct/100})"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
     }
-    const div=document.createElement('div');div.className='ramo-row';div.onclick=()=>openRamo(r.id);
+    const div=document.createElement('div');div.className='ramo-row';div.dataset.ramoId=r.id;div.onclick=()=>openRamo(r.id);
+    if(S.sortMode==='manual')div.dataset.reorderable='true';
     div.style.setProperty('--ramo-tint',r.color);
+    const control=S.sortMode==='manual'
+      ? `<button type="button" class="ramo-drag-handle" aria-label="Mantén presionado para mover ${esc(r.nombre)}" title="Mantén presionado para mover">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="8" cy="18" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="18" r="1" fill="currentColor" stroke="none"/></svg>
+        </button>`
+      : '<span class="chevron-r">›</span>';
     div.innerHTML=`
       <div class="ramo-band" style="background:${esc(r.color)}"></div>
       <div class="ramo-info"><div class="ramo-name">${esc(r.nombre)}</div><div class="ramo-meta">${metaHtml}</div></div>
-      <div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div><span class="chevron-r">›</span>`;
+      <div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div>${control}`;
     c.appendChild(div);
   });
+  if(S.sortMode==='manual')activarReordenRamos(c);
 }
 function cycleSortMode(){
   S.sortMode=S.sortMode==='manual'?'avg':S.sortMode==='avg'?'name':'manual';
