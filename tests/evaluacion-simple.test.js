@@ -24,8 +24,8 @@ const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail
 
 console.log('\n=== Lo que se crea a mano queda como fila simple ===');
 // Las dos vías que crean evaluaciones: el modal de una sola y el editor de varias.
-chk('confirmAddCat marca directNota',
-  /r\.categorias\.push\(\{id:uid\(\),nombre:name,peso,fecha,ponderaNotas:false,directNota:true/.test(src));
+chk('confirmAddCat decide directNota con la casilla',
+  /r\.categorias\.push\(\{id:uid\(\),nombre:name,peso,fecha,ponderaNotas:false,directNota:!varias/.test(src));
 chk('guardarPautaManual marca directNota',
   /r\.categorias\.push\(\{id:uid\(\),nombre:f\.nombre\.trim\(\),peso:f\.peso,ponderaNotas:false,directNota:true/.test(src));
 // La fila simple es la misma rama de render que usan las pautas oficiales, así
@@ -85,6 +85,28 @@ chk('el texto sirve para una pauta mala y para una que falta',
 // `openReportModal` ya rechaza ese caso con un toast. Mejor no ofrecerlo.
 chk('solo aparece cuando el ramo tiene evaluaciones',
   /if\(r\.categorias\.length\)\{\s*rep\.style\.display='flex'/.test(src));
+
+console.log('\n=== La casilla "son varias notas" decide la forma ===');
+// Se ejercita confirmAddCat de verdad y no por regex: lo que importa no es cómo
+// está escrita la línea, sino qué queda guardado — de eso depende si el
+// estudiante ve una casilla suelta o la tarjeta con "+ Agregar nota".
+const campos = { 'm-cat-name': { value: 'Controles' }, 'm-cat-fecha': { value: '' }, 'm-cat-varias': { checked: false } };
+ctx.document.getElementById = id => campos[id] || stub;
+vm.runInContext('renderRamo=function(){};closeModal=function(){};save=function(){};', ctx);
+vm.runInContext('S={ramos:[{id:"r1",nombre:"Ramo",categorias:[],gates:[],notas:[]}]};currentRamoId="r1";', ctx);
+
+const ultimaCat = () => { const c = val('S.ramos[0].categorias'); return c[c.length - 1]; };
+
+val('confirmAddCat')();
+chk('sin marcar queda como fila simple', ultimaCat().directNota === true);
+
+campos['m-cat-varias'].checked = true;
+val('confirmAddCat')();
+const varias = ultimaCat();
+chk('marcada queda como lista abierta', varias.directNota === false);
+// Sin esto la rama de render sería la de casillas fijas, que necesita un número
+// que acá nadie dio.
+chk('y sin slots: el estudiante agrega las que quiera', !varias.slots);
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

@@ -2842,6 +2842,10 @@ function openAddCatModal(prefillDate){
     <label class="modal-label">Nombre</label>
     <div class="modal-input"><input type="text" id="m-cat-name" placeholder="Ej: Prueba 1, Tarea 2, Laboratorio" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     ${pesoControlHTML(30,null)}
+    <label class="modal-label" style="display:flex;align-items:center;gap:10px;text-transform:none;font-weight:500;letter-spacing:0;cursor:pointer;">
+      <input type="checkbox" id="m-cat-varias" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
+      <span>Son varias notas que se promedian <span style="color:var(--fg3);">(controles, laboratorios, tareas)</span></span>
+    </label>
     <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
     <div class="modal-input"><input type="date" id="m-cat-fecha" value="${esc(prefillDate||'')}" autocomplete="off"/></div>
     <div class="modal-btns">
@@ -2862,9 +2866,14 @@ function confirmAddCat(){
   // directNota: una evaluación es UNA nota que se escribe en su fila, igual que
   // en las pautas oficiales. Sin esto quedaba como una lista a la que había que
   // entrar para agregar notas adentro — una "Prueba 1" no tiene notas adentro,
-  // tiene una nota.
-  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,directNota:true,notas:[]});
-  save();track('add_categoria',{peso,tiene_fecha:!!fecha});closeModal();renderRamo();
+  // tiene una nota. Sigue siendo lo que sale por defecto.
+  //
+  // Pero "Controles 20%" sí tiene varias notas adentro, y a mano no había forma
+  // de decirlo: la casilla es el único camino que tiene el estudiante hacia la
+  // tarjeta con "+ Agregar nota" que las pautas oficiales usan vía `lista:true`.
+  const varias=!!(document.getElementById('m-cat-varias')||{}).checked;
+  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,directNota:!varias,notas:[]});
+  save();track('add_categoria',{peso,tiene_fecha:!!fecha,varias_notas:varias});closeModal();renderRamo();
 }
 
 // ─── PAUTA MANUAL ───────────────────────────────────────────────────────────
