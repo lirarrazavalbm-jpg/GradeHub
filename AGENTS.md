@@ -111,6 +111,10 @@ plausible.
 **El semáforo es semántico.** Verde/ámbar/rojo significan aprobado / al borde /
 reprobado. No se tiñen por tema ni por decoración.
 
+**Ojo con la especificidad de los campos.** La regla base `input[type=text]`
+gana contra una clase sola aunque aparezca antes; un padding especializado usa
+`input.clase` o `.contenedor input`, no `!important`.
+
 **`gradehub_v1` es la clave de localStorage.** No se renombra sin migración.
 
 **La `sb_secret_*` de Supabase nunca va en el código.** Solo la `sb_publishable_*`,

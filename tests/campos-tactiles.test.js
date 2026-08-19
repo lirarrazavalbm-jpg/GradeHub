@@ -41,5 +41,29 @@ chk('el ícono del calendario se agranda respecto del nativo',
 // Menos de 16px hace que iOS haga zoom al enfocar y descuadre la pantalla.
 chk('los campos no disparan zoom en iOS (16px o más)', /font-size:1[6-9]px/.test(regla));
 
+console.log('\n=== Los campos especializados pueden reservar su espacio ===');
+// La regla base incluye un atributo (`input[type=text]`): una clase sola tiene
+// menos especificidad y pierde aunque aparezca después. Eso montaba el % sobre
+// el valor en el reporte de ponderaciones porque volvía de 25px a 13px.
+const especificidad = selector => {
+  const ids = (selector.match(/#[\w-]+/g) || []).length;
+  const clases = (selector.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+/g) || []).length;
+  const limpio = selector
+    .replace(/#[\w-]+|\.[\w-]+|\[[^\]]+\]|::?[\w-]+/g, ' ')
+    .replace(/[>*+~(),]/g, ' ');
+  const tipos = (limpio.match(/\b[a-z][\w-]*\b/gi) || []).length;
+  return [ids, clases, tipos];
+};
+const comparaEspecificidad = (a, b) => {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i];
+  }
+  return 0;
+};
+const selectorPeso = (css.match(/([^{}]*rep-peso-input[^{}]*)\{[^}]*padding:\s*9px\s+25px/) || [])[1] || '';
+chk('el peso del reporte no pierde contra input[type=text]',
+  comparaEspecificidad(especificidad(selectorPeso), especificidad('input[type=text]')) >= 0);
+chk('reserva 25px para el sufijo %', /padding:\s*9px\s+25px\s+9px\s+9px/.test(css));
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
