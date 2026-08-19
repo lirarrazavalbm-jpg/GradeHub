@@ -116,12 +116,19 @@ const reglaCSSAgenda = selector => {
   return inicio<0?'':cssAgenda.slice(inicio,cssAgenda.indexOf('}',inicio)+1);
 };
 const reglaOrden = reglaCSSAgenda('.ag-order');
+const reglaOpciones = reglaCSSAgenda('.ag-order-options');
 const reglaOpcion = reglaCSSAgenda('.ag-order-option');
 const reglaActiva = reglaCSSAgenda('.ag-order-option.active');
 chk('la barra pasa a una sola línea en vez de apilar etiqueta y opciones',
   /align-items:center/.test(reglaOrden) && !/flex-direction:column/.test(reglaOrden));
-chk('las opciones bajan su altura visual sin volverse diminutas',
-  /min-height:40px/.test(reglaOpcion));
+chk('las opciones quedan junto a Orden y miden lo que necesita su texto',
+  /display:inline-flex/.test(reglaOpciones) &&
+  !/margin-left:auto/.test(reglaOpciones) && !/280px/.test(reglaOpciones));
+chk('Recomendado no puede desbordarse hacia el botón vecino',
+  /white-space:nowrap/.test(reglaOpcion) && /flex:0 0 auto/.test(reglaOpcion));
+const altoOpcion=Number((reglaOpcion.match(/min-height:(\d+)px/)||[])[1]);
+chk('el control secundario queda realmente más delgado',
+  altoOpcion>=30 && altoOpcion<=36);
 chk('el activo se distingue por superficie, contorno y acento',
   /background:var\(--card\)/.test(reglaActiva) && /box-shadow:/.test(reglaActiva) && /color:var\(--primary\)/.test(reglaActiva));
 
