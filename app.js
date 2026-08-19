@@ -85,6 +85,11 @@ function normalize(data) {
         nombre: n.nombre || 'Nota',
         valor: n.valor ?? (typeof n === 'number' ? n : null),
         peso: n.peso || 1,
+        // Una nota puede tener su propia fecha y todavía no tener valor: es una
+        // evaluación que viene. La fecha de la categoría sirve cuando todo el
+        // grupo cae el mismo día; no alcanza para "Casos y ensayos", que son
+        // varios casos repartidos por el semestre.
+        fecha: n.fecha || null,
       }))
     }))
   }));
@@ -2009,6 +2014,7 @@ function renderRamo(){
           <button class="nota-row-name" aria-label="Editar nota ${esc(n.nombre)}" onclick="openEditNotaModal('${cat.id}','${n.id}');event.stopPropagation();" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;font-size:14px;color:var(--fg2);flex:1;">${esc(n.nombre)}</button>
           ${n.peso!==1?`<span class="nota-row-pond">${n.peso}%</span>`:''}
           ${descartada?'<span class="nota-row-drop-tag">No cuenta</span>':''}
+          ${n.fecha?`<span class="cat-fecha-chip">${esc(fechaCorta(n.fecha))}</span>`:''}
           <span class="nota-row-val" style="color:${getColor(n.valor)}">${fmt(n.valor)}</span>
           <button class="nota-row-del" aria-label="Eliminar nota ${esc(n.nombre)}" onclick="deleteNota('${cat.id}','${n.id}');event.stopPropagation();">✕</button>
         </div>`;
@@ -3136,8 +3142,10 @@ function openAddNotaModal(catId){
     ${pauta.lista?'':`<div class="weight-setup-nudge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M3 8h18"/><path d="M4 8l2 10h12l2-10"/></svg><div><b>Tu pauta suma ${r2(pauta.total)}%.</b><br>Esta nota se guarda igual. Completa el resto cuando tengas la pauta.<br><button type="button" onclick="abrirPautaDesdeNota()">Editar pauta</button></div></div>`}
     <label class="modal-label">Nombre</label>
     <div class="modal-input"><input type="text" id="m-nota-name" placeholder="Ej: Prueba 1" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
-    <label class="modal-label">Nota (1.0 – 7.0)</label>
+    <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— déjala vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" placeholder="Ej: 5.5"/></div>
+    <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
+    <div class="modal-input"><input type="date" id="m-nota-fecha" autocomplete="off"/></div>
     <div class="toggle-row">
       <div><div class="toggle-label">Ponderación personalizada</div><div class="toggle-sub">Por defecto se promedia simple</div></div>
       <label class="toggle"><input type="checkbox" id="m-pond-toggle" onchange="togglePondSlider()"/><span class="toggle-slider"></span></label>
@@ -3156,7 +3164,10 @@ function openAddNotaModal(catId){
   function checkValid(){
     const n=document.getElementById('m-nota-name').value.trim();
     const v=parseNota(document.getElementById('m-nota-val').value);
-    document.getElementById('m-add-nota-btn').disabled=!n||isNaN(v);
+    // Solo el nombre es obligatorio: sin nota queda pendiente.
+    document.getElementById('m-add-nota-btn').disabled=!n;
+    const btn=document.getElementById('m-add-nota-btn');
+    if(btn)btn.textContent=isNaN(v)?'Anotar como pendiente':'Agregar nota';
   }
   document.getElementById('m-nota-name').addEventListener('input',checkValid);
   document.getElementById('m-nota-val').addEventListener('input',checkValid);
@@ -3167,12 +3178,19 @@ function togglePondSlider(){
 function confirmAddNota(catId){
   const name=document.getElementById('m-nota-name').value.trim();
   const val=parseNota(document.getElementById('m-nota-val').value);
-  if(!name||isNaN(val))return;
+  // La nota puede quedar pendiente: se registra qué viene y cuándo, y el valor
+  // se agrega al rendirla. `gradesOf` y `avgPond` ya ignoran las que no tienen
+  // valor, así que una pendiente no arrastra el promedio hacia abajo.
+  if(!name)return;
+  const fechaNota=(document.getElementById('m-nota-fecha')||{}).value||null;
   const usaPond=document.getElementById('m-pond-toggle').checked;
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
-  cat.notas.push({id:uid(),nombre:name,valor:val,peso});
-  openCats[catId]=true;save();track('add_nota',{ponderada:usaPond});closeModal();renderRamo();showToast(lecturaDespuesDeNota(r));
+  cat.notas.push({id:uid(),nombre:name,valor:isNaN(val)?null:val,peso,fecha:fechaNota});
+  openCats[catId]=true;save();track('add_nota',{ponderada:usaPond,pendiente:isNaN(val)});closeModal();renderRamo();
+  // Si trae fecha entra a la Agenda, que vive en otra pantalla.
+  if(typeof renderAgenda==='function')renderAgenda();
+  showToast(isNaN(val)?'Anotada para el '+fechaCorta(fechaNota||'')+' — agrega la nota cuando la rindas':lecturaDespuesDeNota(r));
 }
 
 // ─── MENÚ DE USUARIO ─────────────────────────────────────────────────────────
@@ -4108,8 +4126,10 @@ function openEditNotaModal(catId,notaId){
     <div class="modal-title">Editar nota</div>
     <label class="modal-label">Nombre</label>
     <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(n.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
-    <label class="modal-label">Nota (1.0 – 7.0)</label>
+    <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
+    <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
+    <div class="modal-input"><input type="date" id="m-nota-fecha" value="${esc(n.fecha||'')}" autocomplete="off"/></div>
     <div class="toggle-row">
       <div><div class="toggle-label">Ponderación personalizada</div><div class="toggle-sub">Por defecto se promedia simple</div></div>
       <label class="toggle"><input type="checkbox" id="m-pond-toggle" ${hasPond?'checked':''} onchange="togglePondSlider()"/><span class="toggle-slider"></span></label>
@@ -4125,9 +4145,9 @@ function openEditNotaModal(catId,notaId){
   openModal();
   setTimeout(()=>document.getElementById('m-nota-name').focus(),100);
   function checkValid(){
-    const v=parseNota(document.getElementById('m-nota-val').value);
     const nm=document.getElementById('m-nota-name').value.trim();
-    document.getElementById('m-edit-nota-btn').disabled=!nm||isNaN(v);
+    // Sin nota se guarda igual: queda pendiente.
+    document.getElementById('m-edit-nota-btn').disabled=!nm;
   }
   document.getElementById('m-nota-name').addEventListener('input',checkValid);
   document.getElementById('m-nota-val').addEventListener('input',checkValid);
@@ -4135,14 +4155,19 @@ function openEditNotaModal(catId,notaId){
 function confirmEditNota(catId,notaId){
   const name=document.getElementById('m-nota-name').value.trim();
   const val=parseNota(document.getElementById('m-nota-val').value);
-  if(!name||isNaN(val))return;
+  // Igual que al crearla: sin valor queda pendiente. Es el camino de vuelta —
+  // se anota la evaluación cuando se sabe la fecha y se completa al rendirla.
+  if(!name)return;
+  const fechaNota=(document.getElementById('m-nota-fecha')||{}).value||null;
   const usaPond=document.getElementById('m-pond-toggle').checked;
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
-  n.nombre=name;n.valor=Math.round(val*10)/10;n.peso=peso;
-  save();track('edit_nota');closeModal();renderRamo();showToast(lecturaDespuesDeNota(r));
+  n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;n.fecha=fechaNota;
+  save();track('edit_nota',{pendiente:isNaN(val)});closeModal();renderRamo();
+  if(typeof renderAgenda==='function')renderAgenda();
+  showToast(isNaN(val)?'Guardada como pendiente':lecturaDespuesDeNota(r));
 }
 
 // ─── CALCULADORA NOTA MÍNIMA ─────────────────────────────────────────────────
@@ -4558,13 +4583,29 @@ function agendaEvents(){
   const out=[];
   S.ramos.forEach(r=>{
     r.categorias.forEach(c=>{
+      // Las notas con fecha propia son evaluaciones sueltas dentro del grupo:
+      // "Casos y ensayos" puede tener tres casos en tres fechas distintas, y
+      // cada uno tiene que poder aparecer en su día. Si la nota trae fecha,
+      // manda la suya; la de la categoría vale para el grupo entero.
+      (c.notas||[]).forEach(n=>{
+        if(!n.fecha)return;
+        out.push({
+          fecha:n.fecha, ramo:r, cat:c, nota:n,
+          pending:n.valor===null||n.valor===undefined,
+          notas:[n], targetCount:1,
+        });
+      });
       if(!c.fecha)return;
-      const notasCount=(c.notas||[]).length;
+      const conFechaPropia=(c.notas||[]).filter(n=>n.fecha).length;
+      const notasCount=(c.notas||[]).length-conFechaPropia;
       const targetCount=c.slots||1;
       const pending=notasCount<targetCount;
+      // Si TODAS las notas del grupo tienen su propia fecha, la del grupo ya no
+      // aporta: mostrarla duplicaría lo mismo en otro día.
+      if(conFechaPropia&&notasCount<=0&&(c.slots||0)<=conFechaPropia)return;
       out.push({
         fecha:c.fecha, ramo:r, cat:c, pending,
-        notas:c.notas||[], targetCount,
+        notas:(c.notas||[]).filter(n=>!n.fecha), targetCount,
       });
     });
   });
