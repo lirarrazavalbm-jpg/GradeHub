@@ -234,7 +234,10 @@
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
         Agregar ramo
       </button>
-      <button class="section-hd-action" id="sort-btn" onclick="cycleSortMode()" aria-label="Ordenar ramos">Manual ↕</button>
+      <button class="section-hd-action" id="sort-btn" onclick="cycleSortMode()" aria-label="Orden actual: Manual. Cambiar orden">
+        <span>Manual</span>
+        <svg class="ic sort-mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 6h13M7 12h13M7 18h13"/><circle cx="3.5" cy="6" r=".8" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r=".8" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r=".8" fill="currentColor" stroke="none"/></svg>
+      </button>
     </div>
     <div id="home-ramos"></div>
     <button class="sim-global-cta" id="sim-global-btn" onclick="openSimGlobalModal()" style="display:none;">
