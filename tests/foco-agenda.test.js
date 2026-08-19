@@ -108,6 +108,22 @@ chk('el selector ofrece Recomendado, Fecha y Peso',
   /Recomendado/.test(controles) && />Fecha</.test(controles) && />Peso</.test(controles));
 chk('el orden activo se expone a tecnologías de asistencia',
   /aria-pressed="true"/.test(controles) && /role="group"/.test(controles));
+chk('el control secundario usa una etiqueta corta',
+  />Orden</.test(controles) && !/Ordenar por/.test(controles));
+const cssAgenda = fs.readFileSync(__dirname + '/../styles.css', 'utf8');
+const reglaCSSAgenda = selector => {
+  const inicio=cssAgenda.indexOf(selector+'{');
+  return inicio<0?'':cssAgenda.slice(inicio,cssAgenda.indexOf('}',inicio)+1);
+};
+const reglaOrden = reglaCSSAgenda('.ag-order');
+const reglaOpcion = reglaCSSAgenda('.ag-order-option');
+const reglaActiva = reglaCSSAgenda('.ag-order-option.active');
+chk('la barra pasa a una sola línea en vez de apilar etiqueta y opciones',
+  /align-items:center/.test(reglaOrden) && !/flex-direction:column/.test(reglaOrden));
+chk('las opciones bajan su altura visual sin volverse diminutas',
+  /min-height:40px/.test(reglaOpcion));
+chk('el activo se distingue por superficie, contorno y acento',
+  /background:var\(--card\)/.test(reglaActiva) && /box-shadow:/.test(reglaActiva) && /color:var\(--primary\)/.test(reglaActiva));
 
 console.log('\n=== Completar fechas sigue disponible sin competir con las prioridades ===');
 vm.runInContext(`S={ramos:[{
