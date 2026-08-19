@@ -1420,8 +1420,15 @@ function renderHome(){
 
   const sortBtn=document.getElementById('sort-btn');
   if(sortBtn){
-    const labels={manual:'Manual ↕',avg:'Por nota ↓',name:'A-Z'};
-    sortBtn.textContent=labels[S.sortMode]||labels.manual;
+    // Las flechas van en SVG como todo el resto de los íconos. '↕' y '↓' son
+    // caracteres con presentación emoji: muchos sistemas los dibujan a color y
+    // quedaban como dos emoji sueltos en una interfaz que no usa ninguno.
+    // `.ic` mide 1em y ya está alineado para ir dentro de una línea de texto.
+    const IC_REORDENAR='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16"/><path d="m5 7 3-3 3 3"/><path d="M16 20V4"/><path d="m13 17 3 3 3-3"/></svg>';
+    const IC_DESCENDENTE='<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg>';
+    const labels={manual:'Manual '+IC_REORDENAR,avg:'Por nota '+IC_DESCENDENTE,name:'A-Z'};
+    // innerHTML y no textContent: es marcado fijo de acá, sin nada del usuario.
+    sortBtn.innerHTML=labels[S.sortMode]||labels.manual;
   }
 
   const simGlobalBtn=document.getElementById('sim-global-btn');
