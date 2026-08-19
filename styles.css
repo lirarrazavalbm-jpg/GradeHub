@@ -11,10 +11,10 @@ button:active{transform:scale(.97);}
 /* El movimiento reducido se atiende entero al final del archivo, junto al
    bloque de ritmo. Acá había un `*{...:.01ms!important}` que apagaba todo. */
 :root{
-  --bg:#f2f7f8;--bg2:#fff;--card:#fff;--border:#deebee;--border2:#bccdd2;
+  --bg:#f2f7f8;--bg2:#ffffff;--card:#ffffff;--border:#deebee;--border2:#bccdd2;
   --primary:#0d7a6b;--primary-fg:#ffffff;--primary-light:#dff7f2;--accent:#56e2e8;--secondary:#0d7a6b;
-  --fg:#07171b;--fg2:#40565b;--fg3:#7a8e93;
-  --green:#0d9488;--green-bg:#e6f7f5;--green-border:#a7ebe1;
+  --fg:#07171b;--fg2:#40565b;--fg3:#5f7479;
+  --green:#0f766e;--green-bg:#e6f7f5;--green-border:#a7ebe1;
   --yellow:#a16207;--yellow-bg:#fdf9e7;
   --red:#c02b3f;--red-bg:#fdecef;
   /* En claro los extremos se vuelven profundos para seguir leyéndose sobre blanco. */
@@ -38,15 +38,15 @@ button:active{transform:scale(.97);}
   :root:not([data-modo="claro"]){
     /* Fondo casi negro azulado. Los grises suben en pasos parejos
        para que las cards se despeguen sin necesitar bordes fuertes. */
-    --bg:#070b0e;--bg2:#0d1418;--card:#141d22;--border:#26343a;--border2:#3a4b52;
+    --bg:#05070a;--bg2:#0a0f13;--card:#111820;--border:#20303a;--border2:#324755;
     --primary:#2dd4bf;--primary-fg:#04231e;--primary-light:#0a2b26;--accent:#56e2e8;--secondary:#2dd4bf;
-    --fg:#eef4f6;--fg2:#99aab2;--fg3:#657780;
+    --fg:#eef4f6;--fg2:#99aab2;--fg3:#71858f;
     /* Notas: saturadas y luminosas contra el fondo oscuro */
     --green:#2ecc40;--green-bg:#08210d;--green-border:#155224;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
     --grade-light:62%;--grade-urgent-light:58%;--grade-perfect-light:58%;
-    --muted:#182228;
+    --muted:#151d26;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
     /* En oscuro el texto del botón es oscuro, así que acá el degradado sí se
@@ -58,15 +58,15 @@ button:active{transform:scale(.97);}
   :root[data-modo="oscuro"]{
     /* Fondo casi negro azulado. Los grises suben en pasos parejos
        para que las cards se despeguen sin necesitar bordes fuertes. */
-    --bg:#070b0e;--bg2:#0d1418;--card:#141d22;--border:#26343a;--border2:#3a4b52;
+    --bg:#05070a;--bg2:#0a0f13;--card:#111820;--border:#20303a;--border2:#324755;
     --primary:#2dd4bf;--primary-fg:#04231e;--primary-light:#0a2b26;--accent:#56e2e8;--secondary:#2dd4bf;
-    --fg:#eef4f6;--fg2:#99aab2;--fg3:#657780;
+    --fg:#eef4f6;--fg2:#99aab2;--fg3:#71858f;
     /* Notas: saturadas y luminosas contra el fondo oscuro */
     --green:#2ecc40;--green-bg:#08210d;--green-border:#155224;
     --yellow:#ffc94d;--yellow-bg:#231a06;
     --red:#ff5f7a;--red-bg:#280d15;
     --grade-light:62%;--grade-urgent-light:58%;--grade-perfect-light:58%;
-    --muted:#182228;
+    --muted:#151d26;
     --shadow:0 1px 2px rgba(0,0,0,.5),0 6px 20px -6px rgba(0,0,0,.6);
     --shadow-lg:0 10px 36px -10px rgba(0,0,0,.75);
     /* En oscuro el texto del botón es oscuro, así que acá el degradado sí se

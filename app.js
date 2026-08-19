@@ -149,6 +149,7 @@ function normalize(data) {
   if(data.carrera==='IC-CE'||data.carrera==='IC-AE')data.carrera='IC';
   data.modo = ['claro','oscuro'].includes(data.modo) ? data.modo : 'sistema';
   data.acento = ACENTOS[data.acento] ? data.acento : 'turquesa';
+  data.fondo = FONDOS[data.fondo] ? data.fondo : 'neutro';
   data.sortMode = ['manual','avg','name'].includes(data.sortMode) ? data.sortMode : 'manual';
   return data;
 }
@@ -230,27 +231,29 @@ function setAcento(acento){
 }
 function applyTheme(){
   aplicarModo();
-  const th={...THEME_BASE,...(ACENTOS[(S&&S.acento)||'turquesa']||GRADEHUB_THEME)};
+  const th=ACENTOS[(S&&S.acento)||'turquesa']||GRADEHUB_THEME;
   const r=document.documentElement.style;
   const dark=prefersDark();
+  const modo=dark?'oscuro':'claro';
+  const fondo=FONDOS[(S&&S.fondo)||'neutro']||FONDOS.neutro;
+  const surf=fondo[modo];
+  const sem=SEMAFORO[modo];
   // Acentos: valen en ambos modos
   r.setProperty('--primary',dark?(th.darkPrimary||th.primary):th.primary);
   r.setProperty('--primary-fg',dark?(th.darkPrimaryFg||th.primaryFg):th.primaryFg);
   r.setProperty('--primary-light',dark?th.darkPrimaryLight:th.primaryLight);
   r.setProperty('--accent',th.accent);
   r.setProperty('--secondary',dark?(th.darkSecondary||th.secondary||th.accent):(th.secondary||th.accent));
-  r.setProperty('--green',th.success);
-  r.setProperty('--yellow',th.warning);
-  r.setProperty('--red',th.danger);
-  // Superficies: solo en oscuro. En claro se quitan para que rija la base del CSS
-  // (un fondo oscuro sobre texto oscuro sería ilegible).
-  const surf=dark?th.dark:null;
-  SURFACE_KEYS.forEach(k=>{
-    const v=surf&&surf[k];
-    if(v)r.setProperty('--'+k,v); else r.removeProperty('--'+k);
-  });
+  r.setProperty('--green',sem.green);
+  r.setProperty('--green-bg',sem.greenBg);
+  r.setProperty('--green-border',sem.greenBorder);
+  r.setProperty('--yellow',sem.yellow);
+  r.setProperty('--yellow-bg',sem.yellowBg);
+  r.setProperty('--red',sem.red);
+  r.setProperty('--red-bg',sem.redBg);
+  SURFACE_KEYS.forEach(k=>r.setProperty('--'+k,surf[k]));
   const meta=document.querySelector('meta[name="theme-color"]');
-  if(meta)meta.setAttribute('content',(surf&&surf.bg)||'#05070a');
+  if(meta)meta.setAttribute('content',surf.bg);
 }
 // Si el sistema cambia de claro a oscuro, recalcular las superficies del tema
 if(window.matchMedia){
@@ -352,7 +355,7 @@ function renderTenantPick(){
 function portalFor(tenant){return tenant==='uc'?PORTAL_UC:PORTAL;}
 
 // ─── ESTADO ──────────────────────────────────────────────────────────────────
-let S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema'};
+let S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema',acento:'turquesa',fondo:'neutro'};
 let currentRamoId=null,openCats={},selectedSem=1,selectedCarrera=null,selectedCarreraNombre=null,carreraFiltro='',modalColor=COLORS[0];
 let openHist={};
 
@@ -766,7 +769,7 @@ try{
   }
 }catch(e){console.warn('Supabase no inicializado:',e);}
 
-function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema',acento:'turquesa',carreraNombre:null};}
+function freshState(){return{ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',onboardingDone:false,historial:[],sortMode:'manual',modo:'sistema',acento:'turquesa',fondo:'neutro',carreraNombre:null};}
 
 function authError(msg,kind){
   // kind: 'error' (default, rojo) | 'info' (neutro, para mensajes tipo "revisa tu correo")

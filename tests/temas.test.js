@@ -57,19 +57,32 @@ function ctxFor(dark) {
 const TENANT_CODES = ['fen', 'uc', 'uai', 'uandes'];
 const dark = ctxFor(true), P = dark.__props;
 const reset = () => Object.keys(P).forEach(k => delete P[k]);
-const snapshot = () => ['--primary', '--primary-fg', '--primary-light', '--accent', '--secondary', '--green', '--yellow', '--red', '--bg', '--bg2', '--card', '--border', '--border2', '--muted'].map(k => P[k]).join('|');
+const snapshot = () => ['--primary', '--primary-fg', '--primary-light', '--accent', '--secondary', '--green', '--yellow', '--red', '--bg', '--bg2', '--card', '--border', '--border2', '--muted', '--fg', '--fg2', '--fg3'].map(k => P[k]).join('|');
 
 console.log('\n=== Una identidad, sin importar la universidad ===');
 const theme = vm.runInContext('GRADEHUB_THEME', dark);
 chk('no queda registro THEMES por universidad', vm.runInContext('typeof THEMES', dark) === 'undefined');
-chk('tiene todos los tokens de identidad', ['primary', 'primaryFg', 'primaryLight', 'darkPrimary', 'darkPrimaryFg', 'darkPrimaryLight', 'accent', 'secondary', 'darkSecondary', 'dark'].every(k => k in theme));
+chk('tiene todos los tokens de identidad', ['primary', 'primaryFg', 'primaryLight', 'darkPrimary', 'darkPrimaryFg', 'darkPrimaryLight', 'accent', 'secondary', 'darkSecondary'].every(k => k in theme));
+chk('la identidad ya no contiene superficies', !('dark' in theme));
+
+console.log('\n=== Fondos separados de la identidad ===');
+const tieneFondos = vm.runInContext('typeof FONDOS !== "undefined"', dark);
+chk('existe un registro de fondos independiente de ACENTOS', tieneFondos);
+chk('las cuentas anteriores reciben el fondo neutro al normalizar',
+  tieneFondos && vm.runInContext('normalize({ramos:[]}).fondo', dark) === 'neutro');
+const fondos = vm.runInContext('FONDOS', dark);
+const fondoKeys = ['bg','bg2','card','border','border2','muted','fg','fg2','fg3'];
+chk('el fondo neutro declara claro y oscuro completos', ['claro','oscuro'].every(m =>
+  fondoKeys.every(k => typeof fondos.neutro[m][k] === 'string')));
+chk('normalize descarta fondos desconocidos sin perder los datos',
+  vm.runInContext('normalize({ramos:[],fondo:"inventado"}).fondo', dark) === 'neutro');
 
 console.log('\n=== El CSS parte con la identidad correcta ===');
 // applyTheme() reemplaza estos tokens en cuanto corre app.js, pero antes de eso
 // el navegador pinta los defaults de styles.css. Si se desincronizan, cada carga
 // fría parte con otra identidad y después salta de color. La 404 ya tenía esta
 // misma guarda: acá cubrimos los tres bloques que pinta la app principal.
-const tokensCss = bloque => Object.fromEntries([...bloque.matchAll(/(--(?:primary(?:-fg|-light)?|accent|secondary)):([^;]+)/g)].map(([, k, v]) => [k, v.trim()]));
+const tokensCss = bloque => Object.fromEntries([...bloque.matchAll(/(--[a-z0-9-]+):([^;]+)/g)].map(([, k, v]) => [k, v.trim()]));
 const bloqueCss = selector => (css.match(selector) || [])[1] || '';
 const defaultsCss = [
   ['claro', bloqueCss(/:root\{([^}]*)\}/), {
@@ -92,6 +105,15 @@ defaultsCss.forEach(([modo, bloque, esperado]) => {
   const actuales = tokensCss(bloque);
   chk(`${modo}: los cinco tokens iniciales calzan con GRADEHUB_THEME`,
     Object.entries(esperado).every(([k, v]) => actuales[k] === v));
+});
+[
+  ['claro', bloqueCss(/:root\{([^}]*)\}/), fondos.neutro.claro],
+  ['oscuro del sistema', bloqueCss(/:root:not\(\[data-modo="claro"\]\)\{([^}]*)\}/), fondos.neutro.oscuro],
+  ['oscuro forzado', bloqueCss(/:root\[data-modo="oscuro"\]\{([^}]*)\}/), fondos.neutro.oscuro],
+].forEach(([modo, bloque, esperado]) => {
+  const actuales=tokensCss(bloque);
+  chk(`${modo}: la carga fría calza con el fondo neutro`,
+    fondoKeys.every(k=>actuales['--'+k]===esperado[k]));
 });
 chk('styles.css no conserva el cian de la identidad anterior',
   ['#087f98','#e2f6f8','#22d3ee','#05252b','#0b2930','#65e6f4'].every(c => !css.includes(c)));
@@ -229,17 +251,37 @@ const light = ctxFor(false), PL = light.__props;
 TENANT_CODES.forEach(code => {
   Object.keys(PL).forEach(k => delete PL[k]);
   light.applyTheme(code);
-  chk(code + ' conserva la superficie clara del CSS', ['--bg', '--card', '--border'].every(k => !(k in PL)));
+  chk(code + ' aplica el fondo claro elegido', fondoKeys.every(k => PL['--'+k] === fondos.neutro.claro[k]));
   chk(code + ' conserva el cian profundo en claro', PL['--primary'] === theme.primary && PL['--primary-fg'] === theme.primaryFg);
   chk(code + ' usa el tinte claro', PL['--primary-light'] === theme.primaryLight);
 });
 reset(); dark.applyTheme('uc');
+chk('oscuro aplica el fondo oscuro elegido', fondoKeys.every(k => P['--'+k] === fondos.neutro.oscuro[k]));
 chk('oscuro usa el cian luminoso', P['--primary'] === theme.darkPrimary && P['--primary-fg'] === theme.darkPrimaryFg);
 chk('oscuro usa el tinte oscuro', P['--primary-light'] === theme.darkPrimaryLight);
 
-console.log('\n=== Semáforo fijo y separado de la identidad ===');
+console.log('\n=== Texto y semáforo legibles en ambos modos ===');
+const semaforo=vm.runInContext('SEMAFORO',dark);
+[['claro',fondos.neutro.claro,semaforo.claro],['oscuro',fondos.neutro.oscuro,semaforo.oscuro]].forEach(([modo,f,s])=>{
+  ['bg','bg2','card'].forEach(superficie=>{
+    chk(`${modo}: texto principal sobre ${superficie} ≥7`,ratio(f.fg,f[superficie])>=7);
+    chk(`${modo}: texto secundario sobre ${superficie} ≥4.5`,ratio(f.fg2,f[superficie])>=4.5);
+    chk(`${modo}: texto terciario sobre ${superficie} ≥4.5`,ratio(f.fg3,f[superficie])>=4.5);
+    ['green','yellow','red'].forEach(color=>
+      chk(`${modo}: ${color} sobre ${superficie} ≥4.5`,ratio(s[color],f[superficie])>=4.5));
+  });
+});
+Object.keys(PL).forEach(k=>delete PL[k]);light.applyTheme('fen');
+chk('claro usa su propio semáforo', ['green','yellow','red'].every(k=>PL['--'+k]===semaforo.claro[k]));
+reset();dark.applyTheme('fen');
+chk('oscuro usa su propio semáforo', ['green','yellow','red'].every(k=>P['--'+k]===semaforo.oscuro[k]));
+
+console.log('\n=== Semáforo fijo y separado del acento ===');
 const sem = TENANT_CODES.map(code => { reset(); dark.applyTheme(code); return [P['--green'], P['--yellow'], P['--red']].join('|'); });
 chk('semáforo idéntico en todos los tenants', new Set(sem).size === 1);
+vm.runInContext('S.acento="cobre"',dark);reset();dark.applyTheme('fen');
+chk('cambiar el acento no tiñe el semáforo', [P['--green'],P['--yellow'],P['--red']].join('|')===sem[0]);
+vm.runInContext('S.acento="turquesa"',dark);
 console.log('  ' + sem[0]);
 
 console.log('\n=== Semáforo gradual dentro de cada categoría ===');

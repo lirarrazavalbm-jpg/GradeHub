@@ -166,16 +166,21 @@ const TENANT_GLYPHS={
 //
 // Cian profundo: da energía sin apropiarse del verde del semáforo. El cian de
 // los ramos sigue siendo más luminoso y funciona solo como identificador.
-const THEME_BASE={
-  // Semáforo de notas. Se deja IGUAL en todos los temas a propósito: verde/ámbar/
-  // rojo son semánticos (aprobado / al borde / reprobado), no decorativos. Teñirlos
-  // por universidad haría ilegible lo único que la app tiene que comunicar sin error.
-  // El verde de aprobado se corrió de #2ee6c8 (170°, menta) a #2ecc40 (127°,
-  // verde). El menta era prácticamente el turquesa de la marca —2° de matiz— y
-  // con la identidad puesta en el turquesa de og.png, cada botón se habría leído
-  // como un estado "aprobado". Se mueve el semáforo porque el color de la marca
-  // lo eligió una persona; el del semáforo solo tiene que ser inconfundible.
-  success:'#2ecc40', warning:'#ffc94d', danger:'#ff5f7a',
+// Semáforo de notas. Vive fuera de ACENTOS y FONDOS porque verde/ámbar/rojo son
+// semánticos (aprobado / al borde / reprobado), no decorativos. Cada modo tiene
+// sus propios valores: los colores luminosos del modo oscuro no alcanzan
+// contraste sobre las superficies claras.
+const SEMAFORO={
+  claro:{
+    green:'#0f766e',greenBg:'#e6f7f5',greenBorder:'#a7ebe1',
+    yellow:'#a16207',yellowBg:'#fdf9e7',
+    red:'#c02b3f',redBg:'#fdecef',
+  },
+  oscuro:{
+    green:'#2ecc40',greenBg:'#08210d',greenBorder:'#155224',
+    yellow:'#ffc94d',yellowBg:'#231a06',
+    red:'#ff5f7a',redBg:'#280d15',
+  },
 };
 
 // La identidad es la de og.png, la tarjeta social del producto, con sus colores
@@ -200,13 +205,9 @@ const GRADEHUB_THEME={
   primary:'#0d7a6b', primaryFg:'#ffffff', primaryLight:'#dff7f2',
   darkPrimary:'#2dd4bf', darkPrimaryFg:'#04231e', darkPrimaryLight:'#0a2b26',
   accent:'#56e2e8', secondary:'#0d7a6b', darkSecondary:'#2dd4bf',
-  // bg es literalmente el fondo de og.png.
-  dark:{bg:'#05070a',bg2:'#0a0f13',card:'#111820',border:'#20303a',border2:'#324755',muted:'#151d26'},
 };
-// Acentos elegibles. Las superficies oscuras siguen siendo una sola identidad:
-// cambiar el acento no convierte cada opción en un tema distinto ni toca el
-// semáforo. Turquesa referencia los valores históricos para que la carga fría
-// de styles.css y el primer applyTheme() sigan pintando exactamente lo mismo.
+// Acentos elegibles. Cambiar el acento no convierte cada opción en un tema
+// distinto ni toca fondos o semáforo.
 const ACENTOS={
   turquesa:{nombre:'Turquesa',...GRADEHUB_THEME},
   azul:{
@@ -242,7 +243,25 @@ const ACENTOS={
     accent:'#eab5d1',secondary:'#8b1e4a',darkSecondary:'#f0bfd1',
   },
 };
-const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
+
+// Fondos y acentos son dos decisiones independientes. Por ahora solo se expone
+// el neutro histórico; este registro deja definido el contrato que deberán
+// cumplir las variantes futuras en claro y oscuro antes de ofrecerlas.
+const FONDOS={
+  neutro:{
+    nombre:'Neutro',
+    claro:{
+      bg:'#f2f7f8',bg2:'#ffffff',card:'#ffffff',border:'#deebee',border2:'#bccdd2',muted:'#eaf2f4',
+      fg:'#07171b',fg2:'#40565b',fg3:'#5f7479',
+    },
+    oscuro:{
+      // bg conserva el fondo de og.png y la apariencia histórica por defecto.
+      bg:'#05070a',bg2:'#0a0f13',card:'#111820',border:'#20303a',border2:'#324755',muted:'#151d26',
+      fg:'#eef4f6',fg2:'#99aab2',fg3:'#71858f',
+    },
+  },
+};
+const SURFACE_KEYS=['bg','bg2','card','border','border2','muted','fg','fg2','fg3'];
 
 // Carreras y mallas por universidad. Presets verificados solo en ING-PC (1er sem).
 // ─── CARRERAS QUE SE PUEDEN DECLARAR ─────────────────────────────────────────
