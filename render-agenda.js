@@ -19,6 +19,7 @@ function abrirFechaAgenda(item){
 // una migración del estado que ya tienen los estudiantes en producción.
 const AGENDA_ORDENES=['recomendado','fecha','peso'];
 let agendaOrdenActual='recomendado';
+let agendaDetalleAbierto=null;
 
 function ordenarAgenda(pendientes,orden='recomendado'){
   const criterio=AGENDA_ORDENES.includes(orden)?orden:'recomendado';
@@ -90,6 +91,127 @@ function agendaDestacadaHTML(e,posicion){
   </button>`;
 }
 
+function agendaEventoKey(e){
+  return `${e.ramo.id}--${e.cat.id}`.replace(/[^a-zA-Z0-9_-]/g,'-');
+}
+
+// La Agenda conoce la nota necesaria como promedio de TODO lo pendiente. Si
+// quedan varias evaluaciones, presentarla como "la nota que necesitas aquí"
+// sería una precisión falsa: depende de cómo le vaya en las demás.
+function referenciaEvaluacionAgenda(e){
+  const descarte=reglaDescarteConCantidadAbierta(e.ramo);
+  if(descarte)return {
+    titulo:'Todavía no hay una meta exacta',
+    texto:`Depende de cuántas notas entren en ${descarte.nombre}.`,
+  };
+  if(e.necesita===null)return {
+    titulo:'Todavía no hay una meta calculable',
+    texto:'Completa la pauta del ramo para estimar cuánto necesitas.',
+  };
+  if(e.necesita>7.05)return {
+    titulo:'No alcanza solo con lo pendiente',
+    texto:'Abre el ramo para revisar alternativas y reglas de aprobación.',
+  };
+  if(e.necesita<=1.0)return {
+    titulo:'Tienes margen para aprobar',
+    texto:'Incluso un promedio bajo en lo pendiente mantiene el ramo sobre 4,0.',
+  };
+  return {
+    titulo:`${nf(e.necesita)} para aprobar`,
+    texto:`Necesitas ${nf(e.necesita)} promedio en lo pendiente para llegar a 4,0.`,
+  };
+}
+
+function siguienteEvaluacionAgenda(actual,pendientes){
+  const cronologia=ordenarAgenda(pendientes,'fecha');
+  const indice=cronologia.findIndex(e=>agendaEventoKey(e)===agendaEventoKey(actual));
+  return indice>=0?cronologia[indice+1]||null:null;
+}
+
+function detalleEvaluacionAgendaHTML(e,pendientes){
+  const referencia=referenciaEvaluacionAgenda(e);
+  const siguiente=siguienteEvaluacionAgenda(e,pendientes);
+  const key=agendaEventoKey(e);
+  const despues=siguiente?{
+    titulo:siguiente.cat.nombre,
+    texto:`${cuandoTexto(siguiente.dias)} · ${siguiente.ramo.nombre}`,
+  }:{
+    titulo:'Nada más agendado',
+    texto:'Es la última evaluación pendiente con fecha.',
+  };
+  return `<div class="ag-event-detail" id="ag-detail-${key}" role="region" aria-labelledby="ag-trigger-${key}" hidden>
+    <div class="ag-event-detail-block">
+      <span class="ag-event-detail-label">Tu referencia</span>
+      <strong>${esc(referencia.titulo)}</strong>
+      <span>${esc(referencia.texto)}</span>
+    </div>
+    <div class="ag-event-detail-block">
+      <span class="ag-event-detail-label">Después</span>
+      <strong>${esc(despues.titulo)}</strong>
+      <span>${esc(despues.texto)}</span>
+    </div>
+    <button type="button" class="ag-event-course" onclick="openRamo('${esc(e.ramo.id)}')">Ver ramo</button>
+  </div>`;
+}
+
+function agendaEventoHTML(e,contenido,pendientes,tipo='row'){
+  const key=agendaEventoKey(e);
+  return `<div class="ag-event ag-event-${tipo}" data-agenda-key="${key}">
+    ${contenido}
+    <span class="ag-event-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg></span>
+    ${detalleEvaluacionAgendaHTML(e,pendientes)}
+  </div>`;
+}
+
+function proximoDetalleAgenda(actual,nuevo){
+  return actual===nuevo?null:nuevo;
+}
+
+function toggleAgendaDetalle(trigger){
+  const item=trigger&&trigger.closest?trigger.closest('.ag-event'):null;
+  const body=document.getElementById('agenda-body');
+  if(!item||!body)return;
+  const topAntes=trigger.getBoundingClientRect?trigger.getBoundingClientRect().top:null;
+  const nuevo=proximoDetalleAgenda(agendaDetalleAbierto,item.dataset.agendaKey);
+  agendaDetalleAbierto=nuevo;
+
+  body.querySelectorAll('.ag-event').forEach(candidato=>{
+    const boton=candidato.firstElementChild;
+    const detalle=candidato.querySelector('.ag-event-detail');
+    const abierto=!!nuevo&&candidato.dataset.agendaKey===nuevo;
+    candidato.classList.toggle('expanded',abierto);
+    if(boton)boton.setAttribute('aria-expanded',abierto?'true':'false');
+    if(detalle)detalle.hidden=!abierto;
+  });
+
+  // Al cerrar una tarjeta anterior situada arriba, la tocada subiría varios
+  // centímetros. Compensar esa diferencia conserva el punto de lectura móvil.
+  if(Number.isFinite(topAntes)&&trigger.getBoundingClientRect&&typeof window.scrollBy==='function'){
+    requestAnimationFrame(()=>{
+      const topDespues=trigger.getBoundingClientRect().top;
+      window.scrollBy(0,topDespues-topAntes);
+    });
+  }
+}
+
+function activarDetallesAgenda(body){
+  body.querySelectorAll('.ag-event').forEach(item=>{
+    const trigger=item.firstElementChild;
+    const key=item.dataset.agendaKey;
+    if(!trigger||!key)return;
+    const chevron=item.querySelector('.ag-event-chevron');
+    const chevronAnterior=trigger.querySelector('.chevron-r');
+    if(chevronAnterior)chevronAnterior.remove();
+    if(chevron)trigger.appendChild(chevron);
+    trigger.removeAttribute('onclick');
+    trigger.classList.add('ag-event-trigger');
+    trigger.id=`ag-trigger-${key}`;
+    trigger.setAttribute('aria-expanded','false');
+    trigger.setAttribute('aria-controls',`ag-detail-${key}`);
+    trigger.addEventListener('click',()=>toggleAgendaDetalle(trigger));
+  });
+}
+
 function resumenSemanaAgenda(pendientes){
   const semana=pendientes.filter(e=>e.dias>=0&&e.dias<=7);
   if(!semana.length)return null;
@@ -117,6 +239,7 @@ function agendaSinFechaHTML(sinFecha){
 
 function renderAgenda(){
   const body=document.getElementById("agenda-body");if(!body)return;
+  agendaDetalleAbierto=null;
   const events=agendaEvents();
   const sinFecha=agendaSinFecha();
 
@@ -182,7 +305,7 @@ function renderAgenda(){
     html+=agendaOrdenHTML(agendaOrdenActual);
     html+=resumenSemanaHTML(pendientes);
     html+=`<div class="ag-priority-heading"><span class="section-hd-title">Tus prioridades</span><span class="ag-count">${destacadas.length}</span></div>`;
-    html+=`<div class="ag-priority-grid">${destacadas.map(agendaDestacadaHTML).join('')}</div>`;
+    html+=`<div class="ag-priority-grid">${destacadas.map((e,i)=>agendaEventoHTML(e,agendaDestacadaHTML(e,i),pendientes,'priority')).join('')}</div>`;
     // La alerta de "necesitas X para aprobar" es del ramo, no de la evaluación:
     // se muestra solo en la más prioritaria de cada ramo para no repetirla.
     const ramosVistos=new Set(destacadas.map(e=>e.ramo.id));
@@ -192,7 +315,7 @@ function renderAgenda(){
     });
     if(restantes.length){
       html+=`<div class="ag-list-hd ag-rest-heading"><span class="section-hd-title">Después</span><span class="ag-count">${restantes.length}</span></div>`;
-      html+=restantes.map(agendaItemHTML).join("");
+      html+=restantes.map(e=>agendaEventoHTML(e,agendaItemHTML(e),pendientes)).join("");
     }
   } else {
     html+=`<div class="ag-alldone">
@@ -224,4 +347,5 @@ function renderAgenda(){
   }
 
   body.innerHTML=html;
+  activarDetallesAgenda(body);
 }

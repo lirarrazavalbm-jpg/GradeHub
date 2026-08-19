@@ -423,6 +423,10 @@ Y en local el `CACHE_NAME` es siempre `gradehub-dev`, así que el service worker
 se queda pegado con la copia vieja entre sesiones: desregístralo y borra las
 cachés antes de creerle a lo que ves.
 
+Los detalles de Agenda son un acordeón exclusivo. Al cerrar una evaluación que
+está más arriba, conserva la posición en pantalla de la que se acaba de tocar;
+si no compensas ese cambio de altura, en móvil la fila salta bajo el dedo.
+
 **El consenso de reportes NO se construye todavía.** Pasó a este carril, pero al
 2026-08-10 hay **1 reporte de 1 persona** — y el botón para reportar recién dejó
 de estar escondido al fondo del modal de "Editar ramo". No hay nada que agregar.
@@ -485,25 +489,6 @@ para que no la tomen dos.
 
 El contexto de cada una sale de mirar el código, no del pedido: sirve para
 dimensionar antes de empezar.
-
-**La Agenda necesita orden y jerarquía.** Hoy `renderAgenda` pinta una sola
-lista con un orden fijo. Se pide poder elegir entre tres: por fecha (lo que
-viene más cerca), por peso, y el "recomendado" que es la mezcla que ya se usa
-—o sea el orden actual pasa a ser una opción con nombre, no el único—. Y que
-lo que importa se vea distinto: las dos evaluaciones más importantes en un
-formato más grande y más cuadrado, quizá mitad y mitad, en vez de dos filas
-iguales al resto. El bloque de evaluaciones sin fecha (`agendaSinFecha`) tiene
-que seguir visible —es la puerta para completar fechas— pero sin robarle la
-atención a lo que sí está fechado.
-
-**El orden manual del inicio no se puede arrastrar.** `S.sortMode` tiene tres
-valores (`manual`, `avg`, `name`) y el manual no ofrece forma de mover un ramo:
-se pide arrastrar y soltar. Ojo con el móvil, que es donde está casi todo el
-mundo: arrastrar compite con el scroll y hay que sostener antes de mover.
-Además, la etiqueta del botón es `'Manual ↕'` (`app.js`, cerca de
-`labels={manual:...}`) y ese carácter lo dibujan a color muchos sistemas, así
-que se ve como emoji suelto en una app donde todos los íconos son SVG en línea.
-Va reemplazado por un ícono del mismo lenguaje que el resto.
 
 **Las estadísticas tienen que decir algo que importe.** `renderStats` en
 `app.js`. El pedido es que muestren cosas que de verdad le sirvan al estudiante;

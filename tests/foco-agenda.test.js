@@ -121,5 +121,56 @@ vm.runInContext('renderAgenda()', ctx);
 chk('el bloque sin fecha se renderiza después de las evaluaciones destacadas',
   stub.innerHTML.indexOf('ag-undated') > stub.innerHTML.indexOf('ag-priority-grid'));
 
+console.log('\n=== Cada evaluación explica lo justo sin convertir la Agenda en otro dashboard ===');
+const siguienteEvaluacionAgenda = funcionAgenda('siguienteEvaluacionAgenda');
+const referenciaEvaluacionAgenda = funcionAgenda('referenciaEvaluacionAgenda');
+const detalleEvaluacionAgendaHTML = funcionAgenda('detalleEvaluacionAgendaHTML');
+const proximoDetalleAgenda = funcionAgenda('proximoDetalleAgenda');
+const detalleActual = withPriority(evento('actual', 3, 25, 3.5));
+const detalleSiguiente = withPriority(evento('siguiente', 8, 20));
+const detalleLejano = withPriority(evento('lejano', 20, 40));
+const cronologia = [detalleLejano, detalleActual, detalleSiguiente];
+chk('qué viene después se decide por fecha aunque la Agenda esté ordenada por peso',
+  !!siguienteEvaluacionAgenda && siguienteEvaluacionAgenda(detalleActual, cronologia).cat.nombre === 'siguiente');
+const referencia = referenciaEvaluacionAgenda ? referenciaEvaluacionAgenda(detalleActual) : null;
+chk('la meta no promete una nota exacta para una evaluación cuando depende de varias',
+  !!referencia && /promedio en lo pendiente/i.test(referencia.texto) && !/en esta evaluación/i.test(referencia.texto));
+const detalleHTML = detalleEvaluacionAgendaHTML ? detalleEvaluacionAgendaHTML(detalleActual, cronologia) : '';
+chk('el detalle prioriza la referencia académica y la evaluación siguiente',
+  /Tu referencia/.test(detalleHTML) && /Después/.test(detalleHTML) && /siguiente/.test(detalleHTML));
+chk('el peso no se repite dentro del detalle porque ya está visible en la tarjeta',
+  !/>25%</.test(detalleHTML));
+chk('el detalle conserva un acceso explícito al ramo',
+  /Ver ramo/.test(detalleHTML));
+chk('abrir otra evaluación reemplaza la anterior y tocar la misma la cierra',
+  !!proximoDetalleAgenda && proximoDetalleAgenda('uno', 'dos') === 'dos' && proximoDetalleAgenda('uno', 'uno') === null);
+
+const toggleAgendaDetalle = funcionAgenda('toggleAgendaDetalle');
+let segundoTop = 300, desplazamiento = null;
+const detalleUno = { hidden: true }, detalleDos = { hidden: true };
+const botonFalso = top => ({ atributos: {}, setAttribute(k,v) { this.atributos[k]=v; }, getBoundingClientRect() { return { top: top() }; } });
+const botonUno = botonFalso(() => 120), botonDos = botonFalso(() => segundoTop);
+const itemFalso = (key, boton, detalle, alCerrar) => {
+  const clases = new Set();
+  const item = {
+    dataset: { agendaKey: key }, firstElementChild: boton,
+    classList: { toggle(nombre, activo) { const tenia=clases.has(nombre); activo?clases.add(nombre):clases.delete(nombre); if(tenia&&!activo&&alCerrar)alCerrar(); } },
+    querySelector() { return detalle; },
+  };
+  boton.closest = () => item;
+  return item;
+};
+const itemUno = itemFalso('uno', botonUno, detalleUno, () => { segundoTop-=150; });
+const itemDos = itemFalso('dos', botonDos, detalleDos);
+const bodyAgendaFalso = { querySelectorAll() { return [itemUno,itemDos]; } };
+ctx.document.getElementById = id => id === 'agenda-body' ? bodyAgendaFalso : stub;
+ctx.window.scrollBy = (_x,y) => { desplazamiento=y; };
+ctx.requestAnimationFrame = f => f();
+if(toggleAgendaDetalle){ toggleAgendaDetalle(botonUno); toggleAgendaDetalle(botonDos); }
+chk('en el DOM solo queda un detalle abierto y aria-expanded refleja el estado',
+  detalleUno.hidden && !detalleDos.hidden && botonUno.atributos['aria-expanded'] === 'false' && botonDos.atributos['aria-expanded'] === 'true');
+chk('cerrar una tarjeta anterior compensa el salto de la evaluación recién tocada',
+  desplazamiento === -150);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
