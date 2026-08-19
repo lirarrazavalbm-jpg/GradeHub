@@ -84,4 +84,12 @@ chk('Manual usa un SVG en línea y no el carácter que iOS convierte en emoji',
 chk('el arrastre se activa solo al renderizar el modo manual',
   /S\.sortMode===['"]manual['"][\s\S]{0,120}activarReordenRamos/.test(homeSrc));
 
+console.log('\n=== Calendario desde Agenda ===');
+chk('Agenda abre una elección y no descarga el archivo directamente',
+  /id="agenda-export-btn"[^>]*onclick="openAgendaCalendarOptions\(\)"[^>]*>Calendario<\/button>/.test(indexSrc));
+chk('la suscripción es el camino principal y lleva a su sección de Ajustes',
+  /function openAgendaCalendarOptions\([\s\S]*?se actualiza sola[\s\S]*?class="btn-primary"[\s\S]*?function openCalendarSubscriptionFromAgenda\([\s\S]*?openSettings\(['"]calendario['"]\)/i.test(appSrc));
+chk('exportar queda como copia secundaria con advertencia específica para iPhone',
+  /function openAgendaCalendarOptions\([\s\S]*?copia del momento[\s\S]*?En iPhone[\s\S]*?calendario que ya existe[\s\S]*?exportarCalendario\(\)/i.test(appSrc));
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);

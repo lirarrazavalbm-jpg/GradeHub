@@ -3238,13 +3238,15 @@ document.addEventListener('keydown',e=>{
 });
 
 function openSettings(){
+  const initialSection=arguments[0];
   let settingsSem=S.careerSemestre;
   let settingsCarrera=S.carrera;
   let settingsName=S.userName;
   // Se declara acá arriba: los render*Grid() se llaman antes de las definiciones
   // de función y con `let` más abajo caería en la zona muerta temporal (TDZ).
   let settingsTenant=S.tenant||'fen';
-  let activeSection=window.matchMedia('(min-width:768px)').matches?'perfil':'';
+  const directSection=['perfil','academico','calendario','apariencia','sugerencias','datos'].includes(initialSection)?initialSection:'';
+  let activeSection=directSection||(window.matchMedia('(min-width:768px)').matches?'perfil':'');
   const icons={
     perfil:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.4 3.5-5.3 7.5-5.3s6.7 1.9 7.5 5.3"/></svg>',
     academico:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg>',
@@ -3257,7 +3259,7 @@ function openSettings(){
   const sections=[
     ['Tu cuenta','perfil','Perfil','Tu nombre en GradeHub'],
     ['Estudio','academico','Información académica','Universidad, carrera y semestre'],
-    ['Estudio','calendario','Calendario','Tus pruebas en Google Calendar'],
+    ['Estudio','calendario','Calendario','Apple, Google y Outlook'],
     ['Preferencias','apariencia','Apariencia','Cómo se ve la app'],
     ['Ayuda','sugerencias','Sugerencias y comentarios','Cuéntanos qué mejorar'],
     ['Datos','datos','Datos y cuenta','Respaldos y acciones de cuenta']
@@ -4687,6 +4689,40 @@ function revocarFeedCalendario(){
     'La URL actual deja de funcionar al instante. Si ya la agregaste a tu calendario, vas a tener que volver a suscribirte con la nueva.',
     ()=>{track('calendar_feed_revocado');pintarFeedCalendario(true);},
     {label:'Generar nueva'});
+}
+
+// Importar un archivo .ics y suscribirse a una URL se parecen desde afuera,
+// pero se comportan distinto. En especial, iOS mezcla una importación con un
+// calendario existente aunque el archivo declare su propio nombre. La Agenda
+// muestra esta elección antes de descargar para que esa diferencia sea visible.
+function openAgendaCalendarOptions(){
+  if(agendaEvents().length===0){showToast('Primero agrega fechas a tus evaluaciones',true);return;}
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Lleva tu Agenda al calendario</div>
+    <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0 0 14px;">
+      La suscripción es la opción recomendada: <b>se actualiza sola</b> cuando cambias una fecha y queda como un calendario separado.
+    </p>
+    <button class="btn-primary" type="button" onclick="openCalendarSubscriptionFromAgenda()">Suscribirme al calendario</button>
+    <div style="height:1px;background:var(--border);margin:20px 0 16px;"></div>
+    <label class="modal-label">Exportar archivo .ics</label>
+    <p class="settings-help" style="margin-top:0;">Es una copia del momento: si después cambias una fecha en GradeHub, el archivo no se actualiza.</p>
+    <p class="settings-help"><b>En iPhone:</b> los eventos se agregan a un calendario que ya existe; no se crea uno nuevo.</p>
+    <div class="settings-data-actions" style="margin-bottom:0;">
+      <button type="button" onclick="exportCalendarSnapshotFromAgenda()">Exportar copia</button>
+    </div>`;
+  openModal();
+  track('calendar_options_opened');
+}
+
+function openCalendarSubscriptionFromAgenda(){
+  track('calendar_subscription_from_agenda');
+  closeModal();
+  setTimeout(()=>openSettings('calendario'),220);
+}
+
+function exportCalendarSnapshotFromAgenda(){
+  closeModal();
+  exportarCalendario();
 }
 
 // Una evaluación suelta a Google Calendar, con un toque desde el teléfono.
