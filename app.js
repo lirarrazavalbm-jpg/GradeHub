@@ -43,6 +43,12 @@ function completarFechasOficiales(r){
   if(!porNombre.size)return;
   r.categorias.forEach(c=>{
     if(c.fecha)return;
+    // `fechaQuitada` distingue "nunca tuvo fecha" de "el estudiante la borró".
+    // Sin esa marca las dos se ven igual —ambas son null— y el relleno volvía a
+    // poner la fecha oficial en cada carga: quitarla era imposible, la
+    // evaluación reaparecía en la Agenda al recargar y no había forma de que la
+    // app se enterara de que esa prueba se movió o no va.
+    if(c.fechaQuitada)return;
     const f=porNombre.get(normName(c.nombre));
     if(f)c.fecha=f;
   });
@@ -4075,12 +4081,21 @@ function confirmEditCat(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   cat.nombre=name;cat.peso=peso;cat.fecha=fecha;
+  // Quitar la fecha es una decisión, no un dato faltante: se deja constancia
+  // para que el relleno de fechas oficiales no la reponga en la próxima carga.
+  // Al escribir una nueva, la decisión se revierte sola.
+  if(fecha)delete cat.fechaQuitada; else cat.fechaQuitada=true;
   // La casilla no existe en las de casillas fijas (`slots`), y viene desactivada
   // cuando ya hay dos o más notas: volver a fila simple mostraría una y
   // escondería el resto sin decirlo.
   const casilla=document.getElementById('m-cat-varias');
   if(casilla&&!casilla.disabled)cat.directNota=!casilla.checked;
   save();track('edit_categoria',{tiene_fecha:!!fecha,varias_notas:cat.directNota===false});closeModal();renderRamo();
+  // La Agenda vive en otra pantalla y no se enteraba: al quitarle la fecha a una
+  // evaluación seguía apareciendo ahí hasta que algo más la redibujara. El peso
+  // también cambia el promedio que muestra Home.
+  if(typeof renderAgenda==='function')renderAgenda();
+  if(typeof renderHome==='function')renderHome();
 }
 
 // ─── EDITAR NOTA ─────────────────────────────────────────────────────────────
