@@ -227,6 +227,20 @@ const ACENTOS={
     darkPrimary:'#ddd6fe',darkPrimaryFg:'#24113f',darkPrimaryLight:'#291b3d',
     accent:'#d8b4fe',secondary:'#5b21b6',darkSecondary:'#ddd6fe',
   },
+  // Los cálidos son terrosos a propósito. Un naranjo luminoso se confundiría
+  // con el ámbar del semáforo y un coral con el rojo de reprobación.
+  cobre:{
+    nombre:'Cobre',
+    primary:'#8a3412',primaryFg:'#ffffff',primaryLight:'#fff0e7',
+    darkPrimary:'#fbb08f',darkPrimaryFg:'#2b1008',darkPrimaryLight:'#35170f',
+    accent:'#ffc0a0',secondary:'#8a3412',darkSecondary:'#fbb08f',
+  },
+  frambuesa:{
+    nombre:'Frambuesa',
+    primary:'#8b1e4a',primaryFg:'#ffffff',primaryLight:'#fcebf2',
+    darkPrimary:'#f0bfd1',darkPrimaryFg:'#2b0a17',darkPrimaryLight:'#35101f',
+    accent:'#eab5d1',secondary:'#8b1e4a',darkSecondary:'#f0bfd1',
+  },
 };
 const SURFACE_KEYS=['bg','bg2','card','border','border2','muted'];
 

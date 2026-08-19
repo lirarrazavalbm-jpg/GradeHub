@@ -505,14 +505,6 @@ Además, la etiqueta del botón es `'Manual ↕'` (`app.js`, cerca de
 que se ve como emoji suelto en una app donde todos los íconos son SVG en línea.
 Va reemplazado por un ícono del mismo lenguaje que el resto.
 
-**Faltan colores distintos en Apariencia.** `ACENTOS` en `data.js` tiene cuatro:
-turquesa (#0d7a6b), azul (#1e40af), índigo (#3730a3) y violeta (#5b21b6). Los
-cuatro viven en el mismo lado del espectro, así que elegir entre ellos casi no
-se nota. Faltan acentos cálidos. Cada uno declara sus variantes para claro y
-oscuro, y el semáforo verde/ámbar/rojo es semántico y no se tiñe: un acento
-nuevo no puede acercarse tanto al verde o al rojo que se confunda con "aprobado"
-o "reprobado".
-
 **Las estadísticas tienen que decir algo que importe.** `renderStats` en
 `app.js`. El pedido es que muestren cosas que de verdad le sirvan al estudiante;
 qué son exactamente es parte del trabajo. Un punto de partida honesto: hoy la
