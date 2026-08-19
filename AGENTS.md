@@ -110,10 +110,16 @@ plausible.
 
 **El semáforo es semántico.** Verde/ámbar/rojo significan aprobado / al borde /
 reprobado. No se tiñen por tema ni por decoración.
+El 100% de avance solo significa que el ramo quedó completamente evaluado: se
+comunica como cierre y nunca como aprobación o celebración verde.
 
 **Ojo con la especificidad de los campos.** La regla base `input[type=text]`
 gana contra una clase sola aunque aparezca antes; un padding especializado usa
 `input.clase` o `.contenedor input`, no `!important`.
+
+**La identidad tipográfica es Onest variable 400–800.** No vive solo en
+`styles.css`: revisa también los estilos inline de `app.js` y las páginas 404,
+preguntas y privacidad. Las notas y columnas numéricas conservan `tabular-nums`.
 
 **`gradehub_v1` es la clave de localStorage.** No se renombra sin migración.
 

@@ -1719,21 +1719,30 @@ function renderHome(){
   if(S.sortMode==='avg') ramos.sort((a,b)=>{const da=ramoAvg(a)??-1,db=ramoAvg(b)??-1;return db-da;});
   else if(S.sortMode==='name') ramos.sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
-  const c=document.getElementById('home-ramos');c.innerHTML='';
+  const c=document.getElementById('home-ramos');
+  // La lista sigue montada mientras la persona entra a un ramo. Leer el avance
+  // anterior desde esas filas permite distinguir un cierre real de un ramo que
+  // ya venía en 100%, sin guardar estado nuevo ni repetir el efecto en cada render.
+  const progresosAnteriores=new Map([...c.querySelectorAll('.ramo-row[data-progress]')]
+    .map(fila=>[fila.dataset.ramoId,Number(fila.dataset.progress)]));
+  c.innerHTML='';
   ramos.forEach(r=>{
     const avg=ramoAvg(r);const nc=r.categorias.length;
     const nn=r.categorias.reduce((a,c)=>a+c.notas.length,0);
     const prog=ramoProgress(r);
+    const completo=prog.pct===100;
+    const recienCerrado=ramoRecienCerrado(progresosAnteriores.get(r.id),prog.pct);
     let metaHtml;
     if(nc===0){
       metaHtml=`<span class="ramo-meta-text">Sin evaluaciones</span>`;
     } else if(nn===0){
       metaHtml=`<span class="ramo-meta-text">${nc} ${nc===1?'evaluación':'evaluaciones'}</span>`;
     } else {
-      const pctLabel=prog.pct===100?'completo':`${prog.pct}% evaluado`;
-      metaHtml=`<div class="ramo-progress" aria-hidden="true"><div class="ramo-progress-fill" style="transform:scaleX(${prog.pct/100})"></div></div><span class="ramo-meta-text">${pctLabel}</span>`;
+      const pctLabel=completo?'100% · cerrado':`${prog.pct}% evaluado`;
+      metaHtml=`<div class="ramo-progress${completo?' is-complete':''}${recienCerrado?' just-completed':''}" aria-hidden="true"><div class="ramo-progress-fill" style="transform:scaleX(${prog.pct/100})"></div></div><span class="ramo-meta-text${completo?' is-complete':''}">${pctLabel}</span>`;
     }
     const div=document.createElement('div');div.className='ramo-row';div.dataset.ramoId=r.id;div.onclick=()=>openRamo(r.id);
+    div.dataset.progress=String(prog.pct);
     if(S.sortMode==='manual')div.dataset.reorderable='true';
     div.style.setProperty('--ramo-tint',r.color);
     const control=S.sortMode==='manual'
@@ -2987,13 +2996,13 @@ function renderPautaManualModal(){
   const disponibles=plantillasPauta(S.tenant);
   const plantillas=(puedeUsarPlantillaPauta()&&disponibles.length)?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
     <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Inter',sans-serif;cursor:pointer;">${p.label}</button>`).join('')}</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Onest',sans-serif;cursor:pointer;">${p.label}</button>`).join('')}</div>
     <div style="font-size:12px;color:var(--fg2);line-height:1.4;margin-top:8px;">Los pesos quedan en 0%. Confírmalos con el programa del curso.</div>
   </div>`:'';
   const duplicar=fuentes.length?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);">
     <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:4px;">¿Ya la tienes armada en otro ramo?</div>
     <div style="font-size:12px;color:var(--fg2);line-height:1.4;margin-bottom:8px;">Copia evaluaciones y porcentajes. Tus notas y fechas no se copian.</div>
-    <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px 'Inter',sans-serif;cursor:pointer;">Usar pauta</button></div>
+    <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px 'Onest',sans-serif;cursor:pointer;">Usar pauta</button></div>
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>`
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 30px 30px;gap:6px;align-items:center;margin:8px 0;">
@@ -3015,7 +3024,7 @@ function renderPautaManualModal(){
       <span>Evaluación</span><span>Peso</span><span title="Son varias notas que se promedian" style="text-align:center;">Varias</span><span></span>
     </div>
     <div>${filas}</div>
-    <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Inter',sans-serif;cursor:pointer;">+ Otra evaluación</button>
+    <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Onest',sans-serif;cursor:pointer;">+ Otra evaluación</button>
     <div class="modal-btns" style="margin-top:14px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="guardarPautaManual()">Guardar</button>
@@ -3541,7 +3550,7 @@ function abrirImportar(){
       <button class="btn-confirm" onclick="confirmarImportar()">Importar</button>
     </div>
     ${hayRespaldoPreImport()?`<p style="text-align:center;margin:14px 0 0;font-size:12.5px;">
-      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
+      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:'Onest',sans-serif;font-size:12.5px;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
   openModal();
   setTimeout(()=>document.getElementById('import-text').focus(),100);
 }
@@ -4482,6 +4491,7 @@ function ramoProgress(r){
   });
   return {pct:Math.round(done/total*100),pending:total-done,total};
 }
+function ramoRecienCerrado(anterior,actual){return Number.isFinite(anterior)&&anterior<100&&actual===100;}
 
 function agendaEvents(){
   const out=[];

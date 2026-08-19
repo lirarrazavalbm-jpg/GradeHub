@@ -17,6 +17,8 @@ const fs = require('fs');
 const raiz = __dirname + '/../';
 const sw = fs.readFileSync(raiz + 'sw.js', 'utf8');
 const headers = fs.readFileSync(raiz + '_headers', 'utf8');
+const css = fs.readFileSync(raiz + 'styles.css', 'utf8');
+const app = fs.readFileSync(raiz + 'app.js', 'utf8');
 
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
@@ -42,6 +44,28 @@ console.log('\n=== Un fetch caído no deja la petición muerta ===');
 const ramaFuentes = sw.slice(sw.indexOf('fonts.googleapis.com'), sw.indexOf('Resto de externos'));
 chk('la rama de fuentes captura el fallo de red', /\.catch\(/.test(ramaFuentes));
 chk('y devuelve una Response, no undefined', /new Response\(/.test(ramaFuentes));
+
+console.log('\n=== Una sola familia con carácter, sin perder los números ===');
+const paginas = ['index.html', 'preguntas.html', 'privacidad.html', '404.html'];
+paginas.forEach(archivo => {
+  const html = fs.readFileSync(raiz + archivo, 'utf8');
+  chk(`${archivo} carga Onest variable de 400 a 800`,
+    /family=Onest:wght@400\.\.800&display=swap/.test(html));
+  chk(`${archivo} ya no descarga Inter ni Sora`,
+    !/family=(?:Inter|Sora)|family=[^"']*(?:Inter|Sora)/.test(html));
+  chk(`${archivo} prepara la conexión a las dos rutas de Google Fonts`,
+    /rel="preconnect" href="https:\/\/fonts\.googleapis\.com"/.test(html) &&
+    /rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin/.test(html));
+});
+chk('styles.css usa Onest y no deja una segunda identidad escondida',
+  /font-family:[^;}]*Onest/.test(css) && !/font-family:[^;}]*(?:Inter|Sora)/.test(css));
+chk('los estilos que app.js genera en runtime usan la misma familia',
+  /font(?:-family)?:[^;"}]*['"]Onest/.test(app) &&
+  !/font(?:-family)?:[^;"}]*(?:Inter|Sora)/.test(app));
+['gpa-num', 'ramo-num', 'ramo-nota', 'ag-day', 'ag-priority-weight', 'ag-row-peso'].forEach(clase => {
+  chk(`${clase} conserva cifras tabulares`,
+    new RegExp(`\\.${clase}\\{[^}]*font-variant-numeric:tabular-nums`).test(css));
+});
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
