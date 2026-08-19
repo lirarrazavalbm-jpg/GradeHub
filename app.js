@@ -4866,6 +4866,27 @@ if('serviceWorker' in navigator){
   });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        // El aviso de arriba solo podía dispararse durante una carga de página:
+        // es `register()` quien hace al navegador comprobar si sw.js cambió. En
+        // la app instalada en el teléfono eso casi nunca pasa —se abre desde el
+        // ícono, queda en segundo plano y se vuelve a ella sin recargar—, así
+        // que alguien podía usar la versión vieja durante días sin que nada se
+        // lo dijera. El aviso existía y no llegaba a aparecer nunca.
+        //
+        // Al volver al primer plano se le pide al navegador que revise. Si hay
+        // algo nuevo, el service worker se instala, toma el control y ahí sí
+        // salta `controllerchange` con el aviso.
+        let ultimaRevision = Date.now();
+        document.addEventListener('visibilitychange', () => {
+          if(document.visibilityState !== 'visible')return;
+          // Con un mínimo entre revisiones: cambiar de app y volver es un gesto
+          // constante, y cada revisión es una petición de red.
+          if(Date.now() - ultimaRevision < 60000)return;
+          ultimaRevision = Date.now();
+          reg.update().catch(() => {});
+        });
+      })
       .catch(err => console.warn('SW no registrado:', err));
   });
 }
