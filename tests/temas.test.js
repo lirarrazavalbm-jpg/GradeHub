@@ -196,7 +196,17 @@ const acentos=vm.runInContext('ACENTOS',dark);
 chk('turquesa conserva exactamente la identidad histórica',
   ['primary','primaryFg','primaryLight','darkPrimary','darkPrimaryFg','darkPrimaryLight','accent','secondary','darkSecondary']
     .every(k=>acentos.turquesa[k]===theme[k]));
-chk('hay varias opciones además del default',Object.keys(acentos).length>=4);
+chk('hay varias opciones además del default',Object.keys(acentos).length>=6);
+const acentosCalidos=Object.entries(acentos).filter(([,a])=>{
+  const h=hue(a.primary);return h<60||h>=320;
+});
+chk('hay al menos dos acentos cálidos',acentosCalidos.length>=2);
+acentosCalidos.forEach(([key,a])=>{
+  chk(`${key}: todos sus colores visibles se distinguen de ramos y semáforo`,
+    [a.primary,a.darkPrimary,a.accent,a.secondary,a.darkSecondary]
+      .every(color=>[...vm.runInContext('COLORS',dark),'#2ecc40','#ffc94d','#ff5f7a']
+        .every(c=>separaDe(color,c))));
+});
 Object.entries(acentos).forEach(([key,a])=>{
   const finClaro=mezcla(a.primary,'#000000',18);
   const finOscuro=mezcla(a.accent,a.darkPrimary,25);
