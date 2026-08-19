@@ -1,118 +1,84 @@
 -- Prueba de aislamiento entre cuentas (RLS) — punto 3 de la auditoría (#164).
+-- Verificada en producción el 2026-08-18: las dos consultas dieron OK.
 --
--- Se corre en Supabase → SQL Editor, pegado entero. NO cambia datos: todo pasa
--- dentro de una transacción que termina en ROLLBACK.
+-- Se corre en Supabase → SQL Editor. Son DOS consultas y van de a una: borra el
+-- panel entre medio, porque el editor ejecuta todo lo que haya escrito.
 --
--- Por qué existe este archivo y no basta "mirar las políticas": `user_ramos` y
--- `profiles` son las dos tablas con datos de estudiantes y sus políticas nunca
--- se versionaron acá — se crearon a mano en el panel. Leyendo el repo no hay
--- forma de saber qué protege hoy a esas dos tablas. Esto lo pregunta directo.
+-- Reemplaza UUID-DE-A y UUID-DE-B por los de dos cuentas tuyas (Authentication
+-- → Users → columna UID). Las dos tienen que tener al menos un ramo guardado, o
+-- el control da falso negativo y la prueba no dice nada.
 --
+-- ── Por qué está partido en dos y con esta forma rara ────────────────────────
+-- El SQL Editor muestra SOLO el resultado del último statement. Un script con
+-- `begin … select … rollback` termina mostrando "Success. No rows returned",
+-- que es la salida del rollback, y las pruebas quedan invisibles. Por eso:
+--
+--   A) lecturas: el último statement es el select, así que se ve.
+--   B) escrituras: van dentro de un DO que termina en `raise exception`. El
+--      error ES el resultado —trae los números y siempre se muestra— y de paso
+--      revierte el update y el delete sin depender de que nadie se acuerde del
+--      rollback. Autodeshacente por construcción.
+--
+-- ── Por qué cada bloqueo trae su control ─────────────────────────────────────
 -- La prueba anónima no sirve: para `anon`, auth.uid() es NULL, ninguna política
--- calza y todo devuelve vacío. Un vacío así se ve igual que el aislamiento
--- correcto. Por eso cada prueba de bloqueo viene con su mitad de CONTROL: que
--- el dueño SÍ vea lo suyo con la misma consulta. Sin el control, un `[]` puede
--- ser una política bien puesta o un UID mal escrito, y no se distinguen.
+-- calza y todo devuelve vacío. Ese vacío se ve idéntico al aislamiento
+-- correcto. Cada 0 va acompañado de la mitad de control —que el dueño SÍ vea lo
+-- suyo con la misma consulta—, porque si no, un 0 puede ser una política bien
+-- puesta o un UID mal escrito, y no hay forma de distinguirlos. Esto no es
+-- teórico: la primera corrida dio "A BORRÓ DATOS DE B" y era falso, los UID
+-- traían el texto de ejemplo y todo corrió como dueño de la base, que se salta
+-- RLS entero.
+
+-- ═══ A. Lecturas ═════════════════════════════════════════════════════════════
+-- No escribe nada. Esperado: 0 en lo de B, >0 en los controles, y el CONTEXTO
+-- confirmando que auth.uid() es de verdad la cuenta A.
+
+set request.jwt.claims = '{"sub":"UUID-DE-A","role":"authenticated"}';
+set role authenticated;
+
+select 'ramos · A lee lo de B' as prueba, count(*)::text as filas,
+       case when count(*)=0 then 'OK — aislado' else 'FALLA — VE DATOS DE B' end as veredicto
+from public.user_ramos where user_id = 'UUID-DE-B'
+union all
+select 'ramos · A lee lo suyo (control)', count(*)::text,
+       case when count(*)>0 then 'OK — control responde' else 'INVÁLIDA — ni lo suyo ve' end
+from public.user_ramos where user_id = 'UUID-DE-A'
+union all
+select 'perfil · A lee el de B', count(*)::text,
+       case when count(*)=0 then 'OK — aislado' else 'FALLA — VE EL PERFIL DE B' end
+from public.profiles where id = 'UUID-DE-B'
+union all
+select 'perfil · A lee el suyo (control)', count(*)::text,
+       case when count(*)>0 then 'OK — control responde' else 'INVÁLIDA — ni el suyo ve' end
+from public.profiles where id = 'UUID-DE-A'
+union all
+select 'CONTEXTO · auth.uid()', coalesce(auth.uid()::text,'NULL'),
+       case when auth.uid()='UUID-DE-A' then 'OK — somos A' else 'INVÁLIDA — lo demás no vale' end;
+
+-- ═══ B. Escrituras ═══════════════════════════════════════════════════════════
+-- Termina en ERROR P0001 A PROPÓSITO: ese es el resultado. Tiene que decir
+-- "editó 0 filas · borró 0 filas" y el auth.uid() de la cuenta A. Cualquier
+-- número distinto de 0 es el agujero.
 --
--- Los UID viajan como parámetros de sesión y no como una tabla temporal: al
--- cambiarse al rol `authenticated` se pierde el acceso a los objetos creados
--- como dueño, y la prueba moría con "permission denied" antes de probar nada.
---
--- ANTES DE CORRER: reemplaza los dos UID de abajo —y solo esos— por los de dos
--- cuentas tuyas (Authentication → Users → columna UID). Las dos tienen que
--- tener al menos un ramo guardado, o el control da falso negativo.
+-- Se prueban las dos por separado porque una política con USING correcto y sin
+-- WITH CHECK bloquea la lectura y deja pasar la escritura.
 
-begin;
-
-set local gh.uid_a = '00000000-0000-0000-0000-000000000000';  -- ← cuenta A
-set local gh.uid_b = '11111111-1111-1111-1111-111111111111';  -- ← cuenta B
-
--- ─── 0. Inventario: qué tiene RLS activa y con qué políticas ────────────────
--- Va antes del cambio de rol: leer el catálogo necesita los permisos de ahora.
-select 'INVENTARIO' as bloque, c.relname as tabla,
-       c.relrowsecurity as rls_activa,
-       coalesce(count(p.polname), 0) as politicas
-from pg_class c
-join pg_namespace n on n.oid = c.relnamespace
-left join pg_policy p on p.polrelid = c.oid
-where n.nspname = 'public' and c.relkind = 'r'
-group by 1, 2, 3
-order by rls_activa, tabla;
-
-select 'POLÍTICAS' as bloque, tablename as tabla, policyname as politica,
-       cmd as operacion, qual as usando, with_check as al_escribir
-from pg_policies where schemaname = 'public'
-order by tablename, cmd;
-
--- ─── Ponerse en los zapatos de la cuenta A ──────────────────────────────────
--- Así ve la base a un cliente autenticado: mismo rol y mismo auth.uid() que
--- tendría el navegador de A. Es la única forma de probar lo que importa.
--- El claim se arma desde el parámetro para no repetir el UID en dos sitios y
--- que no se puedan desincronizar.
 do $$
+declare edito int; borro int;
 begin
-  perform set_config('request.jwt.claims',
-    json_build_object('sub', current_setting('gh.uid_a'), 'role', 'authenticated')::text,
-    true);
-end $$;
-set local role authenticated;
-
--- Que auth.uid() sea quien creemos. Si esto no calza, lo de abajo no vale nada.
-select 'CONTEXTO' as bloque, auth.uid() as auth_uid,
-       current_setting('gh.uid_a')::uuid as esperado,
-       case when auth.uid() = current_setting('gh.uid_a')::uuid then 'OK — somos A'
-            else 'INVÁLIDA — auth.uid() no quedó puesto' end as veredicto;
-
--- 1. A no alcanza los datos de B (LECTURA)
-select 'user_ramos · A lee lo de B' as prueba, count(*) as filas,
-       case when count(*) = 0 then 'OK — aislado' else 'FALLA — A VE DATOS DE B' end as veredicto
-from public.user_ramos where user_id = current_setting('gh.uid_b')::uuid;
-
--- 1b. CONTROL: A sí ve lo suyo. Sin esto, el 0 de arriba no prueba nada.
-select 'user_ramos · A lee lo suyo (control)' as prueba, count(*) as filas,
-       case when count(*) > 0 then 'OK — el control responde'
-            else 'INVÁLIDA — A no ve ni lo suyo: revisa el UID o carga un ramo' end as veredicto
-from public.user_ramos where user_id = current_setting('gh.uid_a')::uuid;
-
--- 2. Lo mismo en el perfil, que lleva nombre y carrera
-select 'profiles · A lee el de B' as prueba, count(*) as filas,
-       case when count(*) = 0 then 'OK — aislado' else 'FALLA — A VE EL PERFIL DE B' end as veredicto
-from public.profiles where id = current_setting('gh.uid_b')::uuid;
-
-select 'profiles · A lee el suyo (control)' as prueba, count(*) as filas,
-       case when count(*) > 0 then 'OK — el control responde'
-            else 'INVÁLIDA — A no ve ni el suyo: revisa el UID' end as veredicto
-from public.profiles where id = current_setting('gh.uid_a')::uuid;
-
--- 3. A no puede EDITAR lo de B. Leer bloqueado y escribir abierto es un caso
---    real: basta una política USING correcta sin WITH CHECK.
-with intento as (
-  update public.user_ramos set data = '{"hackeado":true}'::jsonb
-  where user_id = current_setting('gh.uid_b')::uuid returning 1
-)
-select 'user_ramos · A edita lo de B' as prueba, count(*) as filas,
-       case when count(*) = 0 then 'OK — no pudo' else 'FALLA — A EDITÓ DATOS DE B' end as veredicto
-from intento;
-
--- 4. A no puede BORRAR lo de B
-with intento as (
-  delete from public.user_ramos where user_id = current_setting('gh.uid_b')::uuid returning 1
-)
-select 'user_ramos · A borra lo de B' as prueba, count(*) as filas,
-       case when count(*) = 0 then 'OK — no pudo' else 'FALLA — A BORRÓ DATOS DE B' end as veredicto
-from intento;
-
--- 5. A no puede escribir una fila A NOMBRE de B (suplantación).
---    Lo esperado es que la política lo rechace. Sale como NOTICE o WARNING en
---    el panel de mensajes, no como tabla de resultados.
-do $$
-begin
-  insert into public.user_ramos(user_id, data)
-  values (current_setting('gh.uid_b')::uuid, '{"suplantado":true}'::jsonb);
-  raise warning 'FALLA — A INSERTÓ UNA FILA A NOMBRE DE B';
-exception
-  when insufficient_privilege or check_violation then
-    raise notice 'OK — la política rechazó el insert a nombre de otro';
+  perform set_config('request.jwt.claims','{"sub":"UUID-DE-A","role":"authenticated"}',true);
+  perform set_config('role','authenticated',true);
+  update public.user_ramos set data='{"hackeado":true}'::jsonb where user_id='UUID-DE-B';
+  get diagnostics edito = row_count;
+  delete from public.user_ramos where user_id='UUID-DE-B';
+  get diagnostics borro = row_count;
+  raise exception 'RESULTADO · auth.uid()=% · editó % filas · borró % filas', auth.uid(), edito, borro;
 end $$;
 
-rollback;  -- nada de lo anterior queda escrito
+-- ═══ C. Inventario, para el registro de la auditoría ═════════════════════════
+-- Corre esto solo, sin lo de arriba. Es el respaldo de qué políticas había.
+--
+-- select tablename, policyname, cmd, roles, qual as usando, with_check
+-- from pg_policies
+-- where schemaname = 'public' and tablename in ('user_ramos','profiles')
+-- order by tablename, cmd;
