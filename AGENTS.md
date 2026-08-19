@@ -445,6 +445,33 @@ documentado y probado. Mientras sigan apareciendo programas, transcribirlos es
 más rápido y más exacto que cualquier consenso, y además es `data.js` puro: no
 sale del carril de contenido.
 
+### Hacia dónde va el producto
+
+**GradeHub tiene que entender tu semestre, no solo llevar la cuenta.** Decisión
+de Lucas del 2026-08-18. La app deja de pensarse como un registro de notas y
+pasa a ser el lugar que sabe qué viene, cuánto pesa, qué necesitas y qué pasa si
+te va mal. "¿Qué nota necesito para aprobar?" sigue siendo el corazón, pero deja
+de ser el techo.
+
+Dos cosas que conviene tener claras antes de construir hacia allá:
+
+**El foso es la pauta, no las funciones.** "Segundo cerebro" es la categoría más
+poblada que existe —Notion, Obsidian, las notas del teléfono— y ninguna de esas
+sabe si vas a aprobar Cálculo II. Lo que solo GradeHub puede hacer es lo que
+pasa alrededor de una evaluación, porque es el único que tiene las
+ponderaciones. Una función que podría vivir igual de bien en una app de notas
+genérica es una función que se va a comparar con gigantes y va a perder.
+
+**Notificaciones y widgets NO son del mismo tamaño.** Las notificaciones se
+pueden hacer sin tienda: iOS las soporta en PWA desde 16.4 si el estudiante la
+agregó a su pantalla de inicio, `sw.js` ya existe —solo le falta el handler de
+push— y Supabase trae `pg_cron` instalado para disparar el aviso diario. Los
+widgets, en cambio, **no se pueden hacer desde una PWA**: los de iOS necesitan
+WidgetKit y una app nativa. O sea, widgets implica App Store, y eso arrastra
+US$99 al año, la revisión de Apple —que rechaza envoltorios de sitios web— y su
+comisión sobre pagos digitales, que choca con la decisión de monetización
+todavía abierta. Notificaciones primero; widgets solo si se decide ir a nativo.
+
 ### Pedidas por Lucas, sin dueño todavía
 
 Están acá para que no se pierdan, no porque alguien las esté haciendo. **Las
@@ -488,6 +515,22 @@ qué son exactamente es parte del trabajo. Un punto de partida honesto: hoy la
 app sabe cuánto falta por evaluar, qué ramos están al borde y qué nota se
 necesita para aprobar cada uno — eso es más accionable que un promedio histórico.
 
+**Faltan términos de uso, y sobre todo un descargo honesto.** Hoy solo existe
+`privacidad.html`: no hay ninguna página que diga de dónde sale el número que la
+app entrega. El punto no es legal sino de producto — el resultado se calcula con
+la pauta que el estudiante cargó, así que si el profesor cambió las
+ponderaciones a mitad de semestre o alguien transcribió mal un porcentaje, el
+número está malo por los datos y no por el cálculo. La fuente de verdad es
+siempre el programa del curso. Decirlo así le sirve al estudiante para saber
+cuándo desconfiar; decir "no nos hacemos responsables" a secas no le sirve a
+nadie.
+
+Ojo con dos cosas. Un descargo **no** es un escudo para calcular mal: la regla
+del motor sigue mandando igual y ninguna letra chica arregla que alguien
+reprobó confiando en el número. Y si se busca peso legal de verdad —con la ley
+del consumidor chilena— eso lo tiene que revisar alguien que sepa; un texto
+escrito por un agente sirve para que se entienda, no para ganar un juicio.
+
 **El repositorio no le dice nada a quien llega.** Es **público** y no tiene
 README, ni descripción, ni sitio en el campo de GitHub, ni licencia, ni topics:
 quien entra ve una lista de archivos sueltos. Se pide dejarlo presentable —qué
@@ -500,6 +543,69 @@ la lista de lo que todavía no está asegurado**. Lucas lo decidió el 2026-08-1
 Por eso los cuatro puntos de la auditoría de seguridad pasan a ser lo PRIMERO
 que hace Martín, antes que cualquier cosa de esta cola. Mientras sigan abiertos,
 están descritos en un archivo que cualquiera puede leer.
+
+**Nadie puede cambiar su correo, y eso encierra cuentas.** `updateUser` solo se
+usa para la contraseña: no hay ningún camino en la app para corregir la
+dirección. Como el registro no verifica el correo, alguien que se equivocó al
+escribirlo —un `gmial.com`, un dedo de más— entra igual y no se entera. El día
+que olvide su contraseña, el correo de recuperación se va a un buzón que no
+existe y **queda encerrado con sus notas adentro**, sin ninguna vuelta posible.
+
+No es un problema futuro que aparezca al activar la verificación: está abierto
+ahora, con todas las cuentas creadas desde el lanzamiento. Activar la
+verificación lo empeora —esas personas tampoco podrían verificar—, así que el
+cambio de correo tiene que existir **antes**, no después.
+
+Supabase lo soporta con `updateUser({email})`, que manda confirmación a la
+dirección vieja y a la nueva, así que depende del correo propio (#150) igual que
+todo lo demás. Para dimensionarlo, esta consulta muestra si hay dominios con
+pinta de error sin exponer ninguna dirección:
+
+```sql
+select split_part(email,'@',2) as dominio, count(*) from auth.users
+where deleted_at is null group by 1 order by 2 desc;
+```
+
+**Las pautas tienen fecha de vencimiento y la app no lo sabe.** Hoy nueve
+evaluaciones del catálogo traen fecha fija —`fecha:'2026-09-24'` y compañía— y
+ningún preset declara a qué semestre pertenece. En marzo de 2027, un estudiante
+que agregue Introducción a la Programación va a recibir en su Agenda las fechas
+de septiembre de 2026, presentadas con la misma estrella de "pauta oficial" que
+todo lo demás. No falla nada: son fechas válidas, de otro semestre.
+
+Se piden dos cosas y conviene no confundirlas, porque tienen vida útil distinta:
+
+- **Mostrar, en chico, de cuándo es la pauta.** Un "pauta del 2026-2" junto a la
+  estrella basta. No es adorno: es lo que le permite al estudiante decidir si le
+  cree, y es la misma lógica del descargo — el número vale lo que valen sus
+  datos, así que hay que decir de cuándo son.
+- **Que la app sepa que un semestre terminó.** Requiere un campo de período en
+  el preset. Con eso puede dejar de ofrecer fechas viejas como si fueran de
+  ahora, y avisar que la pauta es de otro semestre en vez de callarlo.
+
+**Las ponderaciones y las fechas NO envejecen igual.** Los porcentajes de un
+programa suelen repetirse entre semestres; las fechas de las pruebas cambian
+siempre. Así que la pauta de 2026-2 probablemente sigue sirviendo en 2027-1 y
+sus fechas con seguridad no. Tratarlas como una sola cosa lleva a descartar
+pautas todavía buenas o a cargar fechas falsas: son dos decisiones separadas y
+el modelo tiene que poder decirlas por separado.
+
+**Notificaciones.** Primer paso concreto de la dirección nueva y el único que no
+depende de la App Store. Falta el handler de push en `sw.js`, pedir el permiso
+en el momento correcto —no al entrar, sino cuando ya hay algo que avisar— y el
+disparador diario, que puede salir de `pg_cron` en Supabase. Ojo con lo que
+distingue una notificación útil de una molesta: la app sabe qué viene, cuánto
+pesa y qué nota se necesita, así que puede avisar "mañana tienes la I2 de
+Cálculo, vale 25%" en vez de un recordatorio genérico. Sin fechas cargadas no
+hay nada que notificar, así que va después de que la Agenda sea cómoda.
+
+**Aceptar términos al crear la cuenta, y actualizar la política.** Se pide un
+paso explícito de aceptación en el registro. Dos cosas que hay que resolver
+antes de escribirlo: qué pasa con las cuentas que ya existen —se registraron sin
+aceptar nada, y pedirles aceptación al entrar es una interrupción que hay que
+diseñar, no improvisar— y dónde queda constancia de que aceptaron, porque si no
+se guarda, el paso es decorativo. La política se actualiza junto con esto para
+que las dos páginas digan lo mismo.
 
 **Arreglar la verificación por correo.** Está desactivada porque el SMTP
 integrado de Supabase despacha dos correos por hora. No se puede reactivar antes
