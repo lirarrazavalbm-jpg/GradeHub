@@ -214,4 +214,23 @@ if (/^\s*boot\(\);\s*$/m.test(app)) {
   process.exit(1);
 }
 
+// El aviso de "hay una versión nueva" depende de que ALGUIEN compruebe si la
+// hay, y `register()` solo corre en el evento load. En la app instalada —que se
+// abre desde el ícono y se retoma sin recargar— esa carga casi nunca ocurre, así
+// que el aviso existía desde agosto y no llegaba a aparecer nunca. La revisión
+// al volver al primer plano es lo que lo hace funcionar; sin ella, el aviso es
+// código muerto.
+if (!/reg\.update\(\)/.test(app)) {
+  console.error('falta reg.update(): sin una revisión explícita, el aviso de version nueva nunca se dispara en la app instalada');
+  process.exit(1);
+}
+if (!/visibilitychange[\s\S]{0,400}visibilityState[\s\S]{0,400}reg\.update/.test(app)) {
+  console.error('la revision de version nueva tiene que dispararse al volver al primer plano');
+  process.exit(1);
+}
+if (!/function avisarActualizacion/.test(app) || !/location\.reload\(\)/.test(app)) {
+  console.error('el aviso de version nueva y su recarga tienen que seguir existiendo');
+  process.exit(1);
+}
+
 console.log('JS OK · CSS ' + abre + '/' + cierra + ' OK · HTML enlaza bien · data.js sin lógica · instrucciones enlazadas · boot espera al DOM');

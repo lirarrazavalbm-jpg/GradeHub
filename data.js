@@ -1173,20 +1173,30 @@ const PRESETS_FEN={
     // Sin noCalcula: no queda ninguna regla pendiente de implementar.
     reglasDelCurso:['Rendir menos del 75% de los controles sorpresa reprueba el curso con 3,9'],
     evals:[
-      // Ni los de lectura ni los de ejercicios tienen un número fijo: cambia de
-      // semestre a semestre. Por eso van como lista abierta (`lista:true`) y no
-      // como filas fijas ni con `slots` — el estudiante agrega los que
-      // realmente le tomaron, igual que los Controles Sorpresa.
+      // Los controles de lectura y los de ejercicios van en filas propias, cada
+      // una con su fecha, porque el programa da las dos cosas: cuántos son y
+      // cuándo. Los de ejercicios traen "40 % (10% cada uno)" textual, así que el
+      // reparto no lo inventamos nosotros. Y en los dos dice "No se elimina nota
+      // alguna": nada de `dropLowest` acá.
       //
-      // El precio es la compuerta: el mínimo 1,5 se mide contra el promedio del
-      // grupo y no contra cada control. Es la misma aproximación que ya usaban
-      // los Sorpresa, y la alternativa —una fila por control— exige inventar
-      // cuántos son.
-      ['Controles de Lectura',10,{lista:true,min:1.5,cap:3.9}],
-      ['Controles de Ejercicios',40,{lista:true,min:1.5,cap:3.9}],
-      // El programa dice "entre 4 y 6 durante el semestre": el número exacto NO
-      // está. Sin slots, el estudiante agrega los que realmente le tomaron.
-      // Antes decía slots:4 — un dato plausible pero inventado.
+      // El 10% de los de lectura no se divide exacto en tres. El tercero lleva
+      // 3,34 en vez de 3,33 para que la suma dé 100 justo: es un centésimo de
+      // punto porcentual, invisible en cualquier nota.
+      //
+      // El mínimo de 1,5 es POR CONTROL, no por grupo — "nota mínima de 1,5 en
+      // controles (lectura, ejercicios y sorpresa) y solemne" —, y por eso cada
+      // fila lleva su compuerta. Agruparlos la movía al promedio del grupo, que
+      // es una regla distinta y más blanda que la del programa.
+      ['Control de Lectura 1',3.33,{fecha:'2026-08-07',min:1.5,cap:3.9}],
+      ['Control de Lectura 2',3.33,{fecha:'2026-08-28',min:1.5,cap:3.9}],
+      ['Control de Lectura 3',3.34,{fecha:'2026-11-06',min:1.5,cap:3.9}],
+      ['Control de Ejercicios 1',10,{fecha:'2026-08-21',min:1.5,cap:3.9}],
+      ['Control de Ejercicios 2',10,{fecha:'2026-09-11',min:1.5,cap:3.9}],
+      ['Control de Ejercicios 3',10,{fecha:'2026-10-16',min:1.5,cap:3.9}],
+      ['Control de Ejercicios 4',10,{fecha:'2026-10-30',min:1.5,cap:3.9}],
+      // Los sorpresa sí quedan como lista abierta: "entre 4 y 6 durante el
+      // semestre" es el único número que el programa no fija, y son los únicos
+      // con descarte (se elimina el 25% de los rendidos).
       ['Controles Sorpresa',5,{lista:true,min:1.5,cap:3.9,dropLowest:{fraction:0.25}}],
       ['Solemne',20,{min:1.5,cap:3.9}],
       ['Examen',25,{min:3.0,cap:3.4}],
