@@ -26,8 +26,8 @@ console.log('\n=== Lo que se crea a mano queda como fila simple ===');
 // Las dos vías que crean evaluaciones: el modal de una sola y el editor de varias.
 chk('confirmAddCat decide directNota con la casilla',
   /r\.categorias\.push\(\{id:uid\(\),nombre:name,peso,fecha,ponderaNotas:false,directNota:!varias/.test(src));
-chk('guardarPautaManual marca directNota',
-  /r\.categorias\.push\(\{id:uid\(\),nombre:f\.nombre\.trim\(\),peso:f\.peso,ponderaNotas:false,directNota:true/.test(src));
+chk('guardarPautaManual decide directNota con la casilla de su fila',
+  /r\.categorias\.push\(\{id:uid\(\),nombre:f\.nombre\.trim\(\),peso:f\.peso,ponderaNotas:false,directNota:!f\.varias/.test(src));
 // La fila simple es la misma rama de render que usan las pautas oficiales, así
 // que una evaluación a mano y una del catálogo se ven y se llenan igual.
 chk('la fila simple es la rama de directNota sin slots',
@@ -107,6 +107,27 @@ chk('marcada queda como lista abierta', varias.directNota === false);
 // Sin esto la rama de render sería la de casillas fijas, que necesita un número
 // que acá nadie dio.
 chk('y sin slots: el estudiante agrega las que quiera', !varias.slots);
+
+console.log('\n=== El editor de pauta y la conversión posterior ===');
+vm.runInContext('S={ramos:[{id:"r2",nombre:"Ramo",categorias:[],gates:[],notas:[]}]};currentRamoId="r2";', ctx);
+vm.runInContext('showToast=function(){};', ctx);
+vm.runInContext('pautaDraft=[{id:null,nombre:"Solemne",peso:40,tieneNotas:false,varias:false},{id:null,nombre:"Controles",peso:60,tieneNotas:false,varias:true}];', ctx);
+val('guardarPautaManual')();
+const porNombre = n => val('S.ramos[0].categorias').find(c => c.nombre === n);
+chk('la fila sin marcar queda simple', porNombre('Solemne').directNota === true);
+chk('la fila marcada queda como lista abierta', porNombre('Controles').directNota === false);
+
+// Convertir una que ya tiene varias notas a fila simple mostraría una y
+// escondería el resto sin decirlo. La casilla viene desactivada en ese caso, y
+// confirmEditCat no toca el modo cuando lo está.
+console.log('\n=== Una evaluación con varias notas no se degrada sola ===');
+const conNotas = porNombre('Controles');
+conNotas.notas = [{ id: 'n1', valor: 5, peso: 1 }, { id: 'n2', valor: 6, peso: 1 }];
+campos['m-cat-name'] = { value: 'Controles' };
+campos['m-cat-varias'] = { checked: false, disabled: true };
+val('confirmEditCat')(conNotas.id);
+chk('con la casilla desactivada, el modo no cambia', conNotas.directNota === false);
+chk('y las notas siguen ahí', conNotas.notas.length === 2);
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
