@@ -586,6 +586,32 @@ sus fechas con seguridad no. Tratarlas como una sola cosa lleva a descartar
 pautas todavía buenas o a cargar fechas falsas: son dos decisiones separadas y
 el modelo tiene que poder decirlas por separado.
 
+**El correo de contacto no lleva a ninguna parte, y debería traer el borrador
+listo.** En el formulario de sugerencias, "¿Prefieres escribirnos por correo?"
+termina en el correo de GradeHub. **Ya es un `mailto:`** (`app.js`, busca
+`feedback-contact`), así que el problema no es que falte el enlace: es que al
+tocarlo no pasa nada visible. Antes de escribir código hay que averiguar cuál de
+las causas es —el `mailto:` no abre en la PWA instalada, o abre y el usuario no
+lo percibe, o el enlace no se lee como enlace—, porque cada una se arregla
+distinto. Reproducirlo en el teléfono es el primer paso, no el último.
+
+Y lo que se pide además: que el borrador venga armado, con la categoría
+—sugerencia o problema— y algo que identifique la cuenta en el asunto. Es un
+`mailto:` con `subject` y `body`, sin backend ni permisos nuevos.
+
+Tres cosas a tener en cuenta:
+
+- El remitente ya dice quién escribe, así que repetir el correo en el asunto no
+  agrega nada. Lo que sirve para responder es la categoría y algún dato que
+  permita ubicar la cuenta.
+- Todo lo que se ponga en el asunto o el cuerpo queda a la vista si esa persona
+  reenvía el correo. Nada de identificadores internos que no le digan nada a
+  ella.
+- `mailto:` depende de que el sistema tenga un cliente de correo asociado. En
+  los correos institucionales UC eso es Outlook; quien use webmail en el
+  navegador puede quedarse sin nada. El enlace es un atajo, no puede ser el
+  único camino: el formulario de la app tiene que seguir siendo el principal.
+
 **Notificaciones.** Primer paso concreto de la dirección nueva y el único que no
 depende de la App Store. Falta el handler de push en `sw.js`, pedir el permiso
 en el momento correcto —no al entrar, sino cuando ya hay algo que avisar— y el
