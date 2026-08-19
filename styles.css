@@ -953,9 +953,18 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
    ═════════════════════════════════════════════════════════════════════ */
 
 @media(min-width:768px){
-  .app{max-width:600px;}
-  .bottom-nav{max-width:600px;}
+  /* El tramo 768–1023 es el iPad y la ventana a media pantalla. Heredaba el
+     diseño de teléfono —600px y los ramos en una columna— así que sobraban
+     200px de fondo a cada lado y había que hacer scroll para ver seis ramos.
+     El rail todavía no entra acá (llega en 1024): esto es la barra abajo con
+     el contenido usando el ancho que hay. */
+  .app{max-width:min(760px,100%);}
+  .bottom-nav{max-width:760px;}
+  /* El modal NO sigue al contenedor: un diálogo de 760px obliga a barrer la
+     pantalla de lado a lado para leer dos campos. */
   .modal-sheet{max-width:600px;}
+  #home-ramos{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;}
+  #home-ramos .ramo-row{margin:0;}
 }
 
 @media(min-width:1024px){
@@ -963,7 +972,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 
   /* El rail toma la izquierda; la app se centra en lo que sobra. */
   body{padding-left:var(--rail);}
-  .app{max-width:940px;border-left:1px solid var(--border);border-right:1px solid var(--border);}
+  .app{max-width:min(1040px,100%);border-left:1px solid var(--border);border-right:1px solid var(--border);}
 
   /* Barra inferior → rail vertical */
   .bottom-nav{
@@ -984,10 +993,6 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 
   /* Con el rail al lado ya no hay que reservar el alto de la barra */
   .scroll{padding-bottom:32px;}
-
-  /* Los ramos aprovechan el ancho en vez de apilarse en una columna */
-  #home-ramos{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;}
-  #home-ramos .ramo-row{margin:0;}
 
   /* Modales: diálogo centrado, no hoja que sube desde el borde */
   .modal-overlay{align-items:center;padding:24px;}
@@ -1331,9 +1336,14 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
    ══════════════════════════════════════════════════════════════════════ */
 
 @media(min-width:1440px){
-  .app{max-width:1180px;}
+  .app{max-width:min(1360px,100%);}
   #home-ramos{grid-template-columns:1fr 1fr 1fr;}
 }
+
+/* Tres columnas es el tope a propósito. Con cuatro, en un monitor grande, las
+   tarjetas bajan de ~340px y "Tecnología y Sistemas de Información" se corta a
+   la mitad: se gana ancho aprovechado y se pierde el nombre del ramo, que es lo
+   único que la tarjeta tiene que decir. */
 
 /* ── Transparencia y contraste ────────────────────────────────────────────────
    Dos preferencias del sistema que la app ignoraba. El bloque de movimiento
