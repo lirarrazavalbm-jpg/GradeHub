@@ -90,6 +90,22 @@ function normalize(data) {
   data.ramos.forEach(r => {
     const p = pautaPendiente(r);
     if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.pautaHuella = huellaPauta(p.categorias); }
+    // Los créditos tenían el mismo problema que la pauta y era peor, porque no
+    // se nota: `creditosDe` solo corría al CREAR el ramo, así que quien agregó
+    // Introducción a la Programación antes de que su crédito estuviera en la
+    // tabla se quedaba con `creditos:null` para siempre. La app le pedía
+    // "agrega créditos" por un dato que sí tenemos.
+    //
+    // Y no es cosmético: el promedio general se pondera por créditos SOLO si
+    // todos los ramos con nota los tienen. Un ramo sin créditos hace caer a
+    // toda la cuenta a promedio simple, que es otro número.
+    //
+    // Solo se rellena si está vacío y si el ramo vino del catálogo: un crédito
+    // escrito a mano por el estudiante manda sobre la tabla.
+    if ((r.creditos === null || r.creditos === undefined) && r.origen && r.origen.tenant) {
+      const cr = creditosDe(r.nombre, r.origen.tenant, null);
+      if (typeof cr === 'number') r.creditos = cr;
+    }
     completarFechasOficiales(r);
   });
   data.onboardingDone = Boolean(data.onboardingDone);
