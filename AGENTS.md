@@ -612,6 +612,45 @@ Tres cosas a tener en cuenta:
   navegador puede quedarse sin nada. El enlace es un atajo, no puede ser el
   único camino: el formulario de la app tiene que seguir siendo el principal.
 
+**Tocar una evaluación en la Agenda no muestra nada más.** Se pide que se
+expanda con más detalle. Qué mostrar es parte del trabajo, y la pregunta que lo
+ordena es cuál de estas le sirve a alguien que está mirando qué estudiar: cuánto
+pesa, qué nota necesita en ella, cómo queda el ramo si le va mal, qué evaluación
+viene después. La app ya sabe las cuatro.
+
+**La barra de orden de la Agenda ocupa demasiado.** Recomendado / Fecha / Peso
+—recién agregada— tiene que achicarse: es un control secundario y hoy compite
+con el contenido.
+
+**Faltan colores de fondo elegibles.** Hoy `ACENTOS` cambia el color de
+identidad, pero el fondo no se elige. Ojo con lo que ya está escrito más arriba
+en este archivo: las superficies de los temas (`bg`, `card`, `border`) solo se
+aplican en modo oscuro. Agregar fondos claros elegibles cruza esa regla, así que
+se acuerda antes de escribir código.
+
+**La tipografía es la que usa todo el mundo.** Inter (37 usos) y Sora (33),
+desde Google Fonts. Inter es la fuente por defecto de casi toda interfaz moderna
+y de casi todo lo generado por IA: funciona bien y no dice nada. Se pide
+explorar alternativas con más carácter. Dos restricciones concretas: la CSP ya
+permite `fonts.googleapis.com` y `fonts.gstatic.com` —una fuente de otro
+proveedor obliga a tocar `_headers` y `sw.js`, que cachea las fuentes— y cada
+familia nueva pesa en la descarga. El texto de la app se lee en pantallas
+chicas y con números: lo que no se negocia es la legibilidad de las notas y que
+los dígitos sean tabulares donde se alinean en columna.
+
+**La barra de avance del ramo y el momento de llegar a 100%.** Hoy
+`.ramo-progress-fill` ya se rellena según el porcentaje evaluado —usa
+`transform:scaleX()` desde que se arregló lo de animar `width`— pero mide 3px de
+alto y máximo 96px de ancho, así que el llenado casi no se percibe. Se pide que
+se note, y que al llegar al 100% pase algo.
+
+**Cuidado con qué significa ese 100%.** Es "ya se evaluó todo el ramo", NO "lo
+aprobaste": alguien puede tener el 100% evaluado y haber reprobado. Si la
+celebración es verde o se parece al semáforo, le va a decir a esa persona
+exactamente lo contrario de lo que le pasó. Y lo que se agregue tiene que
+respetar `prefers-reduced-motion`, que en esta app no apaga todo sino que
+conserva opacidad y color y elimina desplazamientos.
+
 **Notificaciones.** Primer paso concreto de la dirección nueva y el único que no
 depende de la App Store. Falta el handler de push en `sw.js`, pedir el permiso
 en el momento correcto —no al entrar, sino cuando ya hay algo que avisar— y el
