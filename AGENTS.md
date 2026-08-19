@@ -544,6 +544,45 @@ Por eso los cuatro puntos de la auditoría de seguridad pasan a ser lo PRIMERO
 que hace Martín, antes que cualquier cosa de esta cola. Mientras sigan abiertos,
 están descritos en un archivo que cualquiera puede leer.
 
+**Nadie puede cambiar su correo, y eso encierra cuentas.** `updateUser` solo se
+usa para la contraseña: no hay ningún camino en la app para corregir la
+dirección. Como el registro no verifica el correo, alguien que se equivocó al
+escribirlo —un `gmial.com`, un dedo de más— entra igual y no se entera. El día
+que olvide su contraseña, el correo de recuperación se va a un buzón que no
+existe y **queda encerrado con sus notas adentro**, sin ninguna vuelta posible.
+
+No es un problema futuro que aparezca al activar la verificación: está abierto
+ahora, con todas las cuentas creadas desde el lanzamiento. Activar la
+verificación lo empeora —esas personas tampoco podrían verificar—, así que el
+cambio de correo tiene que existir **antes**, no después.
+
+Supabase lo soporta con `updateUser({email})`, que manda confirmación a la
+dirección vieja y a la nueva, así que depende del correo propio (#150) igual que
+todo lo demás. Para dimensionarlo, esta consulta muestra si hay dominios con
+pinta de error sin exponer ninguna dirección:
+
+```sql
+select split_part(email,'@',2) as dominio, count(*) from auth.users
+where deleted_at is null group by 1 order by 2 desc;
+```
+
+**Notificaciones.** Primer paso concreto de la dirección nueva y el único que no
+depende de la App Store. Falta el handler de push en `sw.js`, pedir el permiso
+en el momento correcto —no al entrar, sino cuando ya hay algo que avisar— y el
+disparador diario, que puede salir de `pg_cron` en Supabase. Ojo con lo que
+distingue una notificación útil de una molesta: la app sabe qué viene, cuánto
+pesa y qué nota se necesita, así que puede avisar "mañana tienes la I2 de
+Cálculo, vale 25%" en vez de un recordatorio genérico. Sin fechas cargadas no
+hay nada que notificar, así que va después de que la Agenda sea cómoda.
+
+**Aceptar términos al crear la cuenta, y actualizar la política.** Se pide un
+paso explícito de aceptación en el registro. Dos cosas que hay que resolver
+antes de escribirlo: qué pasa con las cuentas que ya existen —se registraron sin
+aceptar nada, y pedirles aceptación al entrar es una interrupción que hay que
+diseñar, no improvisar— y dónde queda constancia de que aceptaron, porque si no
+se guarda, el paso es decorativo. La política se actualiza junto con esto para
+que las dos páginas digan lo mismo.
+
 **Arreglar la verificación por correo.** Está desactivada porque el SMTP
 integrado de Supabase despacha dos correos por hora. No se puede reactivar antes
 de tener correo propio con dominio verificado — issue #150, asignado a Martín —
