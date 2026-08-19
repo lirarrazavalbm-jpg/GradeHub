@@ -51,7 +51,7 @@ function cambiarOrdenAgenda(orden){
 function agendaOrdenHTML(activo=agendaOrdenActual){
   const opciones=[['recomendado','Recomendado'],['fecha','Fecha'],['peso','Peso']];
   return `<div class="ag-order">
-    <span class="ag-order-label">Ordenar por</span>
+    <span class="ag-order-label">Orden</span>
     <div class="ag-order-options" role="group" aria-label="Ordenar evaluaciones pendientes">
       ${opciones.map(([valor,label])=>`<button type="button" class="ag-order-option${activo===valor?' active':''}" aria-pressed="${activo===valor?'true':'false'}" onclick="cambiarOrdenAgenda('${valor}')">${label}</button>`).join('')}
     </div>
