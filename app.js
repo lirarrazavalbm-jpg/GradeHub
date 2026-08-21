@@ -30,6 +30,11 @@ function getCacheOwner(){try{return localStorage.getItem(CACHE_OWNER_KEY);}catch
 // sobre la nuestra: puede saber algo que el programa no dice —un cambio
 // anunciado en clases, la fecha real de su sección— y pisarla sería moverle la
 // Agenda por debajo.
+// Marca solo en memoria qué fechas del catálogo se completaron DURANTE esta
+// carga. Si después llega un consenso, puede reemplazar esas —porque estaban
+// realmente vacías— sin confundirlas con una fecha de catálogo que la cuenta ya
+// tenía guardada. WeakSet no entra a gradehub_v1 ni a Supabase.
+const fechasCatalogoRecienCompletadas=new WeakSet();
 function completarFechasOficiales(r){
   if(!r||!r.origen||!r.origen.tenant||!Array.isArray(r.categorias))return;
   const presets=r.origen.tenant==='fen'?PRESETS_FEN:(r.origen.tenant==='uc'?PRESETS_UC:null);
@@ -50,13 +55,50 @@ function completarFechasOficiales(r){
     // app se enterara de que esa prueba se movió o no va.
     if(c.fechaQuitada)return;
     const f=porNombre.get(normName(c.nombre));
-    if(f)c.fecha=f;
+    if(f){c.fecha=f;c.fechaOrigen='catalogo';fechasCatalogoRecienCompletadas.add(c);}
   });
 }
 
 // HH:MM en 24 h. El input[type=time] ya entrega este formato, pero por acá
 // también entran respaldos importados y datos de la nube: se valida igual.
 const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const FECHA_ORIGENES=new Set(['usuario','catalogo','consenso','calendario','desconocido']);
+function origenFechaSeguro(origen){return FECHA_ORIGENES.has(origen)?origen:null;}
+
+function fechasOficialesRamo(r){
+  if(!r||!r.origen||!r.origen.tenant)return new Map();
+  const presets=r.origen.tenant==='fen'?PRESETS_FEN:(r.origen.tenant==='uc'?PRESETS_UC:null);
+  if(!presets)return new Map();
+  const clave=Object.keys(presets).find(n=>normName(n)===normName(r.nombre));
+  const def=clave&&presets[clave];
+  const evals=def?(Array.isArray(def)?def:(def.evals||[])):[];
+  const out=new Map();
+  evals.forEach(([nombre,,extra])=>{if(extra&&extra.fecha)out.set(normName(nombre),extra.fecha);});
+  return out;
+}
+
+// Migración aditiva e idempotente: no inventa autoría para datos antiguos. Solo
+// reconoce como catálogo una coincidencia exacta con el programa actual; el
+// resto queda `desconocido` hasta que la persona lo edite o confirme.
+function migrarOrigenesFecha(r){
+  const oficiales=fechasOficialesRamo(r);
+  (r.categorias||[]).forEach(c=>{
+    if(c.fecha){
+      c.fechaOrigen=origenFechaSeguro(c.fechaOrigen)||
+        (oficiales.get(normName(c.nombre))===c.fecha?'catalogo':'desconocido');
+    }else c.fechaOrigen=null;
+    if(c.hora)c.horaOrigen=origenFechaSeguro(c.horaOrigen)||'desconocido';
+    else c.horaOrigen=null;
+    c.fechaQuitada=!!c.fechaQuitada;
+    c.horaQuitada=!!c.horaQuitada;
+    (c.notas||[]).forEach(n=>{
+      n.fechaOrigen=n.fecha?(origenFechaSeguro(n.fechaOrigen)||'desconocido'):null;
+      n.horaOrigen=n.hora?(origenFechaSeguro(n.horaOrigen)||'desconocido'):null;
+      n.fechaQuitada=!!n.fechaQuitada;
+      n.horaQuitada=!!n.horaQuitada;
+    });
+  });
+}
 
 function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
@@ -68,7 +110,13 @@ function normalize(data) {
     // El 0 se conserva: es un dato exacto, no un faltante. Ver tieneCreditos().
     creditos: (typeof r.creditos === 'number' && r.creditos >= 0) ? r.creditos : null,
     // De qué catálogo (universidad + carrera) salió este ramo. null = creado a mano.
-    origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
+    origen: (r.origen && r.origen.tenant) ? {
+      tenant:r.origen.tenant,
+      carrera:r.origen.carrera||null,
+      // Se persiste porque Postgres no conoce las tablas de siglas de data.js.
+      // La RPC agrupa por esta clave sin duplicar ese catálogo en SQL.
+      ramoKey:ramoKey(r.nombre,r.origen.tenant,r.origen.carrera),
+    } : null,
     // Otro ramo aporta parte de esta nota (el laboratorio de Dinámica).
     aporta: (r.aporta && r.aporta.ramo && r.aporta.peso) ? {ramo:r.aporta.ramo, peso:r.aporta.peso, min:r.aporta.min} : null,
     // La forma de la pauta tal como se la dimos. Si difiere de las categorías
@@ -84,16 +132,22 @@ function normalize(data) {
       // mostraría una y escondería el resto, así que esas se dejan como están.
       directNota: c.directNota ?? (!c.slots && (c.notas || []).length <= 1),
       fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
+      fechaOrigen: origenFechaSeguro(c.fechaOrigen),
+      fechaQuitada: !!c.fechaQuitada,
       // La hora va APARTE de la fecha y nunca dentro de ella. Hay miles de
       // evaluaciones guardadas con `fecha` sola: convertirla a fecha-y-hora
       // sería reinterpretar en silencio lo que ya está escrito, y las que no
       // tienen hora quedarían todas a medianoche. Sin fecha no significa nada,
       // así que se descarta.
       hora: (c.fecha && HORA_RE.test(c.hora || '')) ? c.hora : null,
+      horaOrigen: origenFechaSeguro(c.horaOrigen),
+      horaQuitada: !!c.horaQuitada,
       notas: (c.notas || []).map(n => ({
         id: idSeguro(n.id),
         nombre: n.nombre || 'Nota',
         hora: (n.fecha && HORA_RE.test(n.hora || '')) ? n.hora : null,
+        horaOrigen: origenFechaSeguro(n.horaOrigen),
+        horaQuitada: !!n.horaQuitada,
         valor: n.valor ?? (typeof n === 'number' ? n : null),
         peso: n.peso || 1,
         // Una nota puede tener su propia fecha y todavía no tener valor: es una
@@ -101,6 +155,8 @@ function normalize(data) {
         // grupo cae el mismo día; no alcanza para "Casos y ensayos", que son
         // varios casos repartidos por el semestre.
         fecha: n.fecha || null,
+        fechaOrigen: origenFechaSeguro(n.fechaOrigen),
+        fechaQuitada: !!n.fechaQuitada,
       }))
     }))
   }));
@@ -110,8 +166,14 @@ function normalize(data) {
   // para siempre, aunque su pauta ya estuviera publicada. No falla nada: el
   // ramo simplemente nunca se entera. Por eso se rellena al cargar.
   data.ramos.forEach(r => {
+    migrarOrigenesFecha(r);
     const p = pautaPendiente(r);
-    if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.pautaHuella = huellaPauta(p.categorias); }
+    if (p) {
+      // El ramo existía, pero la pauta completa estaba vacía. Sus fechas son
+      // fallback recién agregado en esta carga y el consenso sí puede ganarles.
+      p.categorias.forEach(c=>{if(c.fecha)fechasCatalogoRecienCompletadas.add(c);});
+      r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.pautaHuella = huellaPauta(p.categorias);
+    }
     // Los créditos tenían el mismo problema que la pauta y era peor, porque no
     // se nota: `creditosDe` solo corría al CREAR el ramo, así que quien agregó
     // Introducción a la Programación antes de que su crédito estuviera en la
@@ -827,6 +889,9 @@ function enterApp(){
   document.getElementById('screen-auth').classList.remove('active');
   document.getElementById('screen-onboard').classList.remove('active');
   showMainApp();
+  // No bloquea la entrada. Si la RPC falta, las fechas del catálogo que ya se
+  // completaron siguen funcionando como hasta hoy.
+  void cargarConsensoFechas();
 }
 
 function traduceAuthError(e){
@@ -1305,7 +1370,8 @@ function completeOnboarding(){
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
-    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+    const nuevo={id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(item.nombre),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null};
+    S.ramos.push(nuevo);marcarRamoNuevoParaConsenso(nuevo);
   });
   S.onboardingDone=true;save();
   syncProfile();
@@ -1971,6 +2037,7 @@ function renderRamo(){
   }
   r.categorias.forEach(cat=>{
     const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaHoraCorta(cat.fecha,cat.hora))}</span>`:'';
+    const consensoChip=fechaConsensoIndicador(r,cat,null);
     // Sección de preset: fila directa, solo escribir la nota (estilo simulador)
     if(cat.directNota){
       // Preset con varios espacios (ej: Laboratorio = 3 notas que se promedian) — COLAPSABLE
@@ -1991,7 +2058,7 @@ function renderRamo(){
           <div class="eval-group-hd" role="button" tabindex="0" aria-expanded="${isOpen?'true':'false'}" onclick="toggleCat('${cat.id}')">
             <div style="flex:1;min-width:0;">
               <div class="eval-row-name">${esc(cat.nombre)}</div>
-              <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}</div>
+              <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}${consensoChip?' · '+consensoChip:''}</div>
             </div>
             <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:1.1875rem;">${fmt(av)}</div>
             <span aria-hidden="true" style="color:var(--fg3);font-size:0.6875rem;margin-left:6px;">${isOpen?'▲':'▼'}</span>
@@ -2006,7 +2073,7 @@ function renderRamo(){
       row.innerHTML=`
         <div class="eval-row-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" style="cursor:pointer;">
           <div class="eval-row-name">${esc(cat.nombre)}</div>
-          <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}</div>
+          <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}${consensoChip?' · '+consensoChip:''}</div>
         </div>
         <input class="eval-row-input" inputmode="decimal" maxlength="3" placeholder="—" value="${g!=null?fmt(g):''}" style="color:${g!=null?getColor(g):'var(--fg)'}" onchange="setDirectNota('${cat.id}',this.value)" onclick="event.stopPropagation();" aria-label="Nota de ${esc(cat.nombre)}"/>`;
       cl.appendChild(row);
@@ -2023,12 +2090,14 @@ function renderRamo(){
       `<p style="font-size:0.8125rem;color:var(--fg3);text-align:center;padding:10px 0;">Sin notas aún</p>`:
       cat.notas.map(n=>{
         const descartada=notasDescartadas.has(n.id);
+        const consensoNota=fechaConsensoIndicador(r,cat,n);
         return `
         <div class="nota-row${descartada?' nota-row-dropped':''}">
           <button class="nota-row-name" aria-label="Editar nota ${esc(n.nombre)}" onclick="openEditNotaModal('${cat.id}','${n.id}');event.stopPropagation();" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;font-size:0.875rem;color:var(--fg2);flex:1;">${esc(n.nombre)}</button>
           ${n.peso!==1?`<span class="nota-row-pond">${n.peso}%</span>`:''}
           ${descartada?'<span class="nota-row-drop-tag">No cuenta</span>':''}
           ${n.fecha?`<span class="cat-fecha-chip">${esc(fechaCorta(n.fecha))}</span>`:''}
+          ${consensoNota}
           <span class="nota-row-val" style="color:${getColor(n.valor)}">${fmt(n.valor)}</span>
           <button class="nota-row-del" aria-label="Eliminar nota ${esc(n.nombre)}" onclick="deleteNota('${cat.id}','${n.id}');event.stopPropagation();">✕</button>
         </div>`;
@@ -2037,7 +2106,7 @@ function renderRamo(){
       <div class="cat-header">
         <div class="cat-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" onkeydown="if(event.key==='Enter'){openEditCatModal('${cat.id}')}" style="cursor:pointer;">
           <div class="cat-name">${esc(cat.nombre)}</div>
-          <div class="cat-peso-tag">${cat.peso}% del ramo · ${cat.notas.length} nota${cat.notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
+          <div class="cat-peso-tag">${cat.peso}% del ramo · ${cat.notas.length} nota${cat.notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}${consensoChip?' · '+consensoChip:''}</div>
         </div>
         <span style="font-size:1rem;font-weight:700;color:${getColor(catAvg)}">${fmt(catAvg)}</span>
         <button aria-label="Eliminar evaluación ${esc(cat.nombre)}" style="background:var(--red-bg);border:none;border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--red);font-size:0.8125rem;" onclick="confirmDeleteCat('${cat.id}');event.stopPropagation();"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
@@ -2281,7 +2350,7 @@ function presetRamo(nombre,tenant,carrera){
       const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
       if(extra&&extra.slots)cat.slots=extra.slots;
       if(extra&&extra.lista)cat.directNota=false; // lista abierta: el estudiante agrega las notas que le tomaron
-      if(extra&&extra.fecha)cat.fecha=extra.fecha;
+      if(extra&&extra.fecha){cat.fecha=extra.fecha;cat.fechaOrigen='catalogo';}
       if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
       categorias.push(cat);porNombre[nom]=id;
       if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
@@ -2306,7 +2375,7 @@ function presetRamo(nombre,tenant,carrera){
     if(extra&&extra.slots)cat.slots=extra.slots;
     if(extra&&extra.lista)cat.directNota=false;
     if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
-    if(extra&&extra.fecha)cat.fecha=extra.fecha;
+    if(extra&&extra.fecha){cat.fecha=extra.fecha;cat.fechaOrigen='catalogo';}
     categorias.push(cat);porNombre[nom]=id;
     if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
   });
@@ -2328,7 +2397,8 @@ function confirmAddMalla(){
     // estrella de "pauta oficial" al lado, porque el selector SÍ normaliza.
     const presetName=findPresetName(n,S.tenant,S.carrera);
     const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+    const nuevo={id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(n),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null};
+    S.ramos.push(nuevo);marcarRamoNuevoParaConsenso(nuevo);
   });
   save();track('add_malla_ramos',{count:elegidos.length,carrera:S.carrera,sem:S.careerSemestre});
   closeModal();
@@ -2392,11 +2462,12 @@ function renderCatalogResults(q){
 function addFromCatalog(nombre){
   const presetName=findPresetName(nombre,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-  S.ramos.push({
+  const nuevo={
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
-    creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(),
+    creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(presetName||nombre),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
-  });
+  };
+  S.ramos.push(nuevo);marcarRamoNuevoParaConsenso(nuevo);
   save();track('add_ramo_catalogo',{preset:!!preset});
   closeModal();renderHome();
   showToast(preset?'Agregado con sus ponderaciones':'Ramo agregado');
@@ -2439,6 +2510,23 @@ function siglaUC(nombre,carrera){
   if(!tabla)return null;
   const clave=Object.keys(tabla).find(n=>normName(n)===normName(nombre));
   return clave?tabla[clave]:null;
+}
+
+// Clave que también puede entender el servidor. Primero resuelve en la carrera
+// de la persona; si el ramo se buscó desde otra malla UC, busca una sigla única
+// en toda la universidad. Solo el fallback carece de sigla y usa nombre.
+function ramoKey(nombre,tenant,carrera){
+  if(tenant!=='uc')return normName(nombre);
+  const directa=siglaUC(nombre,carrera);if(directa)return directa;
+  const credito=Object.keys(CREDITOS_UC||{}).find(n=>normName(n)===normName(nombre));
+  if(credito&&CREDITOS_UC[credito][1])return CREDITOS_UC[credito][1];
+  const curso=(CURSOS_UC||[]).find(([,n])=>normName(n)===normName(nombre));
+  if(curso&&curso[0])return curso[0];
+  const siglas=new Set();
+  Object.values(SIGLAS_UC||{}).forEach(tabla=>{
+    Object.entries(tabla||{}).forEach(([n,s])=>{if(normName(n)===normName(nombre)&&s)siglas.add(s);});
+  });
+  return siglas.size===1?[...siglas][0]:normName(nombre);
 }
 
 // \u2500\u2500\u2500 CAT\u00c1LOGO DE RAMOS \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -2566,7 +2654,7 @@ function searchCatalog(q,tenant,carrera,semActual){
 }
 
 // Sello de procedencia para un ramo creado desde el cat\u00e1logo
-function origenActual(){return {tenant:S.tenant,carrera:S.carrera};}
+function origenActual(nombre){return {tenant:S.tenant,carrera:S.carrera,ramoKey:ramoKey(nombre,S.tenant,S.carrera)};}
 
 // \u2500\u2500\u2500 REPORTES DE CAT\u00c1LOGO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 // Si a un estudiante le cambiaron las ponderaciones respecto de lo que trae el
@@ -2643,7 +2731,7 @@ function normalizarReportePeso(i,input){
 // identificador oficial equivalente.
 function claveReporte(r){
   const o=r&&r.origen;
-  return (o&&o.tenant==='uc'&&siglaUC(r.nombre,o.carrera))||normName(r&&r.nombre);
+  return (o&&o.ramoKey)||ramoKey(r&&r.nombre,o&&o.tenant,o&&o.carrera);
 }
 
 function openReportModal(ramoId){
@@ -2745,6 +2833,179 @@ async function consensoParaRamo(r){
   const mine=huellaEstructura(estructuraDe(r));
   const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&c.huella!==mine);
   return hit||null;
+}
+
+// ─── CONSENSO DE FECHAS ─────────────────────────────────────────────────────
+// La respuesta vive solo durante la sesión: los respaldos cambian en el
+// servidor y guardarlos en gradehub_v1 los convertiría en un número falso.
+let _fechaConsensoCache=null,_fechaConsensoPromise=null,_fechaConsensoOwner=null;
+let fechaConsensoSugerencias=new Map();
+const fechaConsensoDescartadas=new Set(),ramosNuevosParaConsenso=new Set();
+
+function claveConsensoFecha(r,cat,nota){
+  return [claveReporte(r),normName(cat&&cat.nombre),nota?normName(nota.nombre):''].join('\u0001');
+}
+function filaConsensoFecha(r,cat,nota,filas){
+  const rk=claveReporte(r),ck=normName(cat&&cat.nombre),nk=nota?normName(nota.nombre):null;
+  return (filas||[]).find(f=>f.ramo_key===rk&&f.categoria_key===ck&&(f.nota_key||null)===nk)||null;
+}
+
+// Núcleo puro: sirve tanto al cliente como a la prueba de no-sobrescritura.
+// `reemplazarCatalogo` contiene solo objetos que estaban vacíos antes de que
+// normalize() les pusiera el fallback oficial en ESTA carga.
+function aplicarConsensoFechas(ramos,filas,opciones){
+  const sugerencias=new Map();let cambios=0;
+  const reemplazarCatalogo=(opciones&&opciones.reemplazarCatalogo)||fechasCatalogoRecienCompletadas;
+  const ramosNuevos=(opciones&&opciones.ramosNuevos)||new Set();
+  (ramos||[]).forEach(r=>{
+    if(!r.origen||!r.origen.ramoKey)return;
+    (r.categorias||[]).forEach(cat=>{
+      const items=[{item:cat,nota:null},...(cat.notas||[]).map(n=>({item:n,nota:n}))];
+      items.forEach(({item,nota})=>{
+        if(item.fechaQuitada)return;
+        const fila=filaConsensoFecha(r,cat,nota,filas);if(!fila||!fila.fecha)return;
+        const key=claveConsensoFecha(r,cat,nota);
+        const puedeReemplazar=!item.fecha||
+          (item.fechaOrigen==='catalogo'&&(reemplazarCatalogo.has(item)||ramosNuevos.has(r.id)));
+        if(puedeReemplazar){
+          if(item.fecha!==fila.fecha||item.fechaOrigen!=='consenso')cambios++;
+          item.fecha=fila.fecha;item.fechaOrigen='consenso';item.fechaQuitada=false;
+          if(fila.hora&&!item.horaQuitada){
+            if(item.hora!==fila.hora||item.horaOrigen!=='consenso')cambios++;
+            item.hora=fila.hora;item.horaOrigen='consenso';item.horaQuitada=false;
+          }
+          return;
+        }
+        if(item.fecha!==fila.fecha){
+          sugerencias.set(key,{...fila,ramoId:r.id,catId:cat.id,notaId:nota&&nota.id});return;
+        }
+        // Fecha igual y hora vacía: la hora tiene consenso independiente y se
+        // puede completar sin reinterpretar la fecha que ya tenía la persona.
+        if(fila.hora&&!item.hora&&!item.horaQuitada){
+          item.hora=fila.hora;item.horaOrigen='consenso';item.horaQuitada=false;cambios++;
+        }else if(fila.hora&&item.hora&&item.hora!==fila.hora){
+          sugerencias.set(key,{...fila,ramoId:r.id,catId:cat.id,notaId:nota&&nota.id});
+        }
+      });
+    });
+  });
+  return {cambios,sugerencias};
+}
+
+function guardarSoloLocal(){
+  if(!_storageOK)return;
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+}
+function refrescarConsensoFechas(){
+  if(typeof renderAgenda==='function')renderAgenda();
+  if(typeof renderHome==='function')renderHome();
+  const pantalla=document.getElementById('screen-ramo');
+  if(currentRamoId&&pantalla&&pantalla.classList.contains('active'))renderRamo();
+}
+function aplicarCacheConsensoFechas(opciones){
+  if(!_fechaConsensoCache)return;
+  const resultado=aplicarConsensoFechas(S.ramos,_fechaConsensoCache,{
+    reemplazarCatalogo:fechasCatalogoRecienCompletadas,
+    ramosNuevos:ramosNuevosParaConsenso,
+  });
+  fechaConsensoSugerencias=new Map([...resultado.sugerencias].filter(([k])=>!fechaConsensoDescartadas.has(k)));
+  ramosNuevosParaConsenso.clear();
+  if(resultado.cambios&&(!opciones||opciones.guardarLocal!==false))guardarSoloLocal(); // migración/consenso: sin tormenta de sync
+  if(!opciones||opciones.refrescar!==false)refrescarConsensoFechas();
+  return resultado;
+}
+async function cargarConsensoFechas(){
+  if(!supabaseClient||!currentUser)return null;
+  const owner=currentUser.id+':'+S.tenant;
+  if(_fechaConsensoOwner!==owner){
+    _fechaConsensoOwner=owner;_fechaConsensoCache=null;_fechaConsensoPromise=null;
+    fechaConsensoSugerencias=new Map();fechaConsensoDescartadas.clear();ramosNuevosParaConsenso.clear();
+  }
+  if(_fechaConsensoCache)return _fechaConsensoCache;
+  if(_fechaConsensoPromise)return _fechaConsensoPromise;
+  _fechaConsensoPromise=(async()=>{
+    try{
+      const {data,error}=await supabaseClient.rpc('date_consensus',{p_tenant:S.tenant});
+      if(error)throw error;
+      _fechaConsensoCache=data||[];
+      aplicarCacheConsensoFechas();
+      return _fechaConsensoCache;
+    }catch(e){
+      // La interfaz sigue con fechas oficiales si el SQL todavía no se aplicó,
+      // si no hay red o si Supabase no conoce aún la RPC.
+      _fechaConsensoCache=[];return null;
+    }finally{_fechaConsensoPromise=null;}
+  })();
+  return _fechaConsensoPromise;
+}
+function marcarRamoNuevoParaConsenso(r){
+  if(!r||!r.origen)return;
+  ramosNuevosParaConsenso.add(r.id);
+  if(_fechaConsensoCache)aplicarCacheConsensoFechas();
+}
+
+function marcarFechaUsuario(item,fecha,hora){
+  const teniaHora=!!item.hora;
+  item.fecha=fecha||null;item.hora=fecha&&HORA_RE.test(hora||'')?hora:null;
+  if(item.fecha){item.fechaOrigen='usuario';item.fechaQuitada=false;}
+  else{item.fechaOrigen=null;item.fechaQuitada=true;}
+  if(item.hora){item.horaOrigen='usuario';item.horaQuitada=false;}
+  else{item.horaOrigen=null;if(teniaHora)item.horaQuitada=true;}
+  if(!item.fecha){item.hora=null;item.horaOrigen=null;item.horaQuitada=true;}
+  return item;
+}
+
+function fechaConsensoDetalle(r,cat,nota){
+  if(!_fechaConsensoCache)return '';
+  const item=nota||cat,key=claveConsensoFecha(r,cat,nota);
+  const sugerida=fechaConsensoSugerencias.get(key);
+  const fila=sugerida||filaConsensoFecha(r,cat,nota,_fechaConsensoCache);
+  if(!fila)return '';
+  if(sugerida){
+    const cuando=fechaHoraCorta(fila.fecha,fila.hora);
+    return `<div class="fecha-consenso-card"><div><b>Fecha sugerida por ${fila.fecha_respaldos} estudiantes</b><span>${esc(cuando)}${fila.hora&&fila.hora_respaldos?` · hora respaldada por ${fila.hora_respaldos}`:''}</span></div><div class="fecha-consenso-actions"><button type="button" onclick="usarFechaConsenso('${r.id}','${cat.id}','${nota?nota.id:''}')">Usar fecha</button><button type="button" class="secondary" onclick="mantenerFechaConsenso('${r.id}','${cat.id}','${nota?nota.id:''}')">Mantener la mía</button></div></div>`;
+  }
+  if(item.fechaOrigen==='consenso')return `<div class="fecha-consenso-card compact"><div><b>Fecha sugerida por ${fila.fecha_respaldos} estudiantes</b>${fila.hora&&fila.hora_respaldos?`<span>Hora respaldada por ${fila.hora_respaldos}</span>`:''}</div></div>`;
+  return '';
+}
+function fechaConsensoIndicador(r,cat,nota){
+  const item=nota||cat,key=claveConsensoFecha(r,cat,nota);
+  if(item.fecha&&item.fechaOrigen==='desconocido'){
+    return `<button type="button" class="fecha-consenso-chip confirmar" onclick="confirmarFechaActual('${r.id}','${cat.id}','${nota?nota.id:''}');event.stopPropagation();">Confirmar fecha</button>`;
+  }
+  if(!_fechaConsensoCache)return '';
+  const sugerida=fechaConsensoSugerencias.get(key);
+  const fila=sugerida||filaConsensoFecha(r,cat,nota,_fechaConsensoCache);
+  if(sugerida){
+    const abrir=nota?`openEditNotaModal('${cat.id}','${nota.id}')`:`openEditCatModal('${cat.id}')`;
+    return `<button type="button" class="fecha-consenso-chip pendiente" onclick="${abrir};event.stopPropagation();">Otra fecha · ${fila.fecha_respaldos}</button>`;
+  }
+  if(fila&&item.fechaOrigen==='consenso')return `<span class="fecha-consenso-chip">Compartida · ${fila.fecha_respaldos}</span>`;
+  return '';
+}
+function itemFechaPorIds(ramoId,catId,notaId){
+  const r=S.ramos.find(x=>x.id===ramoId),cat=r&&(r.categorias||[]).find(x=>x.id===catId);
+  const item=notaId&&cat?(cat.notas||[]).find(x=>x.id===notaId):cat;
+  return {r,cat,item,nota:notaId?item:null};
+}
+function confirmarFechaActual(ramoId,catId,notaId){
+  const x=itemFechaPorIds(ramoId,catId,notaId);if(!x.item||!x.item.fecha)return;
+  marcarFechaUsuario(x.item,x.item.fecha,x.item.hora);
+  save();refrescarConsensoFechas();showToast('Fecha confirmada · ayudará a otros estudiantes');
+}
+function usarFechaConsenso(ramoId,catId,notaId){
+  const x=itemFechaPorIds(ramoId,catId,notaId);if(!x.item)return;
+  const key=claveConsensoFecha(x.r,x.cat,x.nota),fila=fechaConsensoSugerencias.get(key);if(!fila)return;
+  x.item.fecha=fila.fecha;x.item.fechaOrigen='consenso';x.item.fechaQuitada=false;
+  if(fila.hora&&!x.item.horaQuitada){x.item.hora=fila.hora;x.item.horaOrigen='consenso';x.item.horaQuitada=false;}
+  fechaConsensoSugerencias.delete(key);save();closeModal();refrescarConsensoFechas();showToast('Fecha sugerida aplicada');
+}
+function mantenerFechaConsenso(ramoId,catId,notaId){
+  const x=itemFechaPorIds(ramoId,catId,notaId);if(!x.item)return;
+  const key=claveConsensoFecha(x.r,x.cat,x.nota);
+  marcarFechaUsuario(x.item,x.item.fecha,x.item.hora);
+  fechaConsensoDescartadas.add(key);fechaConsensoSugerencias.delete(key);
+  save();closeModal();refrescarConsensoFechas();showToast('Conservamos tu fecha');
 }
 
 // \u00bfEl ramo viene de otro cat\u00e1logo que el actual? (el estudiante se cambi\u00f3 de
@@ -2917,7 +3178,8 @@ function confirmAddRamo(){
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const cr=creditosDe(presetName||name,S.tenant,preset);
-  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+  const nuevo={id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual(presetName):null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null};
+  S.ramos.push(nuevo);marcarRamoNuevoParaConsenso(nuevo);
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
   showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
 }
@@ -2987,7 +3249,9 @@ function confirmAddCat(){
   // de decirlo: la casilla es el único camino que tiene el estudiante hacia la
   // tarjeta con "+ Agregar nota" que las pautas oficiales usan vía `lista:true`.
   const varias=!!(document.getElementById('m-cat-varias')||{}).checked;
-  r.categorias.push({id:uid(),nombre:name,peso,fecha,hora:leerHora('m-cat'),ponderaNotas:false,directNota:!varias,notas:[]});
+  const hora=leerHora('m-cat');
+  r.categorias.push({id:uid(),nombre:name,peso,fecha,hora,fechaOrigen:fecha?'usuario':null,horaOrigen:hora?'usuario':null,ponderaNotas:false,directNota:!varias,notas:[]});
+  if(_fechaConsensoCache)aplicarCacheConsensoFechas({guardarLocal:false,refrescar:false});
   save();track('add_categoria',{peso,tiene_fecha:!!fecha,varias_notas:varias});closeModal();renderRamo();
 }
 
@@ -3177,6 +3441,7 @@ function guardarPautaManual(){
     }
     else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:!f.varias,notas:[]});
   });
+  if(_fechaConsensoCache)aplicarCacheConsensoFechas({guardarLocal:false,refrescar:false});
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
   showToast(estado.lista?'✓ Listo, ya suma 100%':'Guardado · puedes completar el resto después');
 }
@@ -3233,7 +3498,9 @@ function confirmAddNota(catId){
   const usaPond=document.getElementById('m-pond-toggle').checked;
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
-  cat.notas.push({id:uid(),nombre:name,valor:isNaN(val)?null:val,peso,fecha:fechaNota,hora:leerHora('m-nota')});
+  const horaNota=leerHora('m-nota');
+  cat.notas.push({id:uid(),nombre:name,valor:isNaN(val)?null:val,peso,fecha:fechaNota,hora:horaNota,fechaOrigen:fechaNota?'usuario':null,horaOrigen:horaNota?'usuario':null});
+  if(_fechaConsensoCache)aplicarCacheConsensoFechas({guardarLocal:false,refrescar:false});
   openCats[catId]=true;save();track('add_nota',{ponderada:usaPond,pendiente:isNaN(val)});closeModal();renderRamo();
   // Si trae fecha entra a la Agenda, que vive en otra pantalla.
   if(typeof renderAgenda==='function')renderAgenda();
@@ -4124,6 +4391,7 @@ function openEditCatModal(catId){
       <span>Son varias notas que se promedian ${(cat.notas||[]).length>1?'<span style="color:var(--fg3);">(ya tiene varias notas: para volver a una sola, bórralas)</span>':'<span style="color:var(--fg3);">(controles, laboratorios, tareas)</span>'}</span>
     </label>`}
     ${campoFechaHoraHTML('m-cat',cat.fecha,cat.hora,true)}
+    ${fechaConsensoDetalle(r,cat,null)}
     ${cat.fecha?`<a class="ramo-action" href="${esc(googleCalUrl(r,cat))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;margin-bottom:14px;">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
       Agregar a Google Calendar
@@ -4143,11 +4411,7 @@ function confirmEditCat(catId){
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
-  cat.nombre=name;cat.peso=peso;cat.fecha=fecha;cat.hora=leerHora('m-cat');
-  // Quitar la fecha es una decisión, no un dato faltante: se deja constancia
-  // para que el relleno de fechas oficiales no la reponga en la próxima carga.
-  // Al escribir una nueva, la decisión se revierte sola.
-  if(fecha)delete cat.fechaQuitada; else cat.fechaQuitada=true;
+  cat.nombre=name;cat.peso=peso;marcarFechaUsuario(cat,fecha,leerHora('m-cat'));
   // La casilla no existe en las de casillas fijas (`slots`), y viene desactivada
   // cuando ya hay dos o más notas: volver a fila simple mostraría una y
   // escondería el resto sin decirlo.
@@ -4174,6 +4438,7 @@ function openEditNotaModal(catId,notaId){
     <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
     ${campoFechaHoraHTML('m-nota',n.fecha,n.hora,true)}
+    ${fechaConsensoDetalle(r,cat,n)}
     <div class="toggle-row">
       <div><div class="toggle-label">Ponderación personalizada</div><div class="toggle-sub">Por defecto se promedia simple</div></div>
       <label class="toggle"><input type="checkbox" id="m-pond-toggle" ${hasPond?'checked':''} onchange="togglePondSlider()"/><span class="toggle-slider"></span></label>
@@ -4208,7 +4473,7 @@ function confirmEditNota(catId,notaId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
-  n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;n.fecha=fechaNota;n.hora=leerHora('m-nota');
+  n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;marcarFechaUsuario(n,fechaNota,leerHora('m-nota'));
   save();track('edit_nota',{pendiente:isNaN(val)});closeModal();renderRamo();
   if(typeof renderAgenda==='function')renderAgenda();
   showToast(isNaN(val)?'Guardada como pendiente':lecturaDespuesDeNota(r));

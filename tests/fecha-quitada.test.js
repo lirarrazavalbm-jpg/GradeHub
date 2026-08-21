@@ -53,8 +53,13 @@ chk('la fecha quitada se queda quitada', quitada.categorias[0].fecha == null);
 
 console.log('\n=== Y quitarla deja constancia, ponerla la revierte ===');
 const app = fs.readFileSync(raiz + 'app.js', 'utf8');
-chk('al guardar sin fecha se marca fechaQuitada',
-  /if\(fecha\)delete cat\.fechaQuitada; else cat\.fechaQuitada=true;/.test(app));
+const editar={fecha:'2026-09-10',hora:'14:00'};
+val('marcarFechaUsuario')(editar,null,null);
+chk('al guardar sin fecha se marca fechaQuitada y se lleva la hora',
+  editar.fechaQuitada===true&&editar.horaQuitada===true&&editar.fecha===null&&editar.hora===null);
+val('marcarFechaUsuario')(editar,'2026-09-12','09:30');
+chk('al escribir otra fecha se revierte y queda como decisión del usuario',
+  editar.fechaQuitada===false&&editar.horaQuitada===false&&editar.fechaOrigen==='usuario'&&editar.horaOrigen==='usuario');
 chk('el relleno respeta la marca', /if\(c\.fechaQuitada\)return;/.test(app));
 
 console.log('\n=== La Agenda se entera al toque ===');
