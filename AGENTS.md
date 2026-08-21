@@ -315,6 +315,13 @@ personas distintas), `calendar_feed.sql` aplicado y verificado de punta a punta
 aplicado, `user_feedback.sql` aplicado el 2026-08-17. HSTS y CSP verificados en
 producción.
 
+`calendar_feed_data` se volvió a aplicar el 2026-08-21 para que devuelva `hora`
+(#160). Ojo si hay que reaplicarla otra vez: agregar una columna cambia el tipo
+de retorno y Postgres no lo acepta con `create or replace`, así que el archivo
+empieza con un `drop function`. Verificado contra el feed real: la evaluación
+con hora sale `DTSTART:20260821T123000` —sin `Z` y sin `TZID`, o sea hora local
+flotante— y las que no tienen hora siguen siendo de día completo.
+
 **Lo que falta es todo manual, lo lleva Martín, y va PRIMERO.** Desde el
 2026-08-17 tiene administrador en Supabase y Cloudflare. Ningún deploy hace nada
 de esto: Cloudflare publica archivos estáticos y no ejecuta SQL ni toca la
