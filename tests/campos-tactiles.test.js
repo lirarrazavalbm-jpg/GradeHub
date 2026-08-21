@@ -82,5 +82,35 @@ chk('el peso del reporte no pierde contra input[type=text]',
   comparaEspecificidad(especificidad(selectorPeso), especificidad('input[type=text]')) >= 0);
 chk('reserva 25px para el sufijo %', /padding:\s*9px\s+25px\s+9px\s+9px/.test(css));
 
+console.log('\n=== Los controles de una evaluación también se tocan con el dedo ===');
+// Salieron de revisar los desplegables ramo por ramo (#177) midiendo cada
+// control en 375px. Estaban todos bajo 44: la casilla de nota en 38, y el ✕ que
+// borra una nota en 23x19.
+//
+// El del ✕ es el que importa: `deleteNota` no pregunta nada, así que un toque
+// torcido al lado del nombre se lleva un dato que no vuelve. Lo que crece es el
+// área que responde al dedo, no el ícono.
+const reglaDe = sel => (css.match(new RegExp('\\' + sel.replace('.', '.') + '\\{[^}]*\\}')) || [])[0] || '';
+const alto44 = r => /min-height:\s*44px/.test(r);
+[['.nota-row-del', 'el ✕ que borra una nota'],
+ ['.eval-row-input', 'la casilla donde se escribe la nota'],
+ ['.add-nota-btn', 'el botón de agregar nota'],
+ ['.nota-row-name', 'el nombre de la nota, que abre su editor']].forEach(([sel, que]) => {
+  chk(que + ' reserva 44px de alto', alto44(reglaDe(sel)));
+});
+chk('y el ✕ reserva también 44px de ancho', /min-width:\s*44px/.test(reglaDe('.nota-row-del')));
+
+// Los dos botones de la cabecera van en estilos inline, dentro de app.js.
+const appSrc = fs.readFileSync(raiz + 'app.js', 'utf8');
+const inlineDe = etiqueta => {
+  const m = appSrc.match(new RegExp('<button aria-label="' + etiqueta + '[^>]*style="([^"]*)"'));
+  return m ? m[1] : '';
+};
+[['Eliminar evaluación', 'el botón de eliminar la evaluación'],
+ ["\\$\\{isOpen\\?'Colapsar'", 'el botón que abre y cierra la evaluación']].forEach(([et, que]) => {
+  const st = inlineDe(et);
+  chk(que + ' reserva 44px', /min-height:44px/.test(st) && /min-width:44px/.test(st));
+});
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
