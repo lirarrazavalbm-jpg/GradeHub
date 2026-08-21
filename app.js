@@ -4931,11 +4931,36 @@ function lecturaDespuesDeNota(ramo){
 // reorganizar; más allá, saber que un ramo va mal no cambia qué haces hoy.
 const HORIZONTE_FOCO=30;
 
+// Seis semanas cubren una demora académica larga sin convertir el resto del
+// semestre en una espera silenciosa. Después de 42 días, la Agenda no asume
+// que se rindió: pide revisar si falta la nota o si la fecha quedó obsoleta.
+const DIAS_PARA_REVISAR_FECHA=42;
+
+// La fecha describe cuándo estaba agendada una evaluación, no demuestra que se
+// haya rendido. Una fecha pasada sin nota sigue pendiente para los cálculos,
+// pero en la Agenda es otra clase de pendiente: espera confirmación o la nota,
+// no compite con lo que todavía se puede estudiar.
+function estadoEventoAgenda(e,dias){
+  if(!e.pending)return 'con_nota';
+  const d=Number.isFinite(dias)?dias:diasHasta(e.fecha);
+  if(d<-DIAS_PARA_REVISAR_FECHA)return 'requiere_revision';
+  return d<0?'esperando_nota':'por_venir';
+}
+
 function withPriority(e){
   const dias=diasHasta(e.fecha);
   const peso=e.cat.peso||0;
   const avg=ramoAvg(e.ramo);
   const necesita=notaNecesaria(e.ramo);
+  const estadoAgenda=estadoEventoAgenda(e,dias);
+
+  // Una fecha pasada sin nota no desaparece, pero tampoco puede ser "Tu foco
+  // ahora": la nota suele llegar días después y la prueba puede haberse movido.
+  // Todo evento por venir queda por encima, incluso si pesa poco o está lejos.
+  if(estadoAgenda==='esperando_nota'||estadoAgenda==='requiere_revision'){
+    const nivel=estadoAgenda==='requiere_revision'?'revision':'espera';
+    return {...e,dias,score:-1000+dias,nivel,estadoAgenda,avg,necesita};
+  }
 
   // Urgencia: decae de forma CONTINUA, con vida media de tres semanas.
   //
@@ -4943,7 +4968,7 @@ function withPriority(e){
   // algo a cinco semanas y algo a cuatro meses. Ahí el tiempo dejaba de existir
   // y entre dos evaluaciones lejanas solo competía el peso: un examen de 30% en
   // diciembre le ganaba a una interrogación de 15% en septiembre.
-  const urgencia=dias<0?120:100*Math.pow(2,-dias/21);
+  const urgencia=100*Math.pow(2,-dias/21);
 
   // Riesgo: si el ramo va mal, sus evaluaciones suben de prioridad
   let riesgo=0;
@@ -4968,11 +4993,7 @@ function withPriority(e){
   // la evaluación estaba lo bastante lejos. Multiplicando, la cercanía manda y
   // el peso y el riesgo modulan: un 30% pesa un 30% más que un 0%, esté donde
   // esté, pero nunca convierte diciembre en "ahora".
-  let score=urgencia*(1+peso/100)*(1+riesgoAplicado/100);
-  // Lo vencido va primero, siempre. Como escalón y no confiando en la
-  // magnitud: sin esto, un 40% que vence hoy le pasaba por encima a algo que
-  // ya venció, y eso es exactamente lo que el modelo anterior evitaba.
-  if(dias<0)score+=1000;
+  const score=urgencia*(1+peso/100)*(1+riesgoAplicado/100);
 
   // Nivel legible para el color de la barra. Va por DÍAS y no por el valor de
   // `urgencia`: los cortes viejos (85, 35) eran los escalones de la escala
@@ -4980,12 +5001,11 @@ function withPriority(e){
   // días a significar cinco sin que nadie lo decidiera. Los umbrales en días
   // son los mismos de antes, ahora escritos como lo que siempre fueron.
   let nivel='baja';
-  if(dias<0)nivel='vencida';
-  else if(dias<=2&&peso>=20)nivel='critica';
+  if(dias<=2&&peso>=20)nivel='critica';
   else if(riesgo>=45||dias<=2)nivel='alta';
   else if(dias<=14||peso>=30)nivel='media';
 
-  return {...e,dias,score,nivel,avg,necesita};
+  return {...e,dias,score,nivel,estadoAgenda,avg,necesita};
 }
 
 function cuandoTexto(dias){
