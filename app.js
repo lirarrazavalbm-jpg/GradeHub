@@ -54,6 +54,10 @@ function completarFechasOficiales(r){
   });
 }
 
+// HH:MM en 24 h. El input[type=time] ya entrega este formato, pero por acá
+// también entran respaldos importados y datos de la nube: se valida igual.
+const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
   data.ramos = (data.ramos || []).map(r => ({
@@ -80,9 +84,16 @@ function normalize(data) {
       // mostraría una y escondería el resto, así que esas se dejan como están.
       directNota: c.directNota ?? (!c.slots && (c.notas || []).length <= 1),
       fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
+      // La hora va APARTE de la fecha y nunca dentro de ella. Hay miles de
+      // evaluaciones guardadas con `fecha` sola: convertirla a fecha-y-hora
+      // sería reinterpretar en silencio lo que ya está escrito, y las que no
+      // tienen hora quedarían todas a medianoche. Sin fecha no significa nada,
+      // así que se descarta.
+      hora: (c.fecha && HORA_RE.test(c.hora || '')) ? c.hora : null,
       notas: (c.notas || []).map(n => ({
         id: idSeguro(n.id),
         nombre: n.nombre || 'Nota',
+        hora: (n.fecha && HORA_RE.test(n.hora || '')) ? n.hora : null,
         valor: n.valor ?? (typeof n === 'number' ? n : null),
         peso: n.peso || 1,
         // Una nota puede tener su propia fecha y todavía no tener valor: es una
@@ -1959,7 +1970,7 @@ function renderRamo(){
     </div>`;
   }
   r.categorias.forEach(cat=>{
-    const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaCorta(cat.fecha))}</span>`:'';
+    const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaHoraCorta(cat.fecha,cat.hora))}</span>`:'';
     // Sección de preset: fila directa, solo escribir la nota (estilo simulador)
     if(cat.directNota){
       // Preset con varios espacios (ej: Laboratorio = 3 notas que se promedian) — COLAPSABLE
@@ -2042,6 +2053,11 @@ function renderRamo(){
 }
 
 // Formato corto de fecha para chips: "15 mar"
+function horaCorta(hora){return HORA_RE.test(hora||'')?hora:'';}
+function fechaHoraCorta(iso,hora){
+  const h=horaCorta(hora);
+  return fechaCorta(iso)+(h?' · '+h:'');
+}
 function fechaCorta(iso){
   const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const d=new Date(iso+'T00:00:00');
@@ -2906,6 +2922,36 @@ function confirmAddRamo(){
   showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
 }
 
+// Fecha y hora van juntas en la interfaz porque así se piensan ("la I1 es el
+// martes a las 14:00"), pero separadas en el dato. La hora queda deshabilitada
+// mientras no haya fecha: una hora suelta no se puede poner en ninguna agenda.
+function campoFechaHoraHTML(idBase,fecha,hora,conQuitar){
+  const f=esc(fecha||''),h=esc(hora||'');
+  return `<label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
+    <div class="modal-input" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="date" id="${idBase}-fecha" value="${f}" autocomplete="off" style="flex:1 1 9.5rem;min-width:9rem;" oninput="sincronizarHora('${idBase}')"/>
+      <input type="time" id="${idBase}-hora" value="${h}" autocomplete="off" aria-label="Hora (opcional)" style="flex:1 1 7rem;min-width:6.5rem;" ${fecha?'':'disabled'}/>
+      ${conQuitar&&fecha?`<button type="button" onclick="limpiarFechaHora('${idBase}')" style="flex:0 0 auto;padding:10px 12px;background:var(--muted);border:none;border-radius:8px;color:var(--fg2);font-size:12px;font-weight:600;cursor:pointer;">Quitar</button>`:''}
+    </div>`;
+}
+// Quitar la fecha se lleva la hora: quedaría un dato que no se puede mostrar.
+function sincronizarHora(idBase){
+  const f=document.getElementById(idBase+'-fecha'),h=document.getElementById(idBase+'-hora');
+  if(!f||!h)return;
+  h.disabled=!f.value;
+  if(!f.value)h.value='';
+}
+function limpiarFechaHora(idBase){
+  const f=document.getElementById(idBase+'-fecha');
+  if(f)f.value='';
+  sincronizarHora(idBase);
+}
+function leerHora(idBase){
+  const f=document.getElementById(idBase+'-fecha'),h=document.getElementById(idBase+'-hora');
+  if(!f||!f.value||!h)return null;
+  return HORA_RE.test(h.value||'')?h.value:null;
+}
+
 function openAddCatModal(prefillDate){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Nueva evaluación</div>
@@ -2916,8 +2962,7 @@ function openAddCatModal(prefillDate){
       <input type="checkbox" id="m-cat-varias" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
       <span>Son varias notas que se promedian <span style="color:var(--fg3);">(controles, laboratorios, tareas)</span></span>
     </label>
-    <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
-    <div class="modal-input"><input type="date" id="m-cat-fecha" value="${esc(prefillDate||'')}" autocomplete="off"/></div>
+    ${campoFechaHoraHTML('m-cat',prefillDate||'',null,false)}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" id="m-add-cat-btn" onclick="confirmAddCat()" disabled>Agregar evaluación</button>
@@ -2942,7 +2987,7 @@ function confirmAddCat(){
   // de decirlo: la casilla es el único camino que tiene el estudiante hacia la
   // tarjeta con "+ Agregar nota" que las pautas oficiales usan vía `lista:true`.
   const varias=!!(document.getElementById('m-cat-varias')||{}).checked;
-  r.categorias.push({id:uid(),nombre:name,peso,fecha,ponderaNotas:false,directNota:!varias,notas:[]});
+  r.categorias.push({id:uid(),nombre:name,peso,fecha,hora:leerHora('m-cat'),ponderaNotas:false,directNota:!varias,notas:[]});
   save();track('add_categoria',{peso,tiene_fecha:!!fecha,varias_notas:varias});closeModal();renderRamo();
 }
 
@@ -3147,8 +3192,7 @@ function openAddNotaModal(catId){
     <div class="modal-input"><input type="text" id="m-nota-name" placeholder="Ej: Prueba 1" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— déjala vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" placeholder="Ej: 5.5"/></div>
-    <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
-    <div class="modal-input"><input type="date" id="m-nota-fecha" autocomplete="off"/></div>
+    ${campoFechaHoraHTML('m-nota','',null,false)}
     <div class="toggle-row">
       <div><div class="toggle-label">Ponderación personalizada</div><div class="toggle-sub">Por defecto se promedia simple</div></div>
       <label class="toggle"><input type="checkbox" id="m-pond-toggle" onchange="togglePondSlider()"/><span class="toggle-slider"></span></label>
@@ -3189,7 +3233,7 @@ function confirmAddNota(catId){
   const usaPond=document.getElementById('m-pond-toggle').checked;
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
-  cat.notas.push({id:uid(),nombre:name,valor:isNaN(val)?null:val,peso,fecha:fechaNota});
+  cat.notas.push({id:uid(),nombre:name,valor:isNaN(val)?null:val,peso,fecha:fechaNota,hora:leerHora('m-nota')});
   openCats[catId]=true;save();track('add_nota',{ponderada:usaPond,pendiente:isNaN(val)});closeModal();renderRamo();
   // Si trae fecha entra a la Agenda, que vive en otra pantalla.
   if(typeof renderAgenda==='function')renderAgenda();
@@ -4079,11 +4123,7 @@ function openEditCatModal(catId){
       <input type="checkbox" id="m-cat-varias" ${cat.directNota===false?'checked':''} ${(cat.notas||[]).length>1?'disabled':''} style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
       <span>Son varias notas que se promedian ${(cat.notas||[]).length>1?'<span style="color:var(--fg3);">(ya tiene varias notas: para volver a una sola, bórralas)</span>':'<span style="color:var(--fg3);">(controles, laboratorios, tareas)</span>'}</span>
     </label>`}
-    <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
-    <div class="modal-input" style="display:flex;gap:8px;align-items:center;">
-      <input type="date" id="m-cat-fecha" value="${esc(cat.fecha||'')}" autocomplete="off" style="flex:1;"/>
-      ${cat.fecha?`<button type="button" onclick="document.getElementById('m-cat-fecha').value='';" style="padding:8px 10px;background:var(--muted);border:none;border-radius:8px;color:var(--fg2);font-size:12px;font-weight:600;cursor:pointer;">Quitar</button>`:''}
-    </div>
+    ${campoFechaHoraHTML('m-cat',cat.fecha,cat.hora,true)}
     ${cat.fecha?`<a class="ramo-action" href="${esc(googleCalUrl(r,cat))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;margin-bottom:14px;">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
       Agregar a Google Calendar
@@ -4103,7 +4143,7 @@ function confirmEditCat(catId){
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
-  cat.nombre=name;cat.peso=peso;cat.fecha=fecha;
+  cat.nombre=name;cat.peso=peso;cat.fecha=fecha;cat.hora=leerHora('m-cat');
   // Quitar la fecha es una decisión, no un dato faltante: se deja constancia
   // para que el relleno de fechas oficiales no la reponga en la próxima carga.
   // Al escribir una nueva, la decisión se revierte sola.
@@ -4133,8 +4173,7 @@ function openEditNotaModal(catId,notaId){
     <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(n.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
-    <label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
-    <div class="modal-input"><input type="date" id="m-nota-fecha" value="${esc(n.fecha||'')}" autocomplete="off"/></div>
+    ${campoFechaHoraHTML('m-nota',n.fecha,n.hora,true)}
     <div class="toggle-row">
       <div><div class="toggle-label">Ponderación personalizada</div><div class="toggle-sub">Por defecto se promedia simple</div></div>
       <label class="toggle"><input type="checkbox" id="m-pond-toggle" ${hasPond?'checked':''} onchange="togglePondSlider()"/><span class="toggle-slider"></span></label>
@@ -4169,7 +4208,7 @@ function confirmEditNota(catId,notaId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
-  n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;n.fecha=fechaNota;
+  n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;n.fecha=fechaNota;n.hora=leerHora('m-nota');
   save();track('edit_nota',{pendiente:isNaN(val)});closeModal();renderRamo();
   if(typeof renderAgenda==='function')renderAgenda();
   showToast(isNaN(val)?'Guardada como pendiente':lecturaDespuesDeNota(r));
@@ -4595,7 +4634,7 @@ function agendaEvents(){
       (c.notas||[]).forEach(n=>{
         if(!n.fecha)return;
         out.push({
-          fecha:n.fecha, ramo:r, cat:c, nota:n,
+          fecha:n.fecha, hora:n.hora||null, ramo:r, cat:c, nota:n,
           pending:n.valor===null||n.valor===undefined,
           notas:[n], targetCount:1,
         });
@@ -4609,12 +4648,12 @@ function agendaEvents(){
       // aporta: mostrarla duplicaría lo mismo en otro día.
       if(conFechaPropia&&notasCount<=0&&(c.slots||0)<=conFechaPropia)return;
       out.push({
-        fecha:c.fecha, ramo:r, cat:c, pending,
+        fecha:c.fecha, hora:c.hora||null, ramo:r, cat:c, pending,
         notas:(c.notas||[]).filter(n=>!n.fecha), targetCount,
       });
     });
   });
-  out.sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  out.sort((a,b)=>a.fecha.localeCompare(b.fecha)||(a.hora||'').localeCompare(b.hora||''));
   return out;
 }
 
@@ -4645,6 +4684,12 @@ function icsFold(line){
 }
 function isoOf(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
 function icsDate(iso){return iso.replace(/-/g,'');}
+// YYYYMMDDTHHMMSS, sin Z: hora local flotante (ver buildICS).
+function icsDateTime(iso,hora){return `${icsDate(iso)}T${String(hora).replace(':','')}00`;}
+function sumaUnaHora(hora){
+  const [h,m]=String(hora).split(':').map(Number);
+  return `${String((h+1)%24).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
 function icsDatePlus1(iso){
   const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+1);
   return isoOf(d.getFullYear(),d.getMonth(),d.getDate()).replace(/-/g,'');
@@ -4669,15 +4714,30 @@ function buildICS(){
     lines.push('BEGIN:VEVENT');
     lines.push(`UID:${e.cat.id}-${e.ramo.id}@gradehub.app`);
     lines.push(`DTSTAMP:${stamp}`);
-    lines.push(`DTSTART;VALUE=DATE:${icsDate(e.fecha)}`);
-    lines.push(`DTEND;VALUE=DATE:${icsDatePlus1(e.fecha)}`);
+    // Con hora, el evento deja de ser de día completo. Se emite como hora
+    // LOCAL FLOTANTE —sin Z y sin TZID—, que el RFC define como "la hora del
+    // reloj de quien lo mira". Es lo correcto acá y además esquiva el problema
+    // que hacía temer este cambio: Chile mueve el reloj en septiembre, así que
+    // convertir a UTC obliga a saber el huso vigente EN LA FECHA DE LA PRUEBA, y
+    // equivocarse corre la evaluación una hora. Flotante no se calcula: las
+    // 14:00 son las 14:00.
+    //
+    // La hora de término no está en ningún dato: nadie dice cuánto dura una
+    // prueba. Se usa una hora como convención visible, no como afirmación.
+    if(e.hora){
+      lines.push(`DTSTART:${icsDateTime(e.fecha,e.hora)}`);
+      lines.push(`DTEND:${icsDateTime(e.fecha,sumaUnaHora(e.hora))}`);
+    }else{
+      lines.push(`DTSTART;VALUE=DATE:${icsDate(e.fecha)}`);
+      lines.push(`DTEND;VALUE=DATE:${icsDatePlus1(e.fecha)}`);
+    }
     lines.push(icsFold(`SUMMARY:${icsEscape(titulo)}`));
     lines.push(icsFold(`DESCRIPTION:${icsEscape(desc)}`));
     lines.push('TRANSP:TRANSPARENT');
     // Recordatorio el día anterior a las 9:00 (solo para pendientes)
     if(e.pending){
       lines.push('BEGIN:VALARM');
-      lines.push('TRIGGER:-P1DT9H');
+      lines.push(e.hora?'TRIGGER:-P1D':'TRIGGER:-P1DT9H');
       lines.push('ACTION:DISPLAY');
       lines.push(icsFold(`DESCRIPTION:${icsEscape('Mañana: '+titulo)}`));
       lines.push('END:VALARM');
@@ -4958,7 +5018,7 @@ function agendaItemHTML(e){
     <div class="ag-row-main">
       <div class="ag-row-top">
         <span class="ag-row-when ${e.nivel}">${cuandoTexto(e.dias)}</span>
-        <span class="ag-row-date">${f.day} ${f.mon}</span>
+        <span class="ag-row-date">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span>
         <span class="ag-row-peso ${peso>=30?'heavy':''}">${peso}%</span>
       </div>
       <div class="ag-row-name">${esc(e.cat.nombre)}</div>

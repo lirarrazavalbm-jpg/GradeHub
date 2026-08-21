@@ -39,6 +39,14 @@ function diaSiguiente(iso) {
   return d.toISOString().slice(0, 10).replace(/-/g, '');
 }
 
+// HH:MM en 24 h. El dato lo escribe el navegador del estudiante, así que acá
+// llega como venga: se valida antes de meterlo en un DTSTART.
+const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+function masUnaHora(hora) {
+  const [h, m] = hora.split(':').map(Number);
+  return `${String((h + 1) % 24).padStart(2, '0')}${String(m).padStart(2, '0')}`;
+}
+
 function buildICS(filas) {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   const lines = [
@@ -64,13 +72,24 @@ function buildICS(filas) {
     lines.push('BEGIN:VEVENT');
     lines.push(icsFold(`UID:${uid}`));
     lines.push(`DTSTAMP:${stamp}`);
-    lines.push(`DTSTART;VALUE=DATE:${compacta(f.fecha)}`);
-    lines.push(`DTEND;VALUE=DATE:${diaSiguiente(f.fecha)}`);
+    // Con hora, hora local flotante: sin Z y sin TZID. Chile mueve el reloj en
+    // septiembre, así que pasar a UTC obligaría a saber el huso vigente en la
+    // fecha de la prueba, y errarle corre la evaluación una hora. Flotante no
+    // se calcula. La duración de una hora es convención: nadie declara cuánto
+    // dura una prueba.
+    const hora = HORA_RE.test(f.hora || '') ? f.hora : null;
+    if (hora) {
+      lines.push(`DTSTART:${compacta(f.fecha)}T${hora.replace(':', '')}00`);
+      lines.push(`DTEND:${compacta(f.fecha)}T${masUnaHora(hora)}00`);
+    } else {
+      lines.push(`DTSTART;VALUE=DATE:${compacta(f.fecha)}`);
+      lines.push(`DTEND;VALUE=DATE:${diaSiguiente(f.fecha)}`);
+    }
     lines.push(icsFold(`SUMMARY:${icsEscape(titulo)}`));
     lines.push(icsFold(`DESCRIPTION:${icsEscape(`Vale ${f.peso}% de ${f.ramo}.`)}`));
     lines.push('TRANSP:TRANSPARENT');
     lines.push('BEGIN:VALARM');
-    lines.push('TRIGGER:-P1DT9H');
+    lines.push(hora ? 'TRIGGER:-P1D' : 'TRIGGER:-P1DT9H');
     lines.push('ACTION:DISPLAY');
     lines.push(icsFold(`DESCRIPTION:${icsEscape('Mañana: ' + titulo)}`));
     lines.push('END:VALARM');

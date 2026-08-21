@@ -84,7 +84,7 @@ function agendaDestacadaHTML(e,posicion){
       <span class="ag-priority-rank ${e.nivel}">${posicion===0?'Tu foco ahora':'Siguiente'}</span>
       <span class="ag-priority-weight">${r2(e.cat.peso||0)}%</span>
     </div>
-    <div class="ag-priority-date">${cuandoTexto(e.dias)} <span>· ${f.day} ${f.mon}</span></div>
+    <div class="ag-priority-date">${cuandoTexto(e.dias)} <span>· ${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span></div>
     <div class="ag-priority-name">${esc(e.cat.nombre)}</div>
     <div class="ag-priority-course"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
     <div class="ag-priority-reason">${razonDestacadaAgenda(e)}</div>
@@ -337,7 +337,7 @@ function renderAgenda(){
       return `<button class="ag-row done" onclick="openRamo(\u0027${esc(e.ramo.id)}\u0027)">
         <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
         <div class="ag-row-main">
-          <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}</span><span class="ag-row-peso">${r2(e.cat.peso||0)}%</span></div>
+          <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span><span class="ag-row-peso">${r2(e.cat.peso||0)}%</span></div>
           <div class="ag-row-name">${esc(e.cat.nombre)}</div>
           <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
         </div>

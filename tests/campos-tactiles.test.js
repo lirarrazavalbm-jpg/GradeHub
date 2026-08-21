@@ -34,8 +34,16 @@ usados.forEach(t => {
 
 console.log('\n=== Y se puede tocar con el pulgar ===');
 // 44px es el mínimo que recomiendan iOS y Android para un objetivo táctil.
-const alturaFecha = (css.match(/input\[type=date\]\{[^}]*min-height:(\d+)px/) || [])[1];
-chk('el campo de fecha declara alto táctil (≥44px)', Number(alturaFecha) >= 44);
+// El selector puede venir agrupado (`input[type=date],input[type=time]{...}`),
+// así que la búsqueda no exige que la llave venga pegada al tipo: si no, la
+// prueba falla por un cambio de forma y no de comportamiento.
+const altoDe = t => {
+  const m = css.match(new RegExp('input\\[type=' + t + '\\][^{]*\\{[^}]*min-height:(\\d+)px'));
+  return m ? Number(m[1]) : 0;
+};
+chk('el campo de fecha declara alto táctil (≥44px)', altoDe('date') >= 44);
+// La hora se toca con el mismo pulgar que la fecha.
+chk('el campo de hora declara alto táctil (≥44px)', altoDe('time') >= 44);
 chk('el ícono del calendario se agranda respecto del nativo',
   /calendar-picker-indicator\{[^}]*width:\s*(1[6-9]|[2-9]\d)px/.test(css));
 // Menos de 16px hace que iOS haga zoom al enfocar y descuadre la pantalla.
