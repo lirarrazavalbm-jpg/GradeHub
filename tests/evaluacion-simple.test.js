@@ -23,11 +23,11 @@ let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
 console.log('\n=== Lo que se crea a mano queda como fila simple ===');
-// Las dos vías que crean evaluaciones: el modal de una sola y el editor de varias.
-chk('confirmAddCat decide directNota con la casilla',
-  /r\.categorias\.push\(\{id:uid\(\),nombre:name,peso,fecha,ponderaNotas:false,directNota:!varias/.test(src));
-chk('guardarPautaManual decide directNota con la casilla de su fila',
-  /r\.categorias\.push\(\{id:uid\(\),nombre:f\.nombre\.trim\(\),peso:f\.peso,ponderaNotas:false,directNota:!f\.varias/.test(src));
+// Las dos vías que crean evaluaciones se ejercitan de verdad más abajo. Acá
+// había dos regex sobre el código fuente que comprobaban lo mismo, y se rompían
+// cada vez que alguien agregaba un campo al objeto sin cambiar el
+// comportamiento: la última vez fue por `hora`. Un test que falla cuando el
+// código está bien enseña a ignorarlo.
 // La fila simple es la misma rama de render que usan las pautas oficiales, así
 // que una evaluación a mano y una del catálogo se ven y se llenan igual.
 chk('la fila simple es la rama de directNota sin slots',

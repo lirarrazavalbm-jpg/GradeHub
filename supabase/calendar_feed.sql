@@ -93,8 +93,14 @@ $$;
 -- Devuelve SOLO evaluaciones con fecha, y de cada una solo lo que un evento de
 -- calendario necesita. El blob de `user_ramos` trae las notas adentro: se
 -- quedan acá y no cruzan nunca la frontera.
-create or replace function public.calendar_feed_data(p_token text)
-returns table (ramo text, evaluacion text, peso numeric, fecha text)
+-- OJO al reaplicar: agregar `hora` cambia el tipo de retorno, y Postgres no
+-- deja hacerlo con `create or replace`. Hay que soltarla primero. Los permisos
+-- de más abajo se vuelven a otorgar en el mismo archivo, así que basta con
+-- correrlo entero.
+drop function if exists public.calendar_feed_data(text);
+
+create function public.calendar_feed_data(p_token text)
+returns table (ramo text, evaluacion text, peso numeric, fecha text, hora text)
 language sql
 security definer
 set search_path = public
@@ -103,14 +109,18 @@ as $$
     r->>'nombre'                       as ramo,
     c->>'nombre'                       as evaluacion,
     coalesce((c->>'peso')::numeric, 0) as peso,
-    c->>'fecha'                        as fecha
+    c->>'fecha'                        as fecha,
+    -- La hora es opcional y vive aparte de la fecha. El feed la valida acá
+    -- también: el blob lo escribe el navegador del estudiante, así que llega
+    -- como venga y no como uno espera.
+    nullif(c->>'hora', '')             as hora
   from public.calendar_feeds f
   join public.user_ramos u on u.user_id = f.user_id
   cross join lateral jsonb_array_elements(coalesce(u.data->'ramos', '[]'::jsonb)) r
   cross join lateral jsonb_array_elements(coalesce(r->'categorias', '[]'::jsonb)) c
   where f.token = p_token
     and nullif(c->>'fecha', '') is not null
-  order by c->>'fecha';
+  order by c->>'fecha', coalesce(c->>'hora', '');
 $$;
 
 revoke all on function public.calendar_feed_data(text) from public;
