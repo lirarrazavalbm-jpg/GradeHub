@@ -121,11 +121,15 @@ const reglaOpcion = reglaCSSAgenda('.ag-order-option');
 const reglaActiva = reglaCSSAgenda('.ag-order-option.active');
 chk('la barra pasa a una sola línea en vez de apilar etiqueta y opciones',
   /align-items:center/.test(reglaOrden) && !/flex-direction:column/.test(reglaOrden));
-chk('las opciones quedan junto a Orden y miden lo que necesita su texto',
-  /display:inline-flex/.test(reglaOpciones) &&
-  !/margin-left:auto/.test(reglaOpciones) && !/280px/.test(reglaOpciones));
-chk('Recomendado no puede desbordarse hacia el botón vecino',
-  /white-space:nowrap/.test(reglaOpcion) && /flex:0 0 auto/.test(reglaOpcion));
+chk('las opciones quedan junto a Orden sin imponerle un ancho fijo al grupo',
+  /display:inline-grid/.test(reglaOpciones) &&
+  !/margin-left:auto/.test(reglaOpciones) && !/(?:width|flex-basis):\s*\d+px/.test(reglaOpciones));
+chk('los tres botones comparten columnas iguales definidas por su contenido',
+  /grid-template-columns:repeat\(3,1fr\)/.test(reglaOpciones));
+chk('Recomendado no puede cortarse ni desbordarse hacia el botón vecino',
+  /white-space:nowrap/.test(reglaOpcion) && /min-width:max-content/.test(reglaOpcion));
+chk('en teléfono se oculta la etiqueta redundante para que las columnas iguales quepan',
+  /@media\(max-width:420px\)\{\.ag-order-label\{display:none;\}\}/.test(cssAgenda));
 const altoOpcion=Number((reglaOpcion.match(/min-height:(\d+)px/)||[])[1]);
 chk('el control secundario queda realmente más delgado',
   altoOpcion>=30 && altoOpcion<=36);
