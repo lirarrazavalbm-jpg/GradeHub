@@ -692,7 +692,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-priority-bar{position:absolute;inset:0 0 auto;height:5px;background:var(--ag-course);}
 .ag-priority-top{display:flex;align-items:center;gap:7px;margin:2px 0 8px;}
 .ag-priority-rank{min-width:0;font-size:10.5px;font-weight:800;line-height:1.2;letter-spacing:.065em;text-transform:uppercase;color:var(--primary);}
-.ag-priority-rank.vencida,.ag-priority-rank.critica{color:var(--red);}
+.ag-priority-rank.critica{color:var(--red);}
 .ag-priority-rank.alta{color:var(--yellow);}
 .ag-priority-weight{margin-left:auto;flex-shrink:0;font-family:'Onest',sans-serif;font-size:20px;font-weight:800;line-height:1;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.035em;}
 .ag-priority-date{font-size:11.5px;font-weight:700;color:var(--fg2);font-variant-numeric:tabular-nums;}
@@ -710,7 +710,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-row-main{flex:1;min-width:0;}
 .ag-row-top{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;}
 .ag-row-when{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);}
-.ag-row-when.vencida{color:var(--red);}
+.ag-row-when.espera{color:var(--fg3);}
 .ag-row-when.critica{color:var(--red);}
 .ag-row-when.alta{color:var(--yellow);}
 .ag-row-when.media{color:var(--primary);}
@@ -724,6 +724,30 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-alert .ic{width:13px;height:13px;flex-shrink:0;}
 .ag-alert.bad{background:var(--red-bg);color:var(--red);}
 .ag-alert.warn{background:var(--yellow-bg);color:var(--yellow);}
+.ag-no-upcoming{border-color:var(--border);background:var(--muted);}
+.ag-waiting{margin-top:22px;padding:15px;background:color-mix(in srgb,var(--muted),var(--card) 30%);border:1px solid var(--border);border-radius:16px;}
+.ag-waiting-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.ag-waiting-head>div{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.ag-waiting-head strong{font-size:14px;color:var(--fg);}
+.ag-waiting-kicker{font-size:10.5px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;color:var(--fg3);}
+.ag-waiting-help{margin-top:7px;font-size:12px;line-height:1.45;color:var(--fg2);}
+.ag-waiting-list{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.ag-waiting-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;overflow:hidden;padding:12px 12px 12px 17px;background:var(--card);border:1px solid var(--border);border-radius:12px;}
+.ag-waiting-row.needs-review{border-color:var(--border2);}
+.ag-waiting-copy{display:flex;min-width:0;flex-direction:column;gap:2px;}
+.ag-waiting-copy strong{overflow:hidden;font-size:13.5px;color:var(--fg);text-overflow:ellipsis;white-space:nowrap;}
+.ag-waiting-copy>span:last-child{overflow:hidden;font-size:11.5px;color:var(--fg3);text-overflow:ellipsis;white-space:nowrap;}
+.ag-waiting-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10.5px;font-weight:700;color:var(--fg3);}
+.ag-waiting-meta b{color:var(--primary);font-size:inherit;text-transform:uppercase;letter-spacing:.04em;}
+.ag-waiting-actions{display:flex;gap:6px;align-items:center;}
+.ag-waiting-actions button{min-height:38px;padding:7px 10px;border-radius:9px;font-family:'Onest',sans-serif;font-size:11.5px;font-weight:700;white-space:nowrap;cursor:pointer;}
+.ag-waiting-primary{background:var(--primary-light);border:1px solid color-mix(in srgb,var(--primary),transparent 68%);color:var(--primary);}
+.ag-waiting-secondary{background:transparent;border:1px solid var(--border2);color:var(--fg2);}
+@media(max-width:560px){
+  .ag-waiting-row{grid-template-columns:1fr;}
+  .ag-waiting-actions{display:grid;grid-template-columns:1fr 1fr;}
+  .ag-waiting-actions button{min-height:44px;}
+}
 .ag-event-trigger{position:relative;}
 .ag-event-chevron{display:flex;width:20px;height:20px;flex:0 0 20px;align-items:center;justify-content:center;color:var(--fg3);transform:none;}
 .ag-event-chevron svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}

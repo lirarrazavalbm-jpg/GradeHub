@@ -59,7 +59,7 @@ function agendaOrdenHTML(activo=agendaOrdenActual){
 }
 
 function focoAgendaCopy(e){
-  if(e.dias<0)return 'Quedó pendiente. Registra la nota o revisa qué pasó antes de seguir.';
+  if(e.estadoAgenda==='esperando_nota'||e.estadoAgenda==='requiere_revision')return 'Fecha pasada: agrega la nota o corrige la fecha.';
   if(e.dias===0)return 'Es hoy. Revisa lo esencial y llega con lo importante resuelto.';
   if(e.dias<=2)return `Faltan ${e.dias} día${e.dias!==1?'s':''}: es lo que más te conviene atender ahora.`;
   if(e.necesita!==null&&e.necesita>5.0)return `Te exige ${nf(e.necesita)} en lo pendiente para aprobar: adelántate.`;
@@ -67,7 +67,7 @@ function focoAgendaCopy(e){
 }
 
 function razonDestacadaAgenda(e){
-  if(e.dias<0)return 'Quedó pendiente: registra la nota o revisa qué pasó.';
+  if(e.estadoAgenda==='esperando_nota'||e.estadoAgenda==='requiere_revision')return focoAgendaCopy(e);
   if(e.necesita!==null&&e.necesita>7.05)return 'Con lo pendiente ya no alcanza para aprobar el ramo.';
   if(e.necesita!==null&&e.necesita>5.0)return `Necesitas ${nf(e.necesita)} en lo pendiente para aprobar.`;
   if(e.avg!==null&&r2(e.avg)<4.0)return `Vas ${fmt(e.avg)} en el ramo: conviene prepararla con tiempo.`;
@@ -237,6 +237,65 @@ function agendaSinFechaHTML(sinFecha){
   </section>`;
 }
 
+function completarNotaDesdeAgenda(ramoId,catId,notaId){
+  openRamo(ramoId);
+  // La nota con fecha propia ya existe y se edita; una categoría con varias
+  // notas abre el modal para agregar otra. La evaluación directa queda visible
+  // en la ficha con su campo de nota listo para escribir.
+  setTimeout(()=>{
+    if(notaId)openEditNotaModal(catId,notaId);
+    else{
+      const r=S.ramos.find(x=>x.id===ramoId);
+      const c=r&&(r.categorias||[]).find(x=>x.id===catId);
+      if(c&&c.directNota===false)openAddNotaModal(catId);
+    }
+  },320);
+}
+
+function corregirFechaDesdeAgenda(ramoId,catId,notaId){
+  openRamo(ramoId);
+  setTimeout(()=>{
+    if(notaId)openEditNotaModal(catId,notaId);
+    else openEditCatModal(catId);
+  },320);
+}
+
+function agendaFechasPasadasHTML(eventos){
+  if(!eventos.length)return '';
+  const ordenados=[...eventos].sort((a,b)=>{
+    const revisarA=a.estadoAgenda==='requiere_revision'?1:0;
+    const revisarB=b.estadoAgenda==='requiere_revision'?1:0;
+    return revisarB-revisarA||b.fecha.localeCompare(a.fecha);
+  });
+  return `<section class="ag-waiting" aria-label="Fechas pasadas sin nota">
+    <div class="ag-waiting-head">
+      <div>
+        <span class="ag-waiting-kicker">Por completar</span>
+        <strong>Fechas pasadas sin nota</strong>
+      </div>
+      <span class="ag-count">${ordenados.length}</span>
+    </div>
+    <p class="ag-waiting-help">Si ya la rendiste, agrega la nota cuando llegue. Si se movió, corrige o quita la fecha.</p>
+    <div class="ag-waiting-list">${ordenados.map(e=>{
+      const f=formatEventDate(e.fecha);
+      const notaId=e.nota?e.nota.id:'';
+      const revisar=e.estadoAgenda==='requiere_revision';
+      return `<article class="ag-waiting-row${revisar?' needs-review':''}">
+        <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
+        <div class="ag-waiting-copy">
+          <span class="ag-waiting-meta">${revisar?'<b>Revisar fecha</b>':''}<span>${cuandoTexto(e.dias)} · ${f.day} ${f.mon}</span></span>
+          <strong>${esc(e.nota?e.nota.nombre:e.cat.nombre)}</strong>
+          <span>${esc(e.ramo.nombre)}</span>
+        </div>
+        <div class="ag-waiting-actions">
+          <button type="button" class="ag-waiting-primary" onclick="completarNotaDesdeAgenda('${esc(e.ramo.id)}','${esc(e.cat.id)}','${esc(notaId)}')">${e.nota?'Completar nota':'Poner nota'}</button>
+          <button type="button" class="ag-waiting-secondary" onclick="corregirFechaDesdeAgenda('${esc(e.ramo.id)}','${esc(e.cat.id)}','${esc(notaId)}')">Corregir fecha</button>
+        </div>
+      </article>`;
+    }).join('')}</div>
+  </section>`;
+}
+
 function renderAgenda(){
   const body=document.getElementById("agenda-body");if(!body)return;
   agendaDetalleAbierto=null;
@@ -275,21 +334,26 @@ function renderAgenda(){
     return;
   }
 
-  const pendientes=events.filter(e=>e.pending).map(withPriority);
-  const hechas=events.filter(e=>!e.pending);
-  const ordenadas=ordenarAgenda(pendientes,agendaOrdenActual);
+  const clasificados=events.map(e=>({...e,estadoAgenda:estadoEventoAgenda(e)}));
+  const pendientes=clasificados.filter(e=>e.estadoAgenda!=='con_nota').map(withPriority);
+  const porVenir=pendientes.filter(e=>e.estadoAgenda==='por_venir');
+  const fechasPasadas=pendientes.filter(e=>e.estadoAgenda==='esperando_nota'||e.estadoAgenda==='requiere_revision');
+  const fechasPorRevisar=fechasPasadas.filter(e=>e.estadoAgenda==='requiere_revision');
+  const hechas=clasificados.filter(e=>e.estadoAgenda==='con_nota');
+  const ordenadas=ordenarAgenda(porVenir,agendaOrdenActual);
 
   // Subtítulo del hero: resume el estado en una línea
   const sub=document.getElementById('agenda-sub');
   if(sub){
-    if(pendientes.length===0){
+    if(porVenir.length===0&&fechasPasadas.length===0){
       sub.textContent='Todo al día';
+    }else if(porVenir.length===0){
+      sub.textContent=`${fechasPasadas.length} fecha${fechasPasadas.length!==1?'s':''} pasada${fechasPasadas.length!==1?'s':''} sin nota`;
     }else{
-      const prox=pendientes.reduce((min,e)=>e.dias<min.dias?e:min,pendientes[0]);
-      const vencidas=pendientes.filter(e=>e.dias<0).length;
-      const partes=[`${pendientes.length} pendiente${pendientes.length!==1?'s':''}`];
-      if(vencidas>0)partes.push(`${vencidas} vencida${vencidas!==1?'s':''}`);
-      else if(prox.dias>=0)partes.push(`la próxima ${cuandoTexto(prox.dias).toLowerCase()}`);
+      const prox=porVenir.reduce((min,e)=>e.dias<min.dias?e:min,porVenir[0]);
+      const partes=[`${porVenir.length} por venir`,`la próxima ${cuandoTexto(prox.dias).toLowerCase()}`];
+      if(fechasPasadas.length)partes.push(`${fechasPasadas.length} sin nota`);
+      if(fechasPorRevisar.length)partes.push(`${fechasPorRevisar.length} por revisar`);
       sub.textContent=partes.join(' · ');
     }
   }
@@ -299,13 +363,13 @@ function renderAgenda(){
   // Las dos primeras se leen antes de escanear la lista. El orden elegido
   // también decide cuáles son: "Recomendado" usa la mezcla académica existente;
   // Fecha y Peso son overrides explícitos del estudiante.
-  if(pendientes.length>0){
-    const destacadas=destacadasAgenda(pendientes,agendaOrdenActual);
+  if(porVenir.length>0){
+    const destacadas=destacadasAgenda(porVenir,agendaOrdenActual);
     const restantes=ordenadas.slice(destacadas.length);
     html+=agendaOrdenHTML(agendaOrdenActual);
-    html+=resumenSemanaHTML(pendientes);
+    html+=resumenSemanaHTML(porVenir);
     html+=`<div class="ag-priority-heading"><span class="section-hd-title">Tus prioridades</span><span class="ag-count">${destacadas.length}</span></div>`;
-    html+=`<div class="ag-priority-grid">${destacadas.map((e,i)=>agendaEventoHTML(e,agendaDestacadaHTML(e,i),pendientes,'priority')).join('')}</div>`;
+    html+=`<div class="ag-priority-grid">${destacadas.map((e,i)=>agendaEventoHTML(e,agendaDestacadaHTML(e,i),porVenir,'priority')).join('')}</div>`;
     // La alerta de "necesitas X para aprobar" es del ramo, no de la evaluación:
     // se muestra solo en la más prioritaria de cada ramo para no repetirla.
     const ramosVistos=new Set(destacadas.map(e=>e.ramo.id));
@@ -315,8 +379,13 @@ function renderAgenda(){
     });
     if(restantes.length){
       html+=`<div class="ag-list-hd ag-rest-heading"><span class="section-hd-title">Después</span><span class="ag-count">${restantes.length}</span></div>`;
-      html+=restantes.map(e=>agendaEventoHTML(e,agendaItemHTML(e),pendientes)).join("");
+      html+=restantes.map(e=>agendaEventoHTML(e,agendaItemHTML(e),porVenir)).join("");
     }
+  } else if(fechasPasadas.length>0){
+    html+=`<div class="ag-alldone ag-no-upcoming">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+      <div><div class="ag-alldone-t">No tienes evaluaciones próximas.</div><div class="ag-alldone-s">Abajo puedes completar las fechas que ya pasaron.</div></div>
+    </div>`;
   } else {
     html+=`<div class="ag-alldone">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
@@ -324,8 +393,13 @@ function renderAgenda(){
     </div>`;
   }
 
-  // Completar fechas sigue a un toque, pero va después de lo que sí se puede
-  // ordenar y preparar. Antes ocupaba la primera tarjeta y competía con el foco.
+  // Las fechas pasadas sin nota siguen a mano, pero después de todo lo que aún
+  // se puede preparar. No son "vencidas": la nota puede tardar y la fecha puede
+  // haberse movido.
+  html+=agendaFechasPasadasHTML(fechasPasadas);
+
+  // Completar fechas sigue a un toque, después de los eventos que ya tienen una
+  // fecha conocida. Antes ocupaba la primera tarjeta y competía con el foco.
   html+=agendaSinFechaHTML(sinFecha);
 
   if(hechas.length>0){

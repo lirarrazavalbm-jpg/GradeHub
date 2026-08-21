@@ -22,6 +22,7 @@ const ctx = {
 };
 vm.createContext(ctx); vm.runInContext(src, ctx);
 const withPriority = vm.runInContext('withPriority', ctx);
+const estadoEventoAgenda = vm.runInContext('estadoEventoAgenda', ctx);
 const funcionAgenda = nombre => vm.runInContext(`typeof ${nombre} === 'function' ? ${nombre} : null`, ctx);
 
 let ok = 0, fail = 0;
@@ -60,10 +61,11 @@ chk('5% hoy le gana a 40% en dos meses',
 chk('dos lejanas ya no empatan: a igual peso, gana la más cercana',
   gana(evento('a', 45, 20), evento('b', 120, 20)));
 
-console.log('\n=== Lo que se conserva del modelo anterior ===');
-chk('lo vencido va primero, incluso contra el peor caso posible',
-  gana(evento('vencida', -1, 5), evento('hoy', 0, 100, 2.0)));
-chk('algo vencido hace un mes también', gana(evento('vieja', -30, 1), evento('hoy', 0, 100, 2.0)));
+console.log('\n=== Una fecha pasada sin nota deja de competir con lo que viene ===');
+chk('el Control 1 de 10% de mañana le gana al Lab 1 de 5% de hace cuatro días',
+  gana(evento('Control 1', 1, 10), evento('Lab 1', -4, 5)));
+chk('esperar una nota no compra prioridad aunque la evaluación fuera pesada',
+  gana(evento('proxima', 30, 1), evento('pasada', -1, 100, 2.0)));
 chk('a igual fecha, más peso sube', gana(evento('pesada', 7, 30), evento('liviana', 7, 10)));
 chk('a igual fecha y peso, el ramo en riesgo sube',
   gana(evento('riesgo', 7, 20, 2.0), evento('sana', 7, 20, 6.5)));
@@ -76,12 +78,61 @@ console.log('\n=== El nivel visual sigue midiendo lo mismo ===');
 // Los cortes viejos estaban escritos contra los escalones de urgencia (85, 35).
 // Al pasar a curva continua, "urgencia>=85" habría cambiado de significar dos
 // días a significar cinco sin que nadie lo decidiera.
-chk('vencida', withPriority(evento('x', -1, 10)).nivel === 'vencida');
+chk('una fecha pasada sin nota usa un estado neutral de espera',
+  withPriority(evento('x', -1, 10)).nivel === 'espera' &&
+  withPriority(evento('x', -1, 10)).estadoAgenda === 'esperando_nota');
+chk('hasta seis semanas sigue siendo una demora posible de la nota',
+  withPriority(evento('x', -42, 10)).estadoAgenda === 'esperando_nota');
+chk('después de seis semanas pide revisar el dato sin volver al foco',
+  withPriority(evento('x', -43, 10)).nivel === 'revision' &&
+  withPriority(evento('x', -43, 10)).estadoAgenda === 'requiere_revision' &&
+  gana(evento('proxima', 30, 1), evento('vieja', -90, 100)));
 chk('crítica: dos días o menos y 20% o más', withPriority(evento('x', 2, 20)).nivel === 'critica');
 chk('alta: dos días o menos con poco peso', withPriority(evento('x', 1, 5)).nivel === 'alta');
 chk('alta: ramo reprobado', withPriority(evento('x', 10, 5, 2.0)).nivel === 'alta');
 chk('media: dentro de dos semanas', withPriority(evento('x', 14, 5)).nivel === 'media');
 chk('baja: lejos y liviana', withPriority(evento('x', 90, 10)).nivel === 'baja');
+
+console.log('\n=== Las dos formas de evaluación reconocen la espera de nota ===');
+vm.runInContext(`S={ramos:[{
+  id:'formas',nombre:'Ramo',color:'#2563eb',gates:[],categorias:[
+    {id:'categoria',nombre:'Lab 1',peso:5,fecha:'${iso(-4)}',directNota:true,notas:[]},
+    {id:'grupo',nombre:'Casos',peso:5,directNota:false,notas:[
+      {id:'nota-propia',nombre:'Caso 1',valor:null,peso:1,fecha:'${iso(-3)}'}
+    ]},
+    {id:'proxima',nombre:'Control 1',peso:10,fecha:'${iso(1)}',directNota:true,notas:[]},
+    {id:'vieja',nombre:'Evaluación antigua',peso:10,fecha:'${iso(-90)}',directNota:true,notas:[]}
+  ]
+}]};`, ctx);
+const formasPasadas=vm.runInContext('agendaEvents()',ctx).map(withPriority);
+chk('la categoría con fecha queda esperando nota',
+  formasPasadas.some(e=>e.cat.id==='categoria'&&e.estadoAgenda==='esperando_nota'));
+chk('la nota con fecha propia queda esperando nota',
+  formasPasadas.some(e=>e.nota&&e.nota.id==='nota-propia'&&e.estadoAgenda==='esperando_nota'));
+chk('una evaluación con nota conserva el tercer estado',
+  estadoEventoAgenda({...evento('lista',-2,20),pending:false})==='con_nota');
+chk('una fecha de hace tres meses queda marcada para revisión',
+  formasPasadas.some(e=>e.cat.id==='vieja'&&e.estadoAgenda==='requiere_revision'));
+stub.innerHTML='';
+vm.runInContext('renderAgenda()',ctx);
+const esperaHTML=stub.innerHTML;
+const antesDeFechasPasadas=esperaHTML.slice(0,esperaHTML.indexOf('Fechas pasadas sin nota'));
+chk('el caso real pone Control 1 en el foco y saca Lab 1 de las prioridades',
+  /Tu foco ahora[\s\S]*Control 1/.test(antesDeFechasPasadas)&&!/Lab 1/.test(antesDeFechasPasadas));
+chk('las fechas pasadas quedan visibles en un bloque secundario',
+  /Fechas pasadas sin nota/.test(esperaHTML)&&/ag-waiting/.test(esperaHTML));
+chk('el texto no afirma que la evaluación se rindió',
+  /Si ya la rendiste/.test(esperaHTML)&&/Si se movió/.test(esperaHTML));
+chk('deja a mano completar la nota o corregir la fecha',
+  /Completar nota|Poner nota/.test(esperaHTML)&&/Corregir fecha/.test(esperaHTML));
+chk('lo realmente antiguo aparece primero y pide revisar la fecha',
+  /ag-waiting-row needs-review[\s\S]*Revisar fecha[\s\S]*Evaluación antigua/.test(esperaHTML));
+chk('el resumen deja de acusarlas como vencidas',!/vencida/i.test(esperaHTML));
+const cssEspera=fs.readFileSync(__dirname+'/../styles.css','utf8');
+chk('la espera no reutiliza el rojo semántico',
+  !/\.ag-row-when\.vencida\s*\{[^}]*var\(--red\)/.test(cssEspera)&&
+  /\.ag-row-when\.espera\s*\{[^}]*var\(--fg3\)/.test(cssEspera)&&
+  !/\.ag-waiting-row\.needs-review\s*\{[^}]*(?:--red|--yellow)/.test(cssEspera));
 
 console.log('\n=== La Agenda permite cambiar el orden sin perder su criterio propio ===');
 const ordenarAgenda = funcionAgenda('ordenarAgenda');
