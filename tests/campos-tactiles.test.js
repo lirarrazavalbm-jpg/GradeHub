@@ -47,7 +47,16 @@ chk('el campo de hora declara alto táctil (≥44px)', altoDe('time') >= 44);
 chk('el ícono del calendario se agranda respecto del nativo',
   /calendar-picker-indicator\{[^}]*width:\s*(1[6-9]|[2-9]\d)px/.test(css));
 // Menos de 16px hace que iOS haga zoom al enfocar y descuadre la pantalla.
-chk('los campos no disparan zoom en iOS (16px o más)', /font-size:1[6-9]px/.test(regla));
+//
+// Desde que la escala es fluida, el campo ya no dice "16px": dice `1rem`, y los
+// 16 salen del mínimo del clamp de la raíz. Son dos mitades de la misma
+// garantía y por eso se comprueban juntas — si alguien baja el mínimo del clamp
+// a 15px para "apretar" la interfaz, el campo cae bajo 16 y iOS vuelve a hacer
+// zoom, sin que nada más lo delate.
+const remCampo = Number((regla.match(/font-size:([0-9.]+)rem/) || [])[1]);
+const minRaiz = Number((css.match(/html\{font-size:clamp\(\s*([0-9.]+)px/) || [])[1]);
+chk('el campo mide al menos 1rem', remCampo >= 1);
+chk('y la raíz nunca baja de 16px, así que iOS no hace zoom', minRaiz >= 16);
 
 console.log('\n=== Los campos especializados pueden reservar su espacio ===');
 // La regla base incluye un atributo (`input[type=text]`): una clase sola tiene
