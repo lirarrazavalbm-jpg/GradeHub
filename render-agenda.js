@@ -415,7 +415,7 @@ function renderAgenda(){
           <div class="ag-row-name">${esc(e.cat.nombre)}</div>
           <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
         </div>
-        ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:19px;">${fmt(a)}</span>`:""}
+        ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${fmt(a)}</span>`:""}
       </button>`;
     }).join("");
   }

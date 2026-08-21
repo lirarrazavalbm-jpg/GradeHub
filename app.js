@@ -1325,7 +1325,7 @@ function mostrarRamosCargados(cantidad,oficiales){
     modal.innerHTML=`
       <div class="modal-title">Sin ramos por ahora</div>
       <div class="courses-loaded">
-        <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">Cuando tengas tu carga, agrégala desde la malla o busca cada ramo.</p>
+        <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0;">Cuando tengas tu carga, agrégala desde la malla o busca cada ramo.</p>
       </div>
       <div class="modal-btns"><button class="btn-confirm" onclick="closeModal();openAddRamoModal()">Agregar ramo</button></div>`;
     openModal();return;
@@ -1352,8 +1352,8 @@ function mostrarRamosCargados(cantidad,oficiales){
     <div class="modal-title">${titulo}</div>
     <div class="courses-loaded">
       <div class="courses-loaded-count">${principal}</div>
-      <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0;">${detalle}</p>
-      ${oficiales?`<p style="font-size:12px;color:var(--fg3);margin:2px 0 0;">${ramosTxt}</p>`:''}
+      <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0;">${detalle}</p>
+      ${oficiales?`<p style="font-size:0.75rem;color:var(--fg3);margin:2px 0 0;">${ramosTxt}</p>`:''}
     </div>
     <div class="modal-btns"><button class="btn-confirm" onclick="closeModal()">Ver mis ramos</button></div>`;
   openModal();
@@ -1993,8 +1993,8 @@ function renderRamo(){
               <div class="eval-row-name">${esc(cat.nombre)}</div>
               <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}</div>
             </div>
-            <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:19px;">${fmt(av)}</div>
-            <span aria-hidden="true" style="color:var(--fg3);font-size:11px;margin-left:6px;">${isOpen?'▲':'▼'}</span>
+            <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:1.1875rem;">${fmt(av)}</div>
+            <span aria-hidden="true" style="color:var(--fg3);font-size:0.6875rem;margin-left:6px;">${isOpen?'▲':'▼'}</span>
           </div>
           <div class="eval-group-body${isOpen?' open':''}">${rows}</div>`;
         cl.appendChild(wrap);
@@ -2020,12 +2020,12 @@ function renderRamo(){
     const explicacionDescarte=descarte?`<div class="drop-rule-note">${esc(textoDescarte(cat,descarte))}</div>`:'';
     const card=document.createElement('div');card.className='cat-card';
     const notasHTML=cat.notas.length===0?
-      `<p style="font-size:13px;color:var(--fg3);text-align:center;padding:10px 0;">Sin notas aún</p>`:
+      `<p style="font-size:0.8125rem;color:var(--fg3);text-align:center;padding:10px 0;">Sin notas aún</p>`:
       cat.notas.map(n=>{
         const descartada=notasDescartadas.has(n.id);
         return `
         <div class="nota-row${descartada?' nota-row-dropped':''}">
-          <button class="nota-row-name" aria-label="Editar nota ${esc(n.nombre)}" onclick="openEditNotaModal('${cat.id}','${n.id}');event.stopPropagation();" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;font-size:14px;color:var(--fg2);flex:1;">${esc(n.nombre)}</button>
+          <button class="nota-row-name" aria-label="Editar nota ${esc(n.nombre)}" onclick="openEditNotaModal('${cat.id}','${n.id}');event.stopPropagation();" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;font-size:0.875rem;color:var(--fg2);flex:1;">${esc(n.nombre)}</button>
           ${n.peso!==1?`<span class="nota-row-pond">${n.peso}%</span>`:''}
           ${descartada?'<span class="nota-row-drop-tag">No cuenta</span>':''}
           ${n.fecha?`<span class="cat-fecha-chip">${esc(fechaCorta(n.fecha))}</span>`:''}
@@ -2039,9 +2039,9 @@ function renderRamo(){
           <div class="cat-name">${esc(cat.nombre)}</div>
           <div class="cat-peso-tag">${cat.peso}% del ramo · ${cat.notas.length} nota${cat.notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
         </div>
-        <span style="font-size:16px;font-weight:700;color:${getColor(catAvg)}">${fmt(catAvg)}</span>
-        <button aria-label="Eliminar evaluación ${esc(cat.nombre)}" style="background:var(--red-bg);border:none;border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--red);font-size:13px;" onclick="confirmDeleteCat('${cat.id}');event.stopPropagation();"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
-        <button aria-label="${isOpen?'Colapsar':'Expandir'} ${esc(cat.nombre)}" aria-expanded="${isOpen?'true':'false'}" style="background:var(--muted);border:none;border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--fg2);font-size:11px;" onclick="toggleCat('${cat.id}');event.stopPropagation();">${isOpen?'▲':'▼'}</button>
+        <span style="font-size:1rem;font-weight:700;color:${getColor(catAvg)}">${fmt(catAvg)}</span>
+        <button aria-label="Eliminar evaluación ${esc(cat.nombre)}" style="background:var(--red-bg);border:none;border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--red);font-size:0.8125rem;" onclick="confirmDeleteCat('${cat.id}');event.stopPropagation();"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+        <button aria-label="${isOpen?'Colapsar':'Expandir'} ${esc(cat.nombre)}" aria-expanded="${isOpen?'true':'false'}" style="background:var(--muted);border:none;border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--fg2);font-size:0.6875rem;" onclick="toggleCat('${cat.id}');event.stopPropagation();">${isOpen?'▲':'▼'}</button>
       </div>
       <div class="cat-body${isOpen?' open':''}">
         ${explicacionDescarte}
@@ -2150,12 +2150,12 @@ function openMallaModal(){
   const rows=_mallaList.map((n,i)=>`
     <label style="display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" checked onchange="toggleMalla(${i},this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
-      <span style="font-size:14px;color:var(--fg);">${esc(n)}${findPresetName(n,S.tenant,S.carrera)?' <svg class=\"ic\" style=\"color:var(--yellow);width:12px;height:12px;vertical-align:-1px;\" viewBox=\"0 0 24 24\" aria-label=\"Ponderaciones oficiales precargadas\"><path d=\"M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z\" fill=\"currentColor\" stroke=\"none\"/></svg>':''}</span>
+      <span style="font-size:0.875rem;color:var(--fg);">${esc(n)}${findPresetName(n,S.tenant,S.carrera)?' <svg class=\"ic\" style=\"color:var(--yellow);width:12px;height:12px;vertical-align:-1px;\" viewBox=\"0 0 24 24\" aria-label=\"Ponderaciones oficiales precargadas\"><path d=\"M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z\" fill=\"currentColor\" stroke=\"none\"/></svg>':''}</span>
     </label>`).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg> Ramos de tu ${S.careerSemestre}° semestre</div>
-    <p style="font-size:13px;color:var(--fg2);margin-bottom:4px;">${esc(carrerasFor(S.tenant)[S.carrera]||'')}</p>
-    <p style="font-size:12px;color:var(--fg3);margin-bottom:10px;">Desmarca los que no estés tomando. Los electivos los agregas aparte.</p>
+    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:4px;">${esc(carrerasFor(S.tenant)[S.carrera]||'')}</p>
+    <p style="font-size:0.75rem;color:var(--fg3);margin-bottom:10px;">Desmarca los que no estés tomando. Los electivos los agregas aparte.</p>
     <div style="max-height:42vh;overflow-y:auto;margin-bottom:12px;">${rows}</div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Ahora no</button>
@@ -2236,7 +2236,7 @@ function verCambioDePauta(ramoId){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">La pauta oficial cambió</div>
     <p class="modal-desc">Esto es lo que cambia respecto de lo que tienes hoy en <b>${esc(r.nombre)}</b>.</p>
-    <ul style="margin:10px 0 0;padding-left:18px;font-size:14px;color:var(--fg2);line-height:1.6;">${cambio.cambios.map(fila).join('')}</ul>
+    <ul style="margin:10px 0 0;padding-left:18px;font-size:0.875rem;color:var(--fg2);line-height:1.6;">${cambio.cambios.map(fila).join('')}</ul>
     ${aviso}
     <div class="modal-btns" style="margin-top:16px;">
       <button type="button" class="btn-cancel" onclick="closeModal()">Dejar como está</button>
@@ -2660,7 +2660,7 @@ function openReportModal(ramoId){
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Reportar ponderaciones</div>
-    <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin-bottom:14px;">
+    <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin-bottom:14px;">
       Ajusta los porcentajes de <b>${esc(r.nombre)}</b> para que calcen con tu curso. Si varios
       estudiantes reportan lo mismo, pasa a ser la versi\u00f3n sugerida del cat\u00e1logo.
     </p>
@@ -2673,7 +2673,7 @@ function openReportModal(ramoId){
     <p class="rep-balance ${estado.lista?'ok':'warn'}" id="m-rep-balance">${textoEstadoReporte(estado)}</p>
     <label class="modal-label" for="m-rep-nota" style="margin-top:16px;">Comentario <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional)</span></label>
     <div class="modal-input"><input type="text" id="m-rep-nota" placeholder="Ej: el profe cambi\u00f3 el examen a 40%" maxlength="120" autocomplete="off"/></div>
-    <p style="font-size:11.5px;color:var(--fg3);line-height:1.45;margin:-4px 0 14px;">
+    <p style="font-size:0.71875rem;color:var(--fg3);line-height:1.45;margin:-4px 0 14px;">
       Se env\u00eda solo la estructura del ramo y tu universidad. Nunca tus notas.
     </p>
     <div class="modal-btns">
@@ -2931,7 +2931,7 @@ function campoFechaHoraHTML(idBase,fecha,hora,conQuitar){
     <div class="modal-input" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input type="date" id="${idBase}-fecha" value="${f}" autocomplete="off" style="flex:1 1 9.5rem;min-width:9rem;" oninput="sincronizarHora('${idBase}')"/>
       <input type="time" id="${idBase}-hora" value="${h}" autocomplete="off" aria-label="Hora (opcional)" style="flex:1 1 7rem;min-width:6.5rem;" ${fecha?'':'disabled'}/>
-      ${conQuitar&&fecha?`<button type="button" onclick="limpiarFechaHora('${idBase}')" style="flex:0 0 auto;padding:10px 12px;background:var(--muted);border:none;border-radius:8px;color:var(--fg2);font-size:12px;font-weight:600;cursor:pointer;">Quitar</button>`:''}
+      ${conQuitar&&fecha?`<button type="button" onclick="limpiarFechaHora('${idBase}')" style="flex:0 0 auto;padding:10px 12px;background:var(--muted);border:none;border-radius:8px;color:var(--fg2);font-size:0.75rem;font-weight:600;cursor:pointer;">Quitar</button>`:''}
     </div>`;
 }
 // Quitar la fecha se lleva la hora: quedaría un dato que no se puede mostrar.
@@ -3101,32 +3101,32 @@ function renderPautaManualModal(){
   const sugerencias=opcionesSugerenciasEvaluacion(S.tenant);
   const disponibles=plantillasPauta(S.tenant);
   const plantillas=(puedeUsarPlantillaPauta()&&disponibles.length)?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
-    <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
+    <div style="font-size:0.8125rem;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
     <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Onest',sans-serif;cursor:pointer;">${p.label}</button>`).join('')}</div>
-    <div style="font-size:12px;color:var(--fg2);line-height:1.4;margin-top:8px;">Los pesos quedan en 0%. Confírmalos con el programa del curso.</div>
+    <div style="font-size:0.75rem;color:var(--fg2);line-height:1.4;margin-top:8px;">Los pesos quedan en 0%. Confírmalos con el programa del curso.</div>
   </div>`:'';
   const duplicar=fuentes.length?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);">
-    <div style="font-size:13px;font-weight:700;color:var(--fg);margin-bottom:4px;">¿Ya la tienes armada en otro ramo?</div>
-    <div style="font-size:12px;color:var(--fg2);line-height:1.4;margin-bottom:8px;">Copia evaluaciones y porcentajes. Tus notas y fechas no se copian.</div>
+    <div style="font-size:0.8125rem;font-weight:700;color:var(--fg);margin-bottom:4px;">¿Ya la tienes armada en otro ramo?</div>
+    <div style="font-size:0.75rem;color:var(--fg2);line-height:1.4;margin-bottom:8px;">Copia evaluaciones y porcentajes. Tus notas y fechas no se copian.</div>
     <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px 'Onest',sans-serif;cursor:pointer;">Usar pauta</button></div>
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>`
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 30px 30px;gap:6px;align-items:center;margin:8px 0;">
       <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="${NOMBRE_MAX}" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
-      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:13px;pointer-events:none;">%</span></div>
+      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span></div>
       <label title="Son varias notas que se promedian" style="display:flex;align-items:center;justify-content:center;height:40px;cursor:pointer;">
         <input type="checkbox" ${fila.varias?'checked':''} onchange="actualizarPautaVarias(${i},this.checked)" aria-label="${esc(fila.nombre||'Evaluación')}: son varias notas que se promedian" style="width:18px;height:18px;accent-color:var(--primary);"/>
       </label>
-      <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:20px;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
+      <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:1.25rem;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Agregar evaluaciones</div>
-    <p style="font-size:13px;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas.</p>
+    <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas.</p>
     ${plantillas}
     ${duplicar}
     <datalist id="m-pauta-sugerencias">${sugerencias}</datalist>
-    <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:13px;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 30px 30px;gap:6px;font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">
+    <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:0.8125rem;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 30px 30px;gap:6px;font-size:0.6875rem;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">
       <span>Evaluación</span><span>Peso</span><span title="Son varias notas que se promedian" style="text-align:center;">Varias</span><span></span>
     </div>
     <div>${filas}</div>
@@ -3576,13 +3576,13 @@ function openEditHistRamoModal(histId,ramoId){
   const esOverride=typeof r.avgOverride==='number';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">${esc(r.nombre)}</div>
-    <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin-bottom:16px;">
+    <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin-bottom:16px;">
       Corrige el promedio final de este ramo en <b>${esc(h.label)}</b>. No se tocan sus evaluaciones.
     </p>
     <label class="modal-label">Promedio final (1.0 – 7.0)</label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-hist-avg" value="${actual!==null?nf(actual):''}" placeholder="Ej: 5.4" maxlength="4"/></div>
-    ${calculado!==null?`<p style="font-size:12px;color:var(--fg3);margin:-6px 0 14px;">Calculado desde sus evaluaciones: <b>${fmt(calculado)}</b></p>`:''}
-    <div id="m-hist-err" style="display:none;font-size:12px;color:var(--red);margin:-6px 0 12px;"></div>
+    ${calculado!==null?`<p style="font-size:0.75rem;color:var(--fg3);margin:-6px 0 14px;">Calculado desde sus evaluaciones: <b>${fmt(calculado)}</b></p>`:''}
+    <div id="m-hist-err" style="display:none;font-size:0.75rem;color:var(--red);margin:-6px 0 12px;"></div>
     <div class="modal-btns">
       ${esOverride?`<button class="btn-cancel" onclick="resetHistRamoAvg('${esc(histId)}','${esc(ramoId)}')">Restaurar</button>`:`<button class="btn-cancel" onclick="closeModal()">Cancelar</button>`}
       <button class="btn-confirm" onclick="confirmEditHistRamo('${esc(histId)}','${esc(ramoId)}')">Guardar</button>
@@ -3650,8 +3650,8 @@ function exportarDatos(){
 function _mostrarJsonManual(json){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Exportar datos</div>
-    <p style="font-size:13px;color:var(--fg2);margin-bottom:10px;">Copia todo este texto y pégalo al importar en el otro dispositivo.</p>
-    <textarea id="export-text" readonly style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:11px;font-family:monospace;resize:none;background:var(--muted);color:var(--fg);">${esc(json)}</textarea>
+    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:10px;">Copia todo este texto y pégalo al importar en el otro dispositivo.</p>
+    <textarea id="export-text" readonly style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:0.6875rem;font-family:monospace;resize:none;background:var(--muted);color:var(--fg);">${esc(json)}</textarea>
     <div class="modal-btns" style="margin-top:12px;">
       <button class="btn-cancel" onclick="closeModal()">Cerrar</button>
       <button class="btn-confirm" onclick="document.getElementById('export-text').select();document.execCommand('copy');showToast('✓ Copiado');">Copiar</button>
@@ -3662,14 +3662,14 @@ function _mostrarJsonManual(json){
 function abrirImportar(){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Importar datos</div>
-    <p style="font-size:13px;color:var(--fg2);margin-bottom:10px;">Pega aquí el texto que exportaste desde el otro dispositivo. <b>Esto reemplazará tus datos actuales.</b></p>
-    <textarea id="import-text" placeholder="Pega aquí tu código de exportación..." style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:11px;font-family:monospace;resize:none;background:var(--muted);color:var(--fg);"></textarea>
+    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:10px;">Pega aquí el texto que exportaste desde el otro dispositivo. <b>Esto reemplazará tus datos actuales.</b></p>
+    <textarea id="import-text" placeholder="Pega aquí tu código de exportación..." style="width:100%;height:120px;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:0.6875rem;font-family:monospace;resize:none;background:var(--muted);color:var(--fg);"></textarea>
     <div class="modal-btns" style="margin-top:12px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="confirmarImportar()">Importar</button>
     </div>
-    ${hayRespaldoPreImport()?`<p style="text-align:center;margin:14px 0 0;font-size:12.5px;">
-      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:'Onest',sans-serif;font-size:12.5px;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
+    ${hayRespaldoPreImport()?`<p style="text-align:center;margin:14px 0 0;font-size:0.78125rem;">
+      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:'Onest',sans-serif;font-size:0.78125rem;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
   openModal();
   setTimeout(()=>document.getElementById('import-text').focus(),100);
 }
@@ -4064,14 +4064,14 @@ function renderStats(){
           <div class="hist-card">
             <div class="hist-header" onclick="toggleHist('${h.id}')">
               <div style="flex:1;">
-                <div style="font-size:15.5px;font-weight:700;color:var(--fg);letter-spacing:-.01em;">${esc(h.label)}</div>
-                <div style="font-size:12px;color:var(--fg3);margin-top:3px;">Sem. ${h.careerSemestre} · ${h.ramos.length} ramos</div>
+                <div style="font-size:0.96875rem;font-weight:700;color:var(--fg);letter-spacing:-.01em;">${esc(h.label)}</div>
+                <div style="font-size:0.75rem;color:var(--fg3);margin-top:3px;">Sem. ${h.careerSemestre} · ${h.ramos.length} ramos</div>
               </div>
               <span class="hist-gpa" style="color:${gpaColor}">${h.gpa!==null?nf(h.gpa):'—'}</span>
-              <span style="color:var(--fg3);font-size:11px;">${isOpen?'▲':'▼'}</span>
+              <span style="color:var(--fg3);font-size:0.6875rem;">${isOpen?'▲':'▼'}</span>
             </div>
             <div class="hist-body${isOpen?' open':''}">
-              ${ramosRows||'<p style="font-size:13px;color:var(--fg3);">Sin ramos</p>'}
+              ${ramosRows||'<p style="font-size:0.8125rem;color:var(--fg3);">Sin ramos</p>'}
             </div>
           </div>`;
       });
@@ -4224,7 +4224,7 @@ function openCalculadoraModal(){
 
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2"/><path d="M8 7h8"/><path d="M8 12h3"/><path d="M8 16h3"/><path d="M15 12v5"/></svg> Calculadora</div>
-    <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">¿Qué promedio necesitas en las secciones sin notas para llegar a tu meta?</p>
+    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:14px;">¿Qué promedio necesitas en las secciones sin notas para llegar a tu meta?</p>
     <label class="modal-label">Promedio meta en el ramo</label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-calc-target" placeholder="Ej: 5.5" oninput="calcResult()"/></div>
     <div id="calc-result" style="min-height:52px;margin-top:4px;"></div>
@@ -4264,14 +4264,14 @@ function openCalculadoraModal(){
     const vacias=r.categorias.filter(c=>avgPond(c.notas)===null);
     const dondeTxt=vacias.length===1?`en <b>${esc(vacias[0].nombre)}</b>`:`en las secciones sin notas (${r2(pesoSinNotas)}% del ramo)`;
     // Condición pendiente de piso (ej: Podcast sin nota aún)
-    const condPend=(r.gates||[]).filter(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);return c&&avgPond(c.notas)===null;}).map(g=>`<div style="font-size:12px;color:var(--yellow);margin-top:8px;">Además, ${esc(g.nombre)} debe ser ≥ ${g.min.toFixed(1)} o repruebas pese al promedio.</div>`).join('');
+    const condPend=(r.gates||[]).filter(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);return c&&avgPond(c.notas)===null;}).map(g=>`<div style="font-size:0.75rem;color:var(--yellow);margin-top:8px;">Además, ${esc(g.nombre)} debe ser ≥ ${g.min.toFixed(1)} o repruebas pese al promedio.</div>`).join('');
     if(neededR>7){
       el.innerHTML=`<span style="color:var(--red)">Necesitarías un <b>${neededR.toFixed(1)}</b> — ya no es posible llegar a ${target.toFixed(1)}.</span>`;
     } else if(neededR<1){
       el.innerHTML=`<span style="color:var(--green)">Con cualquier nota llegas a ${target.toFixed(1)}.</span>${condPend}`;
     } else {
       const col=neededR>=5.5?'var(--yellow)':'var(--green)';
-      el.innerHTML=`<div style="margin-top:4px;">Necesitas un promedio de<br/><b style="font-size:32px;color:${col}">${neededR.toFixed(1)}</b><br/><span style="font-size:12px;color:var(--fg3)">${dondeTxt}</span>${condPend}</div>`;
+      el.innerHTML=`<div style="margin-top:4px;">Necesitas un promedio de<br/><b style="font-size:2rem;color:${col}">${neededR.toFixed(1)}</b><br/><span style="font-size:0.75rem;color:var(--fg3)">${dondeTxt}</span>${condPend}</div>`;
     }
   };
 }
@@ -4288,7 +4288,7 @@ function openSimGlobalModal(){
   simGlobalState={};
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Simular el semestre</div>
-    <p style="font-size:13px;color:var(--fg2);margin-bottom:16px;line-height:1.5;">Ajusta la nota final de cada ramo y mira cómo queda tu promedio general. Puedes escribirla directo. Nada de esto se guarda.</p>
+    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:16px;line-height:1.5;">Ajusta la nota final de cada ramo y mira cómo queda tu promedio general. Puedes escribirla directo. Nada de esto se guarda.</p>
     <div class="simg-hero">
       <div class="simg-hero-label">Promedio proyectado</div>
       <div class="simg-hero-num" id="simg-avg">—</div>
@@ -4442,7 +4442,7 @@ function openSimuladorModal(){
   simState={};
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg> Simular escenario</div>
-    <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">Agrega notas hipotéticas y mira cómo quedaría tu promedio. No se guardan hasta que confirmes.</p>
+    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:14px;">Agrega notas hipotéticas y mira cómo quedaría tu promedio. No se guardan hasta que confirmes.</p>
     <div class="sim-proj">
       <div class="sim-proj-label">Promedio proyectado</div>
       <div class="sim-proj-num" id="sim-avg">—</div>
@@ -4803,7 +4803,7 @@ function openAgendaCalendarOptions(){
   if(agendaEvents().length===0){showToast('Primero agrega fechas a tus evaluaciones',true);return;}
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Lleva tu Agenda al calendario</div>
-    <p style="font-size:13px;color:var(--fg2);line-height:1.5;margin:0 0 14px;">
+    <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0 0 14px;">
       La suscripción es la opción recomendada: <b>se actualiza sola</b> cuando cambias una fecha y queda como un calendario separado.
     </p>
     <button class="btn-primary" type="button" onclick="openCalendarSubscriptionFromAgenda()">Suscribirme al calendario</button>
