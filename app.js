@@ -2091,6 +2091,76 @@ function fechaCorta(iso){
 }
 function toggleCat(id){openCats[id]=!openCats[id];renderRamo();}
 // Nota por espacio en secciones multi-nota (ej: Laboratorio 1/2/3).
+// ─── EL TECLADO NO PUEDE TAPAR LO QUE ESTÁS ESCRIBIENDO ──────────────────────
+// En el teléfono, el teclado se come la mitad de abajo de la pantalla. Al tocar
+// una casilla que está en esa mitad, quedaba escondida detrás: se escribía a
+// ciegas, sin ver la nota ni el nombre de la evaluación. Pasa sobre todo en las
+// evaluaciones desplegables largas —Participación de Programación abre diez
+// casillas, 618px de alto— donde casi cualquiera cae abajo.
+//
+// El navegador a veces la sube solo, pero dentro de un contenedor con scroll
+// propio (`.scroll`) suele dejarla justo bajo el borde del teclado, que se ve
+// igual que no hacer nada.
+//
+// `visualViewport` es lo único que sabe el alto REAL con el teclado abierto:
+// window.innerHeight no cambia cuando el teclado aparece.
+// El scroll no puede subir un campo que ya está al final del contenido: no hay
+// nada abajo contra lo que empujar. La última casilla de una evaluación es
+// justo ese caso, y es la que más se toca al ponerse al día. Por eso primero se
+// le presta al contenedor el alto que el teclado tapó, y recién después se
+// sube el campo.
+function espacioTeclado(){
+  const vp=window.visualViewport;
+  return vp?Math.max(0,Math.round(window.innerHeight-vp.height-(vp.offsetTop||0))):0;
+}
+function contenedorDesplazable(el){
+  return (el.closest&&(el.closest('.modal-sheet')||el.closest('.scroll')))||null;
+}
+function asegurarVisibleSobreTeclado(el){
+  if(!el||!el.getBoundingClientRect)return;
+  const cont=contenedorDesplazable(el);
+  const oculto=espacioTeclado();
+  if(cont&&oculto>0)cont.style.paddingBottom=oculto+'px';
+  const alto=window.innerHeight-oculto;
+  const r=el.getBoundingClientRect();
+  // Margen para que no quede pegada al borde del teclado, sino con aire.
+  // Sin `behavior:'smooth'`: la animación no llegaba a correr antes de que el
+  // teclado terminara de subir, así que el campo se quedaba tapado igual. Y de
+  // paso respeta a quien pidió menos movimiento.
+  if(r.bottom>alto-16||r.top<8){
+    try{el.scrollIntoView({block:'center'});}
+    catch(e){el.scrollIntoView(false);}
+  }
+}
+function soltarEspacioTeclado(){
+  document.querySelectorAll('.scroll,.modal-sheet').forEach(c=>{c.style.paddingBottom='';});
+}
+
+// Delegado: se engancha una vez y cubre todo lo que se dibuje después, sin que
+// cada render tenga que acordarse.
+document.addEventListener('focusin',e=>{
+  const el=e.target;
+  if(!el||!el.matches||!el.matches('input,textarea,select'))return;
+  // El teclado tarda en aparecer, y antes de que aparezca la cuenta da bien y
+  // no se hace nada. Se mide después.
+  setTimeout(()=>{
+    // Si ya se fue a otro campo, que ese otro se encargue: mover la pantalla por
+    // uno que quedó atrás es peor que no hacer nada.
+    if(el.isConnected&&(document.activeElement===el||document.activeElement===document.body))asegurarVisibleSobreTeclado(el);
+  },320);
+});
+// Al cerrarse el teclado el préstamo se devuelve, o queda un hueco en blanco al
+// final de la pantalla que nadie explica.
+document.addEventListener('focusout',()=>{
+  setTimeout(()=>{
+    const a=document.activeElement;
+    if(!a||!a.matches||!a.matches('input,textarea,select'))soltarEspacioTeclado();
+  },120);
+});
+window.visualViewport&&window.visualViewport.addEventListener('resize',()=>{
+  if(espacioTeclado()===0)soltarEspacioTeclado();
+});
+
 function setSlotNota(catId,slot,raw){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const cat=r.categorias.find(c=>c.id===catId);if(!cat)return;
