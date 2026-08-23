@@ -20,7 +20,14 @@ const sitemap = leer('sitemap.xml');
 chk('usa el namespace correcto (sitemaps.org, plural)',
   /xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/.test(sitemap));
 const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(m => m[1]);
-chk('lista las tres páginas reales', urls.length === 3);
+// Antes decía `urls.length === 3`, un número que hay que acordarse de subir. Se
+// deriva de los archivos: así agregar una página y olvidar el sitemap falla
+// acá, que es justo el descuido que deja una página sin que nadie la encuentre.
+// La 404 no va: se sirve, pero no se indexa.
+const publicables = fs.readdirSync(raiz).filter(f => f.endsWith('.html') && f !== '404.html');
+const enSitemap = ruta => urls.includes('https://gradehub.cl/' + (ruta === 'index.html' ? '' : ruta));
+publicables.forEach(f => chk(`${f} está en el sitemap`, enSitemap(f)));
+chk('y el sitemap no lista páginas de más', urls.length === publicables.length);
 chk('todas absolutas y en https', urls.every(u => u.startsWith('https://gradehub.cl/')));
 // Una URL en el sitemap que no existe le dice al buscador que el sitio está mal
 // mantenido. Se comprueba contra los archivos del repo.
@@ -31,7 +38,7 @@ chk('cada URL corresponde a un archivo que existe',
   }));
 
 console.log('\n=== Metadatos de las páginas ===');
-const PAGINAS = [['index.html', 'la app'], ['preguntas.html', 'las preguntas'], ['privacidad.html', 'la política']];
+const PAGINAS = [['index.html', 'la app'], ['preguntas.html', 'las preguntas'], ['privacidad.html', 'la política'], ['terminos.html', 'los términos']];
 PAGINAS.forEach(([f, que]) => {
   const html = leer(f);
   const titulo = (html.match(/<title>([^<]+)<\/title>/) || [])[1] || '';

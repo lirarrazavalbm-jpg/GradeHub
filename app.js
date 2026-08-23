@@ -3490,7 +3490,7 @@ function openSettings(){
         <p>Borra tu cuenta y todas tus notas, en este dispositivo y en la nube. No se puede deshacer.</p>
       </div>
       ${currentUser?`<div class="settings-reset-zone"><button type="button" class="settings-reset-btn" onclick="confirmResetApp()">Reiniciar app</button><p>Borra los datos de este dispositivo y cierra sesión. Tus notas en la nube se conservan.</p></div>`:`<div class="settings-danger-zone settings-reset-danger-zone"><div class="settings-danger-label">Zona sensible</div><button type="button" class="settings-danger-btn" onclick="confirmResetApp()">Reiniciar app</button><p>Borra todos tus datos de este dispositivo. No se puede deshacer.</p></div>`}
-      <p class="settings-privacy"><a href="/privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
+      <p class="settings-privacy"><a href="/terminos.html" target="_blank" rel="noopener">Términos de uso</a> · <a href="/privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
   }
   function renderSettings(){
     const nav=sections.map(([group,id,title,detail],i)=>`${!i||sections[i-1][0]!==group?`<div class="settings-nav-group">${group}</div>`:''}<button type="button" class="settings-nav-item${id===activeSection?' active':''}" data-settings-section="${id}"><span class="settings-nav-icon">${icons[id]}</span><span><b>${title}</b><small>${detail}</small></span><span class="settings-nav-chevron">›</span></button>`).join('');
