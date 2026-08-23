@@ -1489,18 +1489,44 @@ function guardarOrdenRamos(ids){
   return true;
 }
 
+function anunciar(texto){
+  let el=document.getElementById('anuncio-a11y');
+  if(!el){
+    el=document.createElement('div');
+    el.id='anuncio-a11y';
+    el.setAttribute('role','status');
+    el.setAttribute('aria-live','polite');
+    el.style.cssText='position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;';
+    document.body.appendChild(el);
+  }
+  // Vaciar primero: repetir el mismo texto no dispara el anuncio de nuevo.
+  el.textContent='';
+  setTimeout(()=>{el.textContent=texto;},30);
+}
+
+// Mueve el NODO en vez de volver a dibujar la lista, igual que hace el arrastre
+// al soltar. Antes se llamaba a renderHome() y se intentaba devolver el foco al
+// asa en el fotograma siguiente, pero el asa ya no era la misma —el render la
+// había reemplazado— y el foco terminaba en el body. Quien mueve con teclado
+// tenía que volver a tabular hasta el ramo para dar el segundo paso, o sea
+// reordenar tres ramos costaba tres recorridos completos.
 function moverRamoConTeclado(id,delta){
   if(S.sortMode!=='manual')return;
-  const ids=S.ramos.map(r=>r.id),desde=ids.indexOf(id),hasta=desde+delta;
-  if(desde<0||hasta<0||hasta>=ids.length)return;
-  [ids[desde],ids[hasta]]=[ids[hasta],ids[desde]];
-  if(!guardarOrdenRamos(ids))return;
-  renderHome();
-  requestAnimationFrame(()=>{
-    const fila=[...document.querySelectorAll('#home-ramos .ramo-row')].find(el=>el.dataset.ramoId===id);
-    const handle=fila&&fila.querySelector('.ramo-drag-handle');
-    if(handle)handle.focus();
-  });
+  const cont=document.getElementById('home-ramos');
+  if(!cont)return;
+  const filas=[...cont.querySelectorAll('.ramo-row')];
+  const desde=filas.findIndex(el=>el.dataset.ramoId===id),hasta=desde+delta;
+  if(desde<0||hasta<0||hasta>=filas.length)return;
+  if(delta>0)cont.insertBefore(filas[hasta],filas[desde]);
+  else cont.insertBefore(filas[desde],filas[hasta]);
+  if(!guardarOrdenRamos([...cont.querySelectorAll('.ramo-row')].map(el=>el.dataset.ramoId))){
+    renderHome();return;
+  }
+  // Mover algo con el teclado no se ve: sin esto, quien usa lector de pantalla
+  // oye el nombre del ramo pero nunca dónde quedó.
+  const fila=filas[desde];
+  const nombre=(fila.querySelector('.ramo-name')||{}).textContent||'El ramo';
+  anunciar(`${nombre}, posición ${hasta+1} de ${filas.length}`);
 }
 
 function activarReordenRamos(container){

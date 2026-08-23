@@ -74,6 +74,38 @@ chk('un orden incompleto o con ids repetidos no puede borrar ramos',
   !!guardarOrdenRamos&&guardarOrdenRamos(['a','a','b'])===false&&
   vm.runInContext("S.ramos.map(r=>r.id).join(',')",dragKit.ctx)==='c,a,b');
 
+// Mover con teclado tiene que conservar el foco en el asa, o cada paso obliga a
+// tabular de nuevo hasta el ramo. Lo que lo garantiza es NO volver a dibujar la
+// lista: se mueve el nodo, así que el asa enfocada nunca se destruye. Eso es lo
+// que se comprueba acá, porque el foco mismo necesita un navegador de verdad.
+const tecladoKit=arnes(fuente());
+const filaFalsa=id=>({dataset:{ramoId:id},querySelector:()=>({textContent:'Ramo '+id})});
+let redibujos=0;
+vm.runInContext("renderHome=function(){__redibujo();};S={ramos:[{id:'a',nombre:'A'},{id:'b',nombre:'B'},{id:'c',nombre:'C'}],sortMode:'manual'};",tecladoKit.ctx);
+tecladoKit.ctx.__redibujo=()=>{redibujos++;};
+let orden=['a','b','c'];
+const contenedor={
+  querySelectorAll:()=>orden.map(filaFalsa),
+  insertBefore(nodo,ref){
+    const id=nodo.dataset.ramoId,antes=ref.dataset.ramoId;
+    orden=orden.filter(x=>x!==id);
+    orden.splice(orden.indexOf(antes),0,id);
+  },
+};
+tecladoKit.ctx.document.getElementById=id=>id==='home-ramos'?contenedor:elemento();
+const moverRamoConTeclado=vm.runInContext('moverRamoConTeclado',tecladoKit.ctx);
+moverRamoConTeclado('a',1);
+chk('la flecha mueve el ramo una posición',orden.join(',')==='b,a,c');
+chk('y el estado guardado queda igual que lo que se ve',
+  vm.runInContext("S.ramos.map(r=>r.id).join(',')",tecladoKit.ctx)==='b,a,c');
+moverRamoConTeclado('a',-1);
+chk('y vuelve para el otro lado',orden.join(',')==='a,b,c');
+chk('sin volver a dibujar la lista: el asa enfocada sobrevive',redibujos===0);
+// El tope: en el primero, subir no hace nada. Sin este guard el índice se sale
+// del arreglo y el orden queda corrupto.
+moverRamoConTeclado('a',-1);
+chk('en el borde no pasa nada',orden.join(',')==='a,b,c');
+
 const appSrc=fs.readFileSync(raiz+'app.js','utf8');
 const indexSrc=fs.readFileSync(raiz+'index.html','utf8');
 const homeSrc=appSrc.slice(appSrc.indexOf('function renderHome'),appSrc.indexOf('function openRamo'));
