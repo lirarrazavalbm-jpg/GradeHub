@@ -1403,6 +1403,28 @@ function obRamosVisibles(sugeridos,elegidos){
   });
   return visibles;
 }
+// Ingeniería UC se separa por majors después del plan común. La app conoce
+// muchos de esos ramos por su tabla de SCT, pero no puede asumir un major por
+// semestre: sería cargarle cursos que quizá nunca toma.
+function obCoursePickerIntro(sugeridos){
+  if(selectedTenant==='uc'&&selectedCarrera==='ING-PC'&&selectedSem>=5){
+    return 'Desde 5° Ingeniería UC se separa por major. No asumimos cuál tomas: busca por nombre o sigla de tu horario y arma este semestre a tu medida.';
+  }
+  if(!selectedCarrera&&selectedCarreraNombre){
+    return `Todavía no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Puedes armar tu semestre buscando ramos de tu universidad o agregando los de tu horario.`;
+  }
+  return sugeridos.length
+    ? 'Partimos con una sugerencia según tu avance. Puedes sumar ramos de cualquier otro semestre.'
+    : 'No tenemos ramos sugeridos para este semestre. Busca los de tu horario o agrégalos a mano.';
+}
+function obCourseSearchLabel(){return selectedTenant==='uc'?'Buscar por nombre o sigla':'Buscar otro ramo';}
+function obCourseSearchPlaceholder(){return selectedTenant==='uc'?'Ej.: IIC2333, Termodinámica':'Ej.: Inglés IV, Cálculo II';}
+function obCatalogMeta(r){
+  const lugar=r.semestre>0?`${r.semestre}° semestre`
+    :r.fuente==='catalogo-ingenieria'?'catálogo de Ingeniería UC'
+      :r.fuente==='curso-uc'?'curso UC fuera de malla':'fuera de malla';
+  return `${r.sigla?esc(r.sigla)+' · ':''}${lugar}${r.tienePreset?' · con ponderaciones oficiales':''}`;
+}
 function renderObCoursePicker(){
   const box=document.getElementById('ob-course-picker');if(!box)return;
   const sugeridos=obRamosActuales();
@@ -1412,17 +1434,17 @@ function renderObCoursePicker(){
       <input type="checkbox" ${obTieneRamo(nombre)?'checked':''} onchange="obToggleRamoCodificado('${obCodificarNombre(nombre)}',this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
       <span class="course-picker-selected-name">${esc(nombre)}</span>
     </label>`).join(''):
-    '<p class="course-picker-reassurance">No encontramos ramos sugeridos para este semestre. Puedes buscarlos o agregarlos a mano.</p>';
+    '';
   box.innerHTML=`
     <div class="course-picker">
-      <p class="course-picker-intro">Partimos con una sugerencia según tu avance. Puedes sumar ramos de cualquier otro semestre.</p>
+      <p class="course-picker-intro">${obCoursePickerIntro(sugeridos)}</p>
       <div class="course-picker-section">
-        <label class="modal-label">Ramos para este semestre</label>
+        <label class="modal-label">${sugeridos.length?`Sugeridos para ${selectedSem}°`:'Tu semestre'}</label>
         ${rows}
       </div>
       <div class="course-picker-section">
-        <label class="modal-label" for="ob-course-search">Buscar otro ramo</label>
-        <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="ob-course-search" type="text" placeholder="Ej.: Inglés IV, Cálculo II" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
+        <label class="modal-label" for="ob-course-search">${obCourseSearchLabel()}</label>
+        <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="ob-course-search" type="text" placeholder="${obCourseSearchPlaceholder()}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
         <div id="ob-course-results"></div>
       </div>
       <button class="course-picker-manual" type="button" onclick="obToggleManual()">¿No aparece? Agregar un ramo a mano</button>
@@ -1439,9 +1461,9 @@ function renderObCourseResults(q){
   const res=searchCatalog(term,selectedTenant,selectedCarrera,selectedSem).slice(0,6);
   if(!res.length){box.innerHTML='<p class="course-picker-reassurance">No aparece en tu malla. Puedes agregarlo a mano.</p>';return;}
   box.innerHTML=res.map(r=>{
-    const tengo=obTieneRamo(r.nombre),otro=r.semestre!==selectedSem;
+    const tengo=obTieneRamo(r.nombre),otro=r.semestre>0&&r.semestre!==selectedSem;
     return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${obCodificarNombre(r.nombre)}')"`}>
-      <span class="course-picker-result-info"><span class="course-picker-result-name">${esc(r.nombre)}</span><span class="course-picker-result-meta">${r.semestre}° semestre${r.tienePreset?' · con ponderaciones oficiales':''}</span></span>
+      <span class="course-picker-result-info"><span class="course-picker-result-name">${esc(r.nombre)}</span><span class="course-picker-result-meta">${obCatalogMeta(r)}</span></span>
       <span class="chevron-r">${tengo?'✓':'+'}</span>
     </button>${otro?'<p class="course-picker-reassurance">Que sea de otro semestre está bien.</p>':''}`;
   }).join('');
@@ -2352,6 +2374,10 @@ function siglaUC(nombre,carrera){
 // par (universidad, carrera): nunca se le ofrece a un alumno de la UC un ramo
 // que solo existe en la malla de la UANDES.
 function catalogKey(tenant,carrera){return (tenant||'')+':'+(carrera||'');}
+function siglaCatalogoUC(nombre){
+  const fila=typeof CREDITOS_UC!=='undefined'&&CREDITOS_UC[nombre];
+  return fila&&typeof fila[1]==='string'?fila[1]:null;
+}
 
 function catalogRamos(tenant,carrera){
   const porCarrera=(mallaFor(tenant)||{})[carrera];
@@ -2362,7 +2388,8 @@ function catalogRamos(tenant,carrera){
       const k=normName(nombre);
       if(vistos.has(k))return;
       vistos.add(k);
-      out.push({nombre,semestre:Number(sem),tienePreset:!!findPresetName(nombre,tenant,carrera)});
+      out.push({nombre,semestre:Number(sem),sigla:tenant==='uc'?siglaCatalogoUC(nombre):null,
+                tienePreset:!!findPresetName(nombre,tenant,carrera)});
     });
   });
   return out;
@@ -2387,7 +2414,7 @@ function catalogRamosUniversidad(tenant,carreraPropia){
         const k=normName(nombre);
         if(vistos.has(k))return;
         vistos.add(k);
-        out.push({nombre,semestre:Number(sem),propio:propios.has(k),
+        out.push({nombre,semestre:Number(sem),propio:propios.has(k),sigla:tenant==='uc'?siglaCatalogoUC(nombre):null,
                   tienePreset:!!findPresetName(nombre,tenant,carreraPropia)||!!findPresetName(nombre,tenant,car)});
       });
     });
@@ -2405,18 +2432,27 @@ function catalogRamosUniversidad(tenant,carreraPropia){
     vistos.add(k);
     // semestre 0 = fuera de malla. No compite con los del semestre del
     // estudiante en el orden, porque no le corresponde a nadie en particular.
-    out.push({nombre,semestre:0,propio:false,tienePreset:true});
+    out.push({nombre,semestre:0,propio:false,sigla:tenant==='uc'?siglaCatalogoUC(nombre):null,tienePreset:true});
   });
   // Y los cursos que existen sin pertenecer a un semestre ni traer pauta: los
   // optativos y OFG. Entran por el mismo camino que los presets fuera de
   // malla, con `tienePreset:false` porque no hay ponderaciones que prometer.
   // Sin esto el estudiante tiene que escribir "biocel" a mano y la app lo
   // guarda como un ramo inventado por él, sin sigla y sin forma de agrupar.
-  if(tenant==='uc')CURSOS_UC.forEach(([,nombre])=>{
+  if(tenant==='uc')CURSOS_UC.forEach(([sigla,nombre])=>{
     const k=normName(nombre);
     if(vistos.has(k))return;
     vistos.add(k);
-    out.push({nombre,semestre:0,propio:false,tienePreset:false});
+    out.push({nombre,semestre:0,propio:false,sigla,fuente:'curso-uc',tienePreset:false});
+  });
+  // CREDITOS_UC ya viene del catálogo oficial de los 34 majors. No inventa
+  // una malla ni dice a qué semestre corresponde: solo evita que Ingeniería
+  // UC termine artificialmente en 4° y deja buscar por la sigla del horario.
+  if(tenant==='uc')Object.entries(CREDITOS_UC).forEach(([nombre,[,sigla]])=>{
+    const k=normName(nombre);
+    if(vistos.has(k))return;
+    vistos.add(k);
+    out.push({nombre,semestre:0,propio:false,sigla,fuente:'catalogo-ingenieria',tienePreset:false});
   });
   return out;
 }
@@ -2441,11 +2477,11 @@ function searchCatalog(q,tenant,carrera,semActual){
   if(!nq)return todos.slice();
   const scored=[];
   todos.forEach(r=>{
-    const n=normName(r.nombre);
+    const n=normName(r.nombre),sigla=normName(r.sigla||'');
     let s=-1;
-    if(n===nq)s=0;
-    else if(n.startsWith(nq))s=1;
-    else if(n.includes(nq))s=2;
+    if(n===nq||sigla===nq)s=0;
+    else if(n.startsWith(nq)||sigla.startsWith(nq))s=1;
+    else if(n.includes(nq)||sigla.includes(nq))s=2;
     else{
       // que "micro 1" encuentre "Microeconom\u00eda I"
       const tk=nq.split(/\s+/).filter(Boolean);
