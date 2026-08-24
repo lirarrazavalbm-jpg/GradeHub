@@ -83,10 +83,14 @@ const CARRERAS={
   'IICG':'Ing. en Información y Control de Gestión',
 };
 // Ramos obligatorios por carrera y semestre. Electivos/Libres se agregan a mano.
+// Gestión de Personas y Marketing van en 2º Y 3º a propósito: se cursa uno en
+// cada semestre, pero el orden lo elige el estudiante. Aparecen en los dos para
+// que ninguno tenga que buscar a mano el que le tocó; en el selector se desmarca
+// el que no va.
 const _COMUN={
   1:['Introducción a la Economía','Gestión y Empresas','Comunicación','Programación para Analítica de Datos','Métodos Matemáticos I'],
-  2:['Introducción a la Microeconomía','Gestión de Personas','Contabilidad','Tecnología y Sistemas de Información','Métodos Matemáticos II','Inglés I'],
-  3:['Introducción a la Macroeconomía','Marketing','Introducción al Pensamiento Económico y Político','Estadística I','Métodos Matemáticos III','Inglés II'],
+  2:['Introducción a la Microeconomía','Gestión de Personas','Marketing','Contabilidad','Tecnología y Sistemas de Información','Métodos Matemáticos II','Inglés I'],
+  3:['Introducción a la Macroeconomía','Gestión de Personas','Marketing','Introducción al Pensamiento Económico y Político','Estadística I','Métodos Matemáticos III','Inglés II'],
   4:['Economía Aplicada','Finanzas','Razonamiento Basado en Datos','Estadística II','Métodos Matemáticos IV','Inglés III'],
 };
 const MALLA={
