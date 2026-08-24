@@ -683,7 +683,11 @@ function gpaMode(ramos){
 function gpa(ramos){
   const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null);
   if(conNota.length===0)return null;
-  const simple=()=>{const a=conNota.map(ramoAvg);return a.reduce((x,y)=>x+y,0)/a.length;};
+  // `map` pasa (elemento, índice, array), así que `conNota.map(ramoAvg)` metía
+  // el índice en el segundo parámetro de `ramoAvg(r,visitados)`. Del segundo
+  // ramo en adelante `visitados` valía un número y `vistos.has(...)` reventaba,
+  // tumbando el render entero. La lambda pasa un solo argumento a propósito.
+  const simple=()=>{const a=conNota.map(r=>ramoAvg(r));return a.reduce((x,y)=>x+y,0)/a.length;};
   if(gpaMode(ramos)==='creditos'){
     let num=0,den=0;
     conNota.forEach(r=>{const a=ramoAvg(r);num+=a*r.creditos;den+=r.creditos;});
