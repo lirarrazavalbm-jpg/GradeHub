@@ -603,8 +603,11 @@ const PRESETS_UC={
       {nombre:'Promedio de Memes',evals:['Meme 1','Meme 2','Meme 3','Meme 4'],min:4.0,cap:'self'},
       {nombre:'Evaluaciones escritas',evals:['Controles','Examen'],min:4.0,cap:'self'},
     ],
+    // El derecho se mide sobre los CINCO controles antes de descartar el peor.
+    // Si se cumple y el Examen sigue vacío, la app lo deja fuera de lo pendiente:
+    // la fórmula ya repondera Controles y Memes correctamente sobre el 65%.
+    eximicion:{evaluacion:'Examen',segun:['Controles'],min:5.5,ignoraDescartes:true},
     noCalcula:[
-      'Si el promedio de los cinco Controles es al menos 5,5, puedes eximirte del Examen y la nota final se recalcula solo con Controles y Memes',
       'Si rindes el Examen, puedes usar su nota para reemplazar la nota de un Control',
       'Si no cumples el mínimo de Memes o de los cuatro mejores Controles, no tienes derecho a rendir el Examen',
     ],

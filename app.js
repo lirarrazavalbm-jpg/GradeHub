@@ -532,7 +532,7 @@ function initials(s){return s.split(' ').slice(0,2).map(w=>w[0]||'').join('').to
 function ramoToStructure(r){
   return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
     id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
-    children:(r.categorias||[]).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
+    children:categoriasVigentes(r).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
       // dropLowest viene del preset ("se elimina el 25% de los controles
       // rendidos"). Sin la clave el motor no descarta nada, así que los ramos
       // manuales y los presets que no la declaran calculan igual que siempre.
@@ -542,6 +542,48 @@ function ramoToStructure(r){
 function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
 
 function avgPond(notas){let tv=0,tp=0;notas.forEach(n=>{if(n.valor!==null){tv+=n.valor*(n.peso||1);tp+=(n.peso||1);}});return tp>0?tv/tp:null;}
+// Una eximición no agrega una evaluación ni cambia sus pesos: solo marca que
+// una evaluación existente ya no se debe rendir. La regla llega del preset y
+// se consulta por `origen`, así también funciona para ramos oficiales que se
+// crearon antes de que la regla existiera. Un ramo manual del mismo nombre no
+// recibe excepciones del catálogo.
+function definicionPresetDelRamo(ramo){
+  const origen=ramo&&ramo.origen;
+  if(!origen||!origen.tenant)return null;
+  if(origen.tenant==='fen'){
+    const nombre=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(ramo.nombre));
+    return nombre?PRESETS_FEN[nombre]:null;
+  }
+  if(origen.tenant!=='uc'||!presetUcDisponible(ramo.nombre,origen.carrera))return null;
+  const nombre=claveUc(ramo.nombre);
+  return nombre?PRESETS_UC[nombre]:null;
+}
+function promedioCompletoSinDescarte(cat){
+  const objetivo=Number.isInteger(cat&&cat.slots)&&cat.slots>1?cat.slots:1;
+  const notas=(cat&&cat.notas||[]).filter(n=>typeof n.valor==='number');
+  // Cuatro de cinco no son una aproximación suficiente para decidir que el
+  // Examen deja de ser obligatorio.
+  if(notas.length<objetivo)return null;
+  return avgPond(notas);
+}
+function estadoEximicion(ramo){
+  const def=definicionPresetDelRamo(ramo);
+  const regla=!Array.isArray(def)&&def&&def.eximicion;
+  if(!regla||!Array.isArray(regla.segun)||regla.ignoraDescartes!==true)return null;
+  const categorias=ramo.categorias||[];
+  const examen=categorias.find(c=>normName(c.nombre)===normName(regla.evaluacion));
+  if(!examen)return null;
+  if(avgPond(examen.notas)!==null)return {activa:false,pendiente:false,examenId:examen.id,razon:'examen_rendido'};
+  const fuentes=regla.segun.map(nombre=>categorias.find(c=>normName(c.nombre)===normName(nombre))).filter(Boolean);
+  if(fuentes.length!==regla.segun.length)return null;
+  const promedios=fuentes.map(promedioCompletoSinDescarte);
+  if(promedios.some(p=>p===null))return {activa:false,pendiente:true,examenId:examen.id};
+  const pesoTotal=fuentes.reduce((s,c)=>s+(Number(c.peso)||0),0);
+  const promedio=pesoTotal>0?fuentes.reduce((s,c,i)=>s+promedios[i]*(Number(c.peso)||0),0)/pesoTotal:null;
+  return {activa:promedio!==null&&promedio>=regla.min,pendiente:false,examenId:examen.id,promedio,regla};
+}
+function categoriaEximida(ramo,cat){const estado=estadoEximicion(ramo);return !!(estado&&estado.activa&&estado.examenId===cat.id);}
+function categoriasVigentes(ramo){return (ramo&&ramo.categorias||[]).filter(c=>!categoriaEximida(ramo,c));}
 // Promedio ponderado de un subconjunto de categorías (para compuertas de grupo).
 // Devuelve null si ninguna del grupo tiene nota todavía.
 function avgDeGrupo(r,catIds){
@@ -1897,14 +1939,20 @@ function renderRamo(){
   // Chip nota mínima para el 4.0
   const chipEl=document.getElementById('ramo-min-chip');
   if(r.categorias.length>0){
-    const totalPeso=r.categorias.reduce((a,c)=>a+c.peso,0);
+    const categoriasActivas=categoriasVigentes(r);
+    const eximicion=estadoEximicion(r);
+    const totalPeso=categoriasActivas.reduce((a,c)=>a+c.peso,0);
     let pesoConNotas=0,sumaPonderada=0;
-    r.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
+    categoriasActivas.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
     const pesoSinNotas=totalPeso-pesoConNotas;
     // ¿Hay un piso de nota activo? (sección calificada bajo su mínimo → topa la final)
     const gateHit=gatesActivas(r)[0]||null;
     const pctPendiente=totalPeso>0?Math.round(pesoSinNotas/totalPeso*100):0;
-    if(gateHit){
+    if(eximicion&&eximicion.activa){
+      chipEl.style.display='inline-flex';
+      chipEl.className='ramo-chip';
+      chipEl.textContent='Exento/a del Examen · puedes registrar una nota si lo rendiste';
+    } else if(gateHit){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip bad';
       chipEl.textContent=gateHit.grupo
@@ -2001,6 +2049,7 @@ function renderRamo(){
   }
   r.categorias.forEach(cat=>{
     const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaHoraCorta(cat.fecha,cat.hora))}</span>`:'';
+    const exenta=categoriaEximida(r,cat);
     // Sección de preset: fila directa, solo escribir la nota (estilo simulador)
     if(cat.directNota){
       // Preset con varios espacios (ej: Laboratorio = 3 notas que se promedian) — COLAPSABLE
@@ -2021,7 +2070,7 @@ function renderRamo(){
           <div class="eval-group-hd" role="button" tabindex="0" aria-expanded="${isOpen?'true':'false'}" onclick="toggleCat('${cat.id}')">
             <div style="flex:1;min-width:0;">
               <div class="eval-row-name">${esc(cat.nombre)}</div>
-              <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}</div>
+              <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}</div>
             </div>
             <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:1.1875rem;">${fmt(av)}</div>
             <span aria-hidden="true" style="color:var(--fg3);font-size:0.6875rem;margin-left:6px;">${isOpen?'▲':'▼'}</span>
@@ -2036,7 +2085,7 @@ function renderRamo(){
       row.innerHTML=`
         <div class="eval-row-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" style="cursor:pointer;">
           <div class="eval-row-name">${esc(cat.nombre)}</div>
-          <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}</div>
+          <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}</div>
         </div>
         <input class="eval-row-input" inputmode="decimal" maxlength="3" placeholder="—" value="${g!=null?fmt(g):''}" style="color:${g!=null?getColor(g):'var(--fg)'}" onchange="setDirectNota('${cat.id}',this.value)" onclick="event.stopPropagation();" aria-label="Nota de ${esc(cat.nombre)}"/>`;
       cl.appendChild(row);
@@ -2894,12 +2943,7 @@ function findPresetName(nombre,tenant,carrera){
 // Reglas oficiales informativas que todavía no podemos representar en el
 // cálculo. Se recuperan por el origen del ramo para no inventarlas en manuales.
 function reglasDelPreset(ramo,campo){
-  const origen=ramo&&ramo.origen;
-  if(!ramo||!origen)return [];
-  const presets=origen.tenant==='fen'?PRESETS_FEN:(origen.tenant==='uc'&&presetUcDisponible(ramo.nombre,origen.carrera)?PRESETS_UC:null);
-  if(!presets)return [];
-  const nombre=Object.keys(presets).find(n=>normName(n)===normName(ramo.nombre));
-  const def=nombre&&presets[nombre];
+  const def=definicionPresetDelRamo(ramo);
   const lista=!Array.isArray(def)&&def&&def[campo];
   return Array.isArray(lista)?lista:[];
 }
@@ -4045,7 +4089,7 @@ function closeConfirm(){document.getElementById('confirm-overlay').classList.rem
 // decidido. Esta métrica usa las ponderaciones de las evaluaciones rendidas.
 function avanceEvaluaciones(ramos){
   let total=0,evaluado=0;
-  (ramos||[]).forEach(r=>(r.categorias||[]).forEach(c=>{
+  (ramos||[]).forEach(r=>categoriasVigentes(r).forEach(c=>{
     const peso=Number(c.peso)||0;
     total+=peso;
     if(avgPond(c.notas)!==null)evaluado+=peso;
@@ -4068,6 +4112,7 @@ function ultimoHistorialConGpa(historial){
 // pantalla que dice "hasta acá puedes llegar".
 function ramoConPendientesEn(ramo,valor){
   return {...ramo,categorias:(ramo.categorias||[]).map(c=>{
+    if(categoriaEximida(ramo,c))return c;
     const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
     const puestas=(c.notas||[]).filter(n=>n.valor!==null&&n.valor!==undefined);
     if(puestas.length>=objetivo)return c;
@@ -4082,7 +4127,7 @@ function ramoConPendientesEn(ramo,valor){
 function proyeccionSemestre(ramos){
   const lista=(ramos||[]).filter(r=>(r.categorias||[]).length);
   if(!lista.length)return null;
-  const pendientes=lista.some(r=>r.categorias.some(c=>{
+  const pendientes=lista.some(r=>categoriasVigentes(r).some(c=>{
     const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
     return (c.notas||[]).filter(n=>n.valor!==null&&n.valor!==undefined).length<objetivo;
   }));
@@ -4414,9 +4459,10 @@ function confirmEditNota(catId,notaId){
 // ─── CALCULADORA NOTA MÍNIMA ─────────────────────────────────────────────────
 function openCalculadoraModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
-  const totalPeso=r.categorias.reduce((a,c)=>a+c.peso,0);
+  const categorias=categoriasVigentes(r);
+  const totalPeso=categorias.reduce((a,c)=>a+c.peso,0);
   let pesoConNotas=0,sumaPonderada=0;
-  r.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
+  categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
   const pesoSinNotas=totalPeso-pesoConNotas;
 
   document.getElementById('modal-content').innerHTML=`
@@ -4458,7 +4504,7 @@ function openCalculadoraModal(){
     const needed=(target*totalPeso-sumaPonderada)/pesoSinNotas;
     const neededR=r2(needed);
     // Si falta una sola sección, nombrarla (más útil que "las secciones sin notas").
-    const vacias=r.categorias.filter(c=>avgPond(c.notas)===null);
+    const vacias=categorias.filter(c=>avgPond(c.notas)===null);
     const dondeTxt=vacias.length===1?`en <b>${esc(vacias[0].nombre)}</b>`:`en las secciones sin notas (${r2(pesoSinNotas)}% del ramo)`;
     // Condición pendiente de piso (ej: Podcast sin nota aún)
     const condPend=(r.gates||[]).filter(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);return c&&avgPond(c.notas)===null;}).map(g=>`<div style="font-size:0.75rem;color:var(--yellow);margin-top:8px;">Además, ${esc(g.nombre)} debe ser ≥ ${g.min.toFixed(1)} o repruebas pese al promedio.</div>`).join('');
@@ -4759,6 +4805,7 @@ function nextExam(){
   let best=null;
   S.ramos.forEach(r=>{
     r.categorias.forEach(c=>{
+      if(categoriaEximida(r,c))return;
       if(!c.fecha)return;
       const target=c.slots||1;
       if((c.notas||[]).length>=target)return; // ya evaluado
@@ -4794,9 +4841,10 @@ function mostRiskyRamo(){
     const avg=ramoAvg(r);
     if(avg===null)return;
     if(r2(avg)>=5.0)return; // no está en riesgo
-    const totalPeso=r.categorias.reduce((s,c)=>s+c.peso,0);
+    const categorias=categoriasVigentes(r);
+    const totalPeso=categorias.reduce((s,c)=>s+c.peso,0);
     let pesoConNotas=0,sumaPond=0;
-    r.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPond+=a*c.peso;}});
+    categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPond+=a*c.peso;}});
     const pesoSinNotas=totalPeso-pesoConNotas;
     if(pesoSinNotas<=0)return; // ya evaluado todo
     const needed=(4.0*totalPeso-sumaPond)/pesoSinNotas;
@@ -4809,10 +4857,11 @@ function mostRiskyRamo(){
 
 // Progreso del ramo: % de peso evaluado
 function ramoProgress(r){
-  const total=r.categorias.reduce((s,c)=>s+c.peso,0);
+  const categorias=categoriasVigentes(r);
+  const total=categorias.reduce((s,c)=>s+c.peso,0);
   if(total<=0)return {pct:0,pending:0,total:0};
   let done=0;
-  r.categorias.forEach(c=>{
+  categorias.forEach(c=>{
     const a=avgPond(c.notas);
     if(a!==null)done+=c.peso;
   });
@@ -4824,6 +4873,7 @@ function agendaEvents(){
   const out=[];
   S.ramos.forEach(r=>{
     r.categorias.forEach(c=>{
+      if(categoriaEximida(r,c))return;
       // Las notas con fecha propia son evaluaciones sueltas dentro del grupo:
       // "Casos y ensayos" puede tener tres casos en tres fechas distintas, y
       // cada uno tiene que poder aparecer en su día. Si la nota trae fecha,
@@ -5080,10 +5130,11 @@ function reglaDescarteConCantidadAbierta(ramo){
   return (ramo.categorias||[]).find(c=>c.dropLowest&&!Number.isInteger(c.slots))||null;
 }
 function notaNecesaria(ramo){
-  const total=ramo.categorias.reduce((s,c)=>s+c.peso,0);
+  const categorias=categoriasVigentes(ramo);
+  const total=categorias.reduce((s,c)=>s+c.peso,0);
   if(total<=0)return null;
   let pesoCon=0,suma=0;
-  ramo.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoCon+=c.peso;suma+=a*c.peso;}});
+  categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoCon+=c.peso;suma+=a*c.peso;}});
   // Si otro ramo aporta parte de la nota (el laboratorio de Dinámica), sus
   // evaluaciones NO están en `categorias` y hay que traerlas a la cuenta. Sin
   // esto, "¿qué nota necesito?" respondería sobre el 70% de la cátedra como si

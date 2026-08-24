@@ -3,7 +3,7 @@
 function agendaSinFecha(){
   const out=[];
   S.ramos.forEach(r=>(r.categorias||[]).forEach(c=>{
-    if(!c.fecha&&avgPond(c.notas)===null)out.push({ramo:r,cat:c});
+    if(!categoriaEximida(r,c)&&!c.fecha&&avgPond(c.notas)===null)out.push({ramo:r,cat:c});
   }));
   return out;
 }
