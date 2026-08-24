@@ -6,6 +6,22 @@ function gh_excelRound(value,decimals){const f=Math.pow(10,decimals);return Math
 function gh_roundFinal(value,meta){if(value===null)return null;const d=meta?.rounding?.decimals??1;return gh_excelRound(value,d);}
 function gh_weightOf(node,ov){const o=ov?.[node.id];if(o&&typeof o.weight==='number')return o.weight;return node.weight;}
 function gh_meta(s){return s.__meta||{};}
+// El recuperativo no es una hoja de la pauta: no tiene peso ni participa en el
+// promedio. Se decide sobre la nota FINAL, una vez aplicadas las compuertas.
+// `gateLimited` solo bloquea cuando un tope efectivamente BAJÓ la nota hasta el
+// rango: una compuerta presente que no cambió el número no inventa una barrera.
+function gh_estadoRecuperativo(value,complete,gateLimited,rule,declaration){
+  if(!rule||!Number.isFinite(rule.min)||!Number.isFinite(rule.max)||!Number.isFinite(rule.nota))return null;
+  const final=gh_roundFinal(value,{rounding:{decimals:1}});
+  const base={valor:value,final,regla:rule,declaracion:declaration};
+  if(value===null)return {...base,motivo:'sin_nota',puedeDeclarar:false};
+  if(!complete)return {...base,motivo:'incompleto',puedeDeclarar:false};
+  if(gateLimited)return {...base,motivo:'compuerta',puedeDeclarar:false};
+  if(final<rule.min||final>rule.max)return {...base,motivo:'fuera_de_rango',puedeDeclarar:false};
+  if(declaration==='aprobado')return {...base,valor:rule.nota,motivo:'aprobado',puedeDeclarar:false};
+  if(declaration==='reprobado')return {...base,motivo:'reprobado',puedeDeclarar:false};
+  return {...base,motivo:'pendiente',puedeDeclarar:true};
+}
 // "Se elimina la peor nota", "se elimina el 25% de los controles rendidos": una
 // de las reglas más comunes de los programas chilenos, y hasta ahora el motor no
 // sabía representarla — quedaba declarada en `noCalcula` para que el estudiante

@@ -85,6 +85,10 @@ function completarFechasOficiales(r){
 // HH:MM en 24 h. El input[type=time] ya entrega este formato, pero por acá
 // también entran respaldos importados y datos de la nube: se valida igual.
 const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+function copiarRecuperativo(regla){
+  if(!regla||!Number.isFinite(regla.min)||!Number.isFinite(regla.max)||!Number.isFinite(regla.nota)||regla.min>regla.max)return null;
+  return {min:regla.min,max:regla.max,nota:regla.nota};
+}
 
 function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
@@ -102,6 +106,10 @@ function normalize(data) {
     // La forma de la pauta tal como se la dimos. Si difiere de las categorías
     // actuales, el estudiante la editó y su versión manda.
     pautaHuella: typeof r.pautaHuella === 'string' ? r.pautaHuella : null,
+    // La regla oficial y lo que el estudiante declaró son distintos: la regla
+    // se puede actualizar desde catálogo; la declaración nunca se inventa.
+    recuperativo: copiarRecuperativo(r.recuperativo),
+    recuperativoRendido: ['aprobado','reprobado'].includes(r.recuperativoRendido) ? r.recuperativoRendido : null,
     categorias: (r.categorias || []).map(c => ({
       ...c,
       id: idSeguro(c.id),
@@ -142,7 +150,12 @@ function normalize(data) {
   // ramo simplemente nunca se entera. Por eso se rellena al cargar.
   data.ramos.forEach(r => {
     const p = pautaPendiente(r);
-    if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.pautaHuella = huellaPauta(p.categorias); }
+    if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.recuperativo = p.recuperativo || null; r.pautaHuella = huellaPauta(p.categorias); }
+    // La regla es aditiva y no cambia ningún promedio sin una declaración. Así
+    // los ramos oficiales ya creados también pueden ofrecer el recuperativo,
+    // sin reinterpretar notas ni tocar ramos manuales.
+    const recuperativoOficial=copiarRecuperativo(definicionPresetDelRamo(r)?.recuperativo);
+    if(!r.recuperativo&&recuperativoOficial)r.recuperativo=recuperativoOficial;
     // Los créditos tenían el mismo problema que la pauta y era peor, porque no
     // se nota: `creditosDe` solo corría al CREAR el ramo, así que quien agregó
     // Introducción a la Programación antes de que su crédito estuviera en la
@@ -641,23 +654,46 @@ function avgDeGrupo(r,catIds){
 //                        mínimo topa la final. Con cap:'self' el tope es el
 //                        propio promedio del grupo (regla "la nota más baja
 //                        entre los dos requisitos", común en FEN).
-function ramoAvg(r,visitados){
+function calculoRamoConCompuertas(r){
   const res=calculateFinalGrade(ramoToStructure(r),gradesOf(r));
-  let v=res.raw;
+  let v=res.raw,limitadoPorCompuerta=false;
   if(v!==null && Array.isArray(r.gates)){
     for(const g of r.gates){
       if(g.type==='min_grade_required'){
         const node=res.breakdown.find(b=>b.id===g.catId);
-        if(node && node.value!==null && node.value < g.min) v=Math.min(v,g.cap);
+        if(node && node.value!==null && node.value < g.min){
+          const siguiente=Math.min(v,g.cap);if(siguiente<v)limitadoPorCompuerta=true;v=siguiente;
+        }
       } else if(g.type==='group_min'){
         const ga=avgDeGrupo(r,g.catIds);
         if(ga!==null && ga < g.min){
           const tope=(g.cap==='self')?ga:g.cap;
-          v=Math.min(v,tope);
+          const siguiente=Math.min(v,tope);if(siguiente<v)limitadoPorCompuerta=true;v=siguiente;
         }
       }
     }
   }
+  return {res,valor:v,limitadoPorCompuerta};
+}
+// El árbol del motor solo conoce las notas que ya existen. Una categoría con
+// `slots:5` y cuatro notas no deja una quinta hoja vacía, así que una regla que
+// exige ramo completo debe contar también las casillas declaradas en la pauta.
+function ramoCompletamenteEvaluado(r){
+  const categorias=categoriasVigentes(r);
+  return categorias.length>0&&categorias.every(c=>{
+    const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
+    return (c.notas||[]).filter(n=>typeof n.valor==='number').length>=objetivo;
+  });
+}
+function estadoRecuperativo(r,calculo){
+  const regla=copiarRecuperativo(r&&r.recuperativo);if(!regla)return null;
+  const base=calculo||calculoRamoConCompuertas(r);
+  return gh_estadoRecuperativo(base.valor,ramoCompletamenteEvaluado(r),base.limitadoPorCompuerta,regla,r.recuperativoRendido);
+}
+function ramoAvg(r,visitados){
+  const base=calculoRamoConCompuertas(r);
+  const recuperativo=estadoRecuperativo(r,base);
+  const v=recuperativo?recuperativo.valor:base.valor;
   return combinarConRamoVinculado(r,v,visitados);
 }
 
@@ -1454,7 +1490,7 @@ function completeOnboarding(){
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
-    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   });
   S.onboardingDone=true;save();
   syncProfile();
@@ -2023,6 +2059,7 @@ function renderRamo(){
   document.getElementById('ramo-title').textContent=r.nombre;
   const avg=ramoAvg(r);
   const calculo=calculateFinalGrade(ramoToStructure(r),gradesOf(r));
+  const recuperativo=estadoRecuperativo(r);
   const descartes=calculo.drops||[];
   const avgEl=document.getElementById('ramo-hero-avg');
   if(avg!==null){
@@ -2073,6 +2110,9 @@ function renderRamo(){
       chipEl.textContent=gateHit.grupo
         ? `${gateHit.nombre} va ${fmt(gateHit.actual)} (mín. ${nf(gateHit.min)}): topa tu nota final`
         : `${gateHit.nombre} bajo ${nf(gateHit.min)}: repruebas pese al promedio`;
+    } else if(recuperativo&&recuperativo.motivo==='pendiente'){
+      chipEl.style.display='inline-flex';
+      chipEl.className='ramo-chip warn';chipEl.textContent='Puedes rendir examen recuperativo';
     } else if(pesoSinNotas===0 && avg!==null && r2(avg)>=4.0){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip good';chipEl.textContent='✓ Aprobado';
@@ -2131,6 +2171,31 @@ function renderRamo(){
     if(noCalcula.length)bloques.push(`<b>Reglas que todavía no calculamos.</b><br>Las vamos a incorporar. Por ahora el promedio no considera:${items(noCalcula)}`);
     ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
+
+  const rw=document.getElementById('recuperativo-warning');
+  if(rw&&recuperativo){
+    rw.style.display='flex';rw.className='weight-setup-nudge';rw.style.width='auto';rw.style.margin='12px 20px';
+    let texto='',acciones='';
+    if(recuperativo.motivo==='pendiente'){
+      texto=`<b>¿Rendiste el examen recuperativo?</b><br>Tu promedio final es ${nf(recuperativo.final)}. Elige solo si lo aprobaste o no.`;
+      acciones=`<button type="button" onclick="declararRecuperativo('aprobado')">Aprobé</button><button type="button" onclick="declararRecuperativo('reprobado')" style="margin-left:14px;">No aprobé</button>`;
+    }else if(recuperativo.motivo==='aprobado'){
+      texto=`<b>Recuperativo aprobado.</b><br>Tu nota final queda en ${nf(recuperativo.valor)}.`;
+      acciones='<button type="button" onclick="corregirRecuperativo()">Cambiar respuesta</button>';
+    }else if(recuperativo.motivo==='reprobado'){
+      texto=`<b>Recuperativo reprobado.</b><br>Tu nota final se mantiene en ${nf(recuperativo.valor)}.`;
+      acciones='<button type="button" onclick="corregirRecuperativo()">Cambiar respuesta</button>';
+    }else if(recuperativo.declaracion){
+      const causa=recuperativo.motivo==='incompleto'
+        ? 'faltan evaluaciones por registrar'
+        : recuperativo.motivo==='compuerta'
+        ? 'un requisito incumplido limitó tu nota final'
+        : `al corregir tus notas tu promedio quedó en ${nf(recuperativo.final)}, fuera del rango`;
+      texto=`<b>Tu declaración del recuperativo se conserva, pero ya no se aplica.</b><br>Esto pasa porque ${causa}.`;
+      acciones='<button type="button" onclick="corregirRecuperativo()">Cambiar respuesta</button>';
+    }else{rw.style.display='none';rw.innerHTML='';}
+    if(rw.style.display!=='none')rw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${texto}${acciones}</div>`;
+  }else if(rw){rw.style.display='none';rw.innerHTML='';}
 
   // Reportar la pauta vivía escondido al fondo del modal de "Editar ramo",
   // debajo de Guardar y Cancelar. Nadie entra a editar el nombre de un ramo para
@@ -2256,6 +2321,17 @@ function fechaCorta(iso){
   const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const d=new Date(iso+'T00:00:00');
   return `${d.getDate()} ${meses[d.getMonth()]}`;
+}
+function declararRecuperativo(resultado){
+  if(!['aprobado','reprobado'].includes(resultado))return;
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  const estado=estadoRecuperativo(r);
+  if(!estado||!estado.puedeDeclarar){showToast('El recuperativo ya no aplica a esta nota',true);return;}
+  r.recuperativoRendido=resultado;save();renderRamo();
+}
+function corregirRecuperativo(){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r||!r.recuperativoRendido)return;
+  r.recuperativoRendido=null;save();renderRamo();
 }
 function toggleCat(id){openCats[id]=!openCats[id];renderRamo();}
 // Nota por espacio en secciones multi-nota (ej: Laboratorio 1/2/3).
@@ -2520,6 +2596,7 @@ function actualizarPauta(ramoId){
   r.categorias=cambio.preset.categorias.map(c=>({...c,notas:notasPorNombre.get(c.nombre)||[]}));
   r.gates=cambio.preset.gates;
   r.aporta=cambio.preset.aporta||null;
+  r.recuperativo=cambio.preset.recuperativo||null;
   r.pautaHuella=huellaPauta(r.categorias);
   return true;
 }
@@ -2564,7 +2641,8 @@ function presetRamo(nombre,tenant,carrera,ahora){
     const ids=g.evals.map(n=>porNombre[n]).filter(Boolean);
     if(ids.length)gates.push({type:'group_min',catIds:ids,min:g.min,cap:g.cap,nombre:g.nombre});
   });
-  return {categorias,gates,aporta,periodo,estadoPeriodo,
+  const recuperativo=!Array.isArray(def)?copiarRecuperativo(def.recuperativo):null;
+  return {categorias,gates,aporta,recuperativo,periodo,estadoPeriodo,
     creditos:(!Array.isArray(def)&&typeof def.creditos==='number')?def.creditos:null};
 }
 
@@ -2578,7 +2656,7 @@ function confirmAddMalla(){
     // estrella de "pauta oficial" al lado, porque el selector SÍ normaliza.
     const presetName=findPresetName(n,S.tenant,S.carrera);
     const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   });
   save();track('add_malla_ramos',{count:elegidos.length,carrera:S.carrera,sem:S.careerSemestre});
   closeModal();
@@ -2645,7 +2723,7 @@ function addFromCatalog(nombre){
   S.ramos.push({
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
     creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(),
-    categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
+    categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
   });
   save();track('add_ramo_catalogo',{preset:!!preset});
   closeModal();renderHome();
@@ -3162,7 +3240,7 @@ function confirmAddRamo(){
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const cr=creditosDe(presetName||name,S.tenant,preset);
-  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
   showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
 }
