@@ -129,6 +129,9 @@ function normalize(data) {
         // grupo cae el mismo día; no alcanza para "Casos y ensayos", que son
         // varios casos repartidos por el semestre.
         fecha: n.fecha || null,
+        // Igual que en una categoría: si alguien quita una fecha propia, no es
+        // un hueco que el catálogo o un importador pueda rellenar por su cuenta.
+        fechaQuitada: !n.fecha && n.fechaQuitada===true,
       }))
     }))
   }));
@@ -3601,7 +3604,13 @@ function openSettings(){
       </div>
       <p class="settings-help">En Google Calendar: <b>Otros calendarios · + · Desde URL</b>. Google la consulta cada 8 a 24 horas, así que un cambio de fecha no aparece al tiro.</p>
       <p class="settings-help">Quien tenga esta URL puede ver tus ramos, tus evaluaciones y sus fechas. <b>Tus notas no salen nunca.</b> Si se te escapa, genera una nueva y la anterior deja de servir al instante.</p>`
-      :`<p class="settings-help">Necesitas iniciar sesión: el feed va atado a tu cuenta, no a este dispositivo.</p>`}`;
+      :`<p class="settings-help">Necesitas iniciar sesión: el feed va atado a tu cuenta, no a este dispositivo.</p>`}
+      <div style="height:1px;background:var(--border);margin:22px 0 16px;"></div>
+      <label class="modal-label">Traer fechas desde un calendario</label>
+      <p class="settings-help" style="margin-top:0;">Sube un archivo <b>.ics</b> exportado desde tu calendario. Revisas cada coincidencia antes de agregarla; nunca cambia tus ponderaciones ni fechas que ya ajustaste.</p>
+      <div class="settings-data-actions" style="margin-bottom:0;">
+        <button type="button" onclick="abrirImportarCalendario()">Importar archivo .ics</button>
+      </div>`;
     if(section==='apariencia')return `
       <p class="settings-help settings-help-top">Elige cómo prefieres ver GradeHub. Se guarda al elegir.</p>
       <div class="modo-grid" id="s-modo-grid"></div>
@@ -4587,7 +4596,9 @@ function confirmEditNota(catId,notaId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
+  const teniaFecha=!!n.fecha;
   n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;n.fecha=fechaNota;n.hora=leerHora('m-nota');
+  if(fechaNota)delete n.fechaQuitada;else if(teniaFecha)n.fechaQuitada=true;
   save();track('edit_nota',{pendiente:isNaN(val)});closeModal();renderRamo();
   if(typeof renderAgenda==='function')renderAgenda();
   showToast(isNaN(val)?'Guardada como pendiente':lecturaDespuesDeNota(r));
@@ -5078,6 +5089,216 @@ function icsDatePlus1(iso){
   const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+1);
   return isoOf(d.getFullYear(),d.getMonth(),d.getDate()).replace(/-/g,'');
 }
+
+
+// ─── IMPORTAR FECHAS DESDE .ICS ─────────────────────────────────────────────
+// Un .ics viene de fuera de GradeHub: se parsea como texto acotado, se propone
+// y recién se aplica después de que la persona revise cada fila. Nunca toca
+// pesos, notas ni una fecha existente.
+const ICS_IMPORT_MAX_BYTES=512*1024;
+const ICS_IMPORT_MAX_EVENTS=250;
+const ICS_IMPORT_TITLE_MAX=180;
+let icsImportDraft=[];
+
+function bytesIcs(text){
+  const value=String(text||'');
+  return typeof TextEncoder==='function' ? new TextEncoder().encode(value).length : value.length;
+}
+function fechaDesdeIcs(value){
+  const m=String(value||'').match(/^(\d{4})(\d{2})(\d{2})(?:T\d{4}(?:\d{2})?Z?)?$/);
+  if(!m)return null;
+  const y=Number(m[1]),mes=Number(m[2]),dia=Number(m[3]);
+  const d=new Date(Date.UTC(y,mes-1,dia));
+  if(d.getUTCFullYear()!==y||d.getUTCMonth()!==mes-1||d.getUTCDate()!==dia)return null;
+  return m[1]+'-'+m[2]+'-'+m[3];
+}
+function desescaparIcs(value){
+  return String(value||'')
+    .replace(/\\n/gi,' ')
+    .replace(/\\([\\;,])/g,'$1')
+    .replace(/\\\\/g,'\\');
+}
+function parseIcsCalendario(text){
+  if(typeof text!=='string'||!text.trim())throw new Error('El archivo está vacío');
+  if(bytesIcs(text)>ICS_IMPORT_MAX_BYTES)throw new Error('El archivo supera el límite de 500 KB');
+  if(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(text))throw new Error('El archivo contiene caracteres no válidos');
+
+  const raw=text.replace(/\r\n?/g,'\n').split('\n');
+  const lines=[];
+  raw.forEach(line=>{
+    if(line.length>2000)throw new Error('El archivo tiene una línea demasiado larga');
+    if(/^[ \t]/.test(line)&&lines.length)lines[lines.length-1]+=line.slice(1);
+    else lines.push(line);
+  });
+  if(!lines.includes('BEGIN:VCALENDAR')||!lines.includes('END:VCALENDAR'))throw new Error('No parece ser un calendario .ics');
+
+  const blocks=[];let event=null;
+  lines.forEach(line=>{
+    if(line==='BEGIN:VEVENT'){
+      if(event)throw new Error('El archivo tiene eventos mal cerrados');
+      event=[];return;
+    }
+    if(line==='END:VEVENT'){
+      if(!event)throw new Error('El archivo tiene eventos mal cerrados');
+      blocks.push(event);event=null;return;
+    }
+    if(event)event.push(line);
+  });
+  if(event)throw new Error('El archivo tiene eventos sin cerrar');
+  if(!blocks.length)throw new Error('No encontramos eventos en este calendario');
+  if(blocks.length>ICS_IMPORT_MAX_EVENTS)throw new Error('El archivo trae más de 250 eventos');
+
+  return blocks.map((block,index)=>{
+    let summary='',start='';
+    block.forEach(line=>{
+      const cut=line.indexOf(':');if(cut<1)return;
+      const key=line.slice(0,cut).split(';')[0].toUpperCase();
+      const value=line.slice(cut+1);
+      if(key==='SUMMARY'&&!summary)summary=desescaparIcs(value);
+      if(key==='DTSTART'&&!start)start=value;
+    });
+    summary=summary.trim().replace(/\s+/g,' ');
+    const fecha=fechaDesdeIcs(start);
+    if(!summary||summary.length>ICS_IMPORT_TITLE_MAX||/[\u0000-\u001F\u007F]/.test(summary))throw new Error('El evento '+(index+1)+' no trae un título válido');
+    if(!fecha)throw new Error('El evento '+(index+1)+' no trae una fecha válida');
+    return {titulo:summary,fecha};
+  });
+}
+
+function claveDestinoIcs(target){
+  return target.ramo.id+'|'+target.cat.id+'|'+(target.nota?target.nota.id:'');
+}
+function destinosIcs(){
+  const out=[];
+  (S.ramos||[]).forEach(r=>(r.categorias||[]).forEach(cat=>{
+    if(!cat.fecha&&!cat.fechaQuitada)out.push({ramo:r,cat,nota:null});
+    (cat.notas||[]).forEach(nota=>{
+      if(!nota.fecha&&!nota.fechaQuitada)out.push({ramo:r,cat,nota});
+    });
+  }));
+  return out;
+}
+function etiquetaDestinoIcs(target){
+  return target.ramo.nombre+' · '+(target.nota?target.nota.nombre:target.cat.nombre);
+}
+function prefijosEvaluacionIcs(nombre){
+  const normal=normName(nombre).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  if(!normal)return [];
+  const compact=normal.replace(/\s/g,'');
+  const first=(normal.match(/^([a-z]+)\s*(\d+)?/)||[]);
+  const word=first[1]||'',number=first[2]||'';
+  const short=word.startsWith('interrogacion')?'i'
+    :word.startsWith('solemne')?'s'
+    :word.startsWith('examen')?'ex'
+    :word.startsWith('prueba')?'p'
+    :word.startsWith('control')?'c'
+    :word.startsWith('laboratorio')?'l'
+    :word.startsWith('tarea')?'t'
+    :word.startsWith('quiz')?'q'
+    :word.startsWith('evaluacion')?'ev'
+    :word.slice(0,Math.min(3,word.length));
+  return [...new Set([normal,compact,word+(number||''),short+(number||'')].filter(Boolean))];
+}
+function coincidenciaIcs(evento,targets){
+  const title=normName(evento.titulo).replace(/[—–-]/g,' ').replace(/\s+/g,' ').trim();
+  const matches=targets.filter(target=>{
+    const ramo=normName(target.ramo.nombre);
+    if(!ramo||!title.endsWith(ramo))return false;
+    const prefijo=title.slice(0,title.length-ramo.length).trim();
+    return prefijosEvaluacionIcs(target.nota?target.nota.nombre:target.cat.nombre).includes(prefijo);
+  });
+  return matches.length===1?claveDestinoIcs(matches[0]):null;
+}
+function prepararImportacionIcs(text){
+  const targets=destinosIcs();
+  return parseIcsCalendario(text).map(evento=>({...evento,target:coincidenciaIcs(evento,targets)}));
+}
+function aplicarPropuestasIcs(propuestas){
+  const targets=new Map(destinosIcs().map(target=>[claveDestinoIcs(target),target]));
+  const elegidas=(propuestas||[]).filter(p=>p&&p.target);
+  if(!elegidas.length)return 0;
+  const seen=new Set();
+  elegidas.forEach(p=>{
+    if(seen.has(p.target))throw new Error('Una evaluación no puede recibir dos fechas');
+    seen.add(p.target);
+    if(!targets.has(p.target))throw new Error('Una de las fechas ya no está disponible');
+    if(!fechaDesdeIcs(String(p.fecha||'').replace(/-/g,'')))throw new Error('Una fecha propuesta no es válida');
+  });
+  elegidas.forEach(p=>{
+    const target=targets.get(p.target);
+    if(target.nota){target.nota.fecha=p.fecha;delete target.nota.fechaQuitada;}
+    else {target.cat.fecha=p.fecha;delete target.cat.fechaQuitada;}
+  });
+  return elegidas.length;
+}
+
+
+function abrirImportarCalendario(){
+  icsImportDraft=[];
+  document.getElementById('modal-content').innerHTML=[
+    '<div class="modal-title">Importar fechas desde un calendario</div>',
+    '<p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0 0 14px;">Elige un archivo <b>.ics</b> exportado desde Apple, Google u Outlook. Primero revisas dónde va cada fecha: nada se guarda todavía.</p>',
+    '<label class="modal-label" for="ics-file">Archivo de calendario</label>',
+    '<div class="modal-input"><input type="file" id="ics-file" accept=".ics,text/calendar" aria-describedby="ics-file-help"/></div>',
+    '<p id="ics-file-help" class="settings-help">Máximo 500 KB y 250 eventos. Solo usamos títulos y fechas para proponer evaluaciones; tus notas no se leen ni se modifican.</p>',
+    '<div class="modal-btns" style="margin-top:14px;"><button class="btn-cancel" type="button" onclick="closeModal()">Cancelar</button></div>'
+  ].join('');
+  openModal();
+  document.getElementById('ics-file').addEventListener('change',leerArchivoIcs);
+}
+function leerArchivoIcs(event){
+  const file=event&&event.target&&event.target.files&&event.target.files[0];
+  if(!file)return;
+  if(file.size>ICS_IMPORT_MAX_BYTES){showToast('El archivo supera el límite de 500 KB',true);return;}
+  file.text().then(text=>{
+    icsImportDraft=prepararImportacionIcs(text);
+    renderRevisionIcs();
+  }).catch(()=>showToast('No pudimos leer ese archivo',true));
+}
+function opcionesDestinoIcs(selected,used){
+  return ['<option value="">No importar</option>'].concat(destinosIcs().map(target=>{
+    const key=claveDestinoIcs(target);
+    const disabled=used.has(key)&&key!==selected?' disabled':'';
+    return '<option value="'+esc(key)+'"'+(key===selected?' selected':'')+disabled+'>'+esc(etiquetaDestinoIcs(target))+'</option>';
+  })).join('');
+}
+function renderRevisionIcs(){
+  const used=new Set(icsImportDraft.map(item=>item.target).filter(Boolean));
+  const rows=icsImportDraft.map((item,index)=>{
+    const estado=item.target?'Coincidencia propuesta':'Sin asignar';
+    return '<div style="padding:12px 0;border-bottom:1px solid var(--border);">'
+      +'<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;"><b style="font-size:0.875rem;">'+esc(item.titulo)+'</b><span style="font-size:0.75rem;color:var(--fg3);white-space:nowrap;">'+esc(fechaCorta(item.fecha))+'</span></div>'
+      +'<div style="font-size:0.75rem;color:var(--fg3);margin:4px 0 8px;">'+estado+'</div>'
+      +'<div class="modal-input"><select aria-label="Asignar '+esc(item.titulo)+'" onchange="asignarDestinoIcs('+index+',this.value)">'+opcionesDestinoIcs(item.target,used)+'</select></div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('modal-content').innerHTML=[
+    '<div class="modal-title">Revisa las fechas</div>',
+    '<p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0 0 8px;">Las coincidencias son propuestas. Puedes cambiarlas, dejar una sin importar o asignar manualmente las que no calzaron.</p>',
+    '<div style="max-height:48vh;overflow:auto;border-top:1px solid var(--border);">'+rows+'</div>',
+    '<div class="modal-btns" style="margin-top:14px;"><button class="btn-cancel" type="button" onclick="closeModal()">Cancelar</button><button class="btn-confirm" type="button" onclick="confirmarImportarCalendario()">Agregar fechas elegidas</button></div>'
+  ].join('');
+}
+function asignarDestinoIcs(index,target){
+  if(!Number.isInteger(index)||!icsImportDraft[index])return;
+  icsImportDraft[index].target=target||null;
+  renderRevisionIcs();
+}
+function confirmarImportarCalendario(){
+  let aplicadas=0;
+  try{aplicadas=aplicarPropuestasIcs(icsImportDraft);}
+  catch(error){showToast(error.message||'No pudimos aplicar esas fechas',true);return;}
+  if(!aplicadas){showToast('Elige al menos una evaluación para importar',true);return;}
+  save();
+  if(typeof renderAgenda==='function')renderAgenda();
+  const revisadas=icsImportDraft.length;
+  icsImportDraft=[];
+  closeModal();
+  track('import_ics',{eventos:aplicadas,revisados:revisadas});
+  showToast(aplicadas+' fecha'+(aplicadas===1?' agregada':'s agregadas'));
+}
+
+
 
 function buildICS(){
   const evs=agendaEvents();
