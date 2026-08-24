@@ -504,6 +504,20 @@ US$99 al año, la revisión de Apple —que rechaza envoltorios de sitios web—
 comisión sobre pagos digitales, que choca con la decisión de monetización
 todavía abierta. Notificaciones primero; widgets solo si se decide ir a nativo.
 
+### Ya hechas, no las vuelvas a proponer
+
+Se sacaron de la cola cuando se mergearon. Están acá con su PR porque lo que se
+borra sin dejar rastro se vuelve a pedir, y porque si alguna se rompe conviene
+saber dónde empezar a mirar.
+
+| Pedido | Dónde quedó |
+|---|---|
+| Las estadísticas tienen que decir algo que importe | #203 — rango del promedio final y qué necesitas en cada ramo, en vez de mejor/peor nota |
+| Faltan términos de uso y un descargo honesto | #206 — `terminos.html` |
+| Tocar una evaluación en la Agenda no muestra nada más | #180 — se expande con su detalle |
+| La barra de orden de la Agenda ocupa demasiado | #207 — se subió al encabezado |
+| El orden manual no se puede arrastrar | *"El orden manual ahora se puede decidir de verdad"* + #176 (el ícono) y #204 (el foco con teclado) |
+
 ### Pedidas por Martín, sin dueño todavía
 
 **Meter a la Universidad de los Andes.** El andamiaje ya está: `uandes` es un
@@ -545,28 +559,6 @@ para que no la tomen dos.
 
 El contexto de cada una sale de mirar el código, no del pedido: sirve para
 dimensionar antes de empezar.
-
-**Las estadísticas tienen que decir algo que importe.** `renderStats` en
-`app.js`. El pedido es que muestren cosas que de verdad le sirvan al estudiante;
-qué son exactamente es parte del trabajo. Un punto de partida honesto: hoy la
-app sabe cuánto falta por evaluar, qué ramos están al borde y qué nota se
-necesita para aprobar cada uno — eso es más accionable que un promedio histórico.
-
-**Faltan términos de uso, y sobre todo un descargo honesto.** Hoy solo existe
-`privacidad.html`: no hay ninguna página que diga de dónde sale el número que la
-app entrega. El punto no es legal sino de producto — el resultado se calcula con
-la pauta que el estudiante cargó, así que si el profesor cambió las
-ponderaciones a mitad de semestre o alguien transcribió mal un porcentaje, el
-número está malo por los datos y no por el cálculo. La fuente de verdad es
-siempre el programa del curso. Decirlo así le sirve al estudiante para saber
-cuándo desconfiar; decir "no nos hacemos responsables" a secas no le sirve a
-nadie.
-
-Ojo con dos cosas. Un descargo **no** es un escudo para calcular mal: la regla
-del motor sigue mandando igual y ninguna letra chica arregla que alguien
-reprobó confiando en el número. Y si se busca peso legal de verdad —con la ley
-del consumidor chilena— eso lo tiene que revisar alguien que sepa; un texto
-escrito por un agente sirve para que se entienda, no para ganar un juicio.
 
 **Los metadatos y la licencia del repositorio siguen pendientes.** El README ya
 explica qué es GradeHub, cómo correrlo y cómo contribuir, pero GitHub todavía no
@@ -653,16 +645,6 @@ Tres cosas a tener en cuenta:
   los correos institucionales UC eso es Outlook; quien use webmail en el
   navegador puede quedarse sin nada. El enlace es un atajo, no puede ser el
   único camino: el formulario de la app tiene que seguir siendo el principal.
-
-**Tocar una evaluación en la Agenda no muestra nada más.** Se pide que se
-expanda con más detalle. Qué mostrar es parte del trabajo, y la pregunta que lo
-ordena es cuál de estas le sirve a alguien que está mirando qué estudiar: cuánto
-pesa, qué nota necesita en ella, cómo queda el ramo si le va mal, qué evaluación
-viene después. La app ya sabe las cuatro.
-
-**La barra de orden de la Agenda ocupa demasiado.** Recomendado / Fecha / Peso
-—recién agregada— tiene que achicarse: es un control secundario y hoy compite
-con el contenido.
 
 **Faltan colores de fondo elegibles.** Hoy `ACENTOS` cambia el color de
 identidad, pero el fondo no se elige. Ojo con lo que ya está escrito más arriba
