@@ -240,6 +240,11 @@ function setAcento(acento){
   save();applyTheme();track('set_acento',{acento:S.acento});
   const g=document.getElementById('s-acento-grid');if(g)renderAcentoGrid();
 }
+function setFondo(fondo){
+  S.fondo=FONDOS[fondo]?fondo:'neutro';
+  save();applyTheme();track('set_fondo',{fondo:S.fondo});
+  const g=document.getElementById('s-fondo-grid');if(g)renderFondoGrid();
+}
 function applyTheme(){
   aplicarModo();
   const th=ACENTOS[(S&&S.acento)||'turquesa']||GRADEHUB_THEME;
@@ -3531,7 +3536,9 @@ function openSettings(){
       <p class="settings-help settings-help-top">Elige cómo prefieres ver GradeHub. Se guarda al elegir.</p>
       <div class="modo-grid" id="s-modo-grid"></div>
       <label class="modal-label accent-picker-label">Color de acento</label>
-      <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>`;
+      <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>
+      <label class="modal-label accent-picker-label">Fondo</label>
+      <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
     if(section==='sugerencias'){
       const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a id="feedback-contact" href="${esc(correoSugerenciaHref())}" onclick="actualizarCorreoSugerencia()">gradehub.app@gmail.com</a></p>`;
       return currentUser?`
@@ -3577,7 +3584,7 @@ function openSettings(){
     document.querySelectorAll('[data-settings-section]').forEach(b=>b.onclick=()=>{activeSection=b.dataset.settingsSection;renderSettings();});
     const back=document.querySelector('.settings-back');if(back)back.onclick=()=>{activeSection='';renderSettings();};
     if(activeSection==='academico'){renderSettingsSemGrid();renderSettingsTenantGrid();renderSettingsCarreraGrid();}
-    if(activeSection==='apariencia'){renderModoGrid();renderAcentoGrid();}
+    if(activeSection==='apariencia'){renderModoGrid();renderAcentoGrid();renderFondoGrid();}
     if(activeSection==='calendario'&&currentUser)pintarFeedCalendario();
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
@@ -3621,6 +3628,18 @@ function openSettings(){
     });
   }
   window.renderAcentoGrid=renderAcentoGrid;
+  function renderFondoGrid(){
+    const g=document.getElementById('s-fondo-grid');if(!g)return;g.innerHTML='';
+    Object.entries(FONDOS).forEach(([key,cfg])=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='fondo-opt'+(S.fondo===key?' sel':'');
+      b.setAttribute('role','radio');b.setAttribute('aria-checked',S.fondo===key?'true':'false');
+      b.setAttribute('aria-label',cfg.nombre);
+      b.innerHTML=`<span class="fondo-swatch" style="--swatch-light:${esc(cfg.claro.bg)};--swatch-dark:${esc(cfg.oscuro.bg)}"></span><span>${esc(cfg.nombre)}</span>`;
+      b.onclick=()=>setFondo(key);g.appendChild(b);
+    });
+  }
+  window.renderFondoGrid=renderFondoGrid;
   function renderSettingsSemGrid(){
     const g=document.getElementById('s-sem-grid');if(!g)return;g.innerHTML='';
     for(let i=1;i<=11;i++){

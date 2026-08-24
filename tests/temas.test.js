@@ -74,8 +74,16 @@ const fondos = vm.runInContext('FONDOS', dark);
 const fondoKeys = ['bg','bg2','card','border','border2','muted','fg','fg2','fg3'];
 chk('el fondo neutro declara claro y oscuro completos', ['claro','oscuro'].every(m =>
   fondoKeys.every(k => typeof fondos.neutro[m][k] === 'string')));
+chk('Pizarra y Papel están disponibles junto al fondo histórico',
+  ['neutro','pizarra','papel'].every(k => fondos[k]));
+['pizarra','papel'].forEach(key=>{
+  chk(`${fondos[key]?.nombre||key}: declara claro y oscuro completos`, ['claro','oscuro'].every(m =>
+    fondoKeys.every(k => typeof fondos[key]?.[m]?.[k] === 'string')));
+});
 chk('normalize descarta fondos desconocidos sin perder los datos',
   vm.runInContext('normalize({ramos:[],fondo:"inventado"}).fondo', dark) === 'neutro');
+chk('normalize conserva un fondo elegido',
+  vm.runInContext('normalize({ramos:[],fondo:"papel"}).fondo', dark) === 'papel');
 
 console.log('\n=== El CSS parte con la identidad correcta ===');
 // applyTheme() reemplaza estos tokens en cuanto corre app.js, pero antes de eso
@@ -260,17 +268,30 @@ chk('oscuro aplica el fondo oscuro elegido', fondoKeys.every(k => P['--'+k] === 
 chk('oscuro usa el cian luminoso', P['--primary'] === theme.darkPrimary && P['--primary-fg'] === theme.darkPrimaryFg);
 chk('oscuro usa el tinte oscuro', P['--primary-light'] === theme.darkPrimaryLight);
 
+console.log('\n=== Cada fondo conserva contraste al cambiar de modo ===');
+Object.entries(fondos).forEach(([key,fondo])=>{
+  vm.runInContext('S.fondo='+JSON.stringify(key)+';applyTheme()', light);
+  chk(`${fondo.nombre}: claro aplica todas sus superficies`,
+    fondoKeys.every(k=>PL['--'+k]===fondo.claro[k]));
+  reset();vm.runInContext('S.fondo='+JSON.stringify(key)+';applyTheme()', dark);
+  chk(`${fondo.nombre}: oscuro aplica todas sus superficies`,
+    fondoKeys.every(k=>P['--'+k]===fondo.oscuro[k]));
+});
+chk('Apariencia ofrece un selector separado para los fondos',
+  /id="s-fondo-grid"/.test(APP) && /Object\.entries\(FONDOS\)/.test(APP) && /function setFondo\(/.test(APP));
+vm.runInContext('S.fondo="neutro"',dark);
+
 console.log('\n=== Texto y semáforo legibles en ambos modos ===');
 const semaforo=vm.runInContext('SEMAFORO',dark);
-[['claro',fondos.neutro.claro,semaforo.claro],['oscuro',fondos.neutro.oscuro,semaforo.oscuro]].forEach(([modo,f,s])=>{
+Object.entries(fondos).forEach(([fondoKey,fondo])=>[['claro',fondo.claro,semaforo.claro],['oscuro',fondo.oscuro,semaforo.oscuro]].forEach(([modo,f,s])=>{
   ['bg','bg2','card'].forEach(superficie=>{
-    chk(`${modo}: texto principal sobre ${superficie} ≥7`,ratio(f.fg,f[superficie])>=7);
-    chk(`${modo}: texto secundario sobre ${superficie} ≥4.5`,ratio(f.fg2,f[superficie])>=4.5);
-    chk(`${modo}: texto terciario sobre ${superficie} ≥4.5`,ratio(f.fg3,f[superficie])>=4.5);
+    chk(`${fondoKey} ${modo}: texto principal sobre ${superficie} ≥7`,ratio(f.fg,f[superficie])>=7);
+    chk(`${fondoKey} ${modo}: texto secundario sobre ${superficie} ≥4.5`,ratio(f.fg2,f[superficie])>=4.5);
+    chk(`${fondoKey} ${modo}: texto terciario sobre ${superficie} ≥4.5`,ratio(f.fg3,f[superficie])>=4.5);
     ['green','yellow','red'].forEach(color=>
-      chk(`${modo}: ${color} sobre ${superficie} ≥4.5`,ratio(s[color],f[superficie])>=4.5));
+      chk(`${fondoKey} ${modo}: ${color} sobre ${superficie} ≥4.5`,ratio(s[color],f[superficie])>=4.5));
   });
-});
+}));
 Object.keys(PL).forEach(k=>delete PL[k]);light.applyTheme('fen');
 chk('claro usa su propio semáforo', ['green','yellow','red'].every(k=>PL['--'+k]===semaforo.claro[k]));
 reset();dark.applyTheme('fen');
@@ -279,9 +300,14 @@ chk('oscuro usa su propio semáforo', ['green','yellow','red'].every(k=>P['--'+k
 console.log('\n=== Semáforo fijo y separado del acento ===');
 const sem = TENANT_CODES.map(code => { reset(); dark.applyTheme(code); return [P['--green'], P['--yellow'], P['--red']].join('|'); });
 chk('semáforo idéntico en todos los tenants', new Set(sem).size === 1);
+const semFondos=Object.keys(fondos).map(key=>{
+  reset();vm.runInContext('S.fondo='+JSON.stringify(key)+';applyTheme()',dark);
+  return [P['--green'],P['--yellow'],P['--red']].join('|');
+});
+chk('cambiar el fondo tampoco tiñe el semáforo',new Set(semFondos).size===1&&semFondos[0]===sem[0]);
 vm.runInContext('S.acento="cobre"',dark);reset();dark.applyTheme('fen');
 chk('cambiar el acento no tiñe el semáforo', [P['--green'],P['--yellow'],P['--red']].join('|')===sem[0]);
-vm.runInContext('S.acento="turquesa"',dark);
+vm.runInContext('S.acento="turquesa";S.fondo="neutro"',dark);
 console.log('  ' + sem[0]);
 
 console.log('\n=== Semáforo gradual dentro de cada categoría ===');

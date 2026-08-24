@@ -1163,6 +1163,13 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .accent-opt.sel{border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
 .accent-swatch{width:30px;height:30px;border:3px solid var(--card);border-radius:50%;background:linear-gradient(135deg,var(--swatch-light) 0 50%,var(--swatch-dark) 50%);box-shadow:0 0 0 1px var(--border2);}
 .accent-opt.sel .accent-swatch{box-shadow:0 0 0 2px var(--primary),0 3px 10px color-mix(in srgb,var(--primary),transparent 65%);}
+/* Fondo se muestra como una pequeña superficie, no como otro acento: su
+   contraste y textura importan más que un punto de color. */
+.fondo-grid{display:flex;gap:8px;}
+.fondo-opt{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:9px 6px;border:1.5px solid transparent;border-radius:12px;background:transparent;color:var(--fg2);font-family:'Onest',sans-serif;font-size:.6875rem;font-weight:650;cursor:pointer;transition:border-color var(--motion-fast),background var(--motion-fast),color var(--motion-fast);}
+.fondo-opt.sel{border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
+.fondo-swatch{width:36px;height:27px;border:2px solid var(--card);border-radius:7px;background:linear-gradient(135deg,var(--swatch-light) 0 50%,var(--swatch-dark) 50%);box-shadow:0 0 0 1px var(--border2);}
+.fondo-opt.sel .fondo-swatch{box-shadow:0 0 0 2px var(--primary),0 3px 10px color-mix(in srgb,var(--primary),transparent 65%);}
 
 /* Aviso de versión nueva. Aparece cuando el service worker nuevo toma el
    control: sin esto el estudiante tendría que recargar dos veces para ver un
