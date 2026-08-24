@@ -710,7 +710,7 @@ orden de dificultad:
 
 | Regla | Qué falta |
 |---|---|
-| Eximición del examen con Casos ≥ 5,5 (Gestión de Personas) | Nada: es determinista con las notas que ya hay. Ojo con la circularidad — el promedio individual incluye el examen |
+| Eximición del examen con Casos ≥ 5,5 (Gestión de Personas) | Falta el dato: “Casos y ensayos” está agrupado y el programa no dice cuántos casos son. Sin poder contar cuántos quedaron bajo 4,0 no se puede decidir la eximición; requiere rediseño del preset FEN con Martín, no un `if` por ramo. |
 | Examen recuperativo 3,6–3,9 → 4,0 (Micro) | Que el estudiante pueda decir que lo rindió: entrada nueva |
 | Examen de Segunda Fecha (Métodos) | Lo mismo |
 | ±10 décimas por evaluación entre compañeros | El dato no existe en la app |
