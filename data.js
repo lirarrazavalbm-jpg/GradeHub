@@ -550,6 +550,9 @@ const PRESETS_UC={
   'Principios Ecológicos y Medio Ambiente':{
     // El calendario 2026-2 la nombra "Biología"; sus I1, I2 e I3 calzan con
     // las tres Pruebas del programa. Se conserva el nombre oficial del curso.
+    // Lucas confirmó el 2026-08-24 que son el mismo ramo: no es una inferencia
+    // por parecido de nombres, así que estas fechas no se "corrigen" sin hablar
+    // con él primero.
     periodo:'2026-2',
     evals:[
       ['Prueba 1',25,{fecha:'2026-09-01'}],
