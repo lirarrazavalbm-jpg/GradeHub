@@ -19,6 +19,7 @@ const SHELL = [
   '/data.js',
   '/engine.js',
   '/app.js',
+  '/render-main.js',
   '/render-agenda.js',
   '/styles.css',
   '/manifest.json',

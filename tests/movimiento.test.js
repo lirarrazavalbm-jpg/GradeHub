@@ -174,7 +174,7 @@ console.log('\n=== El modal entra y sale ===');
 // un arreglo mencionan justo las palabras que el arreglo eliminó. La primera
 // versión de este test falló contra su propia documentación.
 const sinComentarios = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const app = sinComentarios(fs.readFileSync(path.join(raiz, 'app.js'), 'utf8'));
+const app = sinComentarios(fs.readFileSync(path.join(raiz, 'app.js'), 'utf8') + '\n' + fs.readFileSync(path.join(raiz, 'render-main.js'), 'utf8'));
 const cssCodigo = sinComentarios(css);
 
 console.log('\n=== Cerrar un ramo no significa aprobarlo ===');

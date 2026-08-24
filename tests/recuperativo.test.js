@@ -77,7 +77,7 @@ const legado=microCon(3.7);delete legado.recuperativo;delete legado.recuperativo
 const normalizado=vm.runInContext('normalize',ctx)({ramos:[legado]});
 chk('una cuenta existente recibe la regla pero no declara nada por ella',
   normalizado.ramos[0].recuperativo?.nota===4&&normalizado.ramos[0].recuperativoRendido===null&&ramoAvg(normalizado.ramos[0])===3.7);
-const app=fs.readFileSync(raiz+'app.js','utf8'),html=fs.readFileSync(raiz+'index.html','utf8');
+const app=fs.readFileSync(raiz+'app.js','utf8')+'\n'+fs.readFileSync(raiz+'render-main.js','utf8'),html=fs.readFileSync(raiz+'index.html','utf8');
 chk('la ficha permite declarar aprobado o reprobado y explica una declaración desactivada',
   /id="recuperativo-warning"/.test(html)&&/recuperativoRendido/.test(app)&&/ya no se aplica/.test(app));
 

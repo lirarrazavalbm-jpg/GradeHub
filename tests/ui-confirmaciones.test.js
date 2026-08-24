@@ -106,9 +106,9 @@ chk('sin volver a dibujar la lista: el asa enfocada sobrevive',redibujos===0);
 moverRamoConTeclado('a',-1);
 chk('en el borde no pasa nada',orden.join(',')==='a,b,c');
 
-const appSrc=fs.readFileSync(raiz+'app.js','utf8');
+const appSrc=fs.readFileSync(raiz+'app.js','utf8')+'\n'+fs.readFileSync(raiz+'render-main.js','utf8');
 const indexSrc=fs.readFileSync(raiz+'index.html','utf8');
-const homeSrc=appSrc.slice(appSrc.indexOf('function renderHome'),appSrc.indexOf('function openRamo'));
+const homeSrc=appSrc.slice(appSrc.indexOf('function renderHome'),appSrc.indexOf('function renderRamo'));
 chk('Manual usa un SVG en línea y no el carácter que iOS convierte en emoji',
   !homeSrc.includes('Manual ↕')&&!indexSrc.includes('Manual ↕')&&
   /sortBtn\.innerHTML=[\s\S]*?<svg[^>]*class="ic/.test(homeSrc)&&

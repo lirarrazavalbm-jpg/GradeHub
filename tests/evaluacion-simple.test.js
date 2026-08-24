@@ -6,7 +6,7 @@
 // que además convivían dos formas distintas de lo mismo en la misma pantalla.
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
-const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
+const src = ['data.js', 'engine.js', 'app.js', 'render-main.js', 'render-agenda.js']
   .map(f => fs.readFileSync(raiz + f, 'utf8')).join('\n');
 
 const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };
