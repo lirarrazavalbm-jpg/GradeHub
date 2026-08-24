@@ -82,6 +82,32 @@ console.log('\n=== La nota no se va con la pauta ===');
     r.gates.length === oficial.gates.length);
 }
 
+console.log('\n=== Si el programa devuelve la evaluación, la nota vuelve con ella ===');
+{
+  // Sacamos "Control sorpresa" de la pauta y sus notas quedaron en 0%. Si al
+  // semestre siguiente el programa la trae de vuelta, tiene que reaparecer con
+  // sus notas puestas — no duplicada: la vieja en 0% y la nueva vacía.
+  armar();
+  ctx.actualizarPauta('r1');
+  const r = val('S').ramos[0];
+  const huerfana = r.categorias.find(c => c.nombre === 'Control sorpresa');
+
+  // Segunda ronda: la pauta "oficial" ahora sí trae Control sorpresa.
+  const vuelve = oficial.categorias.map(c => ({ ...c }));
+  vuelve[vuelve.length - 1] = { ...vuelve[vuelve.length - 1], peso: vuelve[vuelve.length - 1].peso - 5 };
+  vuelve.push({ id: 'nuevo', nombre: 'Control sorpresa', peso: 5, ponderaNotas: false, directNota: true, notas: [] });
+  ctx.cambioDePauta = () => ({ preset: { categorias: vuelve, gates: [], aporta: null }, cambios: [], notasFueraDePauta: false });
+  chk('la nota estaba guardada en la huérfana', !!huerfana && huerfana.notas[0].valor === 4.5);
+  ctx.actualizarPauta('r1');
+  const r2 = val('S').ramos[0];
+  const vueltas = r2.categorias.filter(c => c.nombre === 'Control sorpresa');
+  chk('vuelve una sola vez, no duplicada', vueltas.length === 1);
+  chk('con la nota que había quedado guardada', vueltas[0].notas.length === 1 && vueltas[0].notas[0].valor === 4.5);
+  chk('y con el peso de la pauta nueva, ya no en 0%', vueltas[0].peso === 5);
+  chk('deja de estar marcada como fuera de la pauta', !vueltas[0].fueraDePauta);
+  delete ctx.cambioDePauta;
+}
+
 console.log('\n=== Sin notas que rescatar, nada cambia ===');
 {
   const limpia = oficial.categorias.map(c => ({ ...c, notas: [] }));

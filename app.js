@@ -2142,11 +2142,17 @@ function actualizarPauta(ramoId){
   // tildes o un espacio sin querer, y con igualdad estricta "Solemne 1" y
   // "solemne 1" eran evaluaciones distintas — la nota se iba por un acento.
   // Los ids no sirven: el preset los genera de nuevo cada vez.
-  const viejas=new Map(catsDePauta(r.categorias).map(c=>[normName(c.nombre),c]));
+  // Entran TAMBIÉN las huérfanas de una actualización anterior: si el programa
+  // vuelve a incluir una evaluación que había sacado, sus notas vuelven con
+  // ella en vez de quedar duplicadas —la vieja en 0% y la nueva vacía—. Las de
+  // la pauta van después a propósito: si por lo que sea coinciden en nombre,
+  // manda la que está viva.
+  const viejas=new Map([...(r.categorias||[]).filter(c=>c.fueraDePauta),...catsDePauta(r.categorias)]
+    .map(c=>[normName(c.nombre),c]));
   r.categorias=cambio.preset.categorias.map(c=>{
     const k=normName(c.nombre),vieja=viejas.get(k);
     viejas.delete(k);
-    return {...c,notas:(vieja&&vieja.notas)||[]};
+    return {...c,notas:(vieja&&vieja.notas)||[]};   // `c` no trae fueraDePauta: revivir la limpia
   });
   // Lo que la pauta nueva ya no tiene NO se borra. La pauta es nuestra; la nota
   // es del estudiante, y la escribió porque rindió esa evaluación. Se queda en
