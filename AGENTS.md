@@ -380,10 +380,10 @@ se da por bueno porque esté escrito: se comprueba borrando una cuenta de prueba
 y mirando que no queden filas suyas en ninguna tabla.
 
 - **Ponderaciones oficiales: 10 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
-  están completas (177 ramos FEN, 88 únicos, los 10-11 semestres de las cuatro
-  carreras); lo que falta son las pautas de evaluación. A casi todos los
-  estudiantes la malla se les carga sola y las ponderaciones las escriben a
-  mano — ese es el camino real del 95%, y hay que hacerlo rápido
+  están completas (88 ramos únicos, los 10-11 semestres de las tres mallas);
+  lo que falta son las pautas de evaluación. A casi todos los estudiantes la
+  malla se les carga sola y las ponderaciones las escriben a mano — ese es el
+  camino real del 95%, y hay que hacerlo rápido
 - La cobertura ya no es "el tronco común de 2°": **1° semestre va en 4 de 5**
   (falta Comunicación) y **2° en 4 de 6** (faltan Tecnología y Sistemas de
   Información e Inglés I), más Marketing de 3° e Inglés IV de 5°. Los dos
