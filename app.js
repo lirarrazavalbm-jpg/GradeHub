@@ -1484,16 +1484,33 @@ function checkOb(){
   if(next)next.disabled=!obStepValid(obStep);
 }
 
+// Devuelve el PRIMER paso obligatorio que quedó sin responder, o 0 si están
+// todos. Es `obStepValid` recorrido entero: lo que habilita cada botón es lo
+// mismo que exige el final, por construcción y no por acuerdo.
+function obPasoIncompleto(){
+  for(let paso=1;paso<=OB_TOTAL;paso++)if(!obStepValid(paso))return paso;
+  return 0;
+}
+
 function completeOnboarding(){
   const name=document.getElementById('ob-name').value.trim();
-  // Acepta lo MISMO que exige el paso 3: código de malla o carrera declarada
-  // por su nombre. Exigir `selectedCarrera` dejaba encerrado a todo el que no
-  // tiene malla —69 de las 71 carreras UC, y Contador Auditor en FEN—: el
-  // botón decía "Continuar con N ramos", se apretaba y no pasaba nada, porque
-  // este `return` no dice nada. Sin malla no hay preset y eso está bien; lo que
-  // no puede pasar es que no exista la cuenta.
-  const carreraDeclarada=selectedCarrera||String(selectedCarreraNombre||'').trim();
-  if(!name||!carreraDeclarada)return;
+  // UNA sola fuente de verdad para "¿se puede seguir?": la misma función que
+  // decide si el botón va habilitado. Antes esta guarda derivaba su propia
+  // condición y exigía `selectedCarrera` —el código de la malla— mientras el
+  // paso 3 se conformaba con la carrera declarada por nombre. Las dos se
+  // desincronizaron y dejaron encerradas a 69 de las 71 carreras de la UC: el
+  // botón decía "Continuar con N ramos", se apretaba y no pasaba nada.
+  //
+  // Mientras se pregunte acá lo mismo que se preguntó para habilitar el botón,
+  // ese desacuerdo no puede volver a existir. Y si algún día pasa igual, se
+  // dice: un paso obligatorio sin responder devuelve a su pantalla en vez de
+  // dejar al estudiante apretando un botón muerto.
+  const pasoIncompleto=obPasoIncompleto();
+  if(pasoIncompleto){
+    obStep=pasoIncompleto;obRender();
+    showToast('Falta un dato para crear tu cuenta',true);
+    return;
+  }
   S.userName=name;S.careerSemestre=selectedSem;S.carrera=selectedCarrera;S.carreraNombre=selectedCarreraNombre;S.tenant=selectedTenant;
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
