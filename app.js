@@ -2484,12 +2484,28 @@ function estructuraDe(r){
   return catsDePauta(r.categorias)
     .map(c=>{
       const g=(r.gates||[]).find(x=>x.catId===c.id);
-      const o={nombre:c.nombre,peso:Math.round((c.peso||0)*10)/10};
+      // r2, no un decimal. Con un decimal, los tres Controles de Lectura de
+      // Contabilidad (3,33 · 3,33 · 3,34) se reportaban como 3,3 y la pauta
+      // sumaba 99,9: el modal abría bloqueado con "Falta 0.1%" sin que el
+      // estudiante tocara nada, y la RPC la habría rechazado igual. El resto
+      // del camino del reporte ya trabajaba con dos decimales —parsePesoReporte
+      // usa r2—, así que el único que cortaba era este.
+      const o={nombre:c.nombre,peso:r2(c.peso||0)};
       if(c.slots>1)o.slots=c.slots;
       if(g){o.min=g.min;o.cap=g.cap;}
       return o;
     })
-    .sort((a,b)=>a.nombre.localeCompare(b.nombre));
+    // Orden por nombre normalizado, NO por localeCompare(): sin locale fijo,
+    // localeCompare usa el idioma del dispositivo y "Óptica" va antes de "Oral"
+    // en español pero después en polaco. El orden viaja dentro de `estructura`
+    // y de la huella, así que dos estudiantes con la MISMA pauta y distinto
+    // idioma no agruparían nunca y el consenso no se formaría, en silencio.
+    // El segundo criterio desempata los nombres que normalizan igual.
+    .sort((a,b)=>{
+      const ka=normName(a.nombre),kb=normName(b.nombre);
+      if(ka!==kb)return ka<kb?-1:1;
+      return a.nombre<b.nombre?-1:a.nombre>b.nombre?1:0;
+    });
 }
 
 // Huella estable: dos reportes id\u00e9nticos producen la misma cadena.
