@@ -309,7 +309,10 @@ function renderAgenda(){
   const sinFecha=agendaSinFecha();
 
   const expBtn=document.getElementById("agenda-export-btn");
-  if(expBtn)expBtn.style.display=events.length?"block":"none";
+  // Importar fechas sirve justo cuando la Agenda aún no tiene ninguna. El menú
+  // decide cuáles opciones de salida aplican; esconder el acceso lo volvería
+  // inaccesible para su caso principal.
+  if(expBtn)expBtn.style.display="block";
 
   if(events.length===0){
     const hayRamos=S.ramos.length>0;

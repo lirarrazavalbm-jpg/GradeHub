@@ -124,4 +124,24 @@ chk('la suscripción es el camino principal y lleva a su sección de Ajustes',
 chk('exportar queda como copia secundaria con advertencia específica para iPhone',
   /function openAgendaCalendarOptions\([\s\S]*?copia del momento[\s\S]*?En iPhone[\s\S]*?calendario que ya existe[\s\S]*?exportarCalendario\(\)/i.test(appSrc));
 
+// Importar es precisamente la puerta que necesita alguien cuya Agenda todavía
+// está vacía. Este flujo llama al render y abre el menú: comprobar solo que el
+// HTML contiene un botón no detectaría las dos guardas que lo ocultaban.
+function calendarioDesdeAgendaSinFechas(src){
+  const kit=arnes(src);
+  return vm.runInContext(`
+    S={ramos:[{id:'sin-fechas',nombre:'Ramo sin fechas',categorias:[{id:'i1',nombre:'I1',peso:100,notas:[]}]}]};
+    let abrioModal=false;
+    openModal=()=>{abrioModal=true;};
+    showToast=()=>{};
+    renderAgenda();
+    const botonVisible=document.getElementById('agenda-export-btn').style.display==='block';
+    openAgendaCalendarOptions();
+    ({botonVisible,abrioModal,html:document.getElementById('modal-content').innerHTML});
+  `,kit.ctx);
+}
+const calendarioVacio=calendarioDesdeAgendaSinFechas(fuente());
+chk('con cero fechas, Agenda deja abrir el menú y llegar a importar un .ics',
+  calendarioVacio.botonVisible&&calendarioVacio.abrioModal&&/abrirImportarCalendario\(\)/.test(calendarioVacio.html));
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);

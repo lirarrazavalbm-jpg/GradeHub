@@ -5454,9 +5454,8 @@ function revocarFeedCalendario(){
 // calendario existente aunque el archivo declare su propio nombre. La Agenda
 // muestra esta elección antes de descargar para que esa diferencia sea visible.
 function openAgendaCalendarOptions(){
-  if(agendaEvents().length===0){showToast('Primero agrega fechas a tus evaluaciones',true);return;}
-  document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Lleva tu Agenda al calendario</div>
+  const tieneEventos=agendaEvents().length>0;
+  const opcionesSalida=tieneEventos?`
     <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0 0 14px;">
       La suscripción es la opción recomendada: <b>se actualiza sola</b> cuando cambias una fecha y queda como un calendario separado.
     </p>
@@ -5467,6 +5466,18 @@ function openAgendaCalendarOptions(){
     <p class="settings-help"><b>En iPhone:</b> los eventos se agregan a un calendario que ya existe; no se crea uno nuevo.</p>
     <div class="settings-data-actions" style="margin-bottom:0;">
       <button type="button" onclick="exportCalendarSnapshotFromAgenda()">Exportar copia</button>
+    </div>
+    <div style="height:1px;background:var(--border);margin:20px 0 16px;"></div>`:
+    `<p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0 0 14px;">
+      Todavía no tienes fechas en GradeHub. Puedes traerlas desde tu calendario y revisarlas antes de agregarlas.
+    </p>`;
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Conecta GradeHub y tu calendario</div>
+    ${opcionesSalida}
+    <label class="modal-label">Importar archivo .ics</label>
+    <p class="settings-help" style="margin-top:0;">Trae fechas desde Apple, Google u Outlook. Revisas cada coincidencia antes de agregarla.</p>
+    <div class="settings-data-actions" style="margin-bottom:0;">
+      <button${tieneEventos?'':' class="btn-primary"'} type="button" onclick="abrirImportarCalendario()">Importar fechas</button>
     </div>`;
   openModal();
   track('calendar_options_opened');
