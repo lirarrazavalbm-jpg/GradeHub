@@ -3466,17 +3466,17 @@ function openSettings(){
       <label class="modal-label accent-picker-label">Color de acento</label>
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>`;
     if(section==='sugerencias'){
-      const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a href="mailto:gradehub.app@gmail.com">gradehub.app@gmail.com</a></p>`;
+      const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a id="feedback-contact" href="${esc(correoSugerenciaHref())}" onclick="actualizarCorreoSugerencia()">gradehub.app@gmail.com</a></p>`;
       return currentUser?`
       <p class="settings-help settings-help-top">¿Algo no se entiende, está fallando o podría ser mejor? Lo leemos nosotros.</p>
       <label class="modal-label" for="s-feedback-type">Tipo de comentario</label>
-      <select class="feedback-select" id="s-feedback-type">
+      <select class="feedback-select" id="s-feedback-type" onchange="actualizarCorreoSugerencia()">
         <option value="sugerencia">Tengo una sugerencia</option>
         <option value="problema">Encontré un problema</option>
         <option value="otro">Otro comentario</option>
       </select>
       <label class="modal-label" for="s-feedback-message">Cuéntanos</label>
-      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" aria-describedby="s-feedback-help s-feedback-count" oninput="actualizarSugerencia()"></textarea>
+      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" aria-describedby="s-feedback-help s-feedback-count" oninput="actualizarSugerencia();actualizarCorreoSugerencia()"></textarea>
       <div class="feedback-meta"><span class="feedback-help pending" id="s-feedback-help" aria-live="polite">Mínimo 3 caracteres · queda asociado a tu cuenta.</span><span id="s-feedback-count">0 / 2000</span></div>
       <button class="btn-primary feedback-send" id="s-feedback-send" type="button" onclick="enviarSugerencia()">Enviar comentario</button>
       ${contacto}`
@@ -3605,6 +3605,31 @@ function openSettings(){
   };
 }
 
+// El correo es una alternativa al formulario, no una segunda cuenta opaca: el
+// borrador lleva contexto que la persona reconoce y que nos ayuda a ubicarla.
+// No van correo, UID, ramos ni notas: el remitente ya llega en el mail y los
+// otros datos serían innecesarios o incómodos si la persona lo reenvía.
+function correoSugerenciaHref(categoria='sugerencia',mensaje=''){
+  const tipos={sugerencia:'Sugerencia',problema:'Problema',otro:'Comentario'};
+  const tipo=tipos[categoria]||tipos.otro;
+  const universidad=(TENANTS[S.tenant]||{}).name||'No indicada';
+  const carrera=S.carreraNombre||S.carrera||'No indicada';
+  const perfil=[
+    `Nombre para mostrar: ${S.userName||'No indicado'}`,
+    `Universidad: ${universidad}`,
+    `Carrera: ${carrera}`,
+    `Semestre: ${S.careerSemestre||'No indicado'}°`,
+  ];
+  const detalle=String(mensaje||'').trim();
+  const cuerpo=['Hola, GradeHub:','',`Tipo: ${tipo}`,'',...perfil,'','Detalle:',detalle||''].join('\n');
+  return `mailto:gradehub.app@gmail.com?subject=${encodeURIComponent(`GradeHub · ${tipo}`)}&body=${encodeURIComponent(cuerpo)}`;
+}
+function actualizarCorreoSugerencia(){
+  const selector=document.getElementById('s-feedback-type');
+  const campo=document.getElementById('s-feedback-message');
+  const enlace=document.getElementById('feedback-contact');
+  if(enlace)enlace.href=correoSugerenciaHref(selector?selector.value:'sugerencia',campo?campo.value:'');
+}
 function actualizarSugerencia(){
   const campo=document.getElementById('s-feedback-message');
   const cuenta=document.getElementById('s-feedback-count');
