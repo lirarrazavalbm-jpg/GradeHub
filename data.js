@@ -1159,8 +1159,8 @@ const PRESETS_FEN={
   // pero no las identifica ni las fecha — son sorpresa, no hay agenda que poner.
   'Introducción a la Microeconomía':{
     creditos:6,
+    recuperativo:{min:3.6,max:3.9,nota:4.0},
     noCalcula:[
-      'Si tu promedio final queda entre 3,6 y 3,9 tienes derecho al examen recuperativo: si lo apruebas, el ramo queda en 4,0; si no, repruebas con el promedio que traías',
       'Si faltas al Control 1 con justificativo aprobado, esa nota se reemplaza por la de la Solemne',
       'Si faltas a la Solemne, al Control 2 o al Control 3 con justificativo aprobado, esa nota se reemplaza por la del Examen',
       'Si faltas a una prueba sorpresa con justificativo, ese 5% se suma al Examen',

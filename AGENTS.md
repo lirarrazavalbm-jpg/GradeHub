@@ -208,6 +208,10 @@ ramo = {
 }
 ```
 
+Una categoría con `slots` solo crea hojas del motor cuando la nota existe. Una
+regla que requiera el ramo completamente evaluado debe contar sus casillas, no
+usar solo `calculateFinalGrade(...).complete`.
+
 ### Compuertas
 
 ```js
@@ -389,9 +393,9 @@ y mirando que no queden filas suyas en ninguna tabla.
   Información e Inglés I), más Marketing de 3° e Inglés IV de 5°. Los dos
   primeros semestres son hoy lo mejor cubierto del producto, junto con
   Ingeniería UC plan común 1°
-- Notas de reemplazo y examen recuperativo: aparecen en la mayoría de los
-  programas FEN transcritos y siguen sin calcularse. Ver la tabla de reglas
-  pendientes más abajo
+- Notas de reemplazo y exámenes recuperativos distintos al de Microeconomía:
+  aparecen en la mayoría de los programas FEN transcritos y siguen sin
+  calcularse. Ver la tabla de reglas pendientes más abajo
 - **La RLS quedó auditada el 2026-08-10 y está correcta.** Las tres tablas
   (`user_ramos`, `profiles`, `catalog_reports`) tienen `rowsecurity` activo y
   doce políticas: todo INSERT con `WITH CHECK`, todo UPDATE con `USING` y
@@ -736,7 +740,6 @@ orden de dificultad:
 | Regla | Qué falta |
 |---|---|
 | Eximición del examen con Casos ≥ 5,5 (Gestión de Personas) | Falta el dato: “Casos y ensayos” está agrupado y el programa no dice cuántos casos son. Sin poder contar cuántos quedaron bajo 4,0 no se puede decidir la eximición; requiere rediseño del preset FEN con Martín, no un `if` por ramo. |
-| Examen recuperativo 3,6–3,9 → 4,0 (Micro) | Que el estudiante pueda decir que lo rindió: entrada nueva |
 | Examen de Segunda Fecha (Métodos) | Lo mismo |
 | ±10 décimas por evaluación entre compañeros | El dato no existe en la app |
 | Inasistencias justificadas: el % pasa a otra evaluación | Depende del programa. Micro SÍ dice a cuál (Control 1 → Solemne; Control 2 y 3 → Examen), así que ahí es modelable; en otros no se especifica |
