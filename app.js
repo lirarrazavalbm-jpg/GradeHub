@@ -2067,6 +2067,14 @@ function huellaPauta(cats){
   return (cats||[]).map(c=>`${c.nombre}:${r2(Number(c.peso)||0)}`).join('|');
 }
 
+// Una evaluación que la pauta oficial dejó de tener, pero que el estudiante
+// alcanzó a llenar, se queda guardada con sus notas en 0%. Sigue siendo suya y
+// se ve en la ficha, pero NO es parte de la pauta: no entra en la huella ni en
+// lo que se le reporta al catálogo. Sin esta distinción, la pauta se vería
+// eternamente distinta de la oficial y la app ofrecería el mismo cambio para
+// siempre.
+function catsDePauta(cats){return (cats||[]).filter(c=>!c.fueraDePauta);}
+
 // Devuelve el cambio pendiente, o null. Null significa las tres cosas buenas:
 // no hay pauta oficial, ya está al día, o el estudiante la editó a mano —y en
 // ese caso su versión manda sobre la nuestra, sin preguntar ni avisar.
@@ -2076,12 +2084,12 @@ function cambioDePauta(r){
   if(!nombre)return null;
   const p=presetRamo(nombre,r.origen.tenant,r.origen.carrera);
   if(!p)return null;
-  const actual=huellaPauta(r.categorias);
+  const actual=huellaPauta(catsDePauta(r.categorias));
   if(actual!==r.pautaHuella)return null;      // la editó: no se opina
   const oficial=huellaPauta(p.categorias);
   if(oficial===actual)return null;            // al día
   // Qué cambia exactamente, para poder mostrárselo antes de que decida.
-  const antes=new Map((r.categorias||[]).map(c=>[c.nombre,Number(c.peso)||0]));
+  const antes=new Map(catsDePauta(r.categorias).map(c=>[c.nombre,Number(c.peso)||0]));
   const despues=new Map((p.categorias||[]).map(c=>[c.nombre,Number(c.peso)||0]));
   const cambios=[];
   antes.forEach((peso,nom)=>{
@@ -2089,11 +2097,13 @@ function cambioDePauta(r){
     else if(r2(despues.get(nom))!==r2(peso))cambios.push({tipo:'peso',nombre:nom,antes:peso,despues:despues.get(nom)});
   });
   despues.forEach((peso,nom)=>{ if(!antes.has(nom))cambios.push({tipo:'llega',nombre:nom,despues:peso}); });
-  // Una evaluación que desaparece se lleva las notas que el estudiante escribió
-  // ahí. Eso no se hace sin decírselo con todas sus letras.
-  const pierdeNotas=cambios.filter(c=>c.tipo==='se-va')
-    .some(c=>((r.categorias.find(x=>x.nombre===c.nombre)||{}).notas||[]).length>0);
-  return {preset:p,cambios,pierdeNotas};
+  // Una evaluación que desaparece se llevaba las notas que el estudiante había
+  // escrito ahí. Ya no: se conservan aparte. Igual hay que decírselo, porque su
+  // ficha va a quedar con una evaluación en 0% que la pauta oficial no tiene.
+  const notasFueraDePauta=cambios.filter(c=>c.tipo==='se-va')
+    .some(c=>((r.categorias.find(x=>x.nombre===c.nombre)||{}).notas||[])
+      .some(n=>typeof n.valor==='number'));
+  return {preset:p,cambios,notasFueraDePauta};
 }
 
 // Le muestra el cambio antes de decidir. Sin esto, "Actualizar" sería pedirle
@@ -2106,8 +2116,8 @@ function verCambioDePauta(ramoId){
     if(c.tipo==='llega')return `<li><b>${esc(c.nombre)}</b>: nueva, ${r2(c.despues)}%</li>`;
     return `<li><b>${esc(c.nombre)}</b>: ya no está en la pauta oficial</li>`;
   };
-  const aviso=cambio.pierdeNotas
-    ? `<div class="modal-warn" style="margin-top:10px;">Alguna de las evaluaciones que desaparecen tiene notas tuyas. Si actualizas, esas notas se pierden.</div>`
+  const aviso=cambio.notasFueraDePauta
+    ? `<p class="modal-desc" style="margin-top:10px;">Alguna de las evaluaciones que desaparecen tiene notas tuyas. <b>No se borran</b>: quedan en tu ficha con sus notas y en 0%, así no mueven tu promedio.</p>`
     : `<p class="modal-desc" style="margin-top:10px;">Tus notas se conservan: se reconocen por el nombre de la evaluación.</p>`;
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">La pauta oficial cambió</div>
@@ -2128,12 +2138,31 @@ function verCambioDePauta(ramoId){
 function actualizarPauta(ramoId){
   const r=(S.ramos||[]).find(x=>x.id===ramoId);if(!r)return false;
   const cambio=cambioDePauta(r);if(!cambio)return false;
-  const notasPorNombre=new Map((r.categorias||[]).map(c=>[c.nombre,c.notas||[]]));
-  r.categorias=cambio.preset.categorias.map(c=>({...c,notas:notasPorNombre.get(c.nombre)||[]}));
+  // Por NOMBRE NORMALIZADO, no exacto: una pauta retranscrita cambia mayúsculas,
+  // tildes o un espacio sin querer, y con igualdad estricta "Solemne 1" y
+  // "solemne 1" eran evaluaciones distintas — la nota se iba por un acento.
+  // Los ids no sirven: el preset los genera de nuevo cada vez.
+  const viejas=new Map(catsDePauta(r.categorias).map(c=>[normName(c.nombre),c]));
+  r.categorias=cambio.preset.categorias.map(c=>{
+    const k=normName(c.nombre),vieja=viejas.get(k);
+    viejas.delete(k);
+    return {...c,notas:(vieja&&vieja.notas)||[]};
+  });
+  // Lo que la pauta nueva ya no tiene NO se borra. La pauta es nuestra; la nota
+  // es del estudiante, y la escribió porque rindió esa evaluación. Se queda en
+  // 0%, así no mueve el promedio, y sigue estando donde la dejó. Las que quedaron
+  // vacías sí se van: no hay nada que conservar y ensucian la ficha.
+  viejas.forEach(v=>{
+    const conValor=(v.notas||[]).filter(n=>typeof n.valor==='number');
+    if(conValor.length)r.categorias.push({...v,peso:0,notas:conValor,fueraDePauta:true});
+  });
+  // Las huérfanas quedan fuera de la huella a propósito: la pauta del ramo es
+  // la oficial y tiene que verse idéntica a ella, o cambioDePauta() ofrecería
+  // este mismo cambio para siempre.
   r.gates=cambio.preset.gates;
   r.aporta=cambio.preset.aporta||null;
   r.recuperativo=cambio.preset.recuperativo||null;
-  r.pautaHuella=huellaPauta(r.categorias);
+  r.pautaHuella=huellaPauta(catsDePauta(r.categorias));
   return true;
 }
 function aplicarPautaNueva(ramoId){
@@ -2439,7 +2468,7 @@ function origenActual(){return {tenant:S.tenant,carrera:S.carrera};}
 
 // Estructura m\u00ednima y ordenada de un ramo, para comparar y contar consenso.
 function estructuraDe(r){
-  return (r.categorias||[])
+  return catsDePauta(r.categorias)
     .map(c=>{
       const g=(r.gates||[]).find(x=>x.catId===c.id);
       const o={nombre:c.nombre,peso:Math.round((c.peso||0)*10)/10};
