@@ -126,5 +126,37 @@ Object.entries(UC).forEach(([nombre, def]) => {
   (def.grupos||[]).forEach(g=>chk(nombre+' · grupo '+g.nombre+' apunta a evaluaciones reales',g.evals.every(n=>evalsUC(def).some(([e])=>e===n))));
 });
 
+console.log('\n=== El período de la pauta ===');
+// `periodo` es lo que le permite a la app saber que un semestre terminó: con él
+// deja de precargar fechas viejas y le dice al estudiante de cuándo es la pauta.
+// Sin él, la ficha dice "período sin confirmar", que es feo pero honesto.
+//
+// Por eso solo se declara cuando el programa transcrito lo dice. Lo que se fija
+// acá es el formato: un período mal escrito no falla, se lee como
+// "desconocido" y la pauta se comporta como si nadie hubiera puesto nada.
+const PERIODO = /^\d{4}-[12]$/;
+Object.entries(FEN).forEach(([nombre, def]) => {
+  if (!def.periodo) return;
+  chk(nombre + ' declara un período con forma AAAA-S (dice "' + def.periodo + '")', PERIODO.test(def.periodo));
+});
+Object.entries(UC).forEach(([nombre, def]) => {
+  if (Array.isArray(def) || !def.periodo) return;
+  chk(nombre + ' declara un período con forma AAAA-S', PERIODO.test(def.periodo));
+});
+// Una pauta con fechas fijas y sin período es la combinación que la cola quería
+// evitar: en marzo de 2027 esas fechas siguen precargándose como si fueran de
+// ahora, con la misma estrella de "pauta oficial" que todo lo demás.
+const conFechasSinPeriodo = [];
+[['FEN', FEN], ['UC', UC]].forEach(([t, P]) => {
+  Object.entries(P).forEach(([nombre, def]) => {
+    const evals = Array.isArray(def) ? def : (def.evals || []);
+    const tieneFechas = evals.some(([, , extra]) => extra && extra.fecha);
+    if (tieneFechas && !(!Array.isArray(def) && def.periodo)) conFechasSinPeriodo.push(t + ' · ' + nombre);
+  });
+});
+chk('ninguna pauta trae fechas fijas sin decir de qué semestre son' +
+  (conFechasSinPeriodo.length ? ' (' + conFechasSinPeriodo.join(', ') + ')' : ''),
+  conFechasSinPeriodo.length === 0);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

@@ -731,8 +731,16 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-priority-bar{position:absolute;inset:0 0 auto;height:5px;background:var(--ag-course);}
 .ag-priority-top{display:flex;align-items:center;gap:7px;margin:2px 0 8px;}
 .ag-priority-rank{min-width:0;font-size:0.65625rem;font-weight:800;line-height:1.2;letter-spacing:.065em;text-transform:uppercase;color:var(--primary);}
-.ag-priority-rank.critica{color:var(--red);}
-.ag-priority-rank.alta{color:var(--yellow);}
+/* El rótulo NO se tiñe con el semáforo, aunque el nivel se llame "crítica".
+   Rojo y ámbar significan reprobado y al borde en toda la app, y acá el nivel
+   mide otra cosa: que faltan pocos días y pesa harto. Pintado de rojo, "Tu foco
+   ahora" se lee como "vas mal en esta evaluación" — que puede ser falso, y es
+   la clase de confusión que la regla del semáforo existe para evitar.
+
+   La urgencia ya se comunica sin color: la tarjeta es la primera y la más
+   grande, y su texto lo dice con todas sus letras ("Faltan 2 días: es lo que
+   más te conviene atender ahora"). El nivel se conserva en el dato porque
+   ordena la lista; lo que se va es el color prestado. */
 .ag-priority-weight{margin-left:auto;flex-shrink:0;font-family:'Onest',sans-serif;font-size:1.25rem;font-weight:800;line-height:1;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.035em;}
 .ag-priority-date{font-size:0.71875rem;font-weight:700;color:var(--fg2);font-variant-numeric:tabular-nums;}
 .ag-priority-date span{font-weight:550;color:var(--fg3);}

@@ -4149,10 +4149,52 @@ function sheetVelocidad(historia){
 // Pointer Events en vez de touch: el mismo código sirve para dedo, mouse y
 // trackpad —en el escritorio el tirador no hacía nada—, y el capture mantiene
 // el seguimiento aunque el puntero se salga del sheet.
+// Tres cosas que un modal necesita y que no se ven mirando la pantalla:
+//
+//   1. Anunciarse por su nombre. La hoja decía aria-label="Ventana", así que un
+//      lector de pantalla leía "Ventana, diálogo" en lugar de "Nueva
+//      evaluación". El título ya está escrito en el modal; basta apuntarle.
+//   2. Devolver el foco al cerrar. Quedaba dentro del modal cerrado, o sea en
+//      un elemento invisible: quien navega con teclado tenía que volver a
+//      recorrer la página para seguir donde estaba.
+//   3. Asociar cada etiqueta con su campo. Se hace acá y no en las 33
+//      plantillas: son todas el mismo patrón —una `.modal-label` seguida del
+//      campo— y arreglarlo una vez cubre los modales que se escriban después.
+function etiquetarCamposDelModal(raiz){
+  if(!raiz||typeof raiz.querySelectorAll!=='function')return;
+  raiz.querySelectorAll('label.modal-label:not([for])').forEach(lab=>{
+    // Una etiqueta que ya envuelve su campo está asociada por anidamiento. Sin
+    // esta guarda, la del checkbox "Son varias notas" se llevaba un `for` al
+    // campo de FECHA que venía después: peor que no etiquetar, porque el lector
+    // anuncia el campo equivocado con toda seguridad.
+    if(lab.querySelector('input,select,textarea'))return;
+    let el=lab.nextElementSibling,campo=null;
+    while(el&&!campo){campo=el.matches&&el.matches('input,select,textarea')?el:el.querySelector&&el.querySelector('input,select,textarea');el=el.nextElementSibling;}
+    if(!campo)return;
+    if(!campo.id)campo.id='campo-'+Math.random().toString(36).slice(2,9);
+    lab.setAttribute('for',campo.id);
+  });
+}
+let _quienAbrioModal=null;
+
 function openModal(){
   const ov=document.getElementById('modal');
+  _quienAbrioModal=document.activeElement;
   ov.classList.add('open');
   const sheet=document.querySelector('.modal-sheet');
+  const contenido=document.getElementById('modal-content');
+  const titulo=contenido&&typeof contenido.querySelector==='function'?contenido.querySelector('.modal-title'):null;
+  if(sheet&&typeof sheet.setAttribute==='function'){
+    if(titulo){
+      if(!titulo.id)titulo.id='modal-titulo';
+      sheet.setAttribute('aria-labelledby',titulo.id);
+      sheet.removeAttribute('aria-label');
+    }else{
+      sheet.removeAttribute('aria-labelledby');
+      sheet.setAttribute('aria-label','Ventana');
+    }
+  }
+  etiquetarCamposDelModal(contenido);
   sheet.scrollTop=0;
   cancelAnimationFrame(_sheetRaf);ov.classList.remove('settling');
   let startY=0,curY=0,startT=0,dragging=false,historia=[];
@@ -4198,6 +4240,13 @@ function closeModal(){
   document.getElementById('modal').classList.remove('settling','dragging');
   sheet.style.transform='';   // suelta lo que dejó el arrastre
   document.getElementById('modal').classList.remove('open');
+  // El foco vuelve a quien abrió, salvo que ese elemento ya no exista (un
+  // botón de una lista que se volvió a dibujar). Ahí se deja como está: mandarlo
+  // al body a la fuerza es peor que dejarlo quieto.
+  const volver=_quienAbrioModal;_quienAbrioModal=null;
+  if(volver&&volver.isConnected&&typeof volver.focus==='function'&&volver!==document.body){
+    try{volver.focus({preventScroll:true});}catch(e){volver.focus();}
+  }
 }
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 // Cerrar con tecla Escape (confirmación tiene prioridad sobre el modal)
