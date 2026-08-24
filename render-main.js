@@ -332,6 +332,11 @@ function renderRamo(){
       const cuantos=cambio.cambios.length;
       pcw.style.display='flex';pcw.className='weight-setup-nudge';
       pcw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>La pauta oficial de este ramo cambió.</b><br>${cuantos} ${cuantos===1?'evaluación distinta':'evaluaciones distintas'} a lo que tienes hoy. Tu promedio se calcula con lo que tienes ahora.<div style="margin-top:8px;"><button type="button" class="rep-link" style="width:auto;padding:7px 12px;margin:0;" onclick="verCambioDePauta('${esc(r.id)}')">Ver qué cambia</button></div></div>`;
+    }else if(r.consensoRespaldos){
+      // Esta pauta la reportaron estudiantes, no sale de un programa oficial.
+      // Decirlo es la diferencia entre una pauta y una ponderación inventada.
+      pcw.style.display='flex';pcw.className='weight-setup-nudge';
+      pcw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>Pauta reportada por estudiantes.</b><br>La enviaron ${r.consensoRespaldos} personas de tu universidad y coincidieron. No la sacamos del programa oficial: compárala con la de tu curso y corrígela si no calza.</div>`;
     }else{pcw.style.display='none';pcw.innerHTML='';}
   }
 
