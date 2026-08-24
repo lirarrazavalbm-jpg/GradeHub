@@ -504,6 +504,38 @@ US$99 al año, la revisión de Apple —que rechaza envoltorios de sitios web—
 comisión sobre pagos digitales, que choca con la decisión de monetización
 todavía abierta. Notificaciones primero; widgets solo si se decide ir a nativo.
 
+### Pedidas por Martín, sin dueño todavía
+
+**Meter a la Universidad de los Andes.** El andamiaje ya está: `uandes` es un
+tenant en `TENANTS` y `CARRERAS_UANDES` declara cinco carreras (Ingeniería
+Civil, Ingeniería Comercial, Derecho, Medicina, Psicología) más "Otra". Lo que
+no existe es nada de contenido: no hay `MALLA_UANDES`, ni `PRESETS_UANDES`, ni
+`CREDITOS_UANDES`, y `CARRERAS_DECLARABLES` solo tiene `fen` y `uc` — así que
+quien elige UANDES hoy entra a una app vacía y arma todo a mano.
+
+El orden que se sostiene solo, mirando cómo se construyeron FEN y UC:
+
+1. **Carreras declarables primero.** Es la lista completa de lo que se estudia
+   ahí, sin malla asociada. Barata, no necesita ningún programa, y hace que la
+   app deje de sentirse ajena: el estudiante se ve en la lista.
+2. **Una malla, la de la carrera con más gente.** `MALLA_UANDES` con la misma
+   forma que `MALLA_UC`, y su carrera pasa a llevar `malla:` en declarables.
+3. **Presets solo con programas oficiales en la mano.** Vale la regla de
+   siempre: si el documento no dice la ponderación, no se rellena. Diez pautas
+   FEN tomaron semanas de juntar PDFs, así que esto es lo lento y no se
+   improvisa.
+
+Ojo con dos cosas antes de escribir código. **El vocabulario de cada universidad
+es distinto** —en FEN son Solemnes, en la UC Interrogaciones— y hay un test que
+lo vigila (`tests/vocabulario.test.js`): las evaluaciones de UANDES tienen que
+hablar como habla UANDES, y si aparece un tercer vocabulario hay que separarlo
+igual que los otros dos. Y **los créditos**: la UC usa SCT y FEN también; si
+UANDES pondera distinto, `creditosDe` y el modo de promedio necesitan saberlo
+antes de que alguien cargue notas y el número salga mal.
+
+Tamaño realista: el paso 1 es una sesión, el 2 depende de conseguir la malla
+publicada, el 3 es trabajo continuo de transcripción como el que lleva FEN.
+
 ### Pedidas por Lucas, sin dueño todavía
 
 Están acá para que no se pierdan, no porque alguien las esté haciendo. **Las
