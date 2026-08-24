@@ -1195,6 +1195,7 @@ const PRESETS_FEN={
   // Programa oficial ENCOM1005, Primavera 2026. El programa se titula
   // "Comunicación I"; la clave es 'Comunicación' porque así se llama en la malla.
   'Comunicación':{
+    periodo:'2026-2',
     creditos:2,
     // El programa dice que sin 4,0 en lo individual las notas grupales "no son
     // válidas" Y que el estudiante reprueba, pero nunca dice con qué nota queda.
@@ -1288,6 +1289,7 @@ const PRESETS_FEN={
   // el 18 de noviembre y el 2 de diciembre) y la solemne 2 está por confirmar.
   // Un rango no es una fecha, así que no va ninguna a la agenda.
   'Tecnología y Sistemas de Información':{
+    periodo:'2026-2',
     creditos:6,
     // Ninguna evaluación tiene nota mínima propia ni hay eximición: el único
     // requisito que da el programa es el 4,0 de aprobación, que la app ya sabe.
@@ -1316,6 +1318,7 @@ const PRESETS_FEN={
   //     una ni si se califican por separado. Repartir 12,5 y 12,5 sería
   //     inventarlo. Sin slots el estudiante ingresa las notas que le pongan.
   'Marketing':{
+    periodo:'2026-2',
     creditos:6,
     // Las tres son permanentes, cada una por su motivo. La primera el motor sí la
     // modela, con `group_min` y cap 'self': el veredicto aprobado/reprobado
@@ -1355,6 +1358,7 @@ const PRESETS_FEN={
   // están acá a propósito: no son parte del 100%, solo pueden subir la final y
   // con una fórmula condicional que el motor no sabe representar. Va a noCalcula.
   'Introducción a la Economía':{
+    periodo:'2026-1',
     creditos:6,
     noCalcula:[
       'Las evaluaciones extra (pruebas online semanales y el curso de Educación Financiera) solo suben la nota si apruebas las obligatorias con 4,0 o más, y solo si te va mejor en ellas: ahí la final pasa a ser 90% obligatorias más 10% extra',
