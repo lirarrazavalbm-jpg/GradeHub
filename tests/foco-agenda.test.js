@@ -188,6 +188,20 @@ chk('Recomendado no puede cortarse ni desbordarse hacia el botón vecino',
 const altoOpcion=Number((reglaOpcion.match(/min-height:(\d+)px/)||[])[1]);
 chk('el control secundario queda delgado sin volverse intocable',
   altoOpcion>=32 && altoOpcion<=36);
+// El semáforo de esta app significa aprobado / al borde / reprobado. El nivel de
+// urgencia mide otra cosa —pocos días y harto peso— y llegó a pintarse con los
+// mismos rojo y ámbar: "Tu foco ahora" en rojo se lee como "vas mal en esta
+// evaluación", que puede ser falso. Es la confusión exacta que la regla del
+// semáforo existe para evitar, y por eso queda fijada.
+const rankCritica = reglaCSSAgenda('.ag-priority-rank.critica');
+const rankAlta = reglaCSSAgenda('.ag-priority-rank.alta');
+chk('la urgencia no se pinta con el rojo del semáforo',
+  !/var\(--red\)/.test(rankCritica) && !/var\(--red\)/.test(rankAlta));
+chk('ni con el ámbar',
+  !/var\(--yellow\)/.test(rankCritica) && !/var\(--yellow\)/.test(rankAlta));
+// Y sigue estando en el dato, porque es lo que ordena la lista.
+chk('el nivel se conserva para ordenar', withPriority(evento('x', 2, 20)).nivel === 'critica');
+
 chk('el activo se distingue por superficie, contorno y acento',
   /background:var\(--card\)/.test(reglaActiva) && /box-shadow:/.test(reglaActiva) && /color:var\(--primary\)/.test(reglaActiva));
 
