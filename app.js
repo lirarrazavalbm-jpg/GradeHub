@@ -1164,6 +1164,13 @@ async function afterLogin(){
     }
   }
   if(S.onboardingDone)enterApp();else enterOnboarding();
+  // No bloquea la entrada: es una lectura de red y la app ya está en pantalla.
+  // Si llega con algo, repinta y lo dice — una pauta no aparece en silencio.
+  aplicarConsensoAuto().then(n=>{
+    if(!n)return;
+    renderHome();
+    showToast(n===1?'Agregamos una pauta reportada por otros estudiantes':`Agregamos ${n} pautas reportadas por otros estudiantes`);
+  }).catch(()=>{});
 }
 
 async function loadFromCloud(){
@@ -2609,6 +2616,68 @@ async function consensoParaRamo(r){
   const mine=huellaEstructura(estructuraDe(r));
   const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&c.huella!==mine);
   return hit||null;
+}
+
+// Cuántas personas distintas tienen que reportar EXACTAMENTE la misma pauta
+// para que se aplique sola. El SQL ya agrupa por (ramo, estructura, huella) y
+// exige tres personas distintas —no tres reportes: quien reporta dos veces
+// sigue contando como uno—, así que bajar este número no hace nada. Subirlo sí,
+// y sin migrar: `respaldos` viene en cada fila del consenso.
+const CONSENSO_AUTO=3;
+
+// La estructura reportada, con la forma que usa el resto de la app. Espeja a
+// presetRamo(), pero solo con lo que el reporte trae de verdad: pesos, `slots`
+// y las compuertas de nota mínima. Fechas, grupos, descartes y `aporta` no
+// viajan en el reporte, así que no se inventan acá.
+function pautaDeConsenso(est){
+  const categorias=[],gates=[];
+  (est||[]).forEach(e=>{
+    if(!e||!e.nombre)return;
+    const id=uid(),slots=e.slots>1?e.slots:0;
+    const cat={id,nombre:e.nombre,peso:Number(e.peso)||0,ponderaNotas:false,directNota:!slots,notas:[]};
+    if(slots)cat.slots=slots;
+    categorias.push(cat);
+    if(e.min)gates.push({type:'min_grade_required',catId:id,min:e.min,cap:e.cap,nombre:e.nombre});
+  });
+  return {categorias,gates};
+}
+
+// Rellena las pautas que FALTAN con lo que reportó el resto. Mismo criterio que
+// pautaPendiente(): solo ramos del catálogo que están sin pauta.
+//
+// Por qué solo esos. Un ramo sin evaluaciones no tiene nada que pisar: no hay
+// notas que perder ni una pauta que el estudiante haya escrito. En cuanto hay
+// algo escrito, el código ya tiene decidido quién manda, y un consenso no lo
+// cambia: si la pauta es oficial y cambió, cambioDePauta() se lo MUESTRA y
+// espera, porque su promedio va a moverse; y si el estudiante la editó a mano,
+// su versión manda sobre la nuestra. Una pauta reportada por tres personas que
+// no conoce no puede pesar más que esas dos reglas.
+//
+// Queda el hueco: los ramos del catálogo que todavía no tienen programa
+// transcrito. Ahí no hay nada que pisar y el consenso se aplica solo.
+async function aplicarConsensoAuto(){
+  const cons=await cargarConsenso();
+  if(!cons||!cons.length)return 0;
+  let puestas=0;
+  (S.ramos||[]).forEach(r=>{
+    if(!r.origen||!r.origen.tenant)return;          // ramo a mano: nadie reportó "Electivo de cine"
+    if((r.categorias||[]).length||(r.gates||[]).length)return;
+    if(pautaPendiente(r))return;                    // hay programa oficial esperando: ese manda
+    const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&c.respaldos>=CONSENSO_AUTO);
+    if(!hit)return;
+    const pauta=pautaDeConsenso(hit.estructura);
+    if(!pauta.categorias.length)return;
+    r.categorias=pauta.categorias;
+    r.gates=pauta.gates;
+    r.pautaHuella=huellaPauta(pauta.categorias);
+    // Marca de origen: esta pauta NO sale de un programa oficial. La ficha lo
+    // dice, y el día que transcribamos el programa, cambioDePauta() ofrece el
+    // cambio como con cualquier otra pauta vieja.
+    r.consensoRespaldos=hit.respaldos;
+    puestas++;
+  });
+  if(puestas)save();
+  return puestas;
 }
 
 // \u00bfEl ramo viene de otro cat\u00e1logo que el actual? (el estudiante se cambi\u00f3 de
