@@ -137,10 +137,21 @@ node -e 'const c=require("fs").readFileSync("styles.css","utf8");const o=(c.matc
 
 # 3. Tests de lógica (si tocaste el motor o los temas)
 npm test
+
+# Uno solo, mientras trabajas
+node tests/<archivo>.test.js
 ```
 
 Si tocas cálculo, escribe un test que compruebe casos concretos — incluyendo los
 de compuerta que topan la nota.
+
+**Un test nuevo no se registra en ninguna parte: se corre por existir.** `npm test`
+descubre todo `tests/*.test.js` (ver `bin/tests.js`). Antes había que agregarlo a
+mano a una cadena de `&&` en `package.json`, y eso fallaba de las dos formas
+posibles: todas las ramas editaban la misma línea —un conflicto por PR— y un test
+que se olvidaba de registrar simplemente no corría, sin que nada avisara. Pasó:
+`tests/arranque.test.js` estuvo en el repo sin ejecutarse porque se perdió al
+resolver uno de esos conflictos.
 
 ## Desplegar
 
