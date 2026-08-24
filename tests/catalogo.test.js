@@ -297,7 +297,8 @@ chk('una cuenta existente sin período no pierde la fecha ya guardada',
   cuentaExistente.ramos[0].categorias[0].fecha === '2026-08-31');
 chk('ni recibe un campo persistido nuevo al cargar',
   !Object.prototype.hasOwnProperty.call(cuentaExistente.ramos[0], 'pautaPeriodo'));
-const appPeriodo = fs.readFileSync(__dirname + '/../app.js', 'utf8');
+const appPeriodo = fs.readFileSync(__dirname + '/../app.js', 'utf8') + '\n' +
+  fs.readFileSync(__dirname + '/../render-main.js', 'utf8');
 const htmlPeriodo = fs.readFileSync(__dirname + '/../index.html', 'utf8');
 chk('la ficha muestra el período junto a la marca de pauta',
   /id="pauta-periodo"/.test(htmlPeriodo) && /Pauta del \$\{esc\(info\.periodo\)\}/.test(appPeriodo));

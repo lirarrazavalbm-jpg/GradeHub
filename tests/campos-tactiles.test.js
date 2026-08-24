@@ -14,7 +14,7 @@
 const fs = require('fs');
 const raiz = __dirname + '/../';
 const css = fs.readFileSync(raiz + 'styles.css', 'utf8');
-const html = fs.readFileSync(raiz + 'index.html', 'utf8') + fs.readFileSync(raiz + 'app.js', 'utf8');
+const html = fs.readFileSync(raiz + 'index.html', 'utf8') + fs.readFileSync(raiz + 'app.js', 'utf8') + fs.readFileSync(raiz + 'render-main.js', 'utf8');
 
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
@@ -100,8 +100,8 @@ const alto44 = r => /min-height:\s*44px/.test(r);
 });
 chk('y el ✕ reserva también 44px de ancho', /min-width:\s*44px/.test(reglaDe('.nota-row-del')));
 
-// Los dos botones de la cabecera van en estilos inline, dentro de app.js.
-const appSrc = fs.readFileSync(raiz + 'app.js', 'utf8');
+// Los dos botones de la cabecera van en estilos inline, dentro del render.
+const appSrc = fs.readFileSync(raiz + 'app.js', 'utf8') + '\n' + fs.readFileSync(raiz + 'render-main.js', 'utf8');
 const inlineDe = etiqueta => {
   const m = appSrc.match(new RegExp('<button aria-label="' + etiqueta + '[^>]*style="([^"]*)"'));
   return m ? m[1] : '';

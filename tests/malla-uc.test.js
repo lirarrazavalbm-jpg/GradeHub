@@ -7,7 +7,7 @@
 // y no que a él le falta hacer algo.
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
-const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
+const src = ['data.js', 'engine.js', 'app.js', 'render-main.js', 'render-agenda.js']
   .map(f => fs.readFileSync(raiz + f, 'utf8')).join('\n');
 
 const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };
@@ -180,7 +180,7 @@ chk('al ramo manual le sigue diciendo Sin evaluaciones', /'Sin evaluaciones'/.te
 // El mensaje vive dentro del bloque de categorías vacías: en cuanto el
 // estudiante agrega su primera evaluación, deja de renderizarse solo.
 chk('el aviso desaparece con la primera evaluación',
-  src.indexOf('if(r.categorias.length===0){') < src.indexOf('Todavía no tenemos la pauta de este ramo'));
+  render.indexOf('if(r.categorias.length===0){') < render.indexOf('Todavía no tenemos la pauta de este ramo'));
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
