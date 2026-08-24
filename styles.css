@@ -1044,6 +1044,27 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 
   /* El rail toma la izquierda; la app se centra en lo que sobra. */
   body{padding-left:var(--rail);}
+
+  /* El riel ES la barra de navegación, y la navegación no existe antes de
+     entrar: `showAuthScreen` y `showResetScreen` la esconden, y ni el
+     onboarding ni la pantalla de error de arranque la muestran. Reservarle el
+     ancho igual dejaba el login con una franja vacía a la izquierda y todo
+     corrido hacia la derecha, con el toast descentrado de paso.
+
+     Se apaga SOLO en esas cuatro, y el defecto se queda encendido. El sentido
+     importa: si un selector deja de calzar, lo que queda es el riel de
+     siempre —el defecto cosmético en una pantalla— y no un riel de ancho cero
+     con sus etiquetas encima del contenido. Ese fue exactamente el resultado
+     de intentarlo al revés en #217.
+
+     Y son estas cuatro y no otras porque son las únicas que reciben `.active`:
+     home, stats y agenda son un carrusel que se mueve con `translate3d` y
+     marca el botón del riel, no la pantalla. `screen-ramo` recibe `.active`
+     pero ahí ya estás dentro, así que conserva su riel. */
+  body:has(#screen-auth.active),
+  body:has(#screen-onboard.active),
+  body:has(#screen-reset.active),
+  body:has(#screen-app-error.active){--rail:0px;}
   .app{max-width:min(1040px,100%);border-left:1px solid var(--border);border-right:1px solid var(--border);}
 
   /* Barra inferior → rail vertical */
