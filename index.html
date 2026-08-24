@@ -129,6 +129,22 @@
   </div>
 </div>
 
+<!-- ERROR DE ARRANQUE (sesión válida o comprobación de sesión fallida) -->
+<div id="screen-app-error" class="screen" role="alert" aria-live="assertive">
+  <div class="ob-wrap">
+    <div style="width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;">
+      <div class="ob-icon" aria-hidden="true">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></svg>
+      </div>
+      <div class="ob-brand">GradeHub</div>
+      <h1 class="ob-title" id="app-error-title">No pudimos abrir GradeHub</h1>
+      <div class="ob-sub" id="app-error-desc">Tu sesión sigue activa y tus datos no se borraron. Recarga para intentarlo de nuevo.</div>
+      <button class="btn-primary" type="button" onclick="location.reload()">Recargar</button>
+      <a class="auth-link auth-link-primary" href="mailto:gradehub.app@gmail.com?subject=Problema%20al%20abrir%20GradeHub">Avisarnos por correo</a>
+    </div>
+  </div>
+</div>
+
 <!-- RESET PASSWORD (se muestra cuando el usuario vuelve del correo de recuperación) -->
 <div id="screen-reset" class="screen">
   <div class="ob-wrap">
