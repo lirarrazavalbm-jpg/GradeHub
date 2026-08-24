@@ -811,9 +811,62 @@ function toggleAuthMode(){
   authError('');
 }
 function showAuthScreen(){
-  ['home','stats','agenda','ramo','onboard','reset'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
+  ['home','stats','agenda','ramo','onboard','reset','app-error'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
   document.getElementById('bottom-nav').style.display='none';
   document.getElementById('screen-auth').classList.add('active');
+}
+// Una sesión válida que falla al dibujarse no es un error de login. Esta
+// pantalla conserva esa distinción: no expone el stack, no cierra la sesión y
+// ofrece una acción que sí puede ayudar (cargar la app completa de nuevo).
+function showAppErrorScreen(fase){
+  ['auth','home','stats','agenda','ramo','onboard','reset','app-error'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
+  const app=document.querySelector('.app');
+  if(app)app.classList.remove('tab-mode','dragging');
+  const nav=document.getElementById('bottom-nav');
+  if(nav)nav.style.display='none';
+  const comprobando=fase==='obtener_sesion';
+  const title=document.getElementById('app-error-title');
+  const desc=document.getElementById('app-error-desc');
+  if(title)title.textContent=comprobando?'No pudimos comprobar tu sesión':'No pudimos abrir GradeHub';
+  if(desc)desc.textContent=comprobando
+    ?'Parece un problema de conexión. Tus datos no se borraron; recarga para intentarlo de nuevo.'
+    :'Tu sesión sigue activa y tus datos no se borraron. Recarga para intentarlo de nuevo.';
+  const screen=document.getElementById('screen-app-error');
+  if(screen)screen.classList.add('active');
+}
+
+// El detalle ayuda a encontrar el punto exacto que falló, pero una excepción
+// también podría incluir accidentalmente un dato que venía del estado. Antes
+// de mandarla a analítica se quitan correos, números y todos los textos que el
+// estudiante pudo haber escrito o recibido en su cuenta.
+function detalleErrorSeguro(error){
+  let detalle=String((error&&error.message)||'Error sin mensaje').slice(0,240);
+  const privados=[];
+  const vistos=new Set();
+  const recopilar=(valor,profundidad)=>{
+    if(typeof valor==='string'){if(valor.trim().length>1)privados.push(valor);return;}
+    if(!valor||typeof valor!=='object'||profundidad>8||vistos.has(valor)||privados.length>=1000)return;
+    vistos.add(valor);
+    Object.values(valor).forEach(v=>recopilar(v,profundidad+1));
+  };
+  recopilar(currentUser,0);
+  if(typeof S!=='undefined')recopilar(S,0);
+  privados.filter(v=>typeof v==='string'&&v.trim().length>1)
+    .sort((a,b)=>b.length-a.length)
+    .forEach(v=>{detalle=detalle.replace(new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),'[dato]');});
+  return detalle
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[correo]')
+    .replace(/https?:\/\/\S+/gi,'[url]')
+    .replace(/\b\d+(?:[.,]\d+)?\b/g,'[n]')
+    .slice(0,100);
+}
+
+function registrarErrorArranque(error,fase){
+  const tiposSeguros=['TypeError','ReferenceError','RangeError','SyntaxError'];
+  const tipo=error&&tiposSeguros.includes(error.name)?error.name:'Error';
+  const detalle=detalleErrorSeguro(error);
+  console.error('GradeHub no pudo completar el arranque ('+fase+'): '+tipo+' · '+detalle);
+  track('app_boot_error',{fase:fase,tipo:tipo,detalle:detalle});
 }
 function enterOnboarding(){
   document.getElementById('screen-auth').classList.remove('active');
@@ -973,6 +1026,10 @@ async function afterLogin(){
   track('login');
   const uid=currentUser?currentUser.id:null;
   let cloud,ok=true;
+  // Solo la lectura remota es recuperable: si falla, la copia local ya fue
+  // normalizada al cargar y además está protegida por el dueño de la caché.
+  // normalize() y enterApp() quedan fuera a propósito. Si una de ellas falla,
+  // continuar con estado o DOM a medias sería peor que detenerse con un aviso.
   try{cloud=await loadFromCloud();}catch(e){ok=false;}
   if(ok){
     // La nube puede contener ramos creados con versiones anteriores. Pásalos
@@ -1059,19 +1116,29 @@ async function boot(){
       showResetScreen();
     }
   });
+  let session=null;
   try{
-    const {data:{session}}=await supabaseClient.auth.getSession();
-    if(session){
-      currentUser=session.user;
-      // Si venimos de un correo de recuperación, la URL trae "type=recovery" en el hash.
-      // Mostrar la pantalla de nueva contraseña en vez de entrar directo a la app.
-      const esRecovery=location.hash.includes('type=recovery');
-      limpiarFragmentoAuth();
-      if(esRecovery){showResetScreen();return;}
-      await afterLogin();return;
-    }
-  }catch(e){}
-  showAuthScreen();
+    const result=await supabaseClient.auth.getSession();
+    session=result&&result.data?result.data.session:null;
+  }catch(e){
+    registrarErrorArranque(e,'obtener_sesion');
+    showAppErrorScreen('obtener_sesion');
+    return;
+  }
+  if(!session){showAuthScreen();return;}
+
+  currentUser=session.user;
+  // Si venimos de un correo de recuperación, la URL trae "type=recovery" en el hash.
+  // Mostrar la pantalla de nueva contraseña en vez de entrar directo a la app.
+  const esRecovery=location.hash.includes('type=recovery');
+  limpiarFragmentoAuth();
+  if(esRecovery){showResetScreen();return;}
+  try{
+    await afterLogin();
+  }catch(e){
+    registrarErrorArranque(e,'abrir_app');
+    showAppErrorScreen('abrir_app');
+  }
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
