@@ -244,9 +244,10 @@ const ACENTOS={
   },
 };
 
-// Fondos y acentos son dos decisiones independientes. Por ahora solo se expone
-// el neutro histórico; este registro deja definido el contrato que deberán
-// cumplir las variantes futuras en claro y oscuro antes de ofrecerlas.
+// Fondos y acentos son dos decisiones independientes. Cada fondo declara sus
+// superficies y texto en ambos modos: elegir Papel en claro no puede arrastrar
+// los textos de Pizarra oscuro, ni viceversa. Neutro conserva exactamente la
+// apariencia histórica para las cuentas que todavía no eligieron uno.
 const FONDOS={
   neutro:{
     nombre:'Neutro',
@@ -258,6 +259,28 @@ const FONDOS={
       // bg conserva el fondo de og.png y la apariencia histórica por defecto.
       bg:'#05070a',bg2:'#0a0f13',card:'#111820',border:'#20303a',border2:'#324755',muted:'#151d26',
       fg:'#eef4f6',fg2:'#99aab2',fg3:'#71858f',
+    },
+  },
+  pizarra:{
+    nombre:'Pizarra',
+    claro:{
+      bg:'#f4f7fa',bg2:'#fbfcfd',card:'#ffffff',border:'#dce5ed',border2:'#b8c6d2',muted:'#edf2f6',
+      fg:'#0b1722',fg2:'#3c5063',fg3:'#5a6d7e',
+    },
+    oscuro:{
+      bg:'#0e141b',bg2:'#141c25',card:'#1b2632',border:'#2b3b4c',border2:'#3b5166',muted:'#202c38',
+      fg:'#edf4f8',fg2:'#aab8c4',fg3:'#8293a2',
+    },
+  },
+  papel:{
+    nombre:'Papel',
+    claro:{
+      bg:'#faf6ef',bg2:'#fffdf8',card:'#fffaf1',border:'#eadfce',border2:'#d5c3ad',muted:'#f3eadf',
+      fg:'#211a12',fg2:'#594b3d',fg3:'#756554',
+    },
+    oscuro:{
+      bg:'#1b1510',bg2:'#251d15',card:'#30261d',border:'#44372a',border2:'#5c4c3c',muted:'#352a20',
+      fg:'#f8f0e4',fg2:'#c6b8a7',fg3:'#9e8f7c',
     },
   },
 };
