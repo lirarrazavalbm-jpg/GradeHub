@@ -1032,7 +1032,19 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 }
 
 @media(min-width:1024px){
-  :root{--rail:224px;}
+  :root{--rail-ancho:224px;--rail:0px;}
+
+  /* El riel ES la barra de navegación, y la navegación solo existe una vez que
+     entraste: en login, recuperación, onboarding y la pantalla de error de
+     arranque la nav está oculta. Reservarle los 224px igual dejaba una franja
+     vacía a la izquierda y toda la pantalla corrida hacia la derecha.
+
+     Se apaga por defecto y se enciende solo en las pantallas de la app, y no al
+     revés: así una pantalla nueva anterior al login nace sin riel en vez de
+     heredar el espacio de una barra que nadie dibuja. La de error de arranque
+     llegó después que el riel y salió corrida sin que nadie tocara este bloque. */
+  body:has(#screen-home.active),body:has(#screen-ramo.active),
+  body:has(#screen-stats.active),body:has(#screen-agenda.active){--rail:var(--rail-ancho);}
 
   /* El rail toma la izquierda; la app se centra en lo que sobra. */
   body{padding-left:var(--rail);}
