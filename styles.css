@@ -531,6 +531,9 @@ body.ramo-drag-active{overflow:hidden;-webkit-user-select:none;user-select:none;
 /* RAMO DETAIL — hero editorial */
 .ramo-hero{padding:12px 20px 22px;}
 .ramo-hero-label{font-size:0.78125rem;color:var(--fg2);letter-spacing:-.005em;margin-bottom:6px;}
+.pauta-periodo{display:inline-flex;align-items:center;gap:5px;margin:0 0 7px;color:var(--fg3);font-size:0.6875rem;font-weight:650;letter-spacing:-.005em;}
+.pauta-periodo .ic{width:12px;height:12px;color:var(--yellow);fill:currentColor;stroke:none;}
+.pauta-periodo.is-vencida{color:var(--fg3);}
 .ramo-hero-num-row{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
 .ramo-num{
   font-family:'Onest',sans-serif;

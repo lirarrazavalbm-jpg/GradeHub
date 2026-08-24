@@ -507,6 +507,10 @@ const PORTAL=[
 //
 // Lo que se saca de acá NO se pierde: sigue en el programa oficial, y el ramo
 // muestra "Compáralo con la pauta del curso" justamente por eso.
+// `periodo` pertenece al PRESET, no a cada evaluación: las ponderaciones
+// suelen seguir sirviendo después, pero las fechas solo se precargan mientras
+// ese período siga vigente. Si un programa no declara el período, se omite el
+// campo y la app conserva los pesos sin presentar sus fechas como actuales.
 const PRESETS_UC={
   'Cálculo I':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
   'Álgebra Lineal':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
@@ -526,6 +530,7 @@ const PRESETS_UC={
   'Química para Ingeniería':[['Pruebas',44.1],['Ev. de Taller',4.9],['Examen',21],['Informes',18],['Controles',12]],
   'Filosofía: ¿para qué?':[['Prueba 1',30],['Ejercicio de análisis',20],['Prueba 2',30],['Podcast',20,{min:4.0,cap:3.9}]],
   'Introducción a la Programación':{
+    periodo:'2026-2',
     evals:[
       ['Interrogación 1',15,{fecha:'2026-09-24'}],['Interrogación 2',20,{fecha:'2026-10-22'}],['Examen',30,{fecha:'2026-12-10'}],
       ['Tarea 1',5],['Tarea 2',5],['Tarea 3',5],['Nota de participación',16],['Talleres de Inteligencia Artificial',4],
@@ -553,13 +558,16 @@ const PRESETS_UC={
   // Sin reglas visibles a propósito: las de la normativa son sustituciones
   // automáticas por inasistencia justificada y sanciones de disciplina, y
   // ninguna pasa el filtro de arriba.
-  'Cálculo II':[
-    ['Interrogación 1',20,{fecha:'2026-08-31'}],
-    ['Interrogación 2',20,{fecha:'2026-10-05'}],
-    ['Interrogación 3',20,{fecha:'2026-11-02'}],
-    ['Examen',30,{fecha:'2026-11-30'}],
-    ['Laboratorio',10,{slots:3}],
-  ],
+  'Cálculo II':{
+    periodo:'2026-2',
+    evals:[
+      ['Interrogación 1',20,{fecha:'2026-08-31'}],
+      ['Interrogación 2',20,{fecha:'2026-10-05'}],
+      ['Interrogación 3',20,{fecha:'2026-11-02'}],
+      ['Examen',30,{fecha:'2026-11-30'}],
+      ['Laboratorio',10,{slots:3}],
+    ],
+  },
   // Programas oficiales de especialidad · Ingeniería UC · 2026-2.
   //
   // Econometría publica 25% para el conjunto de tres tareas, pero no reparte
@@ -568,6 +576,7 @@ const PRESETS_UC={
   // programa no declara. Por la misma razón, las fechas preliminares de los
   // informes no se fuerzan como fechas de tres evaluaciones independientes.
   'Econometría Aplicada':{
+    periodo:'2026-2',
     creditos:10,
     evals:[
       ['Interrogación 1',25,{fecha:'2026-08-31'}],
@@ -589,6 +598,7 @@ const PRESETS_UC={
   // exacto de ambos niveles, no una aproximación; así las compuertas de NP y
   // NT siguen calculándose con su proporción interna correcta.
   'Métodos de Optimización':{
+    periodo:'2026-2',
     creditos:10,
     evals:[
       ['Interrogación 1',20,{fecha:'2026-09-07'}],
@@ -612,6 +622,7 @@ const PRESETS_UC={
   // motor descarte una nota entre ellas. Por eso sus fechas quedan en el
   // programa y el Examen y los cuatro Memes sí entran individualmente a Agenda.
   'Ingeniería de Sistemas de Transporte':{
+    periodo:'2026-2',
     creditos:10,
     evals:[
       ['Controles',45,{slots:5,dropLowest:{count:1}}],
@@ -640,6 +651,7 @@ const PRESETS_UC={
   // que L es su promedio simple: separarlos en cuatro filas de 20% conserva la
   // fórmula exacta y permite llevar las fechas publicadas a Agenda.
   'Programación como Herramienta para la Ingeniería':{
+    periodo:'2026-2',
     creditos:10,
     evals:[
       ['Laboratorio 1',20,{fecha:'2026-08-24'}],
@@ -668,6 +680,7 @@ const PRESETS_UC={
   // en las evaluaciones de este ramo, y con qué mínimo. Es el único caso del
   // catálogo hasta ahora, y por eso vive en el dato y no en un `if` del código.
   'Dinámica':{
+    periodo:'2026-2',
     // Estas cuatro son la NFC del programa y suman 100 entre ellas: el 30% del
     // laboratorio no está acá, viene por `aporta`.
     evals:[
@@ -697,6 +710,7 @@ const PRESETS_UC={
     ],
   },
   'Revelación y Fe':{
+    periodo:'2026-2',
     evals:[['Evaluación 1',20,{fecha:'2026-09-07'}],['Evaluación 2',20,{fecha:'2026-10-14'}],['Evaluación 3',30,{fecha:'2026-11-16'}],['Examen final',30]],
     noCalcula:[
       'Si tienes más de 75% de asistencia y una nota de presentación igual o superior a 6,00, te eximes del Examen final; tu nota de presentación se calcula como el promedio simple de Evaluación 1, Evaluación 2 y Evaluación 3, sin usar sus ponderaciones',
@@ -1210,6 +1224,9 @@ const PRESETS_FEN={
     ],
   },
   'Contabilidad':{
+    // El programa identifica explícitamente Primavera 2026. Sus porcentajes
+    // quedan disponibles después; estas fechas solo se ofrecen en 2026-2.
+    periodo:'2026-2',
     creditos:6,
     // "Se elimina el 25% de los controles sorpresa rendidos" salió de noCalcula:
     // el motor ya lo aplica vía `dropLowest`. El 75% de asistencia NO se puede

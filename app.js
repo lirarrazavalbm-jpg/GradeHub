@@ -20,6 +20,37 @@ const CACHE_OWNER_KEY = 'gradehub_cache_owner';
 function setCacheOwner(uid){try{if(uid)localStorage.setItem(CACHE_OWNER_KEY,uid);}catch(e){}}
 function getCacheOwner(){try{return localStorage.getItem(CACHE_OWNER_KEY);}catch(e){return null;}}
 
+// El período se declara solo cuando el programa lo dice. La pauta de pesos no
+// caduca con él, pero una fecha fija sí: `2026-2` deja de ser una fecha útil al
+// comenzar enero de 2027. `desconocido` no se traduce como vigente ni vencido;
+// sin período confirmado, la app conserva ponderaciones y no precarga fechas.
+function estadoPeriodoPauta(periodo,ahora){
+  const m=typeof periodo==='string'&&periodo.match(/^(\d{4})-([12])$/);
+  if(!m)return 'desconocido';
+  const fecha=ahora&&typeof ahora.getTime==='function'?ahora:new Date();
+  const anio=Number(m[1]),semestre=Number(m[2]);
+  const fin=Date.UTC(semestre===1?anio:anio+1,semestre===1?7:0,1);
+  return fecha.getTime()<fin?'vigente':'vencido';
+}
+function definicionPreset(nombre,tenant,carrera){
+  if(tenant==='fen'){
+    const clave=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(nombre));
+    return clave?PRESETS_FEN[clave]:null;
+  }
+  if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
+  const clave=claveUc(nombre);
+  return clave?PRESETS_UC[clave]:null;
+}
+function periodoDePreset(def){return !Array.isArray(def)&&def&&typeof def.periodo==='string'?def.periodo:null;}
+function infoPeriodoPauta(r){
+  if(!r||!r.origen||!r.origen.tenant)return null;
+  const def=definicionPreset(r.nombre,r.origen.tenant,r.origen.carrera);
+  const evals=Array.isArray(def)?def:(def&&def.evals||[]);
+  if(!evals.length)return null;
+  const periodo=periodoDePreset(def);
+  return {periodo,estadoPeriodo:estadoPeriodoPauta(periodo)};
+}
+
 // Las fechas del programa se agregaron después de que miles de ramos ya
 // existían, y  solo mira nombre y peso: una fecha nueva no cuenta
 // como "la pauta cambió", así que el aviso de actualizar nunca se dispara por
@@ -32,11 +63,8 @@ function getCacheOwner(){try{return localStorage.getItem(CACHE_OWNER_KEY);}catch
 // Agenda por debajo.
 function completarFechasOficiales(r){
   if(!r||!r.origen||!r.origen.tenant||!Array.isArray(r.categorias))return;
-  const presets=r.origen.tenant==='fen'?PRESETS_FEN:(r.origen.tenant==='uc'?PRESETS_UC:null);
-  if(!presets)return;
-  const clave=Object.keys(presets).find(n=>normName(n)===normName(r.nombre));
-  const def=clave&&presets[clave];
-  if(!def)return;
+  const def=definicionPreset(r.nombre,r.origen.tenant,r.origen.carrera);
+  if(!def||estadoPeriodoPauta(periodoDePreset(def))!=='vigente')return;
   const evals=Array.isArray(def)?def:(def.evals||[]);
   const porNombre=new Map();
   evals.forEach(([nom,,extra])=>{if(extra&&extra.fecha)porNombre.set(normName(nom),extra.fecha);});
@@ -2007,6 +2035,18 @@ function renderRamo(){
   document.getElementById('ramo-hero-sub').textContent=r.categorias.length===0
     ?('Agrega evaluaciones para comenzar'+crTxt)
     :`${r.categorias.length} ${r.categorias.length===1?'evaluación':'evaluaciones'} · ${r2(tp)}% ponderado${crTxt}`;
+  const periodoEl=document.getElementById('pauta-periodo');
+  if(periodoEl){
+    const info=infoPeriodoPauta(r);
+    if(!info){periodoEl.style.display='none';periodoEl.innerHTML='';}
+    else{
+      const etiqueta=info.periodo?`Pauta del ${esc(info.periodo)}`:'Pauta oficial · período sin confirmar';
+      const nota=info.estadoPeriodo==='vencido'?' · fechas no incluidas':'';
+      periodoEl.className='pauta-periodo'+(info.estadoPeriodo==='vencido'?' is-vencida':'');
+      periodoEl.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z"/></svg><span>${etiqueta}${nota}</span>`;
+      periodoEl.style.display='inline-flex';
+    }
+  }
 
   // Chip nota mínima para el 4.0
   const chipEl=document.getElementById('ramo-min-chip');
@@ -2492,33 +2532,15 @@ function pautaPendiente(r){
   const nombre=findPresetName(r.nombre,r.origen.tenant,r.origen.carrera);
   return nombre?presetRamo(nombre,r.origen.tenant,r.origen.carrera):null;
 }
-function presetRamo(nombre,tenant,carrera){
-  if(tenant==='fen'){
-    const def=PRESETS_FEN[nombre];if(!def)return null;
-    const categorias=[],gates=[];
-    const porNombre={};
-    def.evals.forEach(([nom,peso,extra])=>{
-      const id=uid();
-      const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
-      if(extra&&extra.slots)cat.slots=extra.slots;
-      if(extra&&extra.lista)cat.directNota=false; // lista abierta: el estudiante agrega las notas que le tomaron
-      if(extra&&extra.fecha)cat.fecha=extra.fecha;
-      if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
-      categorias.push(cat);porNombre[nom]=id;
-      if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
-    });
-    (def.grupos||[]).forEach(g=>{
-      const ids=g.evals.map(n=>porNombre[n]).filter(Boolean);
-      if(ids.length)gates.push({type:'group_min',catIds:ids,min:g.min,cap:g.cap,nombre:g.nombre});
-    });
-    return {categorias,gates,creditos:def.creditos||null};
-  }
-  if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
-  const def=PRESETS_UC[claveUc(nombre)];if(!def)return null;
+function presetRamo(nombre,tenant,carrera,ahora){
+  const def=definicionPreset(nombre,tenant,carrera);if(!def)return null;
   const evals=Array.isArray(def)?def:(def.evals||[]);
   // Un programa puede traer reglas oficiales sin publicar ponderaciones. No se
   // inventa una pauta vacía: sus reglas se muestran por reglasDelPreset().
   if(!evals.length)return null;
+  const periodo=periodoDePreset(def);
+  const estadoPeriodo=estadoPeriodoPauta(periodo,ahora);
+  const incluirFechas=estadoPeriodo==='vigente';
   const categorias=[],gates=[];
   const porNombre={};
   evals.forEach(([nom,peso,extra])=>{
@@ -2527,7 +2549,10 @@ function presetRamo(nombre,tenant,carrera){
     if(extra&&extra.slots)cat.slots=extra.slots;
     if(extra&&extra.lista)cat.directNota=false;
     if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
-    if(extra&&extra.fecha)cat.fecha=extra.fecha;
+    // Una pauta de 2026-2 puede seguir siendo buena para sus porcentajes en
+    // 2027-1, pero sus días de prueba no. Nunca se inventa una fecha nueva: si
+    // el período venció o no se conoce, simplemente no se ofrece.
+    if(extra&&extra.fecha&&incluirFechas)cat.fecha=extra.fecha;
     categorias.push(cat);porNombre[nom]=id;
     if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
   });
@@ -2536,7 +2561,8 @@ function presetRamo(nombre,tenant,carrera){
     const ids=g.evals.map(n=>porNombre[n]).filter(Boolean);
     if(ids.length)gates.push({type:'group_min',catIds:ids,min:g.min,cap:g.cap,nombre:g.nombre});
   });
-  return {categorias,gates,aporta,creditos:(!Array.isArray(def)&&typeof def.creditos==='number')?def.creditos:null};
+  return {categorias,gates,aporta,periodo,estadoPeriodo,
+    creditos:(!Array.isArray(def)&&typeof def.creditos==='number')?def.creditos:null};
 }
 
 function confirmAddMalla(){
