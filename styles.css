@@ -531,6 +531,9 @@ body.ramo-drag-active{overflow:hidden;-webkit-user-select:none;user-select:none;
 /* RAMO DETAIL — hero editorial */
 .ramo-hero{padding:12px 20px 22px;}
 .ramo-hero-label{font-size:0.78125rem;color:var(--fg2);letter-spacing:-.005em;margin-bottom:6px;}
+.pauta-periodo{display:inline-flex;align-items:center;gap:5px;margin:0 0 7px;color:var(--fg3);font-size:0.6875rem;font-weight:650;letter-spacing:-.005em;}
+.pauta-periodo .ic{width:12px;height:12px;color:var(--yellow);fill:currentColor;stroke:none;}
+.pauta-periodo.is-vencida{color:var(--fg3);}
 .ramo-hero-num-row{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
 .ramo-num{
   font-family:'Onest',sans-serif;
@@ -692,23 +695,38 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-ramo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 /* AGENDA — lista priorizada (urgencia × peso × riesgo) */
 .agenda-sub{font-size:0.84375rem;color:var(--fg3);margin-top:6px;letter-spacing:-.005em;font-family:'Onest',sans-serif;font-weight:500;}
-.ag-order{display:flex;align-items:center;gap:8px;margin:0 0 14px;}
-.ag-order-label{font-size:0.6875rem;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);}
-.ag-order-options{display:inline-grid;grid-template-columns:repeat(3,1fr);flex:0 0 auto;gap:2px;margin-left:0;padding:2px;background:var(--muted);border:1px solid var(--border);border-radius:10px;}
-.ag-order-option{min-width:max-content;min-height:32px;padding:4px 9px;border:0;border-radius:7px;background:transparent;color:var(--fg2);font-family:'Onest',sans-serif;font-size:0.75rem;font-weight:650;white-space:nowrap;cursor:pointer;transition:transform var(--motion-press) var(--ease-standard),background-color var(--motion-fast),color var(--motion-fast),box-shadow var(--motion-fast);}
+/* El encabezado de la semana lleva el título, el conteo y el control de orden.
+   En 375px los tres no caben en una línea: el control baja, y ahí se alinea a
+   la IZQUIERDA. Empujado a la derecha dejaba un hueco vacío del ancho del
+   título, que se lee como un error de maquetación. Desde 480px sí caben, y ahí
+   sube al extremo derecho: se lee después del contenido, que es el orden en que
+   importa. */
+.ag-week-hd{flex-wrap:wrap;row-gap:8px;}
+@media(min-width:480px){.ag-week-hd .ag-order-options{margin-left:auto;}}
+.ag-order-options{display:inline-flex;flex:0 0 auto;gap:2px;padding:2px;background:var(--muted);border:1px solid var(--border);border-radius:9px;}
+/* 34px y no 44: es un segmented control, el patrón que iOS usa a 32. El área
+   sigue siendo cómoda porque los tres botones están pegados —no hay nada más
+   que tocar alrededor— y equivocarse cambia una vista, no borra un dato. */
+.ag-order-option{min-width:max-content;min-height:34px;padding:4px 10px;border:0;border-radius:7px;background:transparent;color:var(--fg2);font-family:'Onest',sans-serif;font-size:0.6875rem;font-weight:650;white-space:nowrap;cursor:pointer;transition:transform var(--motion-press) var(--ease-standard),background-color var(--motion-fast),color var(--motion-fast),box-shadow var(--motion-fast);}
 .ag-order-option.active{background:var(--card);color:var(--primary);font-weight:750;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary),transparent 72%),0 1px 4px rgba(15,23,42,.08);}
 .ag-order-option:active{transform:scale(.98);}
-@media(max-width:420px){.ag-order-label{display:none;}}
+
 .ag-list-hd{display:flex;align-items:baseline;gap:8px;padding:2px 2px 12px;}
 .ag-count{font-size:0.75rem;font-weight:700;color:var(--fg3);background:var(--muted);border-radius:999px;padding:2px 9px;font-variant-numeric:tabular-nums;}
 .ag-priority-heading{display:flex;align-items:baseline;gap:8px;padding:3px 2px 10px;}
-.ag-priority-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:100%;max-width:620px;margin-bottom:22px;}
+.ag-priority-stack{display:flex;flex-direction:column;gap:9px;width:100%;max-width:620px;margin-bottom:22px;}
+/* La segunda es la misma tarjeta, más contenida: menos alto, menos aire y el
+   fondo de color casi apagado. Sigue siendo una prioridad, pero no compite. */
+.ag-event-priority-sec,.ag-event-priority{width:100%;}
+.ag-event-priority-sec>.ag-priority-card{width:100%;min-height:0;padding:13px 14px;background:linear-gradient(150deg,color-mix(in srgb,var(--ag-course),transparent 95%),var(--card) 60%);}
+.ag-event-priority-sec .ag-priority-name{font-size:1rem;}
+.ag-event-priority-sec .ag-priority-reason{display:none;}
 .ag-event{position:relative;min-width:0;}
 .ag-event-row{margin-bottom:9px;}
 .ag-event-row>.ag-row{margin-bottom:0;}
 .ag-event-priority:only-child{grid-column:1/-1;max-width:306px;}
 .ag-event-priority>.ag-priority-card{width:100%;}
-.ag-priority-card{--ag-course:var(--primary);position:relative;display:flex;min-width:0;min-height:184px;flex-direction:column;overflow:hidden;padding:16px 14px 14px;text-align:left;background:linear-gradient(150deg,color-mix(in srgb,var(--ag-course),transparent 91%),var(--card) 54%);border:1px solid color-mix(in srgb,var(--ag-course),transparent 68%);border-radius:18px;color:var(--fg);font-family:'Onest',sans-serif;cursor:pointer;transition:transform var(--motion-press) var(--ease-standard),border-color var(--motion-fast),box-shadow var(--motion-fast);}
+.ag-priority-card{--ag-course:var(--primary);position:relative;display:flex;min-width:0;min-height:0;flex-direction:column;overflow:hidden;padding:16px 14px 14px;text-align:left;background:linear-gradient(150deg,color-mix(in srgb,var(--ag-course),transparent 91%),var(--card) 54%);border:1px solid color-mix(in srgb,var(--ag-course),transparent 68%);border-radius:18px;color:var(--fg);font-family:'Onest',sans-serif;cursor:pointer;transition:transform var(--motion-press) var(--ease-standard),border-color var(--motion-fast),box-shadow var(--motion-fast);}
 .ag-priority-card:active{transform:scale(.985);}
 .ag-priority-bar{position:absolute;inset:0 0 auto;height:5px;background:var(--ag-course);}
 .ag-priority-top{display:flex;align-items:center;gap:7px;margin:2px 0 8px;}
@@ -718,7 +736,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-priority-weight{margin-left:auto;flex-shrink:0;font-family:'Onest',sans-serif;font-size:1.25rem;font-weight:800;line-height:1;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.035em;}
 .ag-priority-date{font-size:0.71875rem;font-weight:700;color:var(--fg2);font-variant-numeric:tabular-nums;}
 .ag-priority-date span{font-weight:550;color:var(--fg3);}
-.ag-priority-name{display:-webkit-box;overflow:hidden;margin-top:8px;font-family:'Onest',sans-serif;font-size:1rem;font-weight:750;line-height:1.2;letter-spacing:-.025em;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+.ag-priority-name{display:-webkit-box;overflow:hidden;margin-top:8px;font-family:'Onest',sans-serif;font-size:1.25rem;font-weight:750;line-height:1.2;letter-spacing:-.025em;-webkit-box-orient:vertical;-webkit-line-clamp:2;}
 .ag-priority-course{display:flex;align-items:center;gap:6px;min-width:0;margin-top:5px;overflow:hidden;font-size:0.71875rem;color:var(--fg3);text-overflow:ellipsis;white-space:nowrap;}
 .ag-priority-reason{display:-webkit-box;overflow:hidden;margin-top:auto;padding-top:11px;font-size:0.71875rem;font-weight:600;line-height:1.35;color:var(--fg2);-webkit-box-orient:vertical;-webkit-line-clamp:2;}
 .ag-rest-heading{margin-top:2px;}
@@ -730,7 +748,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-row.done:hover{opacity:.85;}
 .ag-row-main{flex:1;min-width:0;}
 .ag-row-top{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;}
-.ag-row-when{font-size:0.6875rem;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);}
+.ag-row-when{font-size:0.8125rem;font-weight:700;color:var(--fg2);}
 .ag-row-when.espera{color:var(--fg3);}
 .ag-row-when.critica{color:var(--red);}
 .ag-row-when.alta{color:var(--yellow);}
@@ -798,7 +816,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-undated-action{flex-shrink:0;min-height:44px;padding:8px 11px;border:1px solid var(--border2);border-radius:10px;background:transparent;color:var(--fg2);font-family:'Onest',sans-serif;font-size:0.75rem;font-weight:650;cursor:pointer;transition:transform var(--motion-press),border-color var(--motion-fast),color var(--motion-fast),background-color var(--motion-fast);}
 .ag-undated-action:active{transform:scale(.98);}
 @media(max-width:360px){
-  .ag-priority-grid{grid-template-columns:1fr;}
+  
   .ag-event-priority,.ag-event-priority:only-child{max-width:none;}
   .ag-priority-card{max-width:none;min-height:164px;}
 }
@@ -1163,6 +1181,13 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .accent-opt.sel{border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
 .accent-swatch{width:30px;height:30px;border:3px solid var(--card);border-radius:50%;background:linear-gradient(135deg,var(--swatch-light) 0 50%,var(--swatch-dark) 50%);box-shadow:0 0 0 1px var(--border2);}
 .accent-opt.sel .accent-swatch{box-shadow:0 0 0 2px var(--primary),0 3px 10px color-mix(in srgb,var(--primary),transparent 65%);}
+/* Fondo se muestra como una pequeña superficie, no como otro acento: su
+   contraste y textura importan más que un punto de color. */
+.fondo-grid{display:flex;gap:8px;}
+.fondo-opt{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:9px 6px;border:1.5px solid transparent;border-radius:12px;background:transparent;color:var(--fg2);font-family:'Onest',sans-serif;font-size:.6875rem;font-weight:650;cursor:pointer;transition:border-color var(--motion-fast),background var(--motion-fast),color var(--motion-fast);}
+.fondo-opt.sel{border-color:var(--primary);background:var(--primary-light);color:var(--primary);}
+.fondo-swatch{width:36px;height:27px;border:2px solid var(--card);border-radius:7px;background:linear-gradient(135deg,var(--swatch-light) 0 50%,var(--swatch-dark) 50%);box-shadow:0 0 0 1px var(--border2);}
+.fondo-opt.sel .fondo-swatch{box-shadow:0 0 0 2px var(--primary),0 3px 10px color-mix(in srgb,var(--primary),transparent 65%);}
 
 /* Aviso de versión nueva. Aparece cuando el service worker nuevo toma el
    control: sin esto el estudiante tendría que recargar dos veces para ver un

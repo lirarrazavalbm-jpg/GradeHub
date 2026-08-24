@@ -3,7 +3,7 @@
 function agendaSinFecha(){
   const out=[];
   S.ramos.forEach(r=>(r.categorias||[]).forEach(c=>{
-    if(!c.fecha&&avgPond(c.notas)===null)out.push({ramo:r,cat:c});
+    if(!categoriaEximida(r,c)&&!c.fecha&&avgPond(c.notas)===null)out.push({ramo:r,cat:c});
   }));
   return out;
 }
@@ -48,14 +48,16 @@ function cambiarOrdenAgenda(orden){
   renderAgenda();
 }
 
+// Ordenar es un control secundario: se decide una vez y después se mira la
+// lista. Tenía una franja propia con su etiqueta, así que competía de igual a
+// igual con las evaluaciones. Ahora viaja en la misma línea del encabezado de
+// sección, que es donde se espera un control de vista, y devuelve esa franja
+// entera al contenido.
 function agendaOrdenHTML(activo=agendaOrdenActual){
   const opciones=[['recomendado','Recomendado'],['fecha','Fecha'],['peso','Peso']];
-  return `<div class="ag-order">
-    <span class="ag-order-label">Orden</span>
-    <div class="ag-order-options" role="group" aria-label="Ordenar evaluaciones pendientes">
+  return `<div class="ag-order-options" role="group" aria-label="Ordenar evaluaciones pendientes">
       ${opciones.map(([valor,label])=>`<button type="button" class="ag-order-option${activo===valor?' active':''}" aria-pressed="${activo===valor?'true':'false'}" onclick="cambiarOrdenAgenda('${valor}')">${label}</button>`).join('')}
-    </div>
-  </div>`;
+    </div>`;
 }
 
 function focoAgendaCopy(e){
@@ -221,7 +223,11 @@ function resumenSemanaAgenda(pendientes){
 function resumenSemanaHTML(pendientes){
   const resumen=resumenSemanaAgenda(pendientes);
   if(!resumen)return '';
-  return `<div class="ag-list-hd"><span class="section-hd-title">Próximos 7 días</span><span class="ag-count">${resumen.cantidad} eval. · ${resumen.peso}%</span></div>`;
+  return `<div class="ag-list-hd ag-week-hd">
+    <span class="section-hd-title">Próximos 7 días</span>
+    <span class="ag-count">${resumen.cantidad} eval. · ${resumen.peso}%</span>
+    ${agendaOrdenHTML(agendaOrdenActual)}
+  </div>`;
 }
 
 function agendaSinFechaHTML(sinFecha){
@@ -366,10 +372,15 @@ function renderAgenda(){
   if(porVenir.length>0){
     const destacadas=destacadasAgenda(porVenir,agendaOrdenActual);
     const restantes=ordenadas.slice(destacadas.length);
-    html+=agendaOrdenHTML(agendaOrdenActual);
     html+=resumenSemanaHTML(porVenir);
     html+=`<div class="ag-priority-heading"><span class="section-hd-title">Tus prioridades</span><span class="ag-count">${destacadas.length}</span></div>`;
-    html+=`<div class="ag-priority-grid">${destacadas.map((e,i)=>agendaEventoHTML(e,agendaDestacadaHTML(e,i),porVenir,'priority')).join('')}</div>`;
+    // Las dos iban lado a lado, en mitades iguales. En 375px esa mitad no
+    // alcanzaba para el contenido: "Métodos Matemáti", "es lo que más te
+    // convie…". Y sobre todo, dos cosas del mismo tamaño no son una jerarquía:
+    // si las dos gritan igual, el estudiante tiene que leer las dos para saber
+    // cuál es primero. Ahora la primera ocupa el ancho y la segunda va debajo,
+    // más contenida — se ve cuál manda antes de leer nada.
+    html+=`<div class="ag-priority-stack">${destacadas.map((e,i)=>agendaEventoHTML(e,agendaDestacadaHTML(e,i),porVenir,i===0?'priority':'priority-sec')).join('')}</div>`;
     // La alerta de "necesitas X para aprobar" es del ramo, no de la evaluación:
     // se muestra solo en la más prioritaria de cada ramo para no repetirla.
     const ramosVistos=new Set(destacadas.map(e=>e.ramo.id));

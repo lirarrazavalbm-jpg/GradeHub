@@ -20,6 +20,37 @@ const CACHE_OWNER_KEY = 'gradehub_cache_owner';
 function setCacheOwner(uid){try{if(uid)localStorage.setItem(CACHE_OWNER_KEY,uid);}catch(e){}}
 function getCacheOwner(){try{return localStorage.getItem(CACHE_OWNER_KEY);}catch(e){return null;}}
 
+// El período se declara solo cuando el programa lo dice. La pauta de pesos no
+// caduca con él, pero una fecha fija sí: `2026-2` deja de ser una fecha útil al
+// comenzar enero de 2027. `desconocido` no se traduce como vigente ni vencido;
+// sin período confirmado, la app conserva ponderaciones y no precarga fechas.
+function estadoPeriodoPauta(periodo,ahora){
+  const m=typeof periodo==='string'&&periodo.match(/^(\d{4})-([12])$/);
+  if(!m)return 'desconocido';
+  const fecha=ahora&&typeof ahora.getTime==='function'?ahora:new Date();
+  const anio=Number(m[1]),semestre=Number(m[2]);
+  const fin=Date.UTC(semestre===1?anio:anio+1,semestre===1?7:0,1);
+  return fecha.getTime()<fin?'vigente':'vencido';
+}
+function definicionPreset(nombre,tenant,carrera){
+  if(tenant==='fen'){
+    const clave=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(nombre));
+    return clave?PRESETS_FEN[clave]:null;
+  }
+  if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
+  const clave=claveUc(nombre);
+  return clave?PRESETS_UC[clave]:null;
+}
+function periodoDePreset(def){return !Array.isArray(def)&&def&&typeof def.periodo==='string'?def.periodo:null;}
+function infoPeriodoPauta(r){
+  if(!r||!r.origen||!r.origen.tenant)return null;
+  const def=definicionPreset(r.nombre,r.origen.tenant,r.origen.carrera);
+  const evals=Array.isArray(def)?def:(def&&def.evals||[]);
+  if(!evals.length)return null;
+  const periodo=periodoDePreset(def);
+  return {periodo,estadoPeriodo:estadoPeriodoPauta(periodo)};
+}
+
 // Las fechas del programa se agregaron después de que miles de ramos ya
 // existían, y  solo mira nombre y peso: una fecha nueva no cuenta
 // como "la pauta cambió", así que el aviso de actualizar nunca se dispara por
@@ -32,11 +63,8 @@ function getCacheOwner(){try{return localStorage.getItem(CACHE_OWNER_KEY);}catch
 // Agenda por debajo.
 function completarFechasOficiales(r){
   if(!r||!r.origen||!r.origen.tenant||!Array.isArray(r.categorias))return;
-  const presets=r.origen.tenant==='fen'?PRESETS_FEN:(r.origen.tenant==='uc'?PRESETS_UC:null);
-  if(!presets)return;
-  const clave=Object.keys(presets).find(n=>normName(n)===normName(r.nombre));
-  const def=clave&&presets[clave];
-  if(!def)return;
+  const def=definicionPreset(r.nombre,r.origen.tenant,r.origen.carrera);
+  if(!def||estadoPeriodoPauta(periodoDePreset(def))!=='vigente')return;
   const evals=Array.isArray(def)?def:(def.evals||[]);
   const porNombre=new Map();
   evals.forEach(([nom,,extra])=>{if(extra&&extra.fecha)porNombre.set(normName(nom),extra.fecha);});
@@ -242,6 +270,11 @@ function setAcento(acento){
   S.acento=ACENTOS[acento]?acento:'turquesa';
   save();applyTheme();track('set_acento',{acento:S.acento});
   const g=document.getElementById('s-acento-grid');if(g)renderAcentoGrid();
+}
+function setFondo(fondo){
+  S.fondo=FONDOS[fondo]?fondo:'neutro';
+  save();applyTheme();track('set_fondo',{fondo:S.fondo});
+  const g=document.getElementById('s-fondo-grid');if(g)renderFondoGrid();
 }
 function applyTheme(){
   aplicarModo();
@@ -535,7 +568,7 @@ function initials(s){return s.split(' ').slice(0,2).map(w=>w[0]||'').join('').to
 function ramoToStructure(r){
   return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
     id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
-    children:(r.categorias||[]).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
+    children:categoriasVigentes(r).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
       // dropLowest viene del preset ("se elimina el 25% de los controles
       // rendidos"). Sin la clave el motor no descarta nada, así que los ramos
       // manuales y los presets que no la declaran calculan igual que siempre.
@@ -545,6 +578,48 @@ function ramoToStructure(r){
 function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
 
 function avgPond(notas){let tv=0,tp=0;notas.forEach(n=>{if(n.valor!==null){tv+=n.valor*(n.peso||1);tp+=(n.peso||1);}});return tp>0?tv/tp:null;}
+// Una eximición no agrega una evaluación ni cambia sus pesos: solo marca que
+// una evaluación existente ya no se debe rendir. La regla llega del preset y
+// se consulta por `origen`, así también funciona para ramos oficiales que se
+// crearon antes de que la regla existiera. Un ramo manual del mismo nombre no
+// recibe excepciones del catálogo.
+function definicionPresetDelRamo(ramo){
+  const origen=ramo&&ramo.origen;
+  if(!origen||!origen.tenant)return null;
+  if(origen.tenant==='fen'){
+    const nombre=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(ramo.nombre));
+    return nombre?PRESETS_FEN[nombre]:null;
+  }
+  if(origen.tenant!=='uc'||!presetUcDisponible(ramo.nombre,origen.carrera))return null;
+  const nombre=claveUc(ramo.nombre);
+  return nombre?PRESETS_UC[nombre]:null;
+}
+function promedioCompletoSinDescarte(cat){
+  const objetivo=Number.isInteger(cat&&cat.slots)&&cat.slots>1?cat.slots:1;
+  const notas=(cat&&cat.notas||[]).filter(n=>typeof n.valor==='number');
+  // Cuatro de cinco no son una aproximación suficiente para decidir que el
+  // Examen deja de ser obligatorio.
+  if(notas.length<objetivo)return null;
+  return avgPond(notas);
+}
+function estadoEximicion(ramo){
+  const def=definicionPresetDelRamo(ramo);
+  const regla=!Array.isArray(def)&&def&&def.eximicion;
+  if(!regla||!Array.isArray(regla.segun)||regla.ignoraDescartes!==true)return null;
+  const categorias=ramo.categorias||[];
+  const examen=categorias.find(c=>normName(c.nombre)===normName(regla.evaluacion));
+  if(!examen)return null;
+  if(avgPond(examen.notas)!==null)return {activa:false,pendiente:false,examenId:examen.id,razon:'examen_rendido'};
+  const fuentes=regla.segun.map(nombre=>categorias.find(c=>normName(c.nombre)===normName(nombre))).filter(Boolean);
+  if(fuentes.length!==regla.segun.length)return null;
+  const promedios=fuentes.map(promedioCompletoSinDescarte);
+  if(promedios.some(p=>p===null))return {activa:false,pendiente:true,examenId:examen.id};
+  const pesoTotal=fuentes.reduce((s,c)=>s+(Number(c.peso)||0),0);
+  const promedio=pesoTotal>0?fuentes.reduce((s,c,i)=>s+promedios[i]*(Number(c.peso)||0),0)/pesoTotal:null;
+  return {activa:promedio!==null&&promedio>=regla.min,pendiente:false,examenId:examen.id,promedio,regla};
+}
+function categoriaEximida(ramo,cat){const estado=estadoEximicion(ramo);return !!(estado&&estado.activa&&estado.examenId===cat.id);}
+function categoriasVigentes(ramo){return (ramo&&ramo.categorias||[]).filter(c=>!categoriaEximida(ramo,c));}
 // Promedio ponderado de un subconjunto de categorías (para compuertas de grupo).
 // Devuelve null si ninguna del grupo tiene nota todavía.
 function avgDeGrupo(r,catIds){
@@ -814,9 +889,62 @@ function toggleAuthMode(){
   authError('');
 }
 function showAuthScreen(){
-  ['home','stats','agenda','ramo','onboard','reset'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
+  ['home','stats','agenda','ramo','onboard','reset','app-error'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
   document.getElementById('bottom-nav').style.display='none';
   document.getElementById('screen-auth').classList.add('active');
+}
+// Una sesión válida que falla al dibujarse no es un error de login. Esta
+// pantalla conserva esa distinción: no expone el stack, no cierra la sesión y
+// ofrece una acción que sí puede ayudar (cargar la app completa de nuevo).
+function showAppErrorScreen(fase){
+  ['auth','home','stats','agenda','ramo','onboard','reset','app-error'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
+  const app=document.querySelector('.app');
+  if(app)app.classList.remove('tab-mode','dragging');
+  const nav=document.getElementById('bottom-nav');
+  if(nav)nav.style.display='none';
+  const comprobando=fase==='obtener_sesion';
+  const title=document.getElementById('app-error-title');
+  const desc=document.getElementById('app-error-desc');
+  if(title)title.textContent=comprobando?'No pudimos comprobar tu sesión':'No pudimos abrir GradeHub';
+  if(desc)desc.textContent=comprobando
+    ?'Parece un problema de conexión. Tus datos no se borraron; recarga para intentarlo de nuevo.'
+    :'Tu sesión sigue activa y tus datos no se borraron. Recarga para intentarlo de nuevo.';
+  const screen=document.getElementById('screen-app-error');
+  if(screen)screen.classList.add('active');
+}
+
+// El detalle ayuda a encontrar el punto exacto que falló, pero una excepción
+// también podría incluir accidentalmente un dato que venía del estado. Antes
+// de mandarla a analítica se quitan correos, números y todos los textos que el
+// estudiante pudo haber escrito o recibido en su cuenta.
+function detalleErrorSeguro(error){
+  let detalle=String((error&&error.message)||'Error sin mensaje').slice(0,240);
+  const privados=[];
+  const vistos=new Set();
+  const recopilar=(valor,profundidad)=>{
+    if(typeof valor==='string'){if(valor.trim().length>1)privados.push(valor);return;}
+    if(!valor||typeof valor!=='object'||profundidad>8||vistos.has(valor)||privados.length>=1000)return;
+    vistos.add(valor);
+    Object.values(valor).forEach(v=>recopilar(v,profundidad+1));
+  };
+  recopilar(currentUser,0);
+  if(typeof S!=='undefined')recopilar(S,0);
+  privados.filter(v=>typeof v==='string'&&v.trim().length>1)
+    .sort((a,b)=>b.length-a.length)
+    .forEach(v=>{detalle=detalle.replace(new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),'[dato]');});
+  return detalle
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[correo]')
+    .replace(/https?:\/\/\S+/gi,'[url]')
+    .replace(/\b\d+(?:[.,]\d+)?\b/g,'[n]')
+    .slice(0,100);
+}
+
+function registrarErrorArranque(error,fase){
+  const tiposSeguros=['TypeError','ReferenceError','RangeError','SyntaxError'];
+  const tipo=error&&tiposSeguros.includes(error.name)?error.name:'Error';
+  const detalle=detalleErrorSeguro(error);
+  console.error('GradeHub no pudo completar el arranque ('+fase+'): '+tipo+' · '+detalle);
+  track('app_boot_error',{fase:fase,tipo:tipo,detalle:detalle});
 }
 function enterOnboarding(){
   document.getElementById('screen-auth').classList.remove('active');
@@ -976,6 +1104,10 @@ async function afterLogin(){
   track('login');
   const uid=currentUser?currentUser.id:null;
   let cloud,ok=true;
+  // Solo la lectura remota es recuperable: si falla, la copia local ya fue
+  // normalizada al cargar y además está protegida por el dueño de la caché.
+  // normalize() y enterApp() quedan fuera a propósito. Si una de ellas falla,
+  // continuar con estado o DOM a medias sería peor que detenerse con un aviso.
   try{cloud=await loadFromCloud();}catch(e){ok=false;}
   if(ok){
     // La nube puede contener ramos creados con versiones anteriores. Pásalos
@@ -1062,19 +1194,29 @@ async function boot(){
       showResetScreen();
     }
   });
+  let session=null;
   try{
-    const {data:{session}}=await supabaseClient.auth.getSession();
-    if(session){
-      currentUser=session.user;
-      // Si venimos de un correo de recuperación, la URL trae "type=recovery" en el hash.
-      // Mostrar la pantalla de nueva contraseña en vez de entrar directo a la app.
-      const esRecovery=location.hash.includes('type=recovery');
-      limpiarFragmentoAuth();
-      if(esRecovery){showResetScreen();return;}
-      await afterLogin();return;
-    }
-  }catch(e){}
-  showAuthScreen();
+    const result=await supabaseClient.auth.getSession();
+    session=result&&result.data?result.data.session:null;
+  }catch(e){
+    registrarErrorArranque(e,'obtener_sesion');
+    showAppErrorScreen('obtener_sesion');
+    return;
+  }
+  if(!session){showAuthScreen();return;}
+
+  currentUser=session.user;
+  // Si venimos de un correo de recuperación, la URL trae "type=recovery" en el hash.
+  // Mostrar la pantalla de nueva contraseña en vez de entrar directo a la app.
+  const esRecovery=location.hash.includes('type=recovery');
+  limpiarFragmentoAuth();
+  if(esRecovery){showResetScreen();return;}
+  try{
+    await afterLogin();
+  }catch(e){
+    registrarErrorArranque(e,'abrir_app');
+    showAppErrorScreen('abrir_app');
+  }
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
@@ -1896,18 +2038,36 @@ function renderRamo(){
   document.getElementById('ramo-hero-sub').textContent=r.categorias.length===0
     ?('Agrega evaluaciones para comenzar'+crTxt)
     :`${r.categorias.length} ${r.categorias.length===1?'evaluación':'evaluaciones'} · ${r2(tp)}% ponderado${crTxt}`;
+  const periodoEl=document.getElementById('pauta-periodo');
+  if(periodoEl){
+    const info=infoPeriodoPauta(r);
+    if(!info){periodoEl.style.display='none';periodoEl.innerHTML='';}
+    else{
+      const etiqueta=info.periodo?`Pauta del ${esc(info.periodo)}`:'Pauta oficial · período sin confirmar';
+      const nota=info.estadoPeriodo==='vencido'?' · fechas no incluidas':'';
+      periodoEl.className='pauta-periodo'+(info.estadoPeriodo==='vencido'?' is-vencida':'');
+      periodoEl.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z"/></svg><span>${etiqueta}${nota}</span>`;
+      periodoEl.style.display='inline-flex';
+    }
+  }
 
   // Chip nota mínima para el 4.0
   const chipEl=document.getElementById('ramo-min-chip');
   if(r.categorias.length>0){
-    const totalPeso=r.categorias.reduce((a,c)=>a+c.peso,0);
+    const categoriasActivas=categoriasVigentes(r);
+    const eximicion=estadoEximicion(r);
+    const totalPeso=categoriasActivas.reduce((a,c)=>a+c.peso,0);
     let pesoConNotas=0,sumaPonderada=0;
-    r.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
+    categoriasActivas.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
     const pesoSinNotas=totalPeso-pesoConNotas;
     // ¿Hay un piso de nota activo? (sección calificada bajo su mínimo → topa la final)
     const gateHit=gatesActivas(r)[0]||null;
     const pctPendiente=totalPeso>0?Math.round(pesoSinNotas/totalPeso*100):0;
-    if(gateHit){
+    if(eximicion&&eximicion.activa){
+      chipEl.style.display='inline-flex';
+      chipEl.className='ramo-chip';
+      chipEl.textContent='Exento/a del Examen · puedes registrar una nota si lo rendiste';
+    } else if(gateHit){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip bad';
       chipEl.textContent=gateHit.grupo
@@ -2004,6 +2164,7 @@ function renderRamo(){
   }
   r.categorias.forEach(cat=>{
     const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaHoraCorta(cat.fecha,cat.hora))}</span>`:'';
+    const exenta=categoriaEximida(r,cat);
     // Sección de preset: fila directa, solo escribir la nota (estilo simulador)
     if(cat.directNota){
       // Preset con varios espacios (ej: Laboratorio = 3 notas que se promedian) — COLAPSABLE
@@ -2024,7 +2185,7 @@ function renderRamo(){
           <div class="eval-group-hd" role="button" tabindex="0" aria-expanded="${isOpen?'true':'false'}" onclick="toggleCat('${cat.id}')">
             <div style="flex:1;min-width:0;">
               <div class="eval-row-name">${esc(cat.nombre)}</div>
-              <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}</div>
+              <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}</div>
             </div>
             <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:1.1875rem;">${fmt(av)}</div>
             <span aria-hidden="true" style="color:var(--fg3);font-size:0.6875rem;margin-left:6px;">${isOpen?'▲':'▼'}</span>
@@ -2039,7 +2200,7 @@ function renderRamo(){
       row.innerHTML=`
         <div class="eval-row-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" style="cursor:pointer;">
           <div class="eval-row-name">${esc(cat.nombre)}</div>
-          <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}</div>
+          <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}</div>
         </div>
         <input class="eval-row-input" inputmode="decimal" maxlength="3" placeholder="—" value="${g!=null?fmt(g):''}" style="color:${g!=null?getColor(g):'var(--fg)'}" onchange="setDirectNota('${cat.id}',this.value)" onclick="event.stopPropagation();" aria-label="Nota de ${esc(cat.nombre)}"/>`;
       cl.appendChild(row);
@@ -2374,33 +2535,15 @@ function pautaPendiente(r){
   const nombre=findPresetName(r.nombre,r.origen.tenant,r.origen.carrera);
   return nombre?presetRamo(nombre,r.origen.tenant,r.origen.carrera):null;
 }
-function presetRamo(nombre,tenant,carrera){
-  if(tenant==='fen'){
-    const def=PRESETS_FEN[nombre];if(!def)return null;
-    const categorias=[],gates=[];
-    const porNombre={};
-    def.evals.forEach(([nom,peso,extra])=>{
-      const id=uid();
-      const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
-      if(extra&&extra.slots)cat.slots=extra.slots;
-      if(extra&&extra.lista)cat.directNota=false; // lista abierta: el estudiante agrega las notas que le tomaron
-      if(extra&&extra.fecha)cat.fecha=extra.fecha;
-      if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
-      categorias.push(cat);porNombre[nom]=id;
-      if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
-    });
-    (def.grupos||[]).forEach(g=>{
-      const ids=g.evals.map(n=>porNombre[n]).filter(Boolean);
-      if(ids.length)gates.push({type:'group_min',catIds:ids,min:g.min,cap:g.cap,nombre:g.nombre});
-    });
-    return {categorias,gates,creditos:def.creditos||null};
-  }
-  if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
-  const def=PRESETS_UC[claveUc(nombre)];if(!def)return null;
+function presetRamo(nombre,tenant,carrera,ahora){
+  const def=definicionPreset(nombre,tenant,carrera);if(!def)return null;
   const evals=Array.isArray(def)?def:(def.evals||[]);
   // Un programa puede traer reglas oficiales sin publicar ponderaciones. No se
   // inventa una pauta vacía: sus reglas se muestran por reglasDelPreset().
   if(!evals.length)return null;
+  const periodo=periodoDePreset(def);
+  const estadoPeriodo=estadoPeriodoPauta(periodo,ahora);
+  const incluirFechas=estadoPeriodo==='vigente';
   const categorias=[],gates=[];
   const porNombre={};
   evals.forEach(([nom,peso,extra])=>{
@@ -2409,7 +2552,10 @@ function presetRamo(nombre,tenant,carrera){
     if(extra&&extra.slots)cat.slots=extra.slots;
     if(extra&&extra.lista)cat.directNota=false;
     if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
-    if(extra&&extra.fecha)cat.fecha=extra.fecha;
+    // Una pauta de 2026-2 puede seguir siendo buena para sus porcentajes en
+    // 2027-1, pero sus días de prueba no. Nunca se inventa una fecha nueva: si
+    // el período venció o no se conoce, simplemente no se ofrece.
+    if(extra&&extra.fecha&&incluirFechas)cat.fecha=extra.fecha;
     categorias.push(cat);porNombre[nom]=id;
     if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
   });
@@ -2418,7 +2564,8 @@ function presetRamo(nombre,tenant,carrera){
     const ids=g.evals.map(n=>porNombre[n]).filter(Boolean);
     if(ids.length)gates.push({type:'group_min',catIds:ids,min:g.min,cap:g.cap,nombre:g.nombre});
   });
-  return {categorias,gates,aporta,creditos:(!Array.isArray(def)&&typeof def.creditos==='number')?def.creditos:null};
+  return {categorias,gates,aporta,periodo,estadoPeriodo,
+    creditos:(!Array.isArray(def)&&typeof def.creditos==='number')?def.creditos:null};
 }
 
 function confirmAddMalla(){
@@ -2897,12 +3044,7 @@ function findPresetName(nombre,tenant,carrera){
 // Reglas oficiales informativas que todavía no podemos representar en el
 // cálculo. Se recuperan por el origen del ramo para no inventarlas en manuales.
 function reglasDelPreset(ramo,campo){
-  const origen=ramo&&ramo.origen;
-  if(!ramo||!origen)return [];
-  const presets=origen.tenant==='fen'?PRESETS_FEN:(origen.tenant==='uc'&&presetUcDisponible(ramo.nombre,origen.carrera)?PRESETS_UC:null);
-  if(!presets)return [];
-  const nombre=Object.keys(presets).find(n=>normName(n)===normName(ramo.nombre));
-  const def=nombre&&presets[nombre];
+  const def=definicionPresetDelRamo(ramo);
   const lista=!Array.isArray(def)&&def&&def[campo];
   return Array.isArray(lista)?lista:[];
 }
@@ -3473,19 +3615,21 @@ function openSettings(){
       <p class="settings-help settings-help-top">Elige cómo prefieres ver GradeHub. Se guarda al elegir.</p>
       <div class="modo-grid" id="s-modo-grid"></div>
       <label class="modal-label accent-picker-label">Color de acento</label>
-      <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>`;
+      <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>
+      <label class="modal-label accent-picker-label">Fondo</label>
+      <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
     if(section==='sugerencias'){
-      const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a href="mailto:gradehub.app@gmail.com">gradehub.app@gmail.com</a></p>`;
+      const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a id="feedback-contact" href="${esc(correoSugerenciaHref())}" onclick="actualizarCorreoSugerencia()">gradehub.app@gmail.com</a></p>`;
       return currentUser?`
       <p class="settings-help settings-help-top">¿Algo no se entiende, está fallando o podría ser mejor? Lo leemos nosotros.</p>
       <label class="modal-label" for="s-feedback-type">Tipo de comentario</label>
-      <select class="feedback-select" id="s-feedback-type">
+      <select class="feedback-select" id="s-feedback-type" onchange="actualizarCorreoSugerencia()">
         <option value="sugerencia">Tengo una sugerencia</option>
         <option value="problema">Encontré un problema</option>
         <option value="otro">Otro comentario</option>
       </select>
       <label class="modal-label" for="s-feedback-message">Cuéntanos</label>
-      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" aria-describedby="s-feedback-help s-feedback-count" oninput="actualizarSugerencia()"></textarea>
+      <textarea class="feedback-message" id="s-feedback-message" maxlength="2000" rows="7" placeholder="Escribe acá lo que te gustaría cambiar…" aria-describedby="s-feedback-help s-feedback-count" oninput="actualizarSugerencia();actualizarCorreoSugerencia()"></textarea>
       <div class="feedback-meta"><span class="feedback-help pending" id="s-feedback-help" aria-live="polite">Mínimo 3 caracteres · queda asociado a tu cuenta.</span><span id="s-feedback-count">0 / 2000</span></div>
       <button class="btn-primary feedback-send" id="s-feedback-send" type="button" onclick="enviarSugerencia()">Enviar comentario</button>
       ${contacto}`
@@ -3519,7 +3663,7 @@ function openSettings(){
     document.querySelectorAll('[data-settings-section]').forEach(b=>b.onclick=()=>{activeSection=b.dataset.settingsSection;renderSettings();});
     const back=document.querySelector('.settings-back');if(back)back.onclick=()=>{activeSection='';renderSettings();};
     if(activeSection==='academico'){renderSettingsSemGrid();renderSettingsTenantGrid();renderSettingsCarreraGrid();}
-    if(activeSection==='apariencia'){renderModoGrid();renderAcentoGrid();}
+    if(activeSection==='apariencia'){renderModoGrid();renderAcentoGrid();renderFondoGrid();}
     if(activeSection==='calendario'&&currentUser)pintarFeedCalendario();
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
@@ -3563,6 +3707,18 @@ function openSettings(){
     });
   }
   window.renderAcentoGrid=renderAcentoGrid;
+  function renderFondoGrid(){
+    const g=document.getElementById('s-fondo-grid');if(!g)return;g.innerHTML='';
+    Object.entries(FONDOS).forEach(([key,cfg])=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='fondo-opt'+(S.fondo===key?' sel':'');
+      b.setAttribute('role','radio');b.setAttribute('aria-checked',S.fondo===key?'true':'false');
+      b.setAttribute('aria-label',cfg.nombre);
+      b.innerHTML=`<span class="fondo-swatch" style="--swatch-light:${esc(cfg.claro.bg)};--swatch-dark:${esc(cfg.oscuro.bg)}"></span><span>${esc(cfg.nombre)}</span>`;
+      b.onclick=()=>setFondo(key);g.appendChild(b);
+    });
+  }
+  window.renderFondoGrid=renderFondoGrid;
   function renderSettingsSemGrid(){
     const g=document.getElementById('s-sem-grid');if(!g)return;g.innerHTML='';
     for(let i=1;i<=11;i++){
@@ -3614,6 +3770,31 @@ function openSettings(){
   };
 }
 
+// El correo es una alternativa al formulario, no una segunda cuenta opaca: el
+// borrador lleva contexto que la persona reconoce y que nos ayuda a ubicarla.
+// No van correo, UID, ramos ni notas: el remitente ya llega en el mail y los
+// otros datos serían innecesarios o incómodos si la persona lo reenvía.
+function correoSugerenciaHref(categoria='sugerencia',mensaje=''){
+  const tipos={sugerencia:'Sugerencia',problema:'Problema',otro:'Comentario'};
+  const tipo=tipos[categoria]||tipos.otro;
+  const universidad=(TENANTS[S.tenant]||{}).name||'No indicada';
+  const carrera=S.carreraNombre||S.carrera||'No indicada';
+  const perfil=[
+    `Nombre para mostrar: ${S.userName||'No indicado'}`,
+    `Universidad: ${universidad}`,
+    `Carrera: ${carrera}`,
+    `Semestre: ${S.careerSemestre||'No indicado'}°`,
+  ];
+  const detalle=String(mensaje||'').trim();
+  const cuerpo=['Hola, GradeHub:','',`Tipo: ${tipo}`,'',...perfil,'','Detalle:',detalle||''].join('\n');
+  return `mailto:gradehub.app@gmail.com?subject=${encodeURIComponent(`GradeHub · ${tipo}`)}&body=${encodeURIComponent(cuerpo)}`;
+}
+function actualizarCorreoSugerencia(){
+  const selector=document.getElementById('s-feedback-type');
+  const campo=document.getElementById('s-feedback-message');
+  const enlace=document.getElementById('feedback-contact');
+  if(enlace)enlace.href=correoSugerenciaHref(selector?selector.value:'sugerencia',campo?campo.value:'');
+}
 function actualizarSugerencia(){
   const campo=document.getElementById('s-feedback-message');
   const cuenta=document.getElementById('s-feedback-count');
@@ -4054,7 +4235,7 @@ function closeConfirm(){document.getElementById('confirm-overlay').classList.rem
 // decidido. Esta métrica usa las ponderaciones de las evaluaciones rendidas.
 function avanceEvaluaciones(ramos){
   let total=0,evaluado=0;
-  (ramos||[]).forEach(r=>(r.categorias||[]).forEach(c=>{
+  (ramos||[]).forEach(r=>categoriasVigentes(r).forEach(c=>{
     const peso=Number(c.peso)||0;
     total+=peso;
     if(avgPond(c.notas)!==null)evaluado+=peso;
@@ -4077,6 +4258,7 @@ function ultimoHistorialConGpa(historial){
 // pantalla que dice "hasta acá puedes llegar".
 function ramoConPendientesEn(ramo,valor){
   return {...ramo,categorias:(ramo.categorias||[]).map(c=>{
+    if(categoriaEximida(ramo,c))return c;
     const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
     const puestas=(c.notas||[]).filter(n=>n.valor!==null&&n.valor!==undefined);
     if(puestas.length>=objetivo)return c;
@@ -4091,7 +4273,7 @@ function ramoConPendientesEn(ramo,valor){
 function proyeccionSemestre(ramos){
   const lista=(ramos||[]).filter(r=>(r.categorias||[]).length);
   if(!lista.length)return null;
-  const pendientes=lista.some(r=>r.categorias.some(c=>{
+  const pendientes=lista.some(r=>categoriasVigentes(r).some(c=>{
     const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
     return (c.notas||[]).filter(n=>n.valor!==null&&n.valor!==undefined).length<objetivo;
   }));
@@ -4425,9 +4607,10 @@ function confirmEditNota(catId,notaId){
 // ─── CALCULADORA NOTA MÍNIMA ─────────────────────────────────────────────────
 function openCalculadoraModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
-  const totalPeso=r.categorias.reduce((a,c)=>a+c.peso,0);
+  const categorias=categoriasVigentes(r);
+  const totalPeso=categorias.reduce((a,c)=>a+c.peso,0);
   let pesoConNotas=0,sumaPonderada=0;
-  r.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
+  categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
   const pesoSinNotas=totalPeso-pesoConNotas;
 
   document.getElementById('modal-content').innerHTML=`
@@ -4469,7 +4652,7 @@ function openCalculadoraModal(){
     const needed=(target*totalPeso-sumaPonderada)/pesoSinNotas;
     const neededR=r2(needed);
     // Si falta una sola sección, nombrarla (más útil que "las secciones sin notas").
-    const vacias=r.categorias.filter(c=>avgPond(c.notas)===null);
+    const vacias=categorias.filter(c=>avgPond(c.notas)===null);
     const dondeTxt=vacias.length===1?`en <b>${esc(vacias[0].nombre)}</b>`:`en las secciones sin notas (${r2(pesoSinNotas)}% del ramo)`;
     // Condición pendiente de piso (ej: Podcast sin nota aún)
     const condPend=(r.gates||[]).filter(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);return c&&avgPond(c.notas)===null;}).map(g=>`<div style="font-size:0.75rem;color:var(--yellow);margin-top:8px;">Además, ${esc(g.nombre)} debe ser ≥ ${g.min.toFixed(1)} o repruebas pese al promedio.</div>`).join('');
@@ -4770,6 +4953,7 @@ function nextExam(){
   let best=null;
   S.ramos.forEach(r=>{
     r.categorias.forEach(c=>{
+      if(categoriaEximida(r,c))return;
       if(!c.fecha)return;
       const target=c.slots||1;
       if((c.notas||[]).length>=target)return; // ya evaluado
@@ -4805,9 +4989,10 @@ function mostRiskyRamo(){
     const avg=ramoAvg(r);
     if(avg===null)return;
     if(r2(avg)>=5.0)return; // no está en riesgo
-    const totalPeso=r.categorias.reduce((s,c)=>s+c.peso,0);
+    const categorias=categoriasVigentes(r);
+    const totalPeso=categorias.reduce((s,c)=>s+c.peso,0);
     let pesoConNotas=0,sumaPond=0;
-    r.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPond+=a*c.peso;}});
+    categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPond+=a*c.peso;}});
     const pesoSinNotas=totalPeso-pesoConNotas;
     if(pesoSinNotas<=0)return; // ya evaluado todo
     const needed=(4.0*totalPeso-sumaPond)/pesoSinNotas;
@@ -4820,10 +5005,11 @@ function mostRiskyRamo(){
 
 // Progreso del ramo: % de peso evaluado
 function ramoProgress(r){
-  const total=r.categorias.reduce((s,c)=>s+c.peso,0);
+  const categorias=categoriasVigentes(r);
+  const total=categorias.reduce((s,c)=>s+c.peso,0);
   if(total<=0)return {pct:0,pending:0,total:0};
   let done=0;
-  r.categorias.forEach(c=>{
+  categorias.forEach(c=>{
     const a=avgPond(c.notas);
     if(a!==null)done+=c.peso;
   });
@@ -4835,6 +5021,7 @@ function agendaEvents(){
   const out=[];
   S.ramos.forEach(r=>{
     r.categorias.forEach(c=>{
+      if(categoriaEximida(r,c))return;
       // Las notas con fecha propia son evaluaciones sueltas dentro del grupo:
       // "Casos y ensayos" puede tener tres casos en tres fechas distintas, y
       // cada uno tiene que poder aparecer en su día. Si la nota trae fecha,
@@ -5301,10 +5488,11 @@ function reglaDescarteConCantidadAbierta(ramo){
   return (ramo.categorias||[]).find(c=>c.dropLowest&&!Number.isInteger(c.slots))||null;
 }
 function notaNecesaria(ramo){
-  const total=ramo.categorias.reduce((s,c)=>s+c.peso,0);
+  const categorias=categoriasVigentes(ramo);
+  const total=categorias.reduce((s,c)=>s+c.peso,0);
   if(total<=0)return null;
   let pesoCon=0,suma=0;
-  ramo.categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoCon+=c.peso;suma+=a*c.peso;}});
+  categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoCon+=c.peso;suma+=a*c.peso;}});
   // Si otro ramo aporta parte de la nota (el laboratorio de Dinámica), sus
   // evaluaciones NO están en `categorias` y hay que traerlas a la cuenta. Sin
   // esto, "¿qué nota necesito?" respondería sobre el 70% de la cátedra como si

@@ -136,5 +136,48 @@ const manual = { nombre: 'Manual', categorias: [{ id: 'x', nombre: 'Pruebas', pe
 eq('un ramo manual promedia sus dos notas sin descartar nada',
   vm.runInContext('calculateFinalGrade', ctx)(vm.runInContext('ramoToStructure', ctx)(manual), vm.runInContext('gradesOf', ctx)(manual)).raw, 4);
 
+console.log('\n=== Eximición de Transporte: el Examen deja de ser pendiente ===');
+const transporte=vm.runInContext('presetRamo', ctx)('Ingeniería de Sistemas de Transporte','uc','ING-PC');
+transporte.nombre='Ingeniería de Sistemas de Transporte';
+transporte.origen={tenant:'uc',carrera:'ING-PC'};
+const porNombreTransporte=nombre=>transporte.categorias.find(c=>c.nombre===nombre);
+const controlesTransporte=porNombreTransporte('Controles');
+const examenTransporte=porNombreTransporte('Examen');
+const notaSlot=(slot,valor)=>({id:'control-'+slot,nombre:'Control '+(slot+1),slot,valor,peso:1});
+controlesTransporte.notas=[5.5,5.5,5.5,5.5,5.5].map((valor,slot)=>notaSlot(slot,valor));
+['Meme 1','Meme 2','Meme 3','Meme 4'].forEach((nombre,i)=>{porNombreTransporte(nombre).notas=[{id:'meme-'+i,nombre,valor:6,peso:1}];});
+const estadoEximicion=vm.runInContext('estadoEximicion',ctx);
+const categoriaEximida=vm.runInContext('categoriaEximida',ctx);
+const progreso=vm.runInContext('ramoProgress',ctx);
+const calcular=vm.runInContext('calculateFinalGrade',ctx);
+const estructura=vm.runInContext('ramoToStructure',ctx);
+const notas=vm.runInContext('gradesOf',ctx);
+const necesaria=vm.runInContext('notaNecesaria',ctx);
+chk('el preset declara la eximición, no la deja como deuda',
+  !!vm.runInContext('PRESETS_UC',ctx)['Ingeniería de Sistemas de Transporte'].eximicion &&
+  !(vm.runInContext('PRESETS_UC',ctx)['Ingeniería de Sistemas de Transporte'].noCalcula||[]).some(r=>/eximirte/.test(r)));
+chk('cinco controles completos con promedio 5,5 activan la eximición',
+  !!estadoEximicion && estadoEximicion(transporte).activa===true && categoriaEximida(transporte,examenTransporte));
+chk('el ramo queda completo y ya no pide una nota para el Examen',
+  progreso(transporte).pct===100 && calcular(estructura(transporte),notas(transporte)).complete===true && necesaria(transporte)===null);
+ctx.__transporteAgenda=transporte;
+vm.runInContext('S={ramos:[__transporteAgenda]};',ctx);
+const agenda=vm.runInContext('agendaEvents',ctx);
+chk('el Examen eximido sale de la Agenda aunque tenga fecha oficial',
+  !agenda().some(e=>e.cat.id===examenTransporte.id));
+controlesTransporte.notas=[1,6,6,6,6].map((valor,slot)=>notaSlot(slot,valor));
+chk('el promedio de los cinco ignora el descarte: cuatro mejores no bastan',
+  estadoEximicion(transporte).activa===false && categoriaEximida(transporte,examenTransporte)===false);
+controlesTransporte.notas=[5.5,5.5,5.5,5.5].map((valor,slot)=>notaSlot(slot,valor));
+chk('sin los cinco controles la condición queda pendiente, no se asume',
+  estadoEximicion(transporte).pendiente===true && categoriaEximida(transporte,examenTransporte)===false);
+controlesTransporte.notas=[5.5,5.5,5.5,5.5,5.5].map((valor,slot)=>notaSlot(slot,valor));
+examenTransporte.notas=[{id:'examen-rendido',nombre:'Examen',valor:6,peso:1}];
+chk('si rindió el Examen, la eximición no se aplica',
+  estadoEximicion(transporte).activa===false && categoriaEximida(transporte,examenTransporte)===false);
+const manualTransporte={...transporte,origen:null};
+chk('un ramo manual con el mismo nombre no recibe la eximición oficial',
+  estadoEximicion(manualTransporte)===null && categoriaEximida(manualTransporte,examenTransporte)===false);
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

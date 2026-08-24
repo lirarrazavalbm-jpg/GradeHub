@@ -40,7 +40,26 @@ chk('solo se deshabilita mientras envía y vuelve a habilitarse',
 chk('el estado de envío deshabilitado sigue siendo legible',
   /\.feedback-send:disabled\{[^}]*opacity:\.(?:[6-9]\d|[6-9])/.test(css));
 chk('ofrece el correo de contacto como alternativa',
-  /href="mailto:gradehub\.app@gmail\.com"[^>]*>gradehub\.app@gmail\.com<\/a>/.test(app));
+  /id="feedback-contact"[^>]*>gradehub\.app@gmail\.com<\/a>/.test(app));
+
+console.log('\n=== El correo llega con un borrador seguro ===');
+const fnCorreo=(app.match(/function correoSugerenciaHref\([\s\S]*?\n\}\nfunction actualizarCorreoSugerencia/)||[])[0]||'';
+const construyeCorreo=fnCorreo&&new Function('S','TENANTS',`${fnCorreo.replace(/\nfunction actualizarCorreoSugerencia$/,'')}\nreturn correoSugerenciaHref;`)({
+  userName:'Ana & Beto',tenant:'uc',carreraNombre:'Ingeniería Comercial',carrera:'COM',careerSemestre:2,
+},{uc:{name:'U. Católica · Ingeniería'}});
+const borrador=construyeCorreo&&construyeCorreo('problema','El enlace <no> abre & necesito ayuda');
+const urlCorreo=borrador&&new URL(borrador);
+const asunto=urlCorreo&&urlCorreo.searchParams.get('subject');
+const cuerpo=urlCorreo&&urlCorreo.searchParams.get('body');
+chk('el asunto lleva la categoría elegida',asunto==='GradeHub · Problema');
+chk('el cuerpo lleva un perfil reconocible y el detalle escrito',
+  !!cuerpo&&['Nombre para mostrar: Ana & Beto','Universidad: U. Católica · Ingeniería','Carrera: Ingeniería Comercial','Semestre: 2°','El enlace <no> abre & necesito ayuda'].every(x=>cuerpo.includes(x)));
+chk('el mailto escapa el contenido antes de ponerlo en la URL',
+  !!borrador&&borrador.includes('%26')&&borrador.includes('%3Cno%3E')&&!borrador.includes('Ana & Beto'));
+chk('el borrador no expone correo, UID, ramos ni notas',
+  !!fnCorreo&&!/currentUser|\.id\b|ramos|categorias|notas|email/i.test(fnCorreo));
+chk('el formulario sigue siendo la vía principal de envío',
+  /from\('user_feedback'\)\.insert\(\{user_id:currentUser\.id,categoria,mensaje\}\)/.test(app));
 
 console.log(fallos?`\nFAIL: ${fallos}`:'\nSugerencias OK');
 process.exit(fallos?1:0);

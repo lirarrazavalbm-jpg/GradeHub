@@ -159,31 +159,35 @@ chk('el selector ofrece Recomendado, Fecha y Peso',
   /Recomendado/.test(controles) && />Fecha</.test(controles) && />Peso</.test(controles));
 chk('el orden activo se expone a tecnologías de asistencia',
   /aria-pressed="true"/.test(controles) && /role="group"/.test(controles));
-chk('el control secundario usa una etiqueta corta',
-  />Orden</.test(controles) && !/Ordenar por/.test(controles));
+// El control de orden dejó de tener franja propia: ahora viaja en la misma
+// línea del encabezado "Próximos 7 días". Las comprobaciones de antes fijaban
+// la forma vieja —la etiqueta "Orden", el grid de tres columnas, la media query
+// que escondía la etiqueta en teléfono— y esa forma es justamente la que la
+// cola pedía cambiar por ocupar demasiado. Lo que se sigue protegiendo es la
+// intención, no el marcado.
 const cssAgenda = fs.readFileSync(__dirname + '/../styles.css', 'utf8');
 const reglaCSSAgenda = selector => {
   const inicio=cssAgenda.indexOf(selector+'{');
   return inicio<0?'':cssAgenda.slice(inicio,cssAgenda.indexOf('}',inicio)+1);
 };
-const reglaOrden = reglaCSSAgenda('.ag-order');
 const reglaOpciones = reglaCSSAgenda('.ag-order-options');
 const reglaOpcion = reglaCSSAgenda('.ag-order-option');
 const reglaActiva = reglaCSSAgenda('.ag-order-option.active');
-chk('la barra pasa a una sola línea en vez de apilar etiqueta y opciones',
-  /align-items:center/.test(reglaOrden) && !/flex-direction:column/.test(reglaOrden));
-chk('las opciones quedan junto a Orden sin imponerle un ancho fijo al grupo',
-  /display:inline-grid/.test(reglaOpciones) &&
-  !/margin-left:auto/.test(reglaOpciones) && !/(?:width|flex-basis):\s*\d+px/.test(reglaOpciones));
-chk('los tres botones comparten columnas iguales definidas por su contenido',
-  /grid-template-columns:repeat\(3,1fr\)/.test(reglaOpciones));
+const reglaEncabezado = reglaCSSAgenda('.ag-week-hd .ag-order-options');
+
+chk('el control no ocupa una franja propia: va dentro del encabezado',
+  !/\.ag-order\{/.test(cssAgenda) && !/class="ag-order"/.test(controles));
+chk('y se va al extremo, después del título y el conteo',
+  /margin-left:auto/.test(reglaEncabezado));
+chk('el grupo no le impone un ancho fijo a la fila',
+  !/(?:width|flex-basis):\s*\d+px/.test(reglaOpciones));
 chk('Recomendado no puede cortarse ni desbordarse hacia el botón vecino',
   /white-space:nowrap/.test(reglaOpcion) && /min-width:max-content/.test(reglaOpcion));
-chk('en teléfono se oculta la etiqueta redundante para que las columnas iguales quepan',
-  /@media\(max-width:420px\)\{\.ag-order-label\{display:none;\}\}/.test(cssAgenda));
+// Delgado, pero no tanto como para no poder tocarlo. 34px es el patrón de un
+// segmented control —iOS usa 32— y equivocarse cambia una vista, no borra nada.
 const altoOpcion=Number((reglaOpcion.match(/min-height:(\d+)px/)||[])[1]);
-chk('el control secundario queda realmente más delgado',
-  altoOpcion>=30 && altoOpcion<=36);
+chk('el control secundario queda delgado sin volverse intocable',
+  altoOpcion>=32 && altoOpcion<=36);
 chk('el activo se distingue por superficie, contorno y acento',
   /background:var\(--card\)/.test(reglaActiva) && /box-shadow:/.test(reglaActiva) && /color:var\(--primary\)/.test(reglaActiva));
 
