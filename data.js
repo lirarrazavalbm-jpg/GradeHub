@@ -537,7 +537,10 @@ const PRESETS_UC={
     periodo:'2026-2',
     evals:[
       ['Interrogación 1',15,{fecha:'2026-09-24'}],['Interrogación 2',20,{fecha:'2026-10-22'}],['Examen',30,{fecha:'2026-12-10'}],
-      ['Tarea 1',5],['Tarea 2',5],['Tarea 3',5],['Nota de participación',16],['Talleres de Inteligencia Artificial',4],
+      // La agenda del curso publica inicio y fin de cada tarea. La evaluación
+      // es la entrega, por eso Agenda recibe el cierre y no el hito de apertura.
+      ['Tarea 1',5,{fecha:'2026-10-02'}],['Tarea 2',5,{fecha:'2026-10-27'}],['Tarea 3',5,{fecha:'2026-11-27'}],
+      ['Nota de participación',16],['Talleres de Inteligencia Artificial',4],
     ],
     grupos:[{nombre:'Evaluaciones principales',evals:['Interrogación 1','Interrogación 2','Examen'],min:4.0,cap:3.9}],
     // Sin reglas visibles: el programa solo trae la sustitución automática por
@@ -545,7 +548,14 @@ const PRESETS_UC={
     // Ninguna de las dos es algo que el estudiante pueda usar a su favor.
   },
   'Principios Ecológicos y Medio Ambiente':{
-    evals:[['Prueba 1',25],['Prueba 2',40],['Prueba 3',35]],
+    // El calendario 2026-2 la nombra "Biología"; sus I1, I2 e I3 calzan con
+    // las tres Pruebas del programa. Se conserva el nombre oficial del curso.
+    periodo:'2026-2',
+    evals:[
+      ['Prueba 1',25,{fecha:'2026-09-01'}],
+      ['Prueba 2',40,{fecha:'2026-11-03'}],
+      ['Prueba 3',35,{fecha:'2026-12-01'}],
+    ],
     noCalcula:[
       'Si tu promedio ponderado de las Pruebas supera 4,0, las décimas que ganes en los talleres se suman a tu nota final, con un máximo de 5 décimas',
     ],
@@ -690,6 +700,9 @@ const PRESETS_UC={
     evals:[
       ['Interrogación 1',25,{fecha:'2026-09-29'}],
       ['Interrogación 2',25,{fecha:'2026-11-13'}],
+      // El calendario fija C1/C2/C3, pero el programa solo da 20% al conjunto.
+      // Separarlos o repartir su peso inventaría ponderaciones; las tres fechas
+      // requieren soporte de fechas por casilla, no una fecha falsa del grupo.
       ['Controles',20,{slots:3}],
       ['Examen',30,{fecha:'2026-12-01'}],
     ],

@@ -85,8 +85,15 @@ chk('el ramo que aporta existe en el registro', !!UC[UC['Dinámica'].aporta.ramo
 pautaUC('Revelación y Fe','Evaluación 1:20|Evaluación 2:20|Evaluación 3:30|Examen final:30');
 chk('Programación conserva sus tres fechas oficiales',
   evalsUC(UC['Introducción a la Programación']).slice(0,3).map(([, ,x])=>x.fecha).join('|')==='2026-09-24|2026-10-22|2026-12-10');
+// El calendario 2026-2 publica el cierre de cada tarea, no su apertura: Agenda
+// debe avisar la fecha límite, sin convertir tres hitos de inicio en pruebas.
+chk('Programación conserva los cierres oficiales de sus tres tareas',
+  evalsUC(UC['Introducción a la Programación']).slice(3,6).map(([, ,x])=>x&&x.fecha).join('|')==='2026-10-02|2026-10-27|2026-11-27');
 chk('Revelación y Fe conserva sus tres fechas oficiales',
   evalsUC(UC['Revelación y Fe']).slice(0,3).map(([, ,x])=>x.fecha).join('|')==='2026-09-07|2026-10-14|2026-11-16');
+chk('Principios Ecológicos conserva las tres evaluaciones de Biología 2026-2',
+  UC['Principios Ecológicos y Medio Ambiente'].periodo==='2026-2' &&
+  evalsUC(UC['Principios Ecológicos y Medio Ambiente']).map(([, ,x])=>x&&x.fecha).join('|')==='2026-09-01|2026-11-03|2026-12-01');
 chk('Programación conserva la compuerta de evaluaciones principales',
   UC['Introducción a la Programación'].grupos[0].min===4&&UC['Introducción a la Programación'].grupos[0].cap===3.9);
 // "La evaluación de pares es reprobatoria: si el promedio es menor a 4, serán
