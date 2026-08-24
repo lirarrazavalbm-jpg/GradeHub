@@ -1485,7 +1485,15 @@ function checkOb(){
 }
 
 function completeOnboarding(){
-  const name=document.getElementById('ob-name').value.trim();if(!name||!selectedCarrera)return;
+  const name=document.getElementById('ob-name').value.trim();
+  // Acepta lo MISMO que exige el paso 3: código de malla o carrera declarada
+  // por su nombre. Exigir `selectedCarrera` dejaba encerrado a todo el que no
+  // tiene malla —69 de las 71 carreras UC, y Contador Auditor en FEN—: el
+  // botón decía "Continuar con N ramos", se apretaba y no pasaba nada, porque
+  // este `return` no dice nada. Sin malla no hay preset y eso está bien; lo que
+  // no puede pasar es que no exista la cuenta.
+  const carreraDeclarada=selectedCarrera||String(selectedCarreraNombre||'').trim();
+  if(!name||!carreraDeclarada)return;
   S.userName=name;S.careerSemestre=selectedSem;S.carrera=selectedCarrera;S.carreraNombre=selectedCarreraNombre;S.tenant=selectedTenant;
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
