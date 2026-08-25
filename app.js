@@ -2559,14 +2559,24 @@ function normalizarReportePeso(i,input){
   if(input&&reporteDraft[i])input.value=r2(reporteDraft[i].peso);
 }
 
+// La sigla de un reporte UC no puede depender solo de la malla que ya tenemos.
+// Los majors aparecen en CREDITOS_UC antes de que exista su malla: si caen al
+// nombre normalizado, dos ramos homónimos pueden formar consenso juntos. La
+// tabla de créditos ya es el catálogo oficial que los identificó al buscarlos,
+// así que sirve también para agrupar sus reportes sin cambiar datos guardados.
+function siglaReporteUC(r){
+  const o=r&&r.origen;
+  if(!o||o.tenant!=='uc')return null;
+  if(typeof o.ramoKey==='string'&&o.ramoKey.trim())return o.ramoKey;
+  const clave=Object.keys(CREDITOS_UC).find(n=>normName(n)===normName(r.nombre));
+  return (clave&&CREDITOS_UC[clave]&&CREDITOS_UC[clave][1])||siglaUC(r.nombre,o.carrera)||null;
+}
+
 // La clave del consenso identifica el ramo compartido, no el lugar que ocupa
 // en una malla. En UC la sigla evita confundir cursos homónimos de facultades
 // distintas; fuera de UC se conserva el nombre normalizado hasta tener otro
 // identificador oficial equivalente.
-function claveReporte(r){
-  const o=r&&r.origen;
-  return (o&&o.tenant==='uc'&&siglaUC(r.nombre,o.carrera))||normName(r&&r.nombre);
-}
+function claveReporte(r){return siglaReporteUC(r)||normName(r&&r.nombre);}
 
 function openReportModal(ramoId){
   const r=S.ramos.find(x=>x.id===(ramoId||currentRamoId));
@@ -2626,7 +2636,7 @@ async function enviarReporte(ramoId){
       p_carrera:(r.origen&&r.origen.carrera)||S.carrera,
       p_ramo:r.nombre,
       p_ramo_norm:normName(r.nombre),
-      p_ramo_sigla:(r.origen&&r.origen.tenant==='uc'&&siglaUC(r.nombre,r.origen.carrera))||null,
+      p_ramo_sigla:siglaReporteUC(r),
       p_estructura:est,
       p_huella:huellaEstructura(est),
       p_nota:(notaEl&&notaEl.value.trim())||null,
