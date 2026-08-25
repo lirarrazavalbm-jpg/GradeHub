@@ -18,7 +18,7 @@ let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
 const MALLA_UC = val('MALLA_UC'), SIGLAS_UC = val('SIGLAS_UC');
-const siglaUC = val('siglaUC'), claveReporte = val('claveReporte');
+const siglaUC = val('siglaUC'), siglaReporteUC = val('siglaReporteUC'), claveReporte = val('claveReporte');
 const estructuraReporte = val('estructuraReporte'), aplicarPesoReporte = val('aplicarPesoReporte');
 const estadoReporte = val('estadoReporte');
 
@@ -43,6 +43,12 @@ const calculoIng = { nombre: 'Cálculo I', origen: { tenant: 'uc', carrera: 'ING
 const calculoCom = { nombre: 'Cálculo I', origen: { tenant: 'uc', carrera: 'COM' } };
 chk('el mismo ramo UC coincide aunque venga de mallas distintas',
   claveReporte(calculoIng) === 'MAT1610' && claveReporte(calculoCom) === 'MAT1610');
+// Los majors UC no tienen malla cargada, pero sus ramos sí tienen una sigla
+// oficial en CREDITOS_UC. Si se agrupan por nombre, un homónimo de otra
+// facultad puede contaminar el consenso que luego recibe un estudiante.
+const sistemas = { nombre: 'Sistemas Operativos y Redes', origen: { tenant: 'uc', carrera: 'ING-PC' } };
+chk('un ramo de major UC conserva su sigla al reportar aunque no esté en la malla',
+  siglaReporteUC(sistemas) === 'IIC2333' && claveReporte(sistemas) === 'IIC2333');
 chk('un ramo FEN conserva nombre normalizado hasta tener una sigla oficial',
   claveReporte({ nombre: 'Contabilidad', origen: { tenant: 'fen', carrera: 'IC' } }) === 'contabilidad');
 
