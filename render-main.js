@@ -393,15 +393,21 @@ function renderRamo(){
   }
 
   const cl=document.getElementById('cat-list');cl.innerHTML='';
+  const delCatalogo=pautaCatalogoSinOficial(r);
+  const addCatBtn=document.querySelector('.add-cat-btn');
+  if(addCatBtn){
+    const armar=r.categorias.length===0&&delCatalogo;
+    addCatBtn.textContent=armar?'Armar mi pauta':'Agregar evaluaciones';
+    addCatBtn.setAttribute('aria-label',armar?'Armar mi pauta con nombres y porcentajes':'Agregar evaluaciones');
+  }
   if(r.categorias.length===0){
     // Un ramo del catálogo sin pauta oficial NO es lo mismo que uno que el
     // estudiante creó a mano. En el primero la app le prometió el ramo y le
     // quedó debiendo las evaluaciones, y decírselo es más honesto que un
     // "Sin evaluaciones" que parece que él no hizo algo.
-    const delCatalogo=!!(r.origen&&r.origen.tenant)&&!presetRamo(r.nombre,r.origen.tenant,r.origen.carrera);
     const titulo=delCatalogo?'Todavía no tenemos la pauta de este ramo':'Sin evaluaciones';
     const sub=delCatalogo
-      ? 'Disculpa: el ramo está en la malla pero su pauta oficial todavía no. Agrega tus evaluaciones con su porcentaje y el promedio funciona igual — y después puedes reportárnosla para que la tengan los demás.'
+      ? 'La puedes armar con tu programa: agrega evaluaciones y porcentajes. El promedio funciona igual y, si quieres, después puedes compartirla con otros estudiantes.'
       : 'Agrega tus pruebas, controles o tareas con su porcentaje del ramo. Puedes incluir la fecha para que aparezcan en la Agenda.';
     cl.innerHTML=`<div class="empty" style="padding:32px 20px;">
       <div class="empty-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>

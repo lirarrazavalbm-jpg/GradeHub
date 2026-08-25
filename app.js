@@ -2804,6 +2804,13 @@ function estadoPauta(categorias){
   const diferencia=Math.round((100-total)*10)/10;
   return {total,diferencia,lista:Math.abs(diferencia)<0.05};
 }
+
+// Un ramo del catálogo sin preset no es un ramo "vacío" del estudiante: la
+// app sí sabe qué curso es, pero todavía no tiene su programa transcrito. Esta
+// distinción decide qué ayuda ofrecer sin inventar ponderaciones.
+function pautaCatalogoSinOficial(r){
+  return !!(r&&r.origen&&r.origen.tenant&&!presetRamo(r.nombre,r.origen.tenant,r.origen.carrera));
+}
 // ─── CONTROL DE PONDERACIÓN ──────────────────────────────────────────────────
 // Input numérico + slider que se sincronizan. El slider salta de 5 en 5 (valores
 // redondos, que es lo normal en una pauta); el input acepta cualquier entero.
@@ -3149,8 +3156,15 @@ function pautaTecla(e,i,campo){
   const siguiente=document.getElementById('m-pauta-nombre-'+(i+1));
   if(siguiente)siguiente.focus();else agregarPautaFila();
 }
+function ofrecerCompartirPauta(r){
+  showConfirm('¿Compartir esta pauta?',
+    `Vas a revisar los nombres y porcentajes de ${r.nombre} antes de enviarlos. Si otras personas coinciden, puede ayudar a quienes toman el mismo ramo. Nunca tus notas ni fechas.`,
+    ()=>openReportModal(r.id),
+    {label:'Revisar antes de enviar',danger:false,focusCancel:true});
+}
 function guardarPautaManual(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  const estabaVacia=!(r.categorias||[]).some(c=>String(c.nombre||'').trim());
   const filas=pautaDraft.filter(f=>f.nombre.trim());
   const ids=new Set(filas.filter(f=>f.id).map(f=>f.id));
   r.categorias=r.categorias.filter(c=>ids.has(c.id)||(c.notas||[]).length>0);
@@ -3168,6 +3182,10 @@ function guardarPautaManual(){
   });
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
   showToast(estado.lista?'✓ Listo, ya suma 100%':'Guardado · puedes completar el resto después');
+  // Se ofrece una sola vez, al pasar de sin pauta a pauta completa. Si la
+  // persona prefiere no compartirla, el enlace de reporte queda disponible en
+  // la ficha; no se le vuelve a interrumpir cada vez que corrige un porcentaje.
+  if(estabaVacia&&estado.lista&&pautaCatalogoSinOficial(r))setTimeout(()=>ofrecerCompartirPauta(r),160);
 }
 function abrirPautaDesdeNota(){closeModal();setTimeout(openPautaManualModal,120);}
 
