@@ -174,8 +174,8 @@ console.log('\n=== Ingeniería Comercial UC · segundo semestre ===');
 console.log('\n=== El ramo sin pauta lo dice, y la deuda es nuestra ===');
 const render = src.slice(src.indexOf('function renderRamo()'), src.indexOf('function renderRamo()') + 12000);
 chk('distingue el ramo del catálogo del creado a mano', /const delCatalogo=/.test(render));
-chk('al del catálogo le pide disculpas en vez de decirle "Sin evaluaciones"',
-  /Todavía no tenemos la pauta de este ramo/.test(render) && /Disculpa/.test(render));
+chk('al del catálogo le explica cómo armar la pauta en vez de decirle "Sin evaluaciones"',
+  /Todavía no tenemos la pauta de este ramo/.test(render) && /La puedes armar con tu programa/.test(render));
 chk('al ramo manual le sigue diciendo Sin evaluaciones', /'Sin evaluaciones'/.test(render));
 // El mensaje vive dentro del bloque de categorías vacías: en cuanto el
 // estudiante agrega su primera evaluación, deja de renderizarse solo.

@@ -66,6 +66,19 @@ chk('el botón de la ficha dice Agregar evaluaciones',
   /Agregar evaluaciones<\/button>/.test(fs.readFileSync(raiz + 'index.html', 'utf8')));
 chk('el modal ya no se llama Configurar pauta', !/Configurar pauta/.test(src));
 
+console.log('\n=== Un ramo del catálogo sin pauta tiene un camino claro ===');
+const renderMain = fs.readFileSync(raiz + 'render-main.js', 'utf8');
+let pautaCatalogoSinOficial = null;
+try { pautaCatalogoSinOficial = val('pautaCatalogoSinOficial'); } catch (_) {}
+chk('distingue un ramo del catálogo que todavía no tiene pauta oficial',
+  pautaCatalogoSinOficial && pautaCatalogoSinOficial({ nombre: 'Ramo sin programa', origen: { tenant: 'uc', carrera: 'ING-PC' }, categorias: [] }) &&
+  !pautaCatalogoSinOficial({ nombre: 'Ramo manual', origen: null, categorias: [] }));
+chk('la acción vacía le dice que puede armar su pauta',
+  /pautaCatalogoSinOficial\(r\)[\s\S]{0,500}Armar mi pauta/.test(renderMain));
+chk('una pauta completa recién creada ofrece revisarla antes de compartirla',
+  /estabaVacia[\s\S]{0,900}ofrecerCompartirPauta\(r\)/.test(src) &&
+  /Revisar antes de enviar/.test(src) && /Nunca tus notas/.test(src));
+
 console.log('\n=== Reportar la pauta se encuentra ===');
 const html = fs.readFileSync(raiz + 'index.html', 'utf8');
 // Vivía al fondo del modal de "Editar ramo", debajo de Guardar y Cancelar.
@@ -73,10 +86,12 @@ const html = fs.readFileSync(raiz + 'index.html', 'utf8');
 chk('el botón está en la ficha del ramo, no en Editar ramo', /id="ramo-report"/.test(html));
 const editar = src.slice(src.indexOf('<div class="modal-title">Editar ramo</div>'), src.indexOf('function confirmEditRamo'));
 chk('ya no cuelga del modal de editar', !/openReportModal/.test(editar));
-// Y queda una sola vía de entrada: dos botones para lo mismo en pantallas
-// distintas es cómo se llegó a que nadie encontrara ninguno.
-chk('hay un solo punto de entrada al reporte',
-  (src.match(/openReportModal\(/g) || []).length === 2);
+// Sigue habiendo un único acceso permanente en la ficha. El tercero aparece
+// solo después de crear una pauta completa y abre una revisión: no envía nada
+// por sí solo ni duplica una acción constante en otra pantalla.
+chk('solo ofrece compartir desde el hito de crear una pauta completa',
+  (src.match(/openReportModal\(/g) || []).length === 3 &&
+  /function ofrecerCompartirPauta\(r\)[\s\S]{0,500}showConfirm[\s\S]{0,500}openReportModal\(r\.id\)/.test(src));
 // El texto viejo ("¿Le cambiaron las ponderaciones?") daba por hecho que la
 // pauta existe y cambió. Hoy el caso mayoritario es que no la tenemos.
 chk('el texto sirve para una pauta mala y para una que falta',
