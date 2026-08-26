@@ -25,8 +25,8 @@ const val = n => vm.runInContext(n, ctx);
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
-const CURSOS_UC = val('CURSOS_UC'), MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC');
-const normName = val('normName'), catalogo = val('catalogRamosUniversidad'), presetRamo = val('presetRamo');
+const CURSOS_UC = val('CURSOS_UC'), MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), CREDITOS_UC = val('CREDITOS_UC');
+const normName = val('normName'), catalogo = val('catalogRamosUniversidad'), buscar = val('searchCatalog'), presetRamo = val('presetRamo');
 
 console.log('\n=== La lista está bien formada ===');
 chk('tiene cursos', CURSOS_UC.length > 0);
@@ -60,6 +60,26 @@ chk('y sin prometer ponderaciones',
 // El caso que originó todo: tres estudiantes escribieron "biocel" a mano.
 chk('"Biología de la Célula" está en el catálogo', porNombre.has(normName('Biología de la Célula')));
 chk('y "Experiencia Creyente y Secularismo" también', porNombre.has(normName('Experiencia Creyente y Secularismo')));
+
+console.log('\n=== Ingeniería UC no termina en cuarto semestre ===');
+// La tabla de SCT ya contiene los ramos de los 34 majors. Dejarla solo para
+// calcular créditos hacía que un estudiante de 5°+ tuviera que escribir a
+// mano un curso oficial que la app ya conocía, perdiendo hasta su sigla.
+const avanzado = 'Sistemas Operativos y Redes';
+chk('un ramo de major existe en el catálogo aunque no esté en la malla común',
+  !!CREDITOS_UC[avanzado] && !enMalla.has(normName(avanzado)) &&
+  porNombre.has(normName(avanzado)));
+const porSigla = buscar('IIC2333', 'uc', 'ING-PC', 6);
+chk('buscar por sigla encuentra el ramo de major correcto',
+  porSigla.some(r => r.nombre === avanzado && r.sigla === 'IIC2333'));
+chk('el ramo de major no promete una pauta que no existe',
+  !!porNombre.get(normName(avanzado)) && !porNombre.get(normName(avanzado)).tienePreset);
+const mensajeTardio = val("selectedTenant='uc';selectedCarrera='ING-PC';selectedSem=5;obCoursePickerIntro([])");
+chk('5° explica que no inventamos un major y pide el horario',
+  /separa por major/.test(mensajeTardio) && /sigla de tu horario/.test(mensajeTardio));
+const metaAvanzado = val("obCatalogMeta({semestre:0,sigla:'IIC2333',fuente:'catalogo-ingenieria',tienePreset:false})");
+chk('el resultado explica que viene del catálogo y no inventa un semestre 0',
+  metaAvanzado === 'IIC2333 · catálogo de Ingeniería UC');
 
 console.log('\n=== No se le ofrecen a otra universidad ===');
 const catFen = catalogo('fen', 'ICO');
