@@ -6,7 +6,7 @@ const raiz = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
 const headers = fs.readFileSync(path.join(raiz, '_headers'), 'utf8');
 const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-const app = fs.readFileSync(path.join(raiz, 'app.js'), 'utf8');
+const app = fs.readFileSync(path.join(raiz, 'app.js'), 'utf8') + '\n' + fs.readFileSync(path.join(raiz, 'app-session.js'), 'utf8');
 
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };

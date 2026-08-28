@@ -3,7 +3,7 @@
 // screen-auth: la persona insistía con Google aunque su sesión estaba bien.
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
-const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
+const src = ['data.js', 'engine.js', 'app.js', 'app-session.js', 'render-agenda.js']
   .map(f => fs.readFileSync(raiz + f, 'utf8')).join('\n');
 
 function classList(inicial){
