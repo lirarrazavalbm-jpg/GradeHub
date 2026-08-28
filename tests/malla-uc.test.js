@@ -172,7 +172,10 @@ console.log('\n=== Ingeniería Comercial UC · segundo semestre ===');
 });
 
 console.log('\n=== El ramo sin pauta lo dice, y la deuda es nuestra ===');
-const render = src.slice(src.indexOf('function renderRamo()'), src.indexOf('function renderRamo()') + 12000);
+// No depende de una cantidad de caracteres: renderRamo crece cuando suma una
+// regla y el corte fijo podía dejar fuera el estado vacío que esta prueba cuida.
+const renderStart=src.indexOf('function renderRamo()');
+const render=src.slice(renderStart,src.indexOf('function renderStats()',renderStart));
 chk('distingue el ramo del catálogo del creado a mano', /const delCatalogo=/.test(render));
 chk('al del catálogo le explica cómo armar la pauta en vez de decirle "Sin evaluaciones"',
   /Todavía no tenemos la pauta de este ramo/.test(render) && /La puedes armar con tu programa/.test(render));

@@ -53,6 +53,44 @@ function gh_applyDrop(node,known){
   for(let i=known.length-1;i>=0;i--){if(peores.has(known[i]))fuera.unshift(known.splice(i,1)[0]);}
   return fuera;
 }
+
+// Una inasistencia justificada no es una nota inventada. La regla del programa
+// puede decir dos cosas distintas: reemplazar la nota ausente por otra ya
+// rendida, o mover un peso completo a otra evaluación. El adaptador recibe ids
+// resueltos desde el preset, por lo que este motor no sabe ni necesita saber el
+// nombre del ramo que está calculando.
+function gh_clonarArbol(node){return {...node,children:(node.children||[]).map(gh_clonarArbol)};}
+function gh_nodosPorId(node,map=new Map()){map.set(node.id,node);(node.children||[]).forEach(hijo=>gh_nodosPorId(hijo,map));return map;}
+function gh_prepararAusenciasJustificadas(structure,grades,regla,declaraciones){
+  const declaradas=new Set(Array.isArray(declaraciones)?declaraciones:[]);
+  const vacio={estructura:structure,notas:grades,activas:[],pendientes:[],inactivas:[]};
+  if(!regla||!declaradas.size)return vacio;
+  const base=calculateFinalGrade(structure,grades);
+  const valores=new Map(base.breakdown.map(n=>[n.id,n.value]));
+  const copia=gh_clonarArbol(structure),nodos=gh_nodosPorId(copia),notas={...grades};
+  const activas=[],pendientes=[],inactivas=[],vistas=new Set();
+  const revisar=(tipo,entrada)=>{
+    if(!entrada||!declaradas.has(entrada.desdeId)||vistas.has(entrada.desdeId))return;
+    vistas.add(entrada.desdeId);
+    const desde=nodos.get(entrada.desdeId),hacia=nodos.get(entrada.haciaId);
+    if(!desde||!hacia){inactivas.push({...entrada,tipo,motivo:'pauta_cambio'});return;}
+    if(valores.get(entrada.desdeId)!==null){inactivas.push({...entrada,tipo,motivo:'tiene_nota'});return;}
+    if(tipo==='reemplazo'&&valores.get(entrada.haciaId)==null){pendientes.push({...entrada,tipo,motivo:'falta_destino'});return;}
+    if(tipo==='reemplazo'){
+      const id=`ausencia-${entrada.desdeId}`;
+      desde.children=[{id,name:'Nota reemplazada',weight:1,type:'leaf'}];
+      desde.drop_lowest=null;notas[id]=valores.get(entrada.haciaId);
+    }else{
+      hacia.weight=(Number(hacia.weight)||0)+(Number(desde.weight)||0);
+      desde.weight=0;desde.children=[];desde.drop_lowest=null;
+    }
+    activas.push({...entrada,tipo});
+  };
+  (regla.reemplazos||[]).forEach(entrada=>revisar('reemplazo',entrada));
+  (regla.traspasos||[]).forEach(entrada=>revisar('traspaso',entrada));
+  declaradas.forEach(desdeId=>{if(!vistas.has(desdeId))inactivas.push({desdeId,tipo:'desconocida',motivo:'pauta_cambio'});});
+  return {estructura:copia,notas,activas,pendientes,inactivas};
+}
 function calculateFinalGrade(structure,grades,overrides={}){
   const breakdown=[],emptyLeaves=[],gates=[],drops=[];
   function evalNode(node){

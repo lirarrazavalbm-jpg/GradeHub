@@ -1163,13 +1163,20 @@ const PRESETS_FEN={
   'Introducción a la Microeconomía':{
     creditos:6,
     recuperativo:{min:3.6,max:3.9,nota:4.0},
-    noCalcula:[
-      'Si faltas al Control 1 con justificativo aprobado, esa nota se reemplaza por la de la Solemne',
-      'Si faltas a la Solemne, al Control 2 o al Control 3 con justificativo aprobado, esa nota se reemplaza por la del Examen',
-      'Si faltas a una prueba sorpresa con justificativo, ese 5% se suma al Examen',
-    ],
-    // Las dos que nunca van a ser cálculo: la primera es procedimiento del curso
-    // —te dice qué hacer, no cómo sale tu número— y la segunda es disciplinaria.
+    // El programa dice exactamente qué ocurre en cada caso. Reemplazar una
+    // nota y mover un peso no son la misma regla: se declaran separadas para
+    // no convertir el segundo caso en una nota ficticia.
+    ausenciasJustificadas:{
+      reemplazos:[
+        {desde:'Control 1',hacia:'Solemne'},
+        {desde:'Solemne',hacia:'Examen'},
+        {desde:'Control 2',hacia:'Examen'},
+        {desde:'Control 3',hacia:'Examen'},
+      ],
+      traspasos:[{desde:'Pruebas sorpresa',hacia:'Examen'}],
+    },
+    // Las dos reglas restantes no son cálculos: la primera es procedimiento del
+    // curso y la segunda es disciplinaria.
     reglasDelCurso:[
       'Si faltas al Examen tienes que dar el recuperativo',
       'Copiar o plagiar reprueba el ramo de inmediato con 1,0',

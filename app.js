@@ -159,6 +159,21 @@ function copiarRecuperativo(regla){
   if(!regla||!Number.isFinite(regla.min)||!Number.isFinite(regla.max)||!Number.isFinite(regla.nota)||regla.min>regla.max)return null;
   return {min:regla.min,max:regla.max,nota:regla.nota};
 }
+function copiarReglasAusenciaIds(regla){
+  if(!regla)return null;
+  const copiar=lista=>(Array.isArray(lista)?lista:[]).filter(x=>x&&typeof x.desdeId==='string'&&typeof x.haciaId==='string').map(x=>({desdeId:x.desdeId,haciaId:x.haciaId}));
+  const reemplazos=copiar(regla.reemplazos),traspasos=copiar(regla.traspasos);
+  return reemplazos.length||traspasos.length?{reemplazos,traspasos}:null;
+}
+function resolverReglasAusencia(def,categorias){
+  const declaracion=!Array.isArray(def)&&def&&def.ausenciasJustificadas;
+  if(!declaracion||!Array.isArray(categorias))return null;
+  const idDe=nombre=>{const c=categorias.find(x=>normName(x.nombre)===normName(nombre));return c&&c.id;};
+  const resolver=lista=>(Array.isArray(lista)?lista:[]).map(x=>({desdeId:idDe(x.desde),haciaId:idDe(x.hacia)})).filter(x=>x.desdeId&&x.haciaId);
+  const reemplazos=resolver(declaracion.reemplazos),traspasos=resolver(declaracion.traspasos);
+  return reemplazos.length||traspasos.length?{reemplazos,traspasos}:null;
+}
+function ausenciasDeclaradas(raw){return [...new Set((Array.isArray(raw)?raw:[]).filter(id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(id)))];}
 
 function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
@@ -180,6 +195,10 @@ function normalize(data) {
     // se puede actualizar desde catálogo; la declaración nunca se inventa.
     recuperativo: copiarRecuperativo(r.recuperativo),
     recuperativoRendido: ['aprobado','reprobado'].includes(r.recuperativoRendido) ? r.recuperativoRendido : null,
+    // La regla viene del programa; la declaración solo dice qué ausencia fue
+    // aprobada. Sin declaración, una cuenta anterior calcula exactamente igual.
+    reglasAusenciaJustificada: copiarReglasAusenciaIds(r.reglasAusenciaJustificada),
+    ausenciasJustificadas: ausenciasDeclaradas(r.ausenciasJustificadas),
     categorias: (r.categorias || []).map(c => ({
       ...c,
       id: idSeguro(c.id),
@@ -228,12 +247,18 @@ function normalize(data) {
   data.ramos.forEach(r => {
     migrarOrigenesFecha(r);
     const p = pautaPendiente(r);
-    if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.recuperativo = p.recuperativo || null; r.pautaHuella = huellaPauta(p.categorias); }
+    if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.recuperativo = p.recuperativo || null; r.reglasAusenciaJustificada=p.reglasAusenciaJustificada||null; r.pautaHuella = huellaPauta(p.categorias); }
     // La regla es aditiva y no cambia ningún promedio sin una declaración. Así
     // los ramos oficiales ya creados también pueden ofrecer el recuperativo,
     // sin reinterpretar notas ni tocar ramos manuales.
     const recuperativoOficial=copiarRecuperativo(definicionPresetDelRamo(r)?.recuperativo);
     if(!r.recuperativo&&recuperativoOficial)r.recuperativo=recuperativoOficial;
+    // Igual que el recuperativo, la regla llega a los ramos oficiales creados
+    // antes de publicarla, sin activar nada por sí sola.
+    if(!r.reglasAusenciaJustificada){
+      const reglaAusencia=resolverReglasAusencia(definicionPresetDelRamo(r),r.categorias);
+      if(reglaAusencia)r.reglasAusenciaJustificada=reglaAusencia;
+    }
     // Los créditos tenían el mismo problema que la pauta y era peor, porque no
     // se nota: `creditosDe` solo corría al CREAR el ramo, así que quien agregó
     // Introducción a la Programación antes de que su crédito estuviera en la
@@ -711,6 +736,10 @@ function estadoEximicion(ramo){
 }
 function categoriaEximida(ramo,cat){const estado=estadoEximicion(ramo);return !!(estado&&estado.activa&&estado.examenId===cat.id);}
 function categoriasVigentes(ramo){return (ramo&&ramo.categorias||[]).filter(c=>!categoriaEximida(ramo,c));}
+function estadoAusenciasJustificadas(ramo){
+  if(!ramo||!ramo.reglasAusenciaJustificada)return null;
+  return gh_prepararAusenciasJustificadas(ramoToStructure(ramo),gradesOf(ramo),ramo.reglasAusenciaJustificada,ramo.ausenciasJustificadas);
+}
 // Promedio ponderado de un subconjunto de categorías (para compuertas de grupo).
 // Devuelve null si ninguna del grupo tiene nota todavía.
 function avgDeGrupo(r,catIds){
@@ -724,6 +753,16 @@ function avgDeGrupo(r,catIds){
   });
   return den>0?num/den:null;
 }
+function avgDeGrupoCalculado(res,estructura,catIds){
+  const valores=new Map((res.breakdown||[]).map(n=>[n.id,n.value]));
+  const nodos=new Map((estructura.children||[]).map(n=>[n.id,n]));
+  let num=0,den=0;
+  (catIds||[]).forEach(id=>{
+    const peso=Number((nodos.get(id)||{}).weight)||0,valor=valores.get(id);
+    if(peso>0&&valor!==null&&valor!==undefined){num+=valor*peso;den+=peso;}
+  });
+  return den>0?num/den:null;
+}
 
 // ramoAvg pasa por el motor y luego aplica los pisos de nota del ramo.
 // Dos tipos de compuerta:
@@ -733,7 +772,10 @@ function avgDeGrupo(r,catIds){
 //                        propio promedio del grupo (regla "la nota más baja
 //                        entre los dos requisitos", común en FEN).
 function calculoRamoConCompuertas(r){
-  const res=calculateFinalGrade(ramoToStructure(r),gradesOf(r));
+  const ausencias=estadoAusenciasJustificadas(r);
+  const estructura=ausencias?ausencias.estructura:ramoToStructure(r);
+  const notas=ausencias?ausencias.notas:gradesOf(r);
+  const res=calculateFinalGrade(estructura,notas);
   let v=res.raw,limitadoPorCompuerta=false;
   if(v!==null && Array.isArray(r.gates)){
     for(const g of r.gates){
@@ -743,7 +785,7 @@ function calculoRamoConCompuertas(r){
           const siguiente=Math.min(v,g.cap);if(siguiente<v)limitadoPorCompuerta=true;v=siguiente;
         }
       } else if(g.type==='group_min'){
-        const ga=avgDeGrupo(r,g.catIds);
+        const ga=avgDeGrupoCalculado(res,estructura,g.catIds);
         if(ga!==null && ga < g.min){
           const tope=(g.cap==='self')?ga:g.cap;
           const siguiente=Math.min(v,tope);if(siguiente<v)limitadoPorCompuerta=true;v=siguiente;
@@ -751,14 +793,16 @@ function calculoRamoConCompuertas(r){
       }
     }
   }
-  return {res,valor:v,limitadoPorCompuerta};
+  return {res,valor:v,limitadoPorCompuerta,estructura,notas,ausencias};
 }
 // El árbol del motor solo conoce las notas que ya existen. Una categoría con
 // `slots:5` y cuatro notas no deja una quinta hoja vacía, así que una regla que
 // exige ramo completo debe contar también las casillas declaradas en la pauta.
-function ramoCompletamenteEvaluado(r){
+function ramoCompletamenteEvaluado(r,calculo){
+  const cubiertas=new Set((calculo&&calculo.ausencias&&calculo.ausencias.activas||[]).map(x=>x.desdeId));
   const categorias=categoriasVigentes(r);
   return categorias.length>0&&categorias.every(c=>{
+    if(cubiertas.has(c.id))return true;
     const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
     return (c.notas||[]).filter(n=>typeof n.valor==='number').length>=objetivo;
   });
@@ -766,7 +810,12 @@ function ramoCompletamenteEvaluado(r){
 function estadoRecuperativo(r,calculo){
   const regla=copiarRecuperativo(r&&r.recuperativo);if(!regla)return null;
   const base=calculo||calculoRamoConCompuertas(r);
-  return gh_estadoRecuperativo(base.valor,ramoCompletamenteEvaluado(r),base.limitadoPorCompuerta,regla,r.recuperativoRendido);
+  return gh_estadoRecuperativo(base.valor,ramoCompletamenteEvaluado(r,base),base.limitadoPorCompuerta,regla,r.recuperativoRendido);
+}
+function resumenCategoriasCalculadas(r,calculo){
+  const base=calculo||calculoRamoConCompuertas(r);
+  const valores=new Map((base.res.breakdown||[]).map(n=>[n.id,n.value]));
+  return (base.estructura.children||[]).filter(c=>(Number(c.weight)||0)>0).map(c=>({id:c.id,nombre:c.name,peso:Number(c.weight)||0,valor:valores.get(c.id)}));
 }
 function ramoAvg(r,visitados){
   const base=calculoRamoConCompuertas(r);
@@ -824,15 +873,17 @@ function textoDescarte(cat,descarte){
 
 // Compuertas incumplidas, para explicarlas en la UI
 function gatesActivas(r){
+  const calculo=calculoRamoConCompuertas(r);
+  const valores=new Map((calculo.res.breakdown||[]).map(n=>[n.id,n.value]));
   const out=[];
   (r.gates||[]).forEach(g=>{
     if(g.type==='min_grade_required'){
       const c=(r.categorias||[]).find(x=>x.id===g.catId);
       if(!c)return;
-      const a=avgPond(c.notas);
+      const a=valores.get(c.id);
       if(a!==null&&a<g.min)out.push({nombre:g.nombre||c.nombre,actual:a,min:g.min,cap:g.cap});
     } else if(g.type==='group_min'){
-      const ga=avgDeGrupo(r,g.catIds);
+      const ga=avgDeGrupoCalculado(calculo.res,calculo.estructura,g.catIds);
       if(ga!==null&&ga<g.min){
         // con cap:'self' el tope es el propio promedio del grupo
         out.push({nombre:g.nombre||'Requisito',actual:ga,min:g.min,cap:(g.cap==='self')?ga:g.cap,grupo:true});
@@ -1997,6 +2048,21 @@ function corregirRecuperativo(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r||!r.recuperativoRendido)return;
   r.recuperativoRendido=null;save();renderRamo();
 }
+function declararAusenciaJustificada(catId){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  const regla=r.reglasAusenciaJustificada;
+  const declarable=[...(regla&&regla.reemplazos||[]),...(regla&&regla.traspasos||[])].some(x=>x.desdeId===catId);
+  const cat=(r.categorias||[]).find(c=>c.id===catId);
+  if(!declarable||!cat||avgPond(cat.notas)!==null){showToast('Esa ausencia ya no se puede aplicar a tu pauta',true);return;}
+  if(!Array.isArray(r.ausenciasJustificadas))r.ausenciasJustificadas=[];
+  if(!r.ausenciasJustificadas.includes(catId))r.ausenciasJustificadas.push(catId);
+  save();track('declarar_ausencia_justificada');renderRamo();
+}
+function corregirAusenciaJustificada(catId){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  r.ausenciasJustificadas=(r.ausenciasJustificadas||[]).filter(id=>id!==catId);
+  save();renderRamo();
+}
 function toggleCat(id){openCats[id]=!openCats[id];renderRamo();}
 // Nota por espacio en secciones multi-nota (ej: Laboratorio 1/2/3).
 // ─── EL TECLADO NO PUEDE TAPAR LO QUE ESTÁS ESCRIBIENDO ──────────────────────
@@ -2275,6 +2341,7 @@ function actualizarPauta(ramoId){
   // ella en vez de quedar duplicadas —la vieja en 0% y la nueva vacía—. Las de
   // la pauta van después a propósito: si por lo que sea coinciden en nombre,
   // manda la que está viva.
+  const nombresAusencia=new Map((r.categorias||[]).map(c=>[c.id,normName(c.nombre)]));
   const viejas=new Map([...(r.categorias||[]).filter(c=>c.fueraDePauta),...catsDePauta(r.categorias)]
     .map(c=>[normName(c.nombre),c]));
   r.categorias=cambio.preset.categorias.map(c=>{
@@ -2296,6 +2363,15 @@ function actualizarPauta(ramoId){
   r.gates=cambio.preset.gates;
   r.aporta=cambio.preset.aporta||null;
   r.recuperativo=cambio.preset.recuperativo||null;
+  r.reglasAusenciaJustificada=cambio.preset.reglasAusenciaJustificada||null;
+  // Una actualización de pauta genera ids nuevos. La declaración pertenece a
+  // una evaluación por su nombre, no al id efímero; si esa evaluación ya no
+  // existe la conservamos como inactiva, igual que una fecha quitada a mano.
+  r.ausenciasJustificadas=(r.ausenciasJustificadas||[]).map(id=>{
+    const nombre=nombresAusencia.get(id);
+    const nueva=(r.categorias||[]).find(c=>normName(c.nombre)===nombre);
+    return nueva?nueva.id:id;
+  });
   r.pautaHuella=huellaPauta(catsDePauta(r.categorias));
   return true;
 }
@@ -2341,7 +2417,8 @@ function presetRamo(nombre,tenant,carrera,ahora){
     if(ids.length)gates.push({type:'group_min',catIds:ids,min:g.min,cap:g.cap,nombre:g.nombre});
   });
   const recuperativo=!Array.isArray(def)?copiarRecuperativo(def.recuperativo):null;
-  return {categorias,gates,aporta,recuperativo,periodo,estadoPeriodo,
+  const reglasAusenciaJustificada=resolverReglasAusencia(def,categorias);
+  return {categorias,gates,aporta,recuperativo,reglasAusenciaJustificada,periodo,estadoPeriodo,
     creditos:(!Array.isArray(def)&&typeof def.creditos==='number')?def.creditos:null};
 }
 
@@ -4425,10 +4502,10 @@ function confirmEditNota(catId,notaId){
 // ─── CALCULADORA NOTA MÍNIMA ─────────────────────────────────────────────────
 function openCalculadoraModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
-  const categorias=categoriasVigentes(r);
+  const categorias=resumenCategoriasCalculadas(r);
   const totalPeso=categorias.reduce((a,c)=>a+c.peso,0);
   let pesoConNotas=0,sumaPonderada=0;
-  categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
+  categorias.forEach(c=>{if(c.valor!==null&&c.valor!==undefined){pesoConNotas+=c.peso;sumaPonderada+=c.valor*c.peso;}});
   const pesoSinNotas=totalPeso-pesoConNotas;
 
   document.getElementById('modal-content').innerHTML=`
@@ -4470,7 +4547,7 @@ function openCalculadoraModal(){
     const needed=(target*totalPeso-sumaPonderada)/pesoSinNotas;
     const neededR=r2(needed);
     // Si falta una sola sección, nombrarla (más útil que "las secciones sin notas").
-    const vacias=categorias.filter(c=>avgPond(c.notas)===null);
+    const vacias=categorias.filter(c=>c.valor===null||c.valor===undefined);
     const dondeTxt=vacias.length===1?`en <b>${esc(vacias[0].nombre)}</b>`:`en las secciones sin notas (${r2(pesoSinNotas)}% del ramo)`;
     // Condición pendiente de piso (ej: Podcast sin nota aún)
     const condPend=(r.gates||[]).filter(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);return c&&avgPond(c.notas)===null;}).map(g=>`<div style="font-size:0.75rem;color:var(--yellow);margin-top:8px;">Además, ${esc(g.nombre)} debe ser ≥ ${g.min.toFixed(1)} o repruebas pese al promedio.</div>`).join('');
@@ -5317,11 +5394,11 @@ function reglaDescarteConCantidadAbierta(ramo){
   return (ramo.categorias||[]).find(c=>c.dropLowest&&!Number.isInteger(c.slots))||null;
 }
 function notaNecesaria(ramo){
-  const categorias=categoriasVigentes(ramo);
+  const categorias=resumenCategoriasCalculadas(ramo);
   const total=categorias.reduce((s,c)=>s+c.peso,0);
   if(total<=0)return null;
   let pesoCon=0,suma=0;
-  categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoCon+=c.peso;suma+=a*c.peso;}});
+  categorias.forEach(c=>{if(c.valor!==null&&c.valor!==undefined){pesoCon+=c.peso;suma+=c.valor*c.peso;}});
   // Si otro ramo aporta parte de la nota (el laboratorio de Dinámica), sus
   // evaluaciones NO están en `categorias` y hay que traerlas a la cuenta. Sin
   // esto, "¿qué nota necesito?" respondería sobre el 70% de la cátedra como si
