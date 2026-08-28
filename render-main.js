@@ -435,24 +435,29 @@ function renderRamo(){
     </div>`;
   }
   r.categorias.forEach(cat=>{
+    // `normalize()` repara lo que llega al abrir la app, pero una integración
+    // futura puede escribir una categoría después. La ficha debe mostrar esa
+    // evaluación vacía —no borrar visualmente toda la pauta— hasta que se
+    // pueda corregir el dato.
+    const notas=Array.isArray(cat.notas)?cat.notas:[];
     const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaHoraCorta(cat.fecha,cat.hora))}</span>`:'';
     const exenta=categoriaEximida(r,cat);
     // Sección de preset: fila directa, solo escribir la nota (estilo simulador)
     if(cat.directNota){
       // Preset con varios espacios (ej: Laboratorio = 3 notas que se promedian) — COLAPSABLE
       if(cat.slots&&cat.slots>1){
-        const av=avgPond(cat.notas);const isOpen=openCats[cat.id];
+        const av=avgPond(notas);const isOpen=openCats[cat.id];
         const wrap=document.createElement('div');wrap.className='eval-group';
         if(av!=null)wrap.style.borderLeftColor=getColor(av);
         let rows='';
         for(let i=0;i<cat.slots;i++){
-          const nota=cat.notas.find(n=>n.slot===i);const v=(nota&&nota.valor!=null)?nota.valor:null;
+          const nota=notas.find(n=>n.slot===i);const v=(nota&&nota.valor!=null)?nota.valor:null;
           rows+=`<div class="eval-sub">
             <span class="eval-sub-name">${esc(cat.nombre)} ${i+1}</span>
             <input class="eval-row-input sm" inputmode="decimal" maxlength="3" placeholder="—" value="${v!=null?fmt(v):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(cat.nombre)} ${i+1}"/>
           </div>`;
         }
-        const notasCount=cat.notas.length;
+        const notasCount=notas.length;
         wrap.innerHTML=`
           <div class="eval-group-hd" role="button" tabindex="0" aria-expanded="${isOpen?'true':'false'}" onclick="toggleCat('${cat.id}')">
             <div style="flex:1;min-width:0;">
@@ -466,7 +471,7 @@ function renderRamo(){
         cl.appendChild(wrap);
         return;
       }
-      const g=cat.notas[0]?cat.notas[0].valor:null;
+      const g=notas[0]?notas[0].valor:null;
       const row=document.createElement('div');row.className='eval-row';
       if(g!=null)row.style.borderLeftColor=getColor(g);
       row.innerHTML=`
@@ -480,14 +485,14 @@ function renderRamo(){
     }
     const descarte=descartes.find(d=>d.nodeId===cat.id);
     const calculoCategoria=calculo.breakdown.find(b=>b.id===cat.id);
-    const catAvg=calculoCategoria?.value??avgPond(cat.notas);
+    const catAvg=calculoCategoria?.value??avgPond(notas);
     const isOpen=openCats[cat.id]===undefined?!!descarte:openCats[cat.id];
     const notasDescartadas=new Set((descarte?.dropped||[]).map(n=>n.id));
     const explicacionDescarte=descarte?`<div class="drop-rule-note">${esc(textoDescarte(cat,descarte))}</div>`:'';
     const card=document.createElement('div');card.className='cat-card';
-    const notasHTML=cat.notas.length===0?
+    const notasHTML=notas.length===0?
       `<p style="font-size:0.8125rem;color:var(--fg3);text-align:center;padding:10px 0;">Sin notas aún</p>`:
-      cat.notas.map(n=>{
+      notas.map(n=>{
         const descartada=notasDescartadas.has(n.id);
         return `
         <div class="nota-row${descartada?' nota-row-dropped':''}">
@@ -503,7 +508,7 @@ function renderRamo(){
       <div class="cat-header">
         <div class="cat-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" onkeydown="if(event.key==='Enter'){openEditCatModal('${cat.id}')}" style="cursor:pointer;">
           <div class="cat-name">${esc(cat.nombre)}</div>
-          <div class="cat-peso-tag">${cat.peso}% del ramo · ${cat.notas.length} nota${cat.notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
+          <div class="cat-peso-tag">${cat.peso}% del ramo · ${notas.length} nota${notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
         </div>
         <span style="font-size:1rem;font-weight:700;color:${getColor(catAvg)}">${fmt(catAvg)}</span>
         <button aria-label="Eliminar evaluación ${esc(cat.nombre)}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:44px;min-height:44px;background:var(--red-bg);border:none;border-radius:8px;padding:0;cursor:pointer;color:var(--red);font-size:0.8125rem;" onclick="confirmDeleteCat('${cat.id}');event.stopPropagation();"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
