@@ -2804,14 +2804,22 @@ function pautaResumen(){
 // Las plantillas solo ahorran escribir nombres. Jamás sugieren pesos: cada
 // estudiante debe confirmarlos contra el programa de su propio curso.
 function plantillaPauta(tipo){
-  const nombres=tipo==='tres-solemnes'
-    ?['Solemne 1','Solemne 2','Solemne 3','Examen']
-    :tipo==='tres-pruebas'
-      ?['Prueba 1','Prueba 2','Prueba 3','Examen']
-    :tipo==='dos-pruebas'
-      ?['Prueba 1','Prueba 2','Examen']
-      :[];
-  return nombres.map(nombre=>({id:null,nombre,peso:0,tieneNotas:false,varias:false,cantidad:null}));
+  const estructuras={
+    'tres-solemnes':['Solemne 1','Solemne 2','Solemne 3','Examen'],
+    'tres-pruebas':['Prueba 1','Prueba 2','Prueba 3','Examen'],
+    'dos-pruebas':['Prueba 1','Prueba 2','Examen'],
+    // Cálculo I, Álgebra Lineal y Cálculo II comparten esta forma. El
+    // laboratorio sigue siendo un grupo de tres notas: repetirlo como tres
+    // evaluaciones inventaría cómo se reparte su peso.
+    'tres-interrogaciones-lab':['Interrogación 1','Interrogación 2','Interrogación 3',{nombre:'Laboratorio',varias:true,cantidad:3},'Examen'],
+    // Introducción a la Programación combina evaluaciones grandes, tareas y
+    // participación. Es una estructura para partir, no una pauta del curso.
+    'dos-interrogaciones-tareas-participacion':['Interrogación 1','Interrogación 2',{nombre:'Tareas',varias:true,cantidad:3},'Participación','Examen'],
+  };
+  return (estructuras[tipo]||[]).map(fila=>{
+    const def=typeof fila==='string'?{nombre:fila}:fila;
+    return {id:null,nombre:def.nombre,peso:0,tieneNotas:false,varias:false,cantidad:null,...def};
+  });
 }
 // En UC las evaluaciones se llaman pruebas, no solemnes. FEN conserva el
 // término porque aparece así en sus programas oficiales. Solo alimenta el
@@ -2831,7 +2839,12 @@ function ejemploEvaluacion(tenant){return tenant==='uc'?'Prueba':'Solemne';}
 // estructura que después tenían que deshacer a mano.
 function plantillasPauta(tenant){
   return tenant==='uc'
-    ?[{tipo:'tres-pruebas',label:'3 pruebas + examen'},{tipo:'dos-pruebas',label:'2 pruebas + examen'}]
+    ?[
+      {tipo:'tres-pruebas',label:'3 pruebas + examen'},
+      {tipo:'dos-pruebas',label:'2 pruebas + examen'},
+      {tipo:'tres-interrogaciones-lab',label:'3 interrogaciones + laboratorio (3) + examen'},
+      {tipo:'dos-interrogaciones-tareas-participacion',label:'2 interrogaciones + tareas (3) + participación + examen'},
+    ]
     :[];
 }
 // Son atajos de escritura, no una pauta sugerida: el estudiante elige el
@@ -2847,7 +2860,7 @@ function plantillasPauta(tenant){
 // "Solemne" (FEN) ni de "Interrogación" (UC).
 function sugerenciasEvaluacion(tenant){
   const comunes=['Laboratorio','Informe','Taller','Proyecto','Tarea','Presentación','Examen'];
-  if(tenant==='uc')return ['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control',...comunes];
+  if(tenant==='uc')return ['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control 1','Control 2','Control 3',...comunes];
   if(tenant==='fen')return ['Solemne 1','Solemne 2','Solemne 3','Control 1','Control 2','Control 3','Prueba sorpresa','Casos y ensayos','Trabajo individual','Trabajo en grupo','Participación',...comunes];
   return ['Prueba 1','Prueba 2','Prueba 3','Control 1','Control 2','Control 3',...comunes];
 }

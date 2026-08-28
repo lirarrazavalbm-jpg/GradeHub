@@ -210,9 +210,13 @@ const plantillaPruebas=ctx.plantillaPauta('dos-pruebas');
 if(plantillaPruebas.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Examen'&&plantillaPruebas.every(f=>f.peso===0)){ok++;console.log('  OK   plantilla de pruebas no inventa ponderaciones');}
 else {fail++;console.log('  FAIL plantilla de pruebas → '+JSON.stringify(plantillaPruebas));}
 const plantillasUC=ctx.plantillasPauta('uc');
-const plantillaUC=ctx.plantillaPauta(plantillasUC[0].tipo);
-if(plantillasUC[0].label==='3 pruebas + examen'&&ctx.ejemploEvaluacion('uc')==='Prueba'&&plantillaUC.map(f=>f.nombre).join('|')==='Prueba 1|Prueba 2|Prueba 3|Examen'){ok++;console.log('  OK   UC usa pruebas, no solemnes, en la pauta manual');}
-else {fail++;console.log('  FAIL plantilla UC → '+JSON.stringify({plantillasUC,plantillaUC}));}
+const plantillaUC=ctx.plantillaPauta('tres-interrogaciones-lab');
+const plantillaProgramacion=ctx.plantillaPauta('dos-interrogaciones-tareas-participacion');
+const nombresPlantillasUC=plantillasUC.map(p=>p.tipo);
+if(nombresPlantillasUC.includes('tres-interrogaciones-lab')&&nombresPlantillasUC.includes('dos-interrogaciones-tareas-participacion')&&ctx.ejemploEvaluacion('uc')==='Prueba'&&plantillaUC.map(f=>f.nombre).join('|')==='Interrogación 1|Interrogación 2|Interrogación 3|Laboratorio|Examen'&&plantillaUC.find(f=>f.nombre==='Laboratorio').cantidad===3&&plantillaUC.every(f=>f.peso===0)){ok++;console.log('  OK   UC ofrece la estructura repetida de interrogaciones, laboratorio y examen sin pesos');}
+else {fail++;console.log('  FAIL plantilla UC de plan común → '+JSON.stringify({plantillasUC,plantillaUC}));}
+if(plantillaProgramacion.map(f=>f.nombre).join('|')==='Interrogación 1|Interrogación 2|Tareas|Participación|Examen'&&plantillaProgramacion.find(f=>f.nombre==='Tareas').cantidad===3&&plantillaProgramacion.every(f=>f.peso===0)){ok++;console.log('  OK   UC ofrece tareas y participación como estructura, no como ponderación');}
+else {fail++;console.log('  FAIL plantilla UC de programación → '+JSON.stringify(plantillaProgramacion));}
 // FEN no ofrece plantillas de estructura: ninguno de sus diez programas
 // oficiales es "3 solemnes + examen", así que la plantilla empujaba a una forma
 // equivocada. El placeholder sí conserva el vocabulario de la FEN.
@@ -220,7 +224,7 @@ const plantillasFEN=ctx.plantillasPauta('fen');
 if(plantillasFEN.length===0&&ctx.ejemploEvaluacion('fen')==='Solemne'){ok++;console.log('  OK   FEN no ofrece plantillas de estructura, pero conserva su vocabulario');}
 else {fail++;console.log('  FAIL plantillas FEN → '+JSON.stringify(plantillasFEN));}
 const sugerenciasUC=ctx.sugerenciasEvaluacion('uc');
-if(sugerenciasUC.includes('Interrogación 1')&&sugerenciasUC.includes('Laboratorio')&&sugerenciasUC.includes('Examen')&&!sugerenciasUC.some(nombre=>nombre.startsWith('Solemne'))){ok++;console.log('  OK   UC sugiere interrogaciones y no solemnes');}
+if(sugerenciasUC.includes('Interrogación 1')&&sugerenciasUC.includes('Laboratorio')&&sugerenciasUC.includes('Examen')&&['Control 1','Control 2','Control 3'].every(nombre=>sugerenciasUC.includes(nombre))&&!sugerenciasUC.includes('Control')&&!sugerenciasUC.some(nombre=>nombre.startsWith('Solemne'))){ok++;console.log('  OK   UC sugiere interrogaciones y controles numerados, no solemnes');}
 else {fail++;console.log('  FAIL sugerencias UC → '+JSON.stringify(sugerenciasUC));}
 const sugerenciasFEN=ctx.sugerenciasEvaluacion('fen');
 if(sugerenciasFEN.includes('Solemne 1')&&sugerenciasFEN.includes('Control 1')&&sugerenciasFEN.includes('Examen')&&!sugerenciasFEN.some(nombre=>nombre.startsWith('Interrogación'))){ok++;console.log('  OK   FEN sugiere solemnes y controles propios');}
