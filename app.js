@@ -3075,8 +3075,8 @@ function openPautaManualModal(){
   // Además de normalizar al cargar, el editor tolera un ramo legado incompleto.
   // Es el camino mayoritario: los ramos sin preset parten sin evaluaciones.
   if(!Array.isArray(r.categorias))r.categorias=[];
-  pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0,varias:c.directNota===false}));
-  if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false});
+  pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0,varias:c.directNota===false,cantidad:Number.isInteger(c.slots)&&c.slots>1?c.slots:null}));
+  if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});
   renderPautaManualModal();openModal();
   setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-0');if(i)i.focus();},100);
 }
@@ -3095,7 +3095,7 @@ function plantillaPauta(tipo){
     :tipo==='dos-pruebas'
       ?['Prueba 1','Prueba 2','Examen']
       :[];
-  return nombres.map(nombre=>({id:null,nombre,peso:0,tieneNotas:false}));
+  return nombres.map(nombre=>({id:null,nombre,peso:0,tieneNotas:false,varias:false,cantidad:null}));
 }
 // En UC las evaluaciones se llaman pruebas, no solemnes. FEN conserva el
 // término porque aparece así en sus programas oficiales. Solo alimenta el
@@ -3154,7 +3154,7 @@ function ramosParaDuplicarPauta(ramos,ramoActualId){
 }
 function pautaDuplicada(ramo){
   return ((ramo&&ramo.categorias)||[]).filter(c=>String(c.nombre||'').trim())
-    .map(c=>({id:null,nombre:String(c.nombre).trim(),peso:Number(c.peso)||0,tieneNotas:false}));
+    .map(c=>({id:null,nombre:String(c.nombre).trim(),peso:Number(c.peso)||0,tieneNotas:false,varias:c.directNota===false,cantidad:Number.isInteger(c.slots)&&c.slots>1?c.slots:null}));
 }
 function textoConfirmarPautaDuplicada(origen,copia){
   const cantidad=copia.length;
@@ -3184,24 +3184,32 @@ function renderPautaManualModal(){
     <div style="font-size:0.75rem;color:var(--fg2);line-height:1.4;margin-bottom:8px;">Copia evaluaciones y porcentajes. Tus notas y fechas no se copian.</div>
     <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px 'Onest',sans-serif;cursor:pointer;">Usar pauta</button></div>
   </div>`:'';
-  const filas=pautaDraft.map((fila,i)=>`
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 30px 30px;gap:6px;align-items:center;margin:8px 0;">
+  const filas=pautaDraft.map((fila,i)=>{
+    // El editor nunca decide un porcentaje. Solo calcula el resto y se lo
+    // ofrece a la fila vacía que la persona eligió explícitamente.
+    const resto=restoParaPautaFila(i);
+    const usarResto=fila.peso===0&&resto>0?`<button type="button" onclick="usarRestoPauta(${i})" style="margin-top:4px;padding:0;border:0;background:none;color:var(--primary);font:700 10px 'Onest',sans-serif;cursor:pointer;white-space:nowrap;">Usar ${r2(resto)}%</button>`:'';
+    const cantidad=fila.varias?`<div style="grid-column:1 / -1;display:flex;align-items:center;gap:7px;padding:7px 9px;margin-top:-2px;border-radius:9px;background:var(--muted);font-size:0.75rem;color:var(--fg2);"><span style="flex:1;min-width:0;">Se promedian varias notas</span><label style="display:flex;align-items:center;gap:4px;white-space:nowrap;">Esperas <input type="text" inputmode="numeric" id="m-pauta-cantidad-${i}" value="${fila.cantidad||''}" placeholder="—" maxlength="3" oninput="actualizarPautaCantidad(${i},this.value)" aria-label="Cantidad esperada de notas para ${esc(fila.nombre||'evaluación')}" style="width:32px;padding:5px 4px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit;text-align:center;"/> notas</label></div>`:'';
+    return `
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 52px 30px;gap:6px;align-items:center;margin:8px 0;">
       <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="${NOMBRE_MAX}" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
-      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span></div>
-      <label title="Son varias notas que se promedian" style="display:flex;align-items:center;justify-content:center;height:40px;cursor:pointer;">
-        <input type="checkbox" ${fila.varias?'checked':''} onchange="actualizarPautaVarias(${i},this.checked)" aria-label="${esc(fila.nombre||'Evaluación')}: son varias notas que se promedian" style="width:18px;height:18px;accent-color:var(--primary);"/>
+      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span>${usarResto}</div>
+      <label title="Son varias notas que se promedian" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:40px;cursor:pointer;font-size:0.5625rem;color:var(--fg3);font-weight:700;line-height:1;">
+        <input type="checkbox" ${fila.varias?'checked':''} onchange="actualizarPautaVarias(${i},this.checked)" aria-label="${esc(fila.nombre||'Evaluación')}: son varias notas que se promedian" style="width:17px;height:17px;accent-color:var(--primary);"/><span style="margin-top:2px;">VARIAS</span>
       </label>
       <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:1.25rem;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
-    </div>`).join('');
+      ${cantidad}
+    </div>`;
+  }).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Agregar evaluaciones</div>
-    <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas.</p>
+    <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas; el resto solo se asigna cuando tú eliges la fila.</p>
     ${plantillas}
     ${duplicar}
     <datalist id="m-pauta-sugerencias">${sugerencias}</datalist>
     <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:0.8125rem;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
-    <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 30px 30px;gap:6px;font-size:0.6875rem;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">
-      <span>Evaluación</span><span>Peso</span><span title="Son varias notas que se promedian" style="text-align:center;">Varias</span><span></span>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 52px 30px;gap:6px;font-size:0.6875rem;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">
+      <span>Evaluación</span><span>Peso</span><span title="Son varias notas que se promedian" style="text-align:center;">Notas</span><span></span>
     </div>
     <div>${filas}</div>
     <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Onest',sans-serif;cursor:pointer;">+ Otra evaluación</button>
@@ -3211,7 +3219,30 @@ function renderPautaManualModal(){
     </div>`;
 }
 function actualizarPautaNombre(i,valor){if(pautaDraft[i])pautaDraft[i].nombre=valor;}
-function actualizarPautaVarias(i,valor){if(pautaDraft[i])pautaDraft[i].varias=!!valor;}
+function actualizarPautaVarias(i,valor){
+  if(!pautaDraft[i])return;
+  pautaDraft[i].varias=!!valor;
+  if(!valor)pautaDraft[i].cantidad=null;
+  renderPautaManualModal();
+}
+function actualizarPautaCantidad(i,valor){
+  if(!pautaDraft[i])return;
+  const limpio=String(valor||'').replace(/[^0-9]/g,'');
+  const cantidad=Math.min(100,parseInt(limpio,10)||0);
+  pautaDraft[i].cantidad=cantidad>=2?cantidad:null;
+  const input=document.getElementById('m-pauta-cantidad-'+i);if(input&&input.value!==limpio)input.value=limpio;
+}
+function restoParaPautaFila(i){
+  const usado=pautaDraft.reduce((s,f,j)=>s+(j===i?0:(Number(f.peso)||0)),0);
+  return r2(Math.max(0,100-usado));
+}
+function usarRestoPauta(i){
+  if(!pautaDraft[i])return;
+  const resto=restoParaPautaFila(i);if(resto<=0)return;
+  pautaDraft[i].peso=resto;
+  renderPautaManualModal();
+  setTimeout(()=>{const input=document.getElementById('m-pauta-peso-'+i);if(input)input.focus();},0);
+}
 function actualizarPautaPeso(i,valor){
   if(!pautaDraft[i])return;
   const limpio=String(valor||'').replace(/[^0-9]/g,'');
@@ -3221,12 +3252,12 @@ function actualizarPautaPeso(i,valor){
   const total=document.getElementById('m-pauta-total');if(total)total.textContent=pautaResumen();
 }
 function agregarPautaFila(){
-  pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false});renderPautaManualModal();
+  pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
   setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-'+(pautaDraft.length-1));if(i)i.focus();},0);
 }
 function quitarPautaFila(i){
   if(!pautaDraft[i]||pautaDraft[i].tieneNotas)return;
-  pautaDraft.splice(i,1);if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false});renderPautaManualModal();
+  pautaDraft.splice(i,1);if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
 }
 function pautaTecla(e,i,campo){
   if(e.key!=='Enter')return;e.preventDefault();
@@ -3253,10 +3284,18 @@ function guardarPautaManual(){
     // que aplica normalize() al abrir la app.
     if(existente){
       existente.nombre=f.nombre.trim();existente.peso=f.peso;
-      if(f.varias)existente.directNota=false;
-      else if((existente.notas||[]).length<=1)existente.directNota=true;
+      if(f.varias){
+        existente.directNota=false;
+        if(Number.isInteger(f.cantidad)&&f.cantidad>1)existente.slots=f.cantidad;
+        else delete existente.slots;
+      }
+      else if((existente.notas||[]).length<=1){existente.directNota=true;delete existente.slots;}
     }
-    else r.categorias.push({id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:!f.varias,notas:[]});
+    else{
+      const cat={id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:!f.varias,notas:[]};
+      if(f.varias&&Number.isInteger(f.cantidad)&&f.cantidad>1)cat.slots=f.cantidad;
+      r.categorias.push(cat);
+    }
   });
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
   showToast(estado.lista?'✓ Listo, ya suma 100%':'Guardado · puedes completar el resto después');
