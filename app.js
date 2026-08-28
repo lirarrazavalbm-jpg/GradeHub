@@ -99,13 +99,62 @@ function completarFechasOficiales(r,contexto){
     // app se enterara de que esa prueba se movió o no va.
     if(c.fechaQuitada)return;
     const f=porNombre.get(normName(c.nombre));
-    if(f)c.fecha=f;
+    if(f){c.fecha=f;c.fechaOrigen='catalogo';c.fechaQuitada=false;}
   });
 }
 
 // HH:MM en 24 h. El input[type=time] ya entrega este formato, pero por acá
 // también entran respaldos importados y datos de la nube: se valida igual.
 const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const ORIGENES_FECHA=new Set(['usuario','catalogo','calendario','desconocido']);
+
+function origenFechaSeguro(origen){return ORIGENES_FECHA.has(origen)?origen:null;}
+
+// El consenso futuro solo puede contar una decisión explícita del estudiante.
+// Catálogo e importación ayudan a llenar la Agenda, pero nunca son un voto.
+function fechaAportaRespaldo(item){return !!item&&item.fechaOrigen==='usuario';}
+function horaAportaRespaldo(item){return !!item&&item.horaOrigen==='usuario';}
+
+function fechasOficialesRamo(r){
+  if(!r||!r.origen||!r.origen.tenant)return new Map();
+  const def=definicionPreset(r.nombre,r.origen.tenant,r.origen.carrera);
+  const evals=Array.isArray(def)?def:(def&&def.evals||[]);
+  const fechas=new Map();
+  evals.forEach(([nombre,,extra])=>{if(extra&&extra.fecha)fechas.set(normName(nombre),extra.fecha);});
+  return fechas;
+}
+
+// Se corre al leer y solo cambia la copia local. No llama a save(): así las
+// cuentas antiguas no sincronizan todas juntas al publicar este cambio; los
+// campos viajan a la nube con la próxima edición normal de cada persona.
+function migrarOrigenesFecha(r){
+  const oficiales=fechasOficialesRamo(r);
+  (r.categorias||[]).forEach(c=>{
+    c.fechaOrigen=c.fecha?(origenFechaSeguro(c.fechaOrigen)||(oficiales.get(normName(c.nombre))===c.fecha?'catalogo':'desconocido')):null;
+    c.horaOrigen=c.hora?(origenFechaSeguro(c.horaOrigen)||'desconocido'):null;
+    c.fechaQuitada=!!c.fechaQuitada;c.horaQuitada=!!c.horaQuitada;
+    (c.notas||[]).forEach(n=>{
+      n.fechaOrigen=n.fecha?(origenFechaSeguro(n.fechaOrigen)||'desconocido'):null;
+      n.horaOrigen=n.hora?(origenFechaSeguro(n.horaOrigen)||'desconocido'):null;
+      n.fechaQuitada=!!n.fechaQuitada;n.horaQuitada=!!n.horaQuitada;
+    });
+  });
+}
+
+// Editar o confirmar vuelve la fecha una decisión del estudiante. Al quitarla,
+// la marca persiste para que ni el catálogo ni una futura sugerencia la reponga.
+function marcarFechaUsuario(item,fecha,hora){
+  const teniaHora=!!item.hora;
+  item.fecha=fecha||null;
+  item.hora=item.fecha&&HORA_RE.test(hora||'')?hora:null;
+  if(item.fecha){item.fechaOrigen='usuario';item.fechaQuitada=false;}
+  else{item.fechaOrigen=null;item.fechaQuitada=true;}
+  if(item.hora){item.horaOrigen='usuario';item.horaQuitada=false;}
+  else{item.horaOrigen=null;if(teniaHora)item.horaQuitada=true;}
+  if(!item.fecha){item.hora=null;item.horaOrigen=null;item.horaQuitada=true;}
+  return item;
+}
+
 function copiarRecuperativo(regla){
   if(!regla||!Number.isFinite(regla.min)||!Number.isFinite(regla.max)||!Number.isFinite(regla.nota)||regla.min>regla.max)return null;
   return {min:regla.min,max:regla.max,nota:regla.nota};
@@ -121,7 +170,7 @@ function normalize(data) {
     // El 0 se conserva: es un dato exacto, no un faltante. Ver tieneCreditos().
     creditos: (typeof r.creditos === 'number' && r.creditos >= 0) ? r.creditos : null,
     // De qué catálogo (universidad + carrera) salió este ramo. null = creado a mano.
-    origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null} : null,
+    origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null, ramoKey:typeof r.origen.ramoKey==='string'&&r.origen.ramoKey.trim()?r.origen.ramoKey.trim():ramoKey(r.nombre,r.origen.tenant,r.origen.carrera)} : null,
     // Otro ramo aporta parte de esta nota (el laboratorio de Dinámica).
     aporta: (r.aporta && r.aporta.ramo && r.aporta.peso) ? {ramo:r.aporta.ramo, peso:r.aporta.peso, min:r.aporta.min} : null,
     // La forma de la pauta tal como se la dimos. Si difiere de las categorías
@@ -147,6 +196,10 @@ function normalize(data) {
       // tienen hora quedarían todas a medianoche. Sin fecha no significa nada,
       // así que se descarta.
       hora: (c.fecha && HORA_RE.test(c.hora || '')) ? c.hora : null,
+      fechaOrigen: c.fecha?origenFechaSeguro(c.fechaOrigen):null,
+      horaOrigen: (c.fecha && HORA_RE.test(c.hora || ''))?origenFechaSeguro(c.horaOrigen):null,
+      fechaQuitada: !c.fecha && c.fechaQuitada===true,
+      horaQuitada: !(c.fecha && HORA_RE.test(c.hora || '')) && c.horaQuitada===true,
       notas: (c.notas || []).map(n => ({
         id: idSeguro(n.id),
         nombre: n.nombre || 'Nota',
@@ -158,9 +211,12 @@ function normalize(data) {
         // grupo cae el mismo día; no alcanza para "Casos y ensayos", que son
         // varios casos repartidos por el semestre.
         fecha: n.fecha || null,
+        fechaOrigen: n.fecha?origenFechaSeguro(n.fechaOrigen):null,
+        horaOrigen: (n.fecha && HORA_RE.test(n.hora || ''))?origenFechaSeguro(n.horaOrigen):null,
         // Igual que en una categoría: si alguien quita una fecha propia, no es
         // un hueco que el catálogo o un importador pueda rellenar por su cuenta.
         fechaQuitada: !n.fecha && n.fechaQuitada===true,
+        horaQuitada: !(n.fecha && HORA_RE.test(n.hora || '')) && n.horaQuitada===true,
       }))
     }))
   }));
@@ -170,6 +226,7 @@ function normalize(data) {
   // para siempre, aunque su pauta ya estuviera publicada. No falla nada: el
   // ramo simplemente nunca se entera. Por eso se rellena al cargar.
   data.ramos.forEach(r => {
+    migrarOrigenesFecha(r);
     const p = pautaPendiente(r);
     if (p) { r.categorias = p.categorias; r.gates = p.gates; r.aporta = p.aporta || null; r.recuperativo = p.recuperativo || null; r.pautaHuella = huellaPauta(p.categorias); }
     // La regla es aditiva y no cambia ningún promedio sin una declaración. Así
@@ -1586,7 +1643,7 @@ function completeOnboarding(){
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
-    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(item.nombre),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   });
   S.onboardingDone=true;save();
   syncProfile();
@@ -2274,7 +2331,7 @@ function presetRamo(nombre,tenant,carrera,ahora){
     // Una pauta de 2026-2 puede seguir siendo buena para sus porcentajes en
     // 2027-1, pero sus días de prueba no. Nunca se inventa una fecha nueva: si
     // el período venció o no se conoce, simplemente no se ofrece.
-    if(extra&&extra.fecha&&incluirFechas)cat.fecha=extra.fecha;
+    if(extra&&extra.fecha&&incluirFechas){cat.fecha=extra.fecha;cat.fechaOrigen='catalogo';}
     categorias.push(cat);porNombre[nom]=id;
     if(extra&&extra.min)gates.push({type:'min_grade_required',catId:id,min:extra.min,cap:extra.cap,nombre:nom});
   });
@@ -2298,7 +2355,7 @@ function confirmAddMalla(){
     // estrella de "pauta oficial" al lado, porque el selector SÍ normaliza.
     const presetName=findPresetName(n,S.tenant,S.carrera);
     const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
-    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+    S.ramos.push({id:uid(),nombre:n,color:nextRamoColor(n),origen:origenActual(n),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   });
   save();track('add_malla_ramos',{count:elegidos.length,carrera:S.carrera,sem:S.careerSemestre});
   closeModal();
@@ -2364,7 +2421,7 @@ function addFromCatalog(nombre){
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   S.ramos.push({
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
-    creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(),
+    creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(presetName||nombre),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
   });
   save();track('add_ramo_catalogo',{preset:!!preset});
@@ -2549,8 +2606,15 @@ function searchCatalog(q,tenant,carrera,semActual){
   return scored;
 }
 
-// Sello de procedencia para un ramo creado desde el cat\u00e1logo
-function origenActual(){return {tenant:S.tenant,carrera:S.carrera};}
+// Sello de procedencia para un ramo creado desde el catálogo. La clave queda
+// en el ramo, para que el servidor no tenga que duplicar las siglas de data.js.
+function ramoKey(nombre,tenant,carrera){
+  if(tenant!=='uc')return normName(nombre);
+  const directa=siglaUC(nombre,carrera);if(directa)return directa;
+  const credito=Object.keys(CREDITOS_UC||{}).find(n=>normName(n)===normName(nombre));
+  return (credito&&CREDITOS_UC[credito]&&CREDITOS_UC[credito][1])||normName(nombre);
+}
+function origenActual(nombre){return {tenant:S.tenant,carrera:S.carrera,ramoKey:ramoKey(nombre,S.tenant,S.carrera)};}
 
 // \u2500\u2500\u2500 REPORTES DE CAT\u00c1LOGO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 // Si a un estudiante le cambiaron las ponderaciones respecto de lo que trae el
@@ -2654,7 +2718,10 @@ function siglaReporteUC(r){
 // en una malla. En UC la sigla evita confundir cursos homónimos de facultades
 // distintas; fuera de UC se conserva el nombre normalizado hasta tener otro
 // identificador oficial equivalente.
-function claveReporte(r){return siglaReporteUC(r)||normName(r&&r.nombre);}
+function claveReporte(r){
+  const o=r&&r.origen;
+  return (o&&o.ramoKey)||siglaReporteUC(r)||ramoKey(r&&r.nombre,o&&o.tenant,o&&o.carrera);
+}
 
 function openReportModal(ramoId){
   const r=S.ramos.find(x=>x.id===(ramoId||currentRamoId));
@@ -2991,7 +3058,7 @@ function confirmAddRamo(){
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const cr=creditosDe(presetName||name,S.tenant,preset);
-  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual():null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+  S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual(presetName):null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
   showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
 }
@@ -3061,7 +3128,8 @@ function confirmAddCat(){
   // de decirlo: la casilla es el único camino que tiene el estudiante hacia la
   // tarjeta con "+ Agregar nota" que las pautas oficiales usan vía `lista:true`.
   const varias=!!(document.getElementById('m-cat-varias')||{}).checked;
-  r.categorias.push({id:uid(),nombre:name,peso,fecha,hora:leerHora('m-cat'),ponderaNotas:false,directNota:!varias,notas:[]});
+  const hora=leerHora('m-cat');
+  r.categorias.push({id:uid(),nombre:name,peso,fecha,hora,fechaOrigen:fecha?'usuario':null,horaOrigen:hora?'usuario':null,ponderaNotas:false,directNota:!varias,notas:[]});
   save();track('add_categoria',{peso,tiene_fecha:!!fecha,varias_notas:varias});closeModal();renderRamo();
 }
 
@@ -3357,7 +3425,8 @@ function confirmAddNota(catId){
   const usaPond=document.getElementById('m-pond-toggle').checked;
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
-  cat.notas.push({id:uid(),nombre:name,valor:isNaN(val)?null:val,peso,fecha:fechaNota,hora:leerHora('m-nota')});
+  const horaNota=leerHora('m-nota');
+  cat.notas.push({id:uid(),nombre:name,valor:isNaN(val)?null:val,peso,fecha:fechaNota,hora:horaNota,fechaOrigen:fechaNota?'usuario':null,horaOrigen:horaNota?'usuario':null});
   openCats[catId]=true;save();track('add_nota',{ponderada:usaPond,pendiente:isNaN(val)});closeModal();renderRamo();
   // Si trae fecha entra a la Agenda, que vive en otra pantalla.
   if(typeof renderAgenda==='function')renderAgenda();
@@ -4286,11 +4355,7 @@ function confirmEditCat(catId){
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
-  cat.nombre=name;cat.peso=peso;cat.fecha=fecha;cat.hora=leerHora('m-cat');
-  // Quitar la fecha es una decisión, no un dato faltante: se deja constancia
-  // para que el relleno de fechas oficiales no la reponga en la próxima carga.
-  // Al escribir una nueva, la decisión se revierte sola.
-  if(fecha)delete cat.fechaQuitada; else cat.fechaQuitada=true;
+  cat.nombre=name;cat.peso=peso;marcarFechaUsuario(cat,fecha,leerHora('m-cat'));
   // La casilla no existe en las de casillas fijas (`slots`), y viene desactivada
   // cuando ya hay dos o más notas: volver a fila simple mostraría una y
   // escondería el resto sin decirlo.
@@ -4351,9 +4416,7 @@ function confirmEditNota(catId,notaId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
-  const teniaFecha=!!n.fecha;
-  n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;n.fecha=fechaNota;n.hora=leerHora('m-nota');
-  if(fechaNota)delete n.fechaQuitada;else if(teniaFecha)n.fechaQuitada=true;
+  n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;marcarFechaUsuario(n,fechaNota,leerHora('m-nota'));
   save();track('edit_nota',{pendiente:isNaN(val)});closeModal();renderRamo();
   if(typeof renderAgenda==='function')renderAgenda();
   showToast(isNaN(val)?'Guardada como pendiente':lecturaDespuesDeNota(r));
@@ -4981,8 +5044,8 @@ function aplicarPropuestasIcs(propuestas){
   });
   elegidas.forEach(p=>{
     const target=targets.get(p.target);
-    if(target.nota){target.nota.fecha=p.fecha;delete target.nota.fechaQuitada;}
-    else {target.cat.fecha=p.fecha;delete target.cat.fechaQuitada;}
+    const item=target.nota||target.cat;
+    item.fecha=p.fecha;item.fechaOrigen='calendario';item.fechaQuitada=false;
   });
   return elegidas.length;
 }

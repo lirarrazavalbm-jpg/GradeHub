@@ -53,8 +53,10 @@ chk('la fecha quitada se queda quitada', quitada.categorias[0].fecha == null);
 
 console.log('\n=== Y quitarla deja constancia, ponerla la revierte ===');
 const app = fs.readFileSync(raiz + 'app.js', 'utf8');
-chk('al guardar sin fecha se marca fechaQuitada',
-  /if\(fecha\)delete cat\.fechaQuitada; else cat\.fechaQuitada=true;/.test(app));
+const marcarFechaUsuario=val('marcarFechaUsuario');
+const editada={fecha:conFecha[2].fecha,hora:null};
+marcarFechaUsuario(editada,null,null);
+chk('al guardar sin fecha se marca fechaQuitada',editada.fechaQuitada===true&&editada.fechaOrigen===null);
 chk('el relleno respeta la marca', /if\(c\.fechaQuitada\)return;/.test(app));
 
 console.log('\n=== La Agenda se entera al toque ===');
