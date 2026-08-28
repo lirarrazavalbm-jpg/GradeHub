@@ -4489,7 +4489,10 @@ function ramoProgress(r){
   if(total<=0)return {pct:0,pending:0,total:0};
   let done=0;
   categorias.forEach(c=>{
-    const a=avgPond(c.notas);
+    // Una categoría incompleta todavía representa una evaluación pendiente.
+    // El avance se usa durante el render de Home: no puede lanzar después de
+    // que la lista ya se vació ni hacer parecer que el ramo desapareció.
+    const a=avgPond(Array.isArray(c.notas)?c.notas:[]);
     if(a!==null)done+=c.peso;
   });
   return {pct:Math.round(done/total*100),pending:total-done,total};
