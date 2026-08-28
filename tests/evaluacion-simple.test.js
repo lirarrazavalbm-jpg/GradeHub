@@ -131,12 +131,23 @@ val('guardarPautaManual')();
 const porNombre = n => val('S.ramos[0].categorias').find(c => c.nombre === n);
 chk('la fila sin marcar queda simple', porNombre('Solemne').directNota === true);
 chk('la fila marcada queda como lista abierta', porNombre('Controles').directNota === false);
+const controlesConNotas = porNombre('Controles');
+
+// Las plantillas UC no repiten una categoría tres veces: declaran tres casillas
+// dentro del mismo grupo, para no inventar cómo se reparte su porcentaje.
+vm.runInContext('S={ramos:[{id:"r3",nombre:"Cálculo sintético",categorias:[],gates:[],notas:[]}]};currentRamoId="r3";', ctx);
+vm.runInContext('pautaDraft=[{id:null,nombre:"Laboratorio",peso:0,tieneNotas:false,varias:true,cantidad:3}];', ctx);
+val('guardarPautaManual')();
+const laboratorioPlantilla = val('S.ramos[0].categorias[0]');
+chk('la plantilla conserva las tres casillas del laboratorio', laboratorioPlantilla.directNota === false && laboratorioPlantilla.slots === 3);
 
 // Convertir una que ya tiene varias notas a fila simple mostraría una y
 // escondería el resto sin decirlo. La casilla viene desactivada en ese caso, y
 // confirmEditCat no toca el modo cuando lo está.
 console.log('\n=== Una evaluación con varias notas no se degrada sola ===');
-const conNotas = porNombre('Controles');
+ctx.__controlesConNotas = controlesConNotas;
+vm.runInContext('S={ramos:[{id:"r2",nombre:"Ramo",categorias:[__controlesConNotas],gates:[],notas:[]}]};currentRamoId="r2";', ctx);
+const conNotas = controlesConNotas;
 conNotas.notas = [{ id: 'n1', valor: 5, peso: 1 }, { id: 'n2', valor: 6, peso: 1 }];
 campos['m-cat-name'] = { value: 'Controles' };
 campos['m-cat-varias'] = { checked: false, disabled: true };
