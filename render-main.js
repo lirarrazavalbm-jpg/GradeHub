@@ -235,9 +235,9 @@ function renderRamo(){
   document.getElementById('grade-gpa-echo')?.remove();
   document.getElementById('ramo-title').textContent=r.nombre;
   const avg=ramoAvg(r);
-  const calculo=calculateFinalGrade(ramoToStructure(r),gradesOf(r));
-  const recuperativo=estadoRecuperativo(r);
-  const descartes=calculo.drops||[];
+  const calculo=calculoRamoConCompuertas(r);
+  const recuperativo=estadoRecuperativo(r,calculo);
+  const descartes=calculo.res.drops||[];
   const avgEl=document.getElementById('ramo-hero-avg');
   if(avg!==null){
     const s=nf(avg);const dot=s.indexOf('.');
@@ -268,11 +268,11 @@ function renderRamo(){
   // Chip nota mínima para el 4.0
   const chipEl=document.getElementById('ramo-min-chip');
   if(r.categorias.length>0){
-    const categoriasActivas=categoriasVigentes(r);
+    const categoriasActivas=resumenCategoriasCalculadas(r,calculo);
     const eximicion=estadoEximicion(r);
     const totalPeso=categoriasActivas.reduce((a,c)=>a+c.peso,0);
     let pesoConNotas=0,sumaPonderada=0;
-    categoriasActivas.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPonderada+=a*c.peso;}});
+    categoriasActivas.forEach(c=>{if(c.valor!==null&&c.valor!==undefined){pesoConNotas+=c.peso;sumaPonderada+=c.valor*c.peso;}});
     const pesoSinNotas=totalPeso-pesoConNotas;
     // ¿Hay un piso de nota activo? (sección calificada bajo su mínimo → topa la final)
     const gateHit=gatesActivas(r)[0]||null;
@@ -353,6 +353,25 @@ function renderRamo(){
     if(noCalcula.length)bloques.push(`<b>Reglas que todavía no calculamos.</b><br>Las vamos a incorporar. Por ahora el promedio no considera:${items(noCalcula)}`);
     ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
+
+  const aw=document.getElementById('ausencias-justificadas-warning');
+  const ausencias=calculo.ausencias;
+  if(aw&&ausencias){
+    const porId=new Map((r.categorias||[]).map(c=>[c.id,c.nombre]));
+    const etiqueta=x=>x.tipo==='traspaso'
+      ? `<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b>: su ${r2((r.categorias.find(c=>c.id===x.desdeId)||{}).peso||0)}% pasa a <b>${esc(porId.get(x.haciaId)||'otra evaluación')}</b>.`
+      : `<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> se reemplaza por <b>${esc(porId.get(x.haciaId)||'otra evaluación')}</b>.`;
+    const declaradas=new Set(r.ausenciasJustificadas||[]);
+    const reglas=[...(r.reglasAusenciaJustificada?.reemplazos||[]).map(x=>({...x,tipo:'reemplazo'})),...(r.reglasAusenciaJustificada?.traspasos||[]).map(x=>({...x,tipo:'traspaso'}))];
+    const disponibles=reglas.filter(x=>!declaradas.has(x.desdeId)&&avgPond((r.categorias.find(c=>c.id===x.desdeId)||{}).notas)===null);
+    const bloques=[];
+    if(ausencias.activas.length)bloques.push(`<b>Ausencia justificada aplicada.</b><br>${ausencias.activas.map(etiqueta).join('<br>')}`);
+    if(ausencias.pendientes.length)bloques.push(`<b>La ausencia quedó anotada, pero todavía no se aplica.</b><br>${ausencias.pendientes.map(x=>`Falta la nota de <b>${esc(porId.get(x.haciaId)||'la evaluación de reemplazo')}</b>.`).join('<br>')}`);
+    if(ausencias.inactivas.length)bloques.push(`<b>Tu declaración se conserva, pero ya no se aplica.</b><br>${ausencias.inactivas.map(x=>x.motivo==='tiene_nota'?`<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> ahora tiene una nota. <button type="button" onclick="corregirAusenciaJustificada('${esc(x.desdeId)}')">Corregir declaración</button>`:'La pauta cambió y ya no podemos ubicar esa evaluación.').join('<br>')}`);
+    if(disponibles.length)bloques.push(`<b>¿Faltaste con justificativo aprobado?</b><br>${disponibles.map(x=>`<button type="button" onclick="declararAusenciaJustificada('${esc(x.desdeId)}')">${esc(porId.get(x.desdeId)||'Marcar ausencia')}</button>`).join(' ')}`);
+    if(bloques.length){aw.style.display='flex';aw.className='weight-setup-nudge';aw.style.width='auto';aw.style.margin='12px 20px';aw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}</div>`;}
+    else{aw.style.display='none';aw.innerHTML='';}
+  }else if(aw){aw.style.display='none';aw.innerHTML='';}
 
   const rw=document.getElementById('recuperativo-warning');
   if(rw&&recuperativo){
