@@ -28,7 +28,7 @@ function arnes(src){
   vm.createContext(ctx);vm.runInContext(src,ctx);return {ctx,ids,action,writes};
 }
 function fuente(){
-  return ['data.js','engine.js','app.js','render-agenda.js'].map(f=>fs.readFileSync(raiz+f,'utf8')).join('\n');
+  return ['data.js','engine.js','app.js','app-session.js','render-agenda.js'].map(f=>fs.readFileSync(raiz+f,'utf8')).join('\n');
 }
 // El arnés solo sirve si falla cuando el bug vuelve. En vez de traerse un commit
 // viejo con `git show` —que además revienta en CI, donde el clon es shallow—,
@@ -106,7 +106,7 @@ chk('sin volver a dibujar la lista: el asa enfocada sobrevive',redibujos===0);
 moverRamoConTeclado('a',-1);
 chk('en el borde no pasa nada',orden.join(',')==='a,b,c');
 
-const appSrc=fs.readFileSync(raiz+'app.js','utf8')+'\n'+fs.readFileSync(raiz+'render-main.js','utf8');
+const appSrc=fs.readFileSync(raiz+'app.js','utf8')+'\n'+fs.readFileSync(raiz+'app-session.js','utf8')+'\n'+fs.readFileSync(raiz+'render-main.js','utf8');
 const indexSrc=fs.readFileSync(raiz+'index.html','utf8');
 const homeSrc=appSrc.slice(appSrc.indexOf('function renderHome'),appSrc.indexOf('function renderRamo'));
 chk('Manual usa un SVG en línea y no el carácter que iOS convierte en emoji',

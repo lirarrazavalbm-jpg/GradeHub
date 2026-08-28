@@ -14,7 +14,7 @@
 // preferible a escapar en 30 sitios de render, porque olvidar uno reabre todo.
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
-const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
+const src = ['data.js', 'engine.js', 'app.js', 'app-session.js', 'render-agenda.js']
   .map(f => fs.readFileSync(raiz + f, 'utf8')).join('\n');
 
 const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };
