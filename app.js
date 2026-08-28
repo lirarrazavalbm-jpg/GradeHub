@@ -1279,7 +1279,7 @@ const OB_ETAPAS=['nombre','universidad','carrera','semestre','ramos'];
 // volver atrás y volver a avanzar reemitiera, los primeros pasos saldrían
 // inflados y la caída real quedaría escondida.
 let obMaxPasoVisto=0;
-let obRamos=[],obRamosKey='',obManualOpen=false;
+let obRamos=[],obRamosKey='',obManualOpen=false,obManualError='';
 
 initSemGrid();renderTenantPick();initCarreraGrid();
 document.getElementById('ob-name').addEventListener('input',checkOb);
@@ -1317,7 +1317,10 @@ function initCarreraGrid(){
   const todas=carrerasDeclarables(selectedTenant);
   const q=normName(carreraFiltro||'');
   const vistas=q?todas.filter(c=>normName(c.n).includes(q)):todas;
-  vistas.slice(0,q?12:60).forEach(c=>{
+  // Una carrera declarable no puede quedar escondida en un paso obligatorio.
+  // 71 opciones son largas, pero el buscador sigue arriba y cada una tiene que
+  // existir también para quien recorre la lista con el dedo.
+  vistas.forEach(c=>{
     const elegida=c.malla?c.malla===selectedCarrera:(!selectedCarrera&&c.n===selectedCarreraNombre);
     const b=document.createElement('button');
     b.className='carrera-opt'+(elegida?' sel':'');
@@ -1335,8 +1338,10 @@ function initCarreraGrid(){
     g.appendChild(b);
   });
   // La lista oficial envejece: una carrera nueva no puede dejar a alguien sin
-  // poder declararse en un paso obligatorio.
-  if(q&&!vistas.length){
+  // poder declararse en un paso obligatorio. Que la búsqueda haya encontrado
+  // algo parecido no prueba que sea SU carrera, así que la salida no depende de
+  // que la lista quede vacía.
+  if(q){
     const b=document.createElement('button');
     b.className='carrera-opt'+(!selectedCarrera&&carreraFiltro.trim()===selectedCarreraNombre?' sel':'');
     b.innerHTML='Usar «'+esc(carreraFiltro.trim())+'»';
@@ -1388,12 +1393,20 @@ function obAgregarCatalogo(nombre){
   renderObCoursePicker();obRender();
 }
 function obAgregarCatalogoCodificado(nombre){obAgregarCatalogo(decodeURIComponent(nombre));}
-function obToggleManual(){obManualOpen=!obManualOpen;renderObCoursePicker();}
+function obToggleManual(){obManualOpen=!obManualOpen;obManualError='';renderObCoursePicker();}
 function obAgregarManual(){
   const input=document.getElementById('ob-manual-name');
-  const nombre=(input&&input.value||'').trim();if(!nombre)return;
+  const nombre=(input&&input.value||'').trim();
+  if(!nombre){
+    obManualError='Escribe el nombre del ramo para agregarlo.';
+    const error=document.getElementById('ob-manual-error');
+    if(error){error.textContent=obManualError;error.hidden=false;}
+    if(input){input.setAttribute('aria-invalid','true');input.focus();}
+    return false;
+  }
   if(!obTieneRamo(nombre))obRamos.push({nombre,manual:true});
-  obManualOpen=false;renderObCoursePicker();obRender();
+  obManualError='';obManualOpen=false;renderObCoursePicker();obRender();
+  return true;
 }
 function obRamosVisibles(sugeridos,elegidos){
   const visibles=[...(sugeridos||[])];
@@ -1448,12 +1461,20 @@ function renderObCoursePicker(){
         <div id="ob-course-results"></div>
       </div>
       <button class="course-picker-manual" type="button" onclick="obToggleManual()">¿No aparece? Agregar un ramo a mano</button>
-      ${obManualOpen?`<div class="course-picker-search" style="margin-top:8px;"><input id="ob-manual-name" type="text" placeholder="Ej.: Electivo de cine" maxlength="${NOMBRE_MAX}" autocomplete="off"/><button type="button" onclick="obAgregarManual()" style="border:0;background:none;color:var(--primary);font:inherit;font-weight:700;">Agregar</button></div>`:''}
+      ${obManualOpen?`<div class="course-picker-search" style="margin-top:8px;"><input id="ob-manual-name" type="text" placeholder="Ej.: Electivo de cine" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="ob-manual-error"/><button type="button" onclick="obAgregarManual()" style="border:0;background:none;color:var(--primary);font:inherit;font-weight:700;">Agregar</button></div><p id="ob-manual-error" role="alert"${obManualError?'':' hidden'} style="margin:6px 0 0;font-size:0.8125rem;color:var(--red);">${esc(obManualError)}</p>`:''}
     </div>`;
   const search=document.getElementById('ob-course-search');
   if(search){const pintar=()=>renderObCourseResults(search.value);search.addEventListener('input',pintar);pintar();}
   const manual=document.getElementById('ob-manual-name');
-  if(manual)manual.addEventListener('keydown',e=>{if(e.key==='Enter')obAgregarManual();});
+  if(manual){
+    manual.addEventListener('keydown',e=>{if(e.key==='Enter')obAgregarManual();});
+    manual.addEventListener('input',()=>{
+      if(!obManualError)return;
+      obManualError='';manual.removeAttribute('aria-invalid');
+      const error=document.getElementById('ob-manual-error');
+      if(error){error.textContent='';error.hidden=true;}
+    });
+  }
 }
 function renderObCourseResults(q){
   const box=document.getElementById('ob-course-results');if(!box)return;
