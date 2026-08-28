@@ -61,9 +61,30 @@ function infoPeriodoPauta(r){
 // sobre la nuestra: puede saber algo que el programa no dice —un cambio
 // anunciado en clases, la fecha real de su sección— y pisarla sería moverle la
 // Agenda por debajo.
-function completarFechasOficiales(r){
-  if(!r||!r.origen||!r.origen.tenant||!Array.isArray(r.categorias))return;
-  const def=definicionPreset(r.nombre,r.origen.tenant,r.origen.carrera);
+//
+// Las cuentas creadas antes de guardar `origen` sí pueden haber recibido una
+// pauta oficial, pero hoy se ven igual que un ramo manual. No les inventamos
+// esa procedencia: solo usamos el contexto de la cuenta SI la estructura que
+// ya tienen coincide completa y en orden con el programa actual. Así una pauta
+// manual con el mismo nombre, pero distinta, queda intacta.
+function pautaCalzaParaFechas(r,evals){
+  const cats=catsDePauta(r&&r.categorias);
+  return cats.length===evals.length&&cats.every((c,i)=>{
+    const [nombre,peso]=evals[i];
+    return normName(c.nombre)===normName(nombre)&&r2(Number(c.peso)||0)===r2(Number(peso)||0);
+  });
+}
+function origenParaFechasOficiales(r,contexto){
+  if(r&&r.origen&&r.origen.tenant)return r.origen;
+  if(!r||!contexto||!contexto.tenant||!Array.isArray(r.categorias))return null;
+  const def=definicionPreset(r.nombre,contexto.tenant,contexto.carrera);
+  const evals=Array.isArray(def)?def:(def&&def.evals||[]);
+  return def&&pautaCalzaParaFechas(r,evals)?contexto:null;
+}
+function completarFechasOficiales(r,contexto){
+  const origen=origenParaFechasOficiales(r,contexto);
+  if(!origen)return;
+  const def=definicionPreset(r.nombre,origen.tenant,origen.carrera);
   if(!def||estadoPeriodoPauta(periodoDePreset(def))!=='vigente')return;
   const evals=Array.isArray(def)?def:(def.evals||[]);
   const porNombre=new Map();
@@ -172,7 +193,7 @@ function normalize(data) {
       const cr = creditosDe(r.nombre, r.origen.tenant, null);
       if (typeof cr === 'number') r.creditos = cr;
     }
-    completarFechasOficiales(r);
+    completarFechasOficiales(r,{tenant:data.tenant,carrera:data.carrera});
   });
   data.onboardingDone = Boolean(data.onboardingDone);
   data.careerSemestre = Number(data.careerSemestre) || 1;
