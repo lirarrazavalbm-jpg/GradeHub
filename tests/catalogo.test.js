@@ -256,6 +256,31 @@ chk('un ramo viejo recibe una fecha del período vigente',
 chk('y la fecha que puso el estudiante no se pisa',
   ramoSinFechas.categorias[1].fecha === '2026-12-25');
 
+// Antes de que `origen` se guardara, un ramo agregado desde el catálogo quedó
+// indistinguible de uno manual. Si su pauta todavía calza EXACTAMENTE con la
+// oficial, sí se puede recuperar solo la fecha que falta; si no calza, no se
+// adivina. Esta es una cuenta antigua realista: ya tenía la pauta, no las fechas.
+const ecologiaAntigua = normalize({tenant:'uc',carrera:'ING-PC',ramos:[{ id:'eco-vieja', nombre:'Principios Ecológicos y Medio Ambiente',
+  categorias:[
+    {id:'p1',nombre:'Prueba 1',peso:25,notas:[]},
+    {id:'p2',nombre:'Prueba 2',peso:40,fecha:'2026-11-07',notas:[]},
+    {id:'p3',nombre:'Prueba 3',peso:35,fechaQuitada:true,notas:[]},
+  ], gates:[]
+}]}).ramos[0];
+chk('una pauta antigua idéntica recupera la fecha oficial que le falta',
+  ecologiaAntigua.categorias[0].fecha === '2026-09-01');
+chk('una fecha ya escrita por la persona se conserva en una pauta antigua',
+  ecologiaAntigua.categorias[1].fecha === '2026-11-07');
+chk('una fecha quitada a propósito no reaparece en una pauta antigua',
+  ecologiaAntigua.categorias[2].fecha === null && ecologiaAntigua.categorias[2].fechaQuitada === true);
+chk('recuperar fechas no inventa una procedencia persistida para el ramo antiguo',
+  ecologiaAntigua.origen === null);
+const ecologiaDistinta = normalize({tenant:'uc',carrera:'ING-PC',ramos:[{ id:'eco-manual', nombre:'Principios Ecológicos y Medio Ambiente',
+  categorias:[{id:'otra',nombre:'Mi prueba',peso:100,notas:[]}], gates:[]
+}]}).ramos[0];
+chk('un ramo manual con el mismo nombre pero pauta distinta no recibe fechas',
+  ecologiaDistinta.categorias[0].fecha === null);
+
 console.log('\n=== Las fechas tienen período; los pesos no caducan con ellas ===');
 const presetParaPeriodo = run('presetRamo');
 const presetsConFechas = [run('PRESETS_UC'), run('PRESETS_FEN')];
