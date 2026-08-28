@@ -740,7 +740,7 @@ orden de dificultad:
 | Regla | Qué falta |
 |---|---|
 | Eximición del examen con Casos ≥ 5,5 (Gestión de Personas) | Falta el dato: “Casos y ensayos” está agrupado y el programa no dice cuántos casos son. Sin poder contar cuántos quedaron bajo 4,0 no se puede decidir la eximición; requiere rediseño del preset FEN con Martín, no un `if` por ramo. |
-| Examen de Segunda Fecha (Métodos) | Lo mismo |
+| Examen de Segunda Fecha (Métodos) | El programa da quién puede rendirlo (examen bajo 3,0 y promedio ≥ 3,95; en Métodos I también una inasistencia justificada), pero no dice con qué nota queda el ramo al aprobarlo. Falta una nota fija o fórmula oficial; no se puede reutilizar el recuperativo de Micro sin inventarla. |
 | ±10 décimas por evaluación entre compañeros | El dato no existe en la app |
 | Inasistencias justificadas: el % pasa a otra evaluación | Depende del programa. Micro SÍ dice a cuál (Control 1 → Solemne; Control 2 y 3 → Examen), así que ahí es modelable; en otros no se especifica |
 | Busuu reprobatorio (Inglés IV) | El programa dice que reprueba pero no fija la nota mínima, así que no hay umbral que declarar |
