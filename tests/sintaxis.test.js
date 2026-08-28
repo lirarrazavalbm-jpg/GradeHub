@@ -19,19 +19,29 @@ if (abre !== cierra) {
 
 // El HTML debe apuntar a los archivos externos, no tener el código inline
 const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
-if (!html.includes('href="styles.css"') || !html.includes('src="app.js"') || !html.includes('src="app-session.js"') || !html.includes('src="data.js"') || !html.includes('src="engine.js"') || !html.includes('src="render-main.js"') || !html.includes('src="render-agenda.js"')) {
+// HTML nuevo + JS viejo deja la app a medio cargar: el HTML pide funciones que
+// todavía no existen. El deploy sella estos siete assets con el mismo SHA que
+// CACHE_NAME para que una cache vieja no pueda responder una URL nueva.
+const assetsVersionados = ['styles.css', 'data.js', 'engine.js', 'app.js', 'app-session.js', 'render-main.js', 'render-agenda.js'];
+assetsVersionados.forEach(asset => {
+  if (!html.includes(asset + '?v=__ASSET_VERSION__')) {
+    console.error('index.html debe dejar el marcador de versión para ' + asset);
+    process.exit(1);
+  }
+});
+if (!html.includes('href="styles.css?v=__ASSET_VERSION__"') || !html.includes('src="app.js?v=__ASSET_VERSION__"') || !html.includes('src="app-session.js?v=__ASSET_VERSION__"') || !html.includes('src="data.js?v=__ASSET_VERSION__"') || !html.includes('src="engine.js?v=__ASSET_VERSION__"') || !html.includes('src="render-main.js?v=__ASSET_VERSION__"') || !html.includes('src="render-agenda.js?v=__ASSET_VERSION__"')) {
   console.error('index.html no enlaza data.js, engine.js, app.js, app-session.js, render-agenda.js y styles.css');
   process.exit(1);
 }
 // data.js declara los const que app.js consume: si se carga después, ReferenceError
-if (!(html.indexOf('src="data.js"') < html.indexOf('src="engine.js"') && html.indexOf('src="engine.js"') < html.indexOf('src="app.js"') && html.indexOf('src="app.js"') < html.indexOf('src="app-session.js"') && html.indexOf('src="app-session.js"') < html.indexOf('src="render-main.js"') && html.indexOf('src="render-main.js"') < html.indexOf('src="render-agenda.js"'))) {
+if (!(html.indexOf('src="data.js?v=__ASSET_VERSION__"') < html.indexOf('src="engine.js?v=__ASSET_VERSION__"') && html.indexOf('src="engine.js?v=__ASSET_VERSION__"') < html.indexOf('src="app.js?v=__ASSET_VERSION__"') && html.indexOf('src="app.js?v=__ASSET_VERSION__"') < html.indexOf('src="app-session.js?v=__ASSET_VERSION__"') && html.indexOf('src="app-session.js?v=__ASSET_VERSION__"') < html.indexOf('src="render-main.js?v=__ASSET_VERSION__"') && html.indexOf('src="render-main.js?v=__ASSET_VERSION__"') < html.indexOf('src="render-agenda.js?v=__ASSET_VERSION__"'))) {
   console.error('index.html no respeta el orden data.js → engine.js → app.js → app-session.js → render-main.js → render-agenda.js');
   process.exit(1);
 }
 
 // El service worker precachea la shell: si falta un archivo, la PWA queda a medias
 const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-['/data.js', '/engine.js', '/app.js', '/app-session.js', '/render-main.js', '/render-agenda.js', '/styles.css', '/index.html'].forEach(f => {
+['/data.js?v=__ASSET_VERSION__', '/engine.js?v=__ASSET_VERSION__', '/app.js?v=__ASSET_VERSION__', '/app-session.js?v=__ASSET_VERSION__', '/render-main.js?v=__ASSET_VERSION__', '/render-agenda.js?v=__ASSET_VERSION__', '/styles.css?v=__ASSET_VERSION__', '/index.html'].forEach(f => {
   if (!sw.includes("'" + f + "'")) {
     console.error('sw.js no precachea ' + f);
     process.exit(1);
@@ -76,8 +86,8 @@ if (fetchStart < 0 || nonGetGuard < 0 || nonGetGuard > firstFetchRoute) {
 // El SHELL del service worker tiene que apuntar a archivos que existan: uno que
 // falte hace que la instalación entera falle y el SW quede inservible.
 const swSrc = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-(swSrc.match(/'\/([a-zA-Z0-9._-]+)'/g) || []).forEach(m => {
-  const f = m.replace(/'/g, '').replace(/^\//, '');
+(swSrc.match(/'\/([a-zA-Z0-9._?-]+)'/g) || []).forEach(m => {
+  const f = m.replace(/'/g, '').replace(/^\//, '').split('?')[0];
   if (!f || f === '') return;
   if (!fs.existsSync(path.join(raiz, f))) {
     console.error('sw.js precachea ' + f + ', que no existe');
@@ -104,6 +114,38 @@ if (!/grep -q "'gradehub-dev'" sw\.js/.test(deployYml)) {
   console.error('deploy.yml sella sin verificar el marcador: un sed que no calza no falla, solo no hace nada');
   process.exit(1);
 }
+
+// El sellado de assets ata el HTML que llegó de red al mismo conjunto que el
+// precache. Probar solo que existe un sed no basta: un patrón que no calza deja
+// las URLs viejas vivas sin que el deploy falle.
+if (!/grep -q '__ASSET_VERSION__' index\.html/.test(deployYml) ||
+    !/grep -q '__ASSET_VERSION__' sw\.js/.test(deployYml) ||
+    !/sed -i "s\/__ASSET_VERSION__\/\$\{ASSET_VERSION\}\/g" index\.html sw\.js/.test(deployYml)) {
+  console.error('deploy.yml debe comprobar y sellar los marcadores de assets en index.html y sw.js');
+  process.exit(1);
+}
+if (!/for asset in styles\.css data\.js engine\.js app\.js app-session\.js render-main\.js render-agenda\.js; do/.test(deployYml) ||
+    !/dist\/index\.html no selló/.test(deployYml) ||
+    !/dist\/sw\.js no precachea/.test(deployYml)) {
+  console.error('deploy.yml debe comprobar en dist cada asset sellado, no solo ejecutar el sed');
+  process.exit(1);
+}
+const shaDePrueba = 'bb48503';
+const htmlSellado = html.replaceAll('__ASSET_VERSION__', shaDePrueba);
+const swSellado = swSrc.replaceAll('__ASSET_VERSION__', shaDePrueba);
+assetsVersionados.forEach(asset => {
+  if (!htmlSellado.includes(asset + '?v=' + shaDePrueba) ||
+      !swSellado.includes('/' + asset + '?v=' + shaDePrueba)) {
+    console.error('el sellado debe dejar ' + asset + ' con el mismo SHA en HTML y SHELL');
+    process.exit(1);
+  }
+});
+['/', '/index.html', '/preguntas.html', '/privacidad.html'].forEach(page => {
+  if (!swSrc.includes("'" + page + "'") || swSrc.includes("'" + page + '?v=')) {
+    console.error('las páginas deben permanecer sin versión en el SHELL: ' + page);
+    process.exit(1);
+  }
+});
 
 // Política de contraseñas: un mínimo suelto por el código se desincroniza del
 // resto. Y el largo NO puede exigirse al iniciar sesión — quien creó su cuenta
