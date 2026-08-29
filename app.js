@@ -34,7 +34,7 @@ function estadoPeriodoPauta(periodo,ahora){
 }
 function definicionPreset(nombre,tenant,carrera){
   if(tenant==='fen'){
-    const clave=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(nombre));
+    const clave=claveCatalogo(nombre,Object.keys(PRESETS_FEN),'fen');
     return clave?PRESETS_FEN[clave]:null;
   }
   if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
@@ -2086,6 +2086,40 @@ function renderModalColors(){
 // Matching tolerante: ignora tildes y mayúsculas para encontrar el preset.
 function normName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
 
+// El mismo ramo escrito con y sin número. Hay programas que numeran el primero
+// de una serie que en la malla va sin número: "Contabilidad I" es la
+// "Contabilidad" del catálogo. Ese estudiante se quedaba sin pauta oficial, sin
+// créditos y sin sigla, teniendo el ramo correcto y escribiéndolo distinto.
+//
+// Dos límites, y ninguno es cosmético. Solo el PRIMERO: "Contabilidad II" es
+// otro ramo. Y solo si "X I" no es un ramo de verdad de esa universidad —en FEN
+// conviven "Gestión de Personas" (2º) con "Gestión de Personas I" (5º), y pasa
+// igual con Marketing, Finanzas y Métodos Cuantitativos. Darle a esos la pauta
+// del otro sería calcular el promedio con las ponderaciones equivocadas.
+//
+// La malla es la que manda sobre qué nombres existen de verdad. Es un literal
+// que no cambia en ejecución, así que se recorre una vez por universidad.
+const _nombresMalla={};
+function ramoDeLaMalla(nombre,tenant){
+  if(!_nombresMalla[tenant]){
+    const set=new Set(),mallas=mallaFor(tenant)||{};
+    for(const c in mallas)for(const s in mallas[c])(mallas[c][s]||[]).forEach(n=>set.add(normName(n)));
+    _nombresMalla[tenant]=set;
+  }
+  return _nombresMalla[tenant].has(normName(nombre));
+}
+
+// Busca `nombre` entre `claves` por nombre normalizado. La caída al nombre sin
+// número es SEGUNDO intento: una coincidencia exacta siempre manda.
+function claveCatalogo(nombre,claves,tenant){
+  const n=normName(nombre);
+  const exacta=claves.find(k=>normName(k)===n);
+  if(exacta)return exacta;
+  if(!/\s+i$/.test(n)||ramoDeLaMalla(nombre,tenant))return null;
+  const base=n.replace(/\s+i$/,'');
+  return claves.find(k=>normName(k)===base)||null;
+}
+
 // Créditos SCT de un ramo. Primero el preset —si existe, es el dato de su
 // programa oficial— y si no, la tabla de créditos de la universidad.
 //
@@ -2102,7 +2136,7 @@ function creditosDe(nombre,tenant,preset){
   if(preset&&typeof preset.creditos==='number')return preset.creditos;
   const tabla=CREDITOS_POR_TENANT[tenant];
   if(!tabla)return null;
-  const clave=Object.keys(tabla).find(n=>normName(n)===normName(nombre));
+  const clave=claveCatalogo(nombre,Object.keys(tabla),tenant);
   return clave?tabla[clave][0]:null;
 }
 
@@ -2112,7 +2146,7 @@ function creditosDe(nombre,tenant,preset){
 function siglaUC(nombre,carrera){
   const tabla=SIGLAS_UC[carrera];
   if(!tabla)return null;
-  const clave=Object.keys(tabla).find(n=>normName(n)===normName(nombre));
+  const clave=claveCatalogo(nombre,Object.keys(tabla),'uc');
   return clave?tabla[clave]:null;
 }
 
@@ -2551,10 +2585,7 @@ function ramoEsDeOtroCatalogo(r){
 // No sirve reusar findPresetName acá: esa exige que el preset traiga
 // ponderaciones y deja fuera a los que solo traen reglas, como Cálculo II.
 function claveUc(nombre){
-  if(PRESETS_UC[nombre])return nombre;
-  const target=normName(nombre);
-  for(const k in PRESETS_UC){if(normName(k)===target)return k;}
-  return null;
+  return claveCatalogo(nombre,Object.keys(PRESETS_UC),'uc');
 }
 function presetUcDisponible(nombre,carrera){
   const clave=claveUc(nombre);if(!clave)return false;
@@ -2563,20 +2594,16 @@ function presetUcDisponible(nombre,carrera){
   return PRESETS_UC_COM.some(n=>normName(n)===normName(clave));
 }
 function findPresetName(nombre,tenant,carrera){
-  const target=normName(nombre);
-  if(tenant==='fen'){
-    for(const k in PRESETS_FEN){if(normName(k)===target)return k;}
-    return null;
-  }
+  if(tenant==='fen')return claveCatalogo(nombre,Object.keys(PRESETS_FEN),'fen');
   if(tenant!=='uc'||!MALLA_UC[carrera])return null;
-  for(const k in PRESETS_UC){
-    const def=PRESETS_UC[k];
-    // La estrella y el selector prometen ponderaciones precargadas. Un programa
-    // que solo trae reglas (como Cálculo II) no debe fingir que las tiene.
-    const evals=Array.isArray(def)?def:(def.evals||[]);
-    if(normName(k)===target&&evals.length&&presetUcDisponible(k,carrera))return k;
-  }
-  return null;
+  // La estrella y el selector prometen ponderaciones precargadas. Un programa
+  // que solo trae reglas (como Cálculo II) no debe fingir que las tiene, así
+  // que esos quedan fuera de la búsqueda en vez de descartarse después.
+  const conPauta=Object.keys(PRESETS_UC).filter(k=>{
+    const def=PRESETS_UC[k],evals=Array.isArray(def)?def:(def.evals||[]);
+    return evals.length&&presetUcDisponible(k,carrera);
+  });
+  return claveCatalogo(nombre,conPauta,'uc');
 }
 // Reglas oficiales informativas que todavía no podemos representar en el
 // cálculo. Se recuperan por el origen del ramo para no inventarlas en manuales.
