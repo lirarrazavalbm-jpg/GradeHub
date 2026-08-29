@@ -383,16 +383,17 @@ RPC. Toda tabla nueva reabre la auditoría RLS y de borrado — y el `CASCADE` n
 se da por bueno porque esté escrito: se comprueba borrando una cuenta de prueba
 y mirando que no queden filas suyas en ninguna tabla.
 
-- **Ponderaciones oficiales: 10 de 88 ramos FEN y 4 de 10 UC.** Las MALLAS ya
-  están completas (88 ramos únicos, los 10-11 semestres de las tres mallas);
-  lo que falta son las pautas de evaluación. A casi todos los estudiantes la
-  malla se les carga sola y las ponderaciones las escriben a mano — ese es el
-  camino real del 95%, y hay que hacerlo rápido
-- La cobertura ya no es "el tronco común de 2°": **1° semestre va en 4 de 5**
-  (falta Comunicación) y **2° en 4 de 6** (faltan Tecnología y Sistemas de
-  Información e Inglés I), más Marketing de 3° e Inglés IV de 5°. Los dos
-  primeros semestres son hoy lo mejor cubierto del producto, junto con
-  Ingeniería UC plan común 1°
+- **Ponderaciones oficiales: 12 de 88 ramos FEN.** Las MALLAS ya están
+  completas (88 ramos únicos, los 10-11 semestres de las tres mallas); lo que
+  falta son las pautas de evaluación. A casi todos los estudiantes la malla se
+  les carga sola y las ponderaciones las escriben a mano — ese es el camino real
+  del 95%, y hay que hacerlo rápido
+- La cobertura ya no es "el tronco común de 2°": **1° está completo (5 de 5)** y
+  **2° va en 6 de 7** — solo falta Inglés I. Después cae de golpe: 3° va 2 de 7,
+  4° va 0 de 6, 5° va 1 de 9. En la UC, Ingeniería plan común va 8 de 18 y
+  Comercial 5 de 31. Los dos primeros semestres de FEN son lo mejor cubierto del
+  producto. Estos números salen de contar, no de memoria: recuéntalos antes de
+  citarlos
 - Notas de reemplazo y exámenes recuperativos distintos al de Microeconomía:
   aparecen en la mayoría de los programas FEN transcritos y siguen sin
   calcularse. Ver la tabla de reglas pendientes más abajo
@@ -409,12 +410,10 @@ y mirando que no queden filas suyas en ninguna tabla.
   `auth.users` con `ON DELETE CASCADE`. Sin eso, esos datos sobreviven al
   borrado de cuenta y la política de privacidad pasa a ser mentira sin que
   falle nada. Ver `supabase/eliminar_mi_cuenta.sql`
-- Consumir el consenso de reportes para sugerir actualizaciones del catálogo.
-  Ojo: `catalog_reports` solo deja leer las filas propias, así que ningún cliente
-  puede calcular un consenso — va a necesitar una vista agregada o una función
-  `security definer` que exponga el conteo sin exponer quién reportó qué
-- `app.js` sigue en 150 KB tras sacar los datos: el próximo corte natural es
-  separar el render (`renderHome`, `renderRamo`, stats) del motor de cálculo
+- Refrescar `ramoKey` en `normalize()`. Los ramos guardan su clave de consenso
+  desde que se crearon y `claveReporte()` prefiere esa, así que un sinónimo
+  agregado después no reagrupa los reportes viejos. Con 3 reportes no cuesta
+  nada; conviene resolverlo antes de que sí cueste
 
 ## En vuelo
 
@@ -455,15 +454,29 @@ Los detalles de Agenda son un acordeón exclusivo. Al cerrar una evaluación que
 está más arriba, conserva la posición en pantalla de la que se acaba de tocar;
 si no compensas ese cambio de altura, en móvil la fila salta bajo el dedo.
 
-**El consenso de reportes NO se construye todavía.** Pasó a este carril, pero al
-2026-08-10 hay **1 reporte de 1 persona** — y el botón para reportar recién dejó
-de estar escondido al fondo del modal de "Editar ramo". No hay nada que agregar.
-Dejar correr una o dos semanas y mirar si llegan reportes; si en dos semanas hay
-tres, el problema no es el consenso sino que nadie reporta, y eso se arregla en
-la app. El obstáculo técnico sigue en pie para cuando toque: `catalog_reports`
-solo deja leer las filas propias, así que necesita una vista agregada o una
-función `security definer` que exponga el conteo sin exponer quién reportó qué,
-versionada en `supabase/`.
+**El consenso de reportes ya está construido. Lo que falta son reportes.** El
+recorrido completo existe: `submit_catalog_report` y `catalog_consensus` en
+`supabase/catalog_consensus.sql` —agrupa por (ramo, estructura, huella) y exige
+**tres personas distintas**, no tres reportes—, y `aplicarConsensoAuto()` en
+`app.js` lo aplica solo. **Solo donde no hay nada que pisar**: ramos del catálogo
+sin pauta. Si hay programa oficial transcrito, ese manda; si el estudiante editó
+la suya, manda la suya; y lo aplicado queda marcado con `consensoRespaldos`, con
+la ficha diciendo que lo reportaron estudiantes. Sin esa etiqueta sería la
+ponderación inventada que prohíbe la regla de más arriba.
+
+El pronóstico del traspaso anterior se cumplió al pie de la letra: decía que si
+en dos semanas había tres reportes, el problema no era el consenso sino que
+nadie reporta. Al 2026-08-29 hay **3 reportes de 3 personas en 2 ramos**, o sea
+ningún grupo llega a tres y el consenso devuelve vacío. Por eso ahora se le pide
+el dato a quien corrige una pauta oficial (`pautaEditada()`): esa persona ya
+demostró saber cuál es la buena. Antes de agregar nada más acá, **mira cuántos
+reportes hay**:
+
+```sql
+select count(*) reportes, count(distinct user_id) personas from public.catalog_reports;
+```
+
+Si el número no se mueve, el problema sigue siendo ese y no el consenso.
 
 **Martín — las pegas manuales de Supabase y Cloudflare.** Desde el 2026-08-17
 tiene administrador en los dos paneles, así que los cuatro puntos de la
@@ -521,6 +534,13 @@ saber dónde empezar a mirar.
 | Tocar una evaluación en la Agenda no muestra nada más | #180 — se expande con su detalle |
 | La barra de orden de la Agenda ocupa demasiado | #207 — se subió al encabezado |
 | El orden manual no se puede arrastrar | *"El orden manual ahora se puede decidir de verdad"* + #176 (el ícono) y #204 (el foco con teclado) |
+| El consenso de reportes no lo consume nadie | #234 — se aplica solo en ramos sin pauta, etiquetado como reportado por estudiantes |
+| Actualizar la pauta oficial borraba notas | #235 — se emparejan por nombre normalizado y lo que sale de la pauta queda en 0% con sus notas |
+| Contabilidad no se podía reportar (la pauta sumaba 99,9) | #236 — `estructuraDe` redondeaba a un decimal; de paso el orden dejó de depender del idioma del dispositivo |
+| Gestión de Personas y Marketing solo aparecían en un semestre | #225 — van en 2° y en 3°, que es como se cursan |
+| "Contabilidad I" no encontraba su pauta | #261 — `claveCatalogo()`, y OJO: no fusiona los pares que sí son ramos distintos |
+| Métodos Cuantitativos con y sin número contaban aparte | #262 — tabla `SINONIMOS` de pares verificados contra el código del ramo |
+| `bin/estado.sh` no mostraba las issues asignadas | #257 |
 
 ### Pedidas por Martín, sin dueño todavía
 
