@@ -93,6 +93,21 @@ const _COMUN={
   3:['Introducción a la Macroeconomía','Gestión de Personas','Marketing','Introducción al Pensamiento Económico y Político','Estadística I','Métodos Matemáticos III','Inglés II'],
   4:['Economía Aplicada','Finanzas','Razonamiento Basado en Datos','Estadística II','Métodos Matemáticos IV','Inglés III'],
 };
+// Dos nombres, un ramo. Pasa cuando una carrera cursa dos de una serie y otra
+// cursa solo el primero: IC tiene 'Métodos Cuantitativos I' y 'II', mientras
+// IICG y CA cursan uno solo y lo dejan sin número. Es el mismo MEC3005.
+//
+// Acá NO se deduce nada por regla. La regla de "quítale el romano" está en
+// claveCatalogo() y se niega justamente en estos casos, porque 'Gestión de
+// Personas I' sí es otro ramo que 'Gestión de Personas'. Esta tabla es para los
+// pares confirmados contra el código oficial del ramo, uno por uno.
+//
+// La clave es el nombre alternativo; el valor, el nombre canónico —el que lleva
+// el código en CREDITOS_FEN—. Las mallas no se tocan: cada carrera sigue
+// nombrando el ramo como lo nombra su programa.
+const SINONIMOS={
+  fen:{'Métodos Cuantitativos':'Métodos Cuantitativos I'},
+};
 const MALLA={
   // Ing. Comercial. La mención (Ciencias Económicas o Administración) se elige
   // más adelante en la carrera, así que del 1º al 4º es una sola malla. Del 5º
@@ -968,6 +983,8 @@ const CREDITOS_FEN={
   'Marketing I':[6,'MKT3505'],
   'Marketing II':[6,'MKT4505'],
   'Métodos Cuantitativos I':[6,'MEC3005'],
+  // IICG y CA lo cursan sin número: es el mismo MEC3005 de IC. Ver SINONIMOS.
+  'Métodos Cuantitativos':[6,'MEC3005'],
   'Métodos Matemáticos II':[6,'MEM1505'],
   'Métodos Matemáticos III':[6,'MEM2005'],
   'Métodos Matemáticos IV':[6,'MEM2505'],
