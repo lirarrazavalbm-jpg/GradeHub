@@ -951,6 +951,20 @@ function totalCreditos(ramos){
 function ramosSinCreditosParaPpa(ramos){
   return ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null&&!tieneCreditos(r));
 }
+// El modo simple no es un error: es la respuesta honesta mientras falta un SCT
+// oficial. Esta función solo lo explica; nunca cambia gpa(), créditos ni ramos.
+function descripcionMetodoGpa(ramos){
+  const modo=gpaMode(ramos);
+  if(modo==='creditos')return{modo,texto:'Promedio ponderado por créditos.'};
+  if(modo!=='simple')return null;
+  const sinCreditos=ramosSinCreditosParaPpa(ramos);
+  const primero=sinCreditos[0];
+  if(!primero)return{modo,texto:'Promedio simple.'};
+  const faltante=sinCreditos.length===1
+    ?`falta el crédito oficial de ${primero.nombre}`
+    :`faltan los créditos oficiales de ${primero.nombre} y ${sinCreditos.length-1} más`;
+  return{modo,texto:`Promedio simple porque ${faltante}. Cuando estén disponibles, se calculará ponderado por créditos.`};
+}
 function semester(){
   const now=new Date(),m=now.getMonth(),y=now.getFullYear();
   // Ene-Feb = cierre del semestre anterior → año-1 S2
