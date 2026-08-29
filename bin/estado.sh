@@ -50,6 +50,19 @@ else
 fi
 
 echo
+echo "=== TUS ISSUES ABIERTAS ==="
+# La cola de AGENTS.md se desactualiza —ya pasó dos veces que alguien empezó a
+# implementar algo que estaba hecho—, y hay pegas que no son de nadie más:
+# las de panel de Supabase y Cloudflare no las puede hacer ningún agente. Eso
+# vive en las issues asignadas, no en el archivo, así que salen acá.
+# Reusa el $GH de más arriba.
+if [ -n "$GH" ]; then
+  "$GH" issue list --state open --assignee @me 2>/dev/null || echo "(gh sin auth: corre 'gh auth login')"
+else
+  echo "(gh no instalado: 'brew install gh' para verlas acá)"
+fi
+
+echo
 echo "=== TAMAÑOS ==="
 wc -c index.html data.js app.js styles.css | sed '$d'
 
