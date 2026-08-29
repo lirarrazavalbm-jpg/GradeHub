@@ -2109,12 +2109,27 @@ function ramoDeLaMalla(nombre,tenant){
   return _nombresMalla[tenant].has(normName(nombre));
 }
 
-// Busca `nombre` entre `claves` por nombre normalizado. La caída al nombre sin
-// número es SEGUNDO intento: una coincidencia exacta siempre manda.
+// El nombre canónico de un ramo que se llama de dos formas, o null. La tabla
+// vive en data.js y son pares confirmados uno por uno contra el código del
+// ramo: acá no se deduce nada.
+function sinonimoDe(nombre,tenant){
+  const tabla=(typeof SINONIMOS!=='undefined'&&SINONIMOS[tenant])||{};
+  const n=normName(nombre);
+  const k=Object.keys(tabla).find(x=>normName(x)===n);
+  return k?tabla[k]:null;
+}
+
+// Busca `nombre` entre `claves` por nombre normalizado. Los dos rescates son
+// intentos POSTERIORES: una coincidencia exacta siempre manda.
 function claveCatalogo(nombre,claves,tenant){
   const n=normName(nombre);
   const exacta=claves.find(k=>normName(k)===n);
   if(exacta)return exacta;
+  const otro=sinonimoDe(nombre,tenant);
+  if(otro){
+    const porSinonimo=claves.find(k=>normName(k)===normName(otro));
+    if(porSinonimo)return porSinonimo;
+  }
   if(!/\s+i$/.test(n)||ramoDeLaMalla(nombre,tenant))return null;
   const base=n.replace(/\s+i$/,'');
   return claves.find(k=>normName(k)===base)||null;
@@ -2291,6 +2306,9 @@ function searchCatalog(q,tenant,carrera,semActual){
 // Sello de procedencia para un ramo creado desde el catálogo. La clave queda
 // en el ramo, para que el servidor no tenga que duplicar las siglas de data.js.
 function ramoKey(nombre,tenant,carrera){
+  // Dos carreras que le dicen distinto al mismo ramo tienen que dar la misma
+  // clave, o sus reportes no se juntan nunca y el consenso no llega a tres.
+  nombre=sinonimoDe(nombre,tenant)||nombre;
   if(tenant!=='uc')return normName(nombre);
   const directa=siglaUC(nombre,carrera);if(directa)return directa;
   const credito=Object.keys(CREDITOS_UC||{}).find(n=>normName(n)===normName(nombre));
