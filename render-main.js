@@ -5,6 +5,7 @@ function renderHome(){
   const gpael=document.getElementById('home-gpa');
   const emptyHint=document.getElementById('gpa-empty-hint');
   const gpaSub=document.getElementById('home-gpa-sub');
+  const gpaMethod=document.getElementById('home-gpa-method');
   const ramosHd=document.getElementById('ramos-hd');
   const tagsEl=document.getElementById('gpa-tags');
   const deltaEl=document.getElementById('gpa-delta');
@@ -39,7 +40,7 @@ function renderHome(){
   const simGlobalBtn=document.getElementById('sim-global-btn');
   if(S.ramos.length===0){
     gpael.textContent='·';gpael.className='gpa-num empty';
-    gpaSub.style.display='none';emptyHint.style.display='block';
+    gpaSub.style.display='none';gpaMethod.style.display='none';emptyHint.style.display='block';
     if(tagsEl)tagsEl.style.display='none';
     if(deltaEl)deltaEl.style.display='none';
     if(simGlobalBtn)simGlobalBtn.style.display='none';
@@ -71,8 +72,9 @@ function renderHome(){
       }else{
         msg+=`  ·  máximo`;
       }
-      // Transparencia: que se entienda si está ponderado por créditos o no
-      msg+=gpaMode(S.ramos)==='creditos'?'\nPonderado por créditos':'\nPromedio simple · agrega créditos para ponderar';
+      // Transparencia: el modo se explica sin pedir que alguien invente SCT.
+      const detalle=descripcionMetodoGpa(S.ramos);
+      if(detalle)msg+='\n'+detalle.texto;
       showToast(msg);
     };
     if(pendingGpaFeedback&&Math.abs(pendingGpaFeedback.despues-g)<.0001){
@@ -86,6 +88,11 @@ function renderHome(){
   const modo=gpaMode(S.ramos);
   gpaSub.textContent=`${semester()} · ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`
     +(modo==='creditos'?` · ${cr} créditos`:'');
+  const detalleMetodo=descripcionMetodoGpa(S.ramos);
+  if(detalleMetodo){
+    gpaMethod.textContent=detalleMetodo.texto;
+    gpaMethod.style.display='block';
+  }else gpaMethod.style.display='none';
 
   // Chips de estado — contexto exclusivo del promedio general
   if(tagsEl){
@@ -149,23 +156,7 @@ function renderHome(){
           <span class="chevron-r">›</span>
         </div>`);
     }
-    // Si falta SCT en ramos ya evaluados, el promedio visible es simple. Llevo
-    // directo al editor del primer ramo pendiente para completar el dato.
-    const sinCreditos=ramosSinCreditosParaPpa(S.ramos);
     const maxInsights=2;
-    if(g!==null&&sinCreditos.length>0&&cards.length<maxInsights){
-      const primero=sinCreditos[0];
-      cards.push(`
-        <div class="insight-card" style="--insight-color:var(--primary)" onclick="openRamo('${esc(primero.id)}');setTimeout(openEditRamoModal,320)">
-          <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M3 8h18"/><path d="M4 8l2 10h12l2-10"/><path d="M8 8l1-4h6l1 4"/></svg></div>
-          <div class="insight-body">
-            <div class="insight-label">PPA más preciso</div>
-            <div class="insight-title">Agrega créditos a ${sinCreditos.length===1?esc(primero.nombre):`${sinCreditos.length} ramos`}</div>
-            <div class="insight-meta">Ahora tu promedio es simple · toca para corregirlo</div>
-          </div>
-          <span class="chevron-r">›</span>
-        </div>`);
-    }
     // Última nota: solo la muestro si NO hay próxima ni riesgo (para no saturar)
     if(cards.length===0){
       const lg=latestGrade();
