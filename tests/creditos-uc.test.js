@@ -53,7 +53,7 @@ chk('un lab de 0 SCT no se reporta como crédito faltante',
 
 console.log('\n=== La tabla ===');
 const entradas = Object.entries(CREDITOS_UC);
-chk('trae los 146 ramos recogidos de los 34 majors', entradas.length === 146);
+chk('trae 146 ramos de Ingeniería y 26 propios de Comercial', entradas.length === 172);
 chk('cada entrada es [créditos, sigla]',
   entradas.every(([, v]) => Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'string'));
 chk('ninguna sigla vacía ni repetida',
@@ -73,6 +73,25 @@ console.log('\n=== Valores contra el catálogo oficial ===');
  ['Introducción a la Programación', 10, 'IIC1103'], ['Dinámica', 10, 'FIS1514'],
  ['Laboratorio de Dinámica', 0, 'FIS0154'], ['Práctica I', 0, 'ING1001'],
  ['Probabilidades y Estadística', 10, 'EYP1113'],
+].forEach(([n, cr, sig]) => chk(`${n} = ${cr} SCT (${sig})`,
+  CREDITOS_UC[n] && CREDITOS_UC[n][0] === cr && CREDITOS_UC[n][1] === sig));
+
+console.log('\n=== Valores oficiales de Ingeniería Comercial ===');
+[
+  ['Introducción a la Microeconomía',10,'EAE1110'], ['Contabilidad',10,'EAA1210'],
+  ['Comportamiento Organizacional',10,'EAA1110'], ['Probabilidad y Estadística',10,'EAA1510'],
+  ['Introducción al Álgebra Lineal',10,'MAT1279'], ['Introducción a la Macroeconomía',10,'EAE1210'],
+  ['Aplicaciones Matemáticas para Economía y Negocios',10,'EAF2010'],
+  ['Análisis Económico: La Experiencia Chilena',10,'EAE1220'], ['Fundamentos de Finanzas',10,'EAA1220'],
+  ['Econometría',10,'EAE2510'], ['Microeconomía I',10,'EAE2110'],
+  ['Estrategia de la Organización',10,'EAA2410'], ['Fundamentos de Marketing',10,'EAA2310'],
+  ['Microeconomía II',10,'EAE2120'], ['Macroeconomía I',10,'EAE2210'],
+  ['Teoría Financiera',10,'EAA2210'], ['Estrategia Competitiva',10,'EAA2420'],
+  ['Competencia y Mercado',10,'EAE2130'], ['Contabilidad de Costos',10,'EAA2220'],
+  ['Ética, Economía y Empresa',10,'FIL209'], ['Marketing Analytics',10,'EAA2320'],
+  ['Empresas y Legislación',5,'EAA2240'], ['Macroeconomía II',10,'EAE2220'],
+  ['Contabilidad Gerencial',10,'EAA2230'], ['Dirección de Personas',10,'EAA2110'],
+  ['Práctica Social',10,'EAF2500'],
 ].forEach(([n, cr, sig]) => chk(`${n} = ${cr} SCT (${sig})`,
   CREDITOS_UC[n] && CREDITOS_UC[n][0] === cr && CREDITOS_UC[n][1] === sig));
 
@@ -98,10 +117,17 @@ const ramosMalla = Object.values(MALLA_UC['ING-PC']).flat();
 const sinCredito = ramosMalla.filter(n => creditosDe(n, 'uc', null) === null);
 chk(`los ${ramosMalla.length} ramos del plan común tienen crédito`, sinCredito.length === 0);
 if (sinCredito.length) console.log('     faltan: ' + sinCredito.join(', '));
-// Comercial es de otra facultad: sus ramos NO están en el catálogo de
-// Ingeniería, así que es esperable que no tengan crédito todavía.
 const com = Object.values(MALLA_UC['COM']).flat();
-console.log(`     (Ing. Comercial: ${com.filter(n => creditosDe(n, 'uc', null) !== null).length}/${com.length} — su malla es de otra facultad)`);
+const comSinCredito = com.filter(n => creditosDe(n, 'uc', null) === null);
+chk(`los ${com.length} ramos de Ingeniería Comercial tienen crédito`, comSinCredito.length === 0);
+console.log(`     (Ing. Comercial: ${com.length - comSinCredito.length}/${com.length})`);
+if (comSinCredito.length) console.log('     faltan: ' + comSinCredito.join(', '));
+const ramosUc = [...new Set(Object.values(MALLA_UC).flatMap(malla => Object.values(malla).flat()))];
+const ucSinCredito = ramosUc.filter(n => creditosDe(n, 'uc', null) === null);
+chk(`los ${ramosUc.length} ramos únicos de MALLA_UC tienen crédito bien formado`, ucSinCredito.length === 0 &&
+  ramosUc.every(n => Array.isArray(CREDITOS_UC[n]) && typeof CREDITOS_UC[n][0] === 'number' && CREDITOS_UC[n][1]));
+console.log(`     cobertura UC: ${ramosUc.length - ucSinCredito.length}/${ramosUc.length}`);
+if (ucSinCredito.length) console.log('     faltan: ' + ucSinCredito.join(', '));
 
 console.log('\n=== Créditos SCT de la FEN ===');
 const CREDITOS_FEN = val('CREDITOS_FEN'), MALLA = val('MALLA'), PRESETS = val('PRESETS_FEN');

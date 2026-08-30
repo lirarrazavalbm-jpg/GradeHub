@@ -778,9 +778,13 @@ const PRESETS_UC_COM=[
 // ramos acá. Un estudiante que carga su malla obtiene su PPA ponderado sin que
 // exista una sola pauta oficial de sus ramos.
 //
-// DE DÓNDE SALEN. Del catálogo oficial C2022 vía la API de mallas.ing.uc.cl, la
-// herramienta de la propia Escuela. Se recorrieron los 34 majors generando su
-// plan completo y se pidió el detalle de cada sigla. Ninguno se escribió a mano.
+// DE DÓNDE SALEN. Ingeniería sale del catálogo oficial C2022 vía la API de
+// mallas.ing.uc.cl: se recorrieron los 34 majors generando su plan completo y
+// se pidió el detalle de cada sigla. Comercial sale de su malla oficial 2025
+// (economiayadministracion.uc.cl/assets/uploads/2025/07/malla-2025-1.pdf), con
+// las siglas contrastadas contra la Resolución VRA N°080/2019, Anexo III
+// (registrosacademicos.uc.cl/wp-content/uploads/2024/06/m_050014_2025.pdf).
+// Ninguno se escribió a mano.
 //
 // La sigla va al lado del crédito y no se usa para calcular: sirve para
 // verificar el dato contra catalogo.uc.cl sin tener que adivinar de qué ramo se
@@ -802,6 +806,9 @@ const CREDITOS_UC={
   'Bases Fisicas de los Procesos Biologicos':[10,'BIO152C'],
   'Bioquímica y Genética Molecular':[10,'BIO228C'],
   'Probabilidades y Estadística':[10,'EYP1113'],
+  // Comercial la llama igual, pero usa EAA1520. Como ambos planes le dan 10
+  // SCT, esta tabla por nombre conserva el crédito; SIGLAS_UC guarda la sigla
+  // correcta según carrera para no mezclarlos en el catálogo.
   'Inferencia Estadística':[10,'EYP2114'],
   'Metodos Bayesianos':[10,'EYP280I'],
   'Filosofía: ¿Para Qué?':[10,'FIL2001'],
@@ -940,6 +947,36 @@ const CREDITOS_UC={
   'Química para Ingeniería':[10,'QIM100E'],
   'Bioquímica':[10,'QIM117B'],
   'Química Orgánica Fundamental':[10,'QIM200'],
+
+  // Ingeniería Comercial UC · malla oficial 2025. Los cuatro nombres que
+  // coincide con Ingeniería (Cálculo I y II, Programación y Filosofía) ya
+  // están arriba con el mismo crédito; acá van los 26 propios de Comercial.
+  'Introducción a la Microeconomía':[10,'EAE1110'],
+  'Contabilidad':[10,'EAA1210'],
+  'Comportamiento Organizacional':[10,'EAA1110'],
+  'Probabilidad y Estadística':[10,'EAA1510'],
+  'Introducción al Álgebra Lineal':[10,'MAT1279'],
+  'Introducción a la Macroeconomía':[10,'EAE1210'],
+  'Aplicaciones Matemáticas para Economía y Negocios':[10,'EAF2010'],
+  'Análisis Económico: La Experiencia Chilena':[10,'EAE1220'],
+  'Fundamentos de Finanzas':[10,'EAA1220'],
+  'Econometría':[10,'EAE2510'],
+  'Microeconomía I':[10,'EAE2110'],
+  'Estrategia de la Organización':[10,'EAA2410'],
+  'Fundamentos de Marketing':[10,'EAA2310'],
+  'Microeconomía II':[10,'EAE2120'],
+  'Macroeconomía I':[10,'EAE2210'],
+  'Teoría Financiera':[10,'EAA2210'],
+  'Estrategia Competitiva':[10,'EAA2420'],
+  'Competencia y Mercado':[10,'EAE2130'],
+  'Contabilidad de Costos':[10,'EAA2220'],
+  'Ética, Economía y Empresa':[10,'FIL209'],
+  'Marketing Analytics':[10,'EAA2320'],
+  'Empresas y Legislación':[5,'EAA2240'],
+  'Macroeconomía II':[10,'EAE2220'],
+  'Contabilidad Gerencial':[10,'EAA2230'],
+  'Dirección de Personas':[10,'EAA2110'],
+  'Práctica Social':[10,'EAF2500'],
 };
 
 // Créditos SCT de la FEN. Misma forma que CREDITOS_UC: [créditos, sigla].
