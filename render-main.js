@@ -408,6 +408,13 @@ function renderRamo(){
     if(r.categorias.length){
       rep.style.display='flex';
       rep.onclick=()=>openReportModal(r.id);
+      // Quien corrigió la pauta oficial ya hizo el trabajo: sabe cuál es la
+      // buena. A esa persona no se le pregunta si algo no calza —ya no calzó—,
+      // se le pide el dato. El resto sigue viendo la pregunta de siempre.
+      const txt=document.getElementById('ramo-report-text');
+      if(txt)txt.textContent=pautaEditada(r)
+        ?'Corregiste esta pauta · compártela con tu curso'
+        :'¿Esta pauta no calza con tu curso? Repórtala';
     }else{rep.style.display='none';rep.onclick=null;}
   }
 

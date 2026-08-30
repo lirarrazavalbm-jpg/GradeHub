@@ -1840,6 +1840,18 @@ function huellaPauta(cats){
 // siempre.
 function catsDePauta(cats){return (cats||[]).filter(c=>!c.fueraDePauta);}
 
+// ¿El estudiante corrigió la pauta que le dimos?
+//
+// cambioDePauta() ya calcula esto para callarse —cuando la editó, su versión
+// manda y no se le ofrece nada—. Pero esa persona es justo la que tiene el dato
+// que al catálogo le falta: agarró nuestra pauta oficial y la arregló. Hasta
+// acá la app se daba cuenta y no le decía nada.
+function pautaEditada(r){
+  if(!r||!r.pautaHuella)return false;
+  const cats=catsDePauta(r.categorias);
+  return cats.length>0&&huellaPauta(cats)!==r.pautaHuella;
+}
+
 // Devuelve el cambio pendiente, o null. Null significa las tres cosas buenas:
 // no hay pauta oficial, ya está al día, o el estudiante la editó a mano —y en
 // ese caso su versión manda sobre la nuestra, sin preguntar ni avisar.
