@@ -3341,7 +3341,7 @@ function openSettings(){
   function renderModoGrid(){
     const g=document.getElementById('s-modo-grid');if(!g)return;g.innerHTML='';
     // 'sistema' primero: es el default y lo que la mayoría quiere.
-    [['sistema','Sistema','Sigue a tu teléfono'],['claro','Claro',''],['oscuro','Oscuro','']]
+    [['sistema','Sistema','Se adapta a cómo lo tienes configurado'],['claro','Claro',''],['oscuro','Oscuro','']]
       .forEach(([val,nom,sub])=>{
         const b=document.createElement('button');
         b.type='button';
