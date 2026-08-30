@@ -2018,10 +2018,13 @@ function confirmAddMalla(){
 function openAddRamoModal(){
   const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0;
   const uni=(TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'';
+  const buscaPorSigla=S.tenant==='uc';
+  const etiquetaRamo=buscaPorSigla?'Nombre o sigla del ramo':'Nombre del ramo';
+  const ejemploRamo=buscaPorSigla?'Ej.: IIC2333 o Cálculo II':'Ej.: Microeconomía I';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Agregar ramo</div>
-    <label class="modal-label">Nombre del ramo${hayCatalogo&&uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· lo buscamos en la malla ${esc(uni)}</span>`:''}</label>
-    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="Ej: Microeconomía I" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
+    <label class="modal-label">${etiquetaRamo}${hayCatalogo&&uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· lo buscamos en la malla ${esc(uni)}</span>`:''}</label>
+    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="${ejemploRamo}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
     ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
