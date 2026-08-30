@@ -191,7 +191,10 @@ function renderHome(){
   c.innerHTML='';
   ramos.forEach(r=>{
     const avg=ramoAvg(r);const nc=r.categorias.length;
-    const nn=r.categorias.reduce((a,c)=>a+c.notas.length,0);
+    // La lista ya se vació. Si una integración dejó una categoría sin el
+    // arreglo `notas`, ese ramo sigue siendo parte del semestre: se muestra
+    // como sin notas en vez de borrar visualmente todos los ramos.
+    const nn=r.categorias.reduce((a,cat)=>a+(Array.isArray(cat.notas)?cat.notas.length:0),0);
     const prog=ramoProgress(r);
     const completo=prog.pct===100;
     const recienCerrado=ramoRecienCerrado(progresosAnteriores.get(r.id),prog.pct);
