@@ -1958,10 +1958,24 @@ function actualizarPauta(ramoId){
   // ella en vez de quedar duplicadas —la vieja en 0% y la nueva vacía—. Las de
   // la pauta van después a propósito: si por lo que sea coinciden en nombre,
   // manda la que está viva.
+  fusionarPauta(r,cambio.preset.categorias);
+  r.gates=cambio.preset.gates;
+  r.aporta=cambio.preset.aporta||null;
+  r.recuperativo=cambio.preset.recuperativo||null;
+  r.reglasAusenciaJustificada=cambio.preset.reglasAusenciaJustificada||null;
+  r.pautaHuella=huellaPauta(catsDePauta(r.categorias));
+  return true;
+}
+
+// Cambia las evaluaciones de un ramo CONSERVANDO lo que el estudiante escribió.
+// Vive aparte porque el trato con sus notas es el mismo venga la pauta de donde
+// venga: del programa oficial o de lo que reportaron sus compañeros. Una nota
+// es suya y no se pierde porque nosotros cambiemos de fuente.
+function fusionarPauta(r,nuevas){
   const nombresAusencia=new Map((r.categorias||[]).map(c=>[c.id,normName(c.nombre)]));
   const viejas=new Map([...(r.categorias||[]).filter(c=>c.fueraDePauta),...catsDePauta(r.categorias)]
     .map(c=>[normName(c.nombre),c]));
-  r.categorias=cambio.preset.categorias.map(c=>{
+  r.categorias=nuevas.map(c=>{
     const k=normName(c.nombre),vieja=viejas.get(k);
     viejas.delete(k);
     return {...c,notas:(vieja&&vieja.notas)||[]};   // `c` no trae fueraDePauta: revivir la limpia
@@ -1974,14 +1988,7 @@ function actualizarPauta(ramoId){
     const conValor=(v.notas||[]).filter(n=>typeof n.valor==='number');
     if(conValor.length)r.categorias.push({...v,peso:0,notas:conValor,fueraDePauta:true});
   });
-  // Las huérfanas quedan fuera de la huella a propósito: la pauta del ramo es
-  // la oficial y tiene que verse idéntica a ella, o cambioDePauta() ofrecería
-  // este mismo cambio para siempre.
-  r.gates=cambio.preset.gates;
-  r.aporta=cambio.preset.aporta||null;
-  r.recuperativo=cambio.preset.recuperativo||null;
-  r.reglasAusenciaJustificada=cambio.preset.reglasAusenciaJustificada||null;
-  // Una actualización de pauta genera ids nuevos. La declaración pertenece a
+  // Un cambio de pauta genera ids nuevos. La declaración pertenece a
   // una evaluación por su nombre, no al id efímero; si esa evaluación ya no
   // existe la conservamos como inactiva, igual que una fecha quitada a mano.
   r.ausenciasJustificadas=(r.ausenciasJustificadas||[]).map(id=>{
@@ -1989,8 +1996,6 @@ function actualizarPauta(ramoId){
     const nueva=(r.categorias||[]).find(c=>normName(c.nombre)===nombre);
     return nueva?nueva.id:id;
   });
-  r.pautaHuella=huellaPauta(catsDePauta(r.categorias));
-  return true;
 }
 function aplicarPautaNueva(ramoId){
   if(!actualizarPauta(ramoId))return;
@@ -2588,6 +2593,77 @@ async function consensoParaRamo(r){
   const mine=huellaEstructura(estructuraDe(r));
   const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&c.huella!==mine);
   return hit||null;
+}
+
+// Un ramo CON pauta oficial no se toca solo aunque haya consenso: el programa
+// manda. Pero callarse tampoco sirve — puede que la pauta oficial sea de otro
+// semestre, o que el curso la haya cambiado, y los compañeros lo sepan antes que
+// nosotros. Así que se ofrece: se le muestra, dice quiénes son cuántos, y decide.
+async function pintarConsensoDisponible(r){
+  const el=document.getElementById('consenso-disponible');
+  if(!el)return;
+  el.style.display='none';el.innerHTML='';
+  if(!r||!r.categorias||!r.categorias.length)return;
+  const hit=await consensoParaRamo(r);
+  // El await deja pasar tiempo: si el estudiante ya se fue a otro ramo, no se
+  // le pinta el aviso del anterior encima.
+  if(!hit||currentRamoId!==r.id)return;
+  const n=hit.respaldos;
+  el.className='weight-setup-nudge';
+  el.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>${n} estudiantes de tu universidad reportan otra pauta.</b><br>Coincidieron entre ellos. No sale del programa oficial: mírala y decide tú.<div style="margin-top:8px;"><button type="button" class="rep-link" style="width:auto;padding:7px 12px;margin:0;" onclick="verConsensoDisponible('${esc(r.id)}')">Ver la que reportan</button></div></div>`;
+  el.style.display='flex';
+}
+
+// Se la muestra ENTERA antes de que decida. Adoptarla le mueve el promedio, así
+// que no se hace a ciegas — misma regla que verCambioDePauta().
+async function verConsensoDisponible(ramoId){
+  const r=(S.ramos||[]).find(x=>x.id===ramoId);if(!r)return;
+  const hit=await consensoParaRamo(r);if(!hit)return;
+  const pauta=pautaDeConsenso(hit.estructura);
+  const fila=c=>`<li><b>${esc(c.nombre)}</b>: ${r2(c.peso)}%</li>`;
+  const mias=new Set(catsDePauta(r.categorias).map(c=>normName(c.nombre)));
+  const sePierden=catsDePauta(r.categorias)
+    .filter(c=>!pauta.categorias.some(n=>normName(n.nombre)===normName(c.nombre)))
+    .filter(c=>(c.notas||[]).some(x=>typeof x.valor==='number'));
+  const aviso=sePierden.length
+    ? `<p class="modal-desc" style="margin-top:10px;">${sePierden.length===1?'Una evaluación tuya':'Algunas evaluaciones tuyas'} con notas no está en esta pauta. <b>No se borran</b>: quedan en tu ficha en 0%, así no mueven tu promedio.</p>`
+    : `<p class="modal-desc" style="margin-top:10px;">Tus notas se conservan: se reconocen por el nombre de la evaluación.</p>`;
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">La pauta que reportan tus compañeros</div>
+    <p class="modal-desc">La enviaron <b>${hit.respaldos} estudiantes</b> de tu universidad por separado y coincidieron. <b>No la sacamos del programa oficial</b> — compárala con la de tu curso.</p>
+    <ul style="margin:10px 0 0;padding-left:18px;font-size:0.875rem;color:var(--fg2);line-height:1.6;">${pauta.categorias.map(fila).join('')}</ul>
+    ${aviso}
+    <div class="modal-btns" style="margin-top:16px;">
+      <button type="button" class="btn-cancel" onclick="closeModal()">Dejar la mía</button>
+      <button type="button" class="btn-confirm" onclick="adoptarConsenso('${esc(r.id)}')">Usar esta</button>
+    </div>`;
+  openModal();
+  return mias;
+}
+
+// El cambio de datos, aparte de la interfaz, para poder probarlo sin navegador.
+function adoptarConsensoEnRamo(r,hit){
+  const pauta=pautaDeConsenso(hit&&hit.estructura);
+  if(!pauta.categorias.length)return false;
+  fusionarPauta(r,pauta.categorias);
+  r.gates=pauta.gates;
+  // `pautaHuella` NO se actualiza, y es a propósito. Sigue apuntando a la que
+  // le dimos nosotros, así que la pauta adoptada queda distinta de esa y
+  // cambioDePauta() la lee como lo que es: una decisión del estudiante, que
+  // manda sobre la nuestra. Sin esto, la app le ofrecería volver a la pauta
+  // oficial que acaba de descartar — y de paso pautaEditada() se vuelve cierta,
+  // así que el botón le pide compartirla y suma un respaldo más.
+  // Queda marcada igual que la que se aplica sola: la ficha tiene que decir que
+  // esto lo reportaron estudiantes y no un programa.
+  r.consensoRespaldos=hit.respaldos;
+  return true;
+}
+async function adoptarConsenso(ramoId){
+  const r=(S.ramos||[]).find(x=>x.id===ramoId);if(!r)return;
+  const hit=await consensoParaRamo(r);
+  if(!hit||!adoptarConsensoEnRamo(r,hit))return;
+  save();track('consenso_adoptado');closeModal();renderRamo();
+  showToast('Pauta actualizada — tus notas se conservaron');
 }
 
 // Cuántas personas distintas tienen que reportar EXACTAMENTE la misma pauta

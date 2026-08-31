@@ -396,6 +396,9 @@ function renderRamo(){
   // debajo de Guardar y Cancelar. Nadie entra a editar el nombre de un ramo para
   // avisar que su pauta está mal. Va acá, al pie de las evaluaciones, que es
   // donde el estudiante se da cuenta.
+  // Va sin await: es una lectura de red y la ficha ya está pintada.
+  pintarConsensoDisponible(r);
+
   const rep=document.getElementById('ramo-report');
   if(rep){
     // Sin evaluaciones no hay nada que enviar: el reporte ES la estructura.
