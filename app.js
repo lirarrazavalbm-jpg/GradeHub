@@ -185,7 +185,7 @@ function normalize(data) {
     // El 0 se conserva: es un dato exacto, no un faltante. Ver tieneCreditos().
     creditos: (typeof r.creditos === 'number' && r.creditos >= 0) ? r.creditos : null,
     // De qué catálogo (universidad + carrera) salió este ramo. null = creado a mano.
-    origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null, ramoKey:typeof r.origen.ramoKey==='string'&&r.origen.ramoKey.trim()?r.origen.ramoKey.trim():ramoKey(r.nombre,r.origen.tenant,r.origen.carrera)} : null,
+    origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null, ramoKey:claveCanonica(typeof r.origen.ramoKey==='string'&&r.origen.ramoKey.trim()?r.origen.ramoKey.trim():ramoKey(r.nombre,r.origen.tenant,r.origen.carrera),r.origen.tenant,r.origen.carrera)} : null,
     // Otro ramo aporta parte de esta nota (el laboratorio de Dinámica).
     aporta: (r.aporta && r.aporta.ramo && r.aporta.peso) ? {ramo:r.aporta.ramo, peso:r.aporta.peso, min:r.aporta.min} : null,
     // La forma de la pauta tal como se la dimos. Si difiere de las categorías
@@ -2366,6 +2366,21 @@ function ramoKey(nombre,tenant,carrera){
   return (credito&&CREDITOS_UC[credito]&&CREDITOS_UC[credito][1])||normName(nombre);
 }
 function origenActual(nombre){return {tenant:S.tenant,carrera:S.carrera,ramoKey:ramoKey(nombre,S.tenant,S.carrera)};}
+
+// La clave de consenso se fija al CREAR el ramo y se guarda para que sobreviva
+// a que el estudiante le cambie el nombre. Eso está bien y no se toca.
+//
+// Pero un sinónimo declarado DESPUÉS deja dos claves vivas para el mismo ramo,
+// y sus reportes dejan de sumar entre sí: justo lo que el sinónimo venía a
+// arreglar. Acá se canoniza la clave GUARDADA. No se recalcula desde el nombre
+// —eso borraría lo que la clave protege— y no toca ninguna clave que no esté
+// declarada como sinónimo.
+function claveCanonica(clave,tenant,carrera){
+  if(!clave)return clave;
+  const tabla=(typeof SINONIMOS!=='undefined'&&SINONIMOS[tenant])||{};
+  const alias=Object.keys(tabla).find(x=>normName(x)===normName(clave));
+  return alias?ramoKey(tabla[alias],tenant,carrera):clave;
+}
 
 // \u2500\u2500\u2500 REPORTES DE CAT\u00c1LOGO \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 // Si a un estudiante le cambiaron las ponderaciones respecto de lo que trae el
