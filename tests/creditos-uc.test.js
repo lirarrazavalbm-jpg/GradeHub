@@ -6,7 +6,7 @@
 // resultado era que casi nadie tenía PPA ponderado: el promedio que veía la
 // mayoría era simple, que no es como se calcula un PPA en Chile.
 //
-// Ahora van en su propia tabla, con los 146 ramos de Ingeniería UC.
+// Ahora van en su propia tabla, con los ramos de Ingeniería UC.
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
 const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
@@ -53,7 +53,10 @@ chk('un lab de 0 SCT no se reporta como crédito faltante',
 
 console.log('\n=== La tabla ===');
 const entradas = Object.entries(CREDITOS_UC);
-chk('trae 146 ramos de Ingeniería y 26 propios de Comercial', entradas.length === 172);
+// ICE1514 y FIS1514 son dos cursos oficiales distintos que comparten nombre.
+// La variante ICE se etiqueta con su sigla para que el catálogo no convierta
+// dos alternativas en la misma opción.
+chk('trae 147 ramos de Ingeniería y 26 propios de Comercial', entradas.length === 173);
 chk('cada entrada es [créditos, sigla]',
   entradas.every(([, v]) => Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'string'));
 chk('ninguna sigla vacía ni repetida',
@@ -71,6 +74,7 @@ chk('los cuatro ramos de 0 SCT siguen en 0',
 console.log('\n=== Valores contra el catálogo oficial ===');
 [['Cálculo I', 10, 'MAT1610'], ['Álgebra Lineal', 10, 'MAT1203'],
  ['Introducción a la Programación', 10, 'IIC1103'], ['Dinámica', 10, 'FIS1514'],
+ ['Dinámica (ICE1514)', 10, 'ICE1514'],
  ['Laboratorio de Dinámica', 0, 'FIS0154'], ['Práctica I', 0, 'ING1001'],
  ['Probabilidades y Estadística', 10, 'EYP1113'],
 ].forEach(([n, cr, sig]) => chk(`${n} = ${cr} SCT (${sig})`,
