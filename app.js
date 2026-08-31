@@ -712,6 +712,24 @@ function definicionPresetDelRamo(ramo){
   const nombre=claveUc(ramo.nombre);
   return nombre?PRESETS_UC[nombre]:null;
 }
+// El nombre colectivo de una categoría no siempre es el de cada entrega.
+// Ejemplo oficial: el Lab de Dinámica tiene la categoría "Informes", pero sus
+// casillas son Informe 0 a Informe 5 porque también existe el Lab 0 online.
+// Se consulta el preset como respaldo para que los ramos ya creados antes de
+// este campo se dibujen bien sin reescribir sus notas ni forzar una sync.
+function detalleCasillas(ramo,cat){
+  const def=definicionPresetDelRamo(ramo);
+  const evals=Array.isArray(def)?def:(def&&def.evals||[]);
+  const extra=(evals.find(([nombre])=>normName(nombre)===normName(cat&&cat.nombre))||[])[2]||{};
+  return {
+    nombre:typeof cat?.slotLabel==='string'?cat.slotLabel:(typeof extra.slotLabel==='string'?extra.slotLabel:cat.nombre),
+    inicio:Number.isInteger(cat?.slotStart)?cat.slotStart:(Number.isInteger(extra.slotStart)?extra.slotStart:1),
+  };
+}
+function etiquetaCasilla(ramo,cat,slot){
+  const detalle=detalleCasillas(ramo,cat);
+  return `${detalle.nombre} ${detalle.inicio+slot}`;
+}
 function promedioCompletoSinDescarte(cat){
   const objetivo=Number.isInteger(cat&&cat.slots)&&cat.slots>1?cat.slots:1;
   const notas=(cat&&cat.notas||[]).filter(n=>typeof n.valor==='number');
@@ -1730,7 +1748,7 @@ function setSlotNota(catId,slot,raw){
   cat.notas=cat.notas.filter(n=>n.slot!==slot);
   if(txt!==''){
     const val=parseNota(txt);
-    if(!isNaN(val))cat.notas.push({id:uid(),nombre:cat.nombre+' '+(slot+1),valor:val,peso:1,slot});
+    if(!isNaN(val))cat.notas.push({id:uid(),nombre:etiquetaCasilla(r,cat,slot),valor:val,peso:1,slot});
   }
   save();track('set_nota_slot');renderRamo();
   const notaValida=txt!==''&&!isNaN(parseNota(txt));
@@ -2001,6 +2019,8 @@ function presetRamo(nombre,tenant,carrera,ahora){
     const id=uid();
     const cat={id,nombre:nom,peso,ponderaNotas:false,directNota:true,notas:[]};
     if(extra&&extra.slots)cat.slots=extra.slots;
+    if(extra&&typeof extra.slotLabel==='string')cat.slotLabel=extra.slotLabel;
+    if(extra&&Number.isInteger(extra.slotStart))cat.slotStart=extra.slotStart;
     if(extra&&extra.lista)cat.directNota=false;
     if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
     // Una pauta de 2026-2 puede seguir siendo buena para sus porcentajes en
