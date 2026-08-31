@@ -1481,11 +1481,22 @@ const PRESETS_FEN={
       ['Examen',32],
     ],
   },
-  // Métodos Matemáticos I · ENMEM1005 · programa oficial 2026, común a las nueve
+  // Métodos Matemáticos I · ENMEM1005 · programa de OTOÑO 2026, común a las nueve
   // secciones. El programa da la fórmula explícita:
   // C1*0,15 + C2*0,15 + C3*0,15 + S*0,25 + Exa*0,3.
+  //
+  // El período no es un detalle acá: en primavera este ramo se dicta para quien
+  // lo reprobó y su pauta es OTRA —tres evaluaciones de 20% y examen de 40%, sin
+  // solemne—. Lo dijeron cinco estudiantes por separado el 2026-08-31 y lo
+  // confirmó Martín. No son la misma pauta actualizada: son dos, para dos
+  // cohortes, y las dos son válidas en su semestre.
+  //
+  // Mientras no tengamos el PDF de primavera, declarar el período es lo honesto
+  // que sí podemos hacer: la ficha pasa a decir "Pauta del 2026-1" en vez de
+  // ofrecerla como la pauta oficial a secas. Falta transcribir ENMEM1005 2026-2.
   'Métodos Matemáticos I':{
     creditos:6,
+    periodo:'2026-1',
     noCalcula:[
       'Cada evaluación que no rindas se califica con 1,0',
       'Hay Examen de Segunda Fecha en dos casos: si la Secretaría de Estudios te justificó la inasistencia a un control, la solemne o el examen, o si sacaste bajo 3,0 en el examen pero tu promedio ponderado quedó en 3,95 o más',
