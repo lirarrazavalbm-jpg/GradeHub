@@ -23,7 +23,7 @@ const val = n => vm.runInContext(n, ctx);
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
-const MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), presetRamo = val('presetRamo'), findPresetName = val('findPresetName'), reglasNoCalculadas = val('reglasNoCalculadas'), reglasDelCurso = val('reglasDelCurso'), claveUc = val('claveUc'), siglaUC = val('siglaUC'), creditosDe = val('creditosDe'), catalogoUniversidad = val('catalogRamosUniversidad');
+const MALLA_UC = val('MALLA_UC'), PRESETS_UC = val('PRESETS_UC'), presetRamo = val('presetRamo'), findPresetName = val('findPresetName'), reglasNoCalculadas = val('reglasNoCalculadas'), reglasDelCurso = val('reglasDelCurso'), claveUc = val('claveUc'), siglaUC = val('siglaUC'), creditosDe = val('creditosDe'), catalogoUniversidad = val('catalogRamosUniversidad'), buscarCatalogo = val('searchCatalog');
 const pc = MALLA_UC['ING-PC'];
 const todos = Object.values(pc).flat();
 
@@ -91,6 +91,19 @@ chk('Dinámica carga el vínculo con su laboratorio',
   dinamica.aporta&&dinamica.aporta.ramo==='Laboratorio de Dinámica'&&dinamica.aporta.peso===30);
 chk('el laboratorio carga el mínimo de la evaluación de pares',
   labDin.gates.some(g=>g.type==='min_grade_required'&&g.min===4&&g.cap===3.9));
+// FIS1514 e ICE1514 son alternativas oficiales con el mismo nombre, no la
+// cátedra y su laboratorio. ICE1514 queda fuera de la malla sugerida para no
+// cargar dos Dinámicas, pero tiene que poder encontrarse por su sigla y no
+// heredar la pauta ni las fechas de Física.
+const dinamicasCatalogo=catalogoUniversidad('uc','ING-PC').filter(r=>/Dinámica/.test(r.nombre));
+const dinamicaIce=dinamicasCatalogo.find(r=>r.nombre==='Dinámica (ICE1514)');
+chk('las dos Dinámicas oficiales aparecen diferenciadas en el catálogo',
+  dinamicasCatalogo.some(r=>r.nombre==='Dinámica'&&r.sigla==='FIS1514')&&
+  !!dinamicaIce&&dinamicaIce.sigla==='ICE1514');
+chk('la sigla ICE1514 encuentra la alternativa de Ingeniería',
+  buscarCatalogo('ICE1514','uc','ING-PC',2).some(r=>r.nombre==='Dinámica (ICE1514)'&&r.sigla==='ICE1514'));
+chk('ICE1514 conserva sus 10 créditos y no hereda pauta de Física',
+  creditosDe('Dinámica (ICE1514)','uc',null)===10&&dinamicaIce.tienePreset===false);
 const calculoOrigen={nombre:'Cálculo II',origen:{tenant:'uc',carrera:'ING-PC'}};
 const calc2=presetRamo('Cálculo II','uc','ING-PC');
 chk('Cálculo II carga su pauta del programa clase a clase',calc2&&calc2.categorias.length===5);

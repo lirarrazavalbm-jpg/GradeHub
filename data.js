@@ -830,6 +830,11 @@ const CREDITOS_UC={
   'Laboratorio de Electricidad y Magnetismo':[0,'FIS0153'],
   'Laboratorio de Dinámica':[0,'FIS0154'],
   'Dinámica':[10,'FIS1514'],
+  // No es un duplicado: el plan común admite FIS1514 o ICE1514. Como ambos
+  // se llaman oficialmente Dinámica, el código va en la etiqueta para que el
+  // estudiante pueda elegir el que aparece en su horario. No entra a la malla
+  // sugerida porque es una alternativa, no un ramo adicional.
+  'Dinámica (ICE1514)':[10,'ICE1514'],
   'Termodinámica':[10,'FIS1523'],
   'Electricidad y Magnetismo':[10,'FIS1533'],
   'Diseño en Ingeniería Biomédica I (Capstone)':[10,'IBM2122'],
