@@ -453,9 +453,10 @@ function renderRamo(){
         let rows='';
         for(let i=0;i<cat.slots;i++){
           const nota=notas.find(n=>n.slot===i);const v=(nota&&nota.valor!=null)?nota.valor:null;
+          const etiqueta=etiquetaCasilla(r,cat,i);
           rows+=`<div class="eval-sub">
-            <span class="eval-sub-name">${esc(cat.nombre)} ${i+1}</span>
-            <input class="eval-row-input sm" inputmode="decimal" maxlength="3" placeholder="—" value="${v!=null?fmt(v):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(cat.nombre)} ${i+1}"/>
+            <span class="eval-sub-name">${esc(etiqueta)}</span>
+            <input class="eval-row-input sm" inputmode="decimal" maxlength="3" placeholder="—" value="${v!=null?fmt(v):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(etiqueta)}"/>
           </div>`;
         }
         const notasCount=notas.length;

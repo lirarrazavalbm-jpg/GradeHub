@@ -76,4 +76,14 @@ chk('una categoría guardada con cantidad se repara como casillas fijas',
 chk('la ficha muestra las tres casillas esperadas para Controles',
   /Controles 1/.test(controlesFijos?.innerHTML||'')&&/Controles 2/.test(controlesFijos?.innerHTML||'')&&/Controles 3/.test(controlesFijos?.innerHTML||''));
 
+console.log('\n=== El Lab de Dinámica conserva el nombre y número de cada entrega ===');
+const pautaLab=val("presetRamo('Laboratorio de Dinámica','uc','ING-PC')");
+const informes=pautaLab.categorias.find(c=>c.nombre==='Informes');
+vm.runInContext(`S={...freshState(),ramos:[{id:'lab-dinamica',nombre:'Laboratorio de Dinámica',color:'#6d5dd3',origen:{tenant:'uc',carrera:'ING-PC'},categorias:${JSON.stringify(pautaLab.categorias)},gates:${JSON.stringify(pautaLab.gates)}}]};currentRamoId='lab-dinamica';`,ctx);
+error=null;try{val('renderRamo')();}catch(e){error=e;}
+const informesLab=byId('cat-list').children[1];
+chk('la pauta empieza sin notas ni ceros inventados',error===null&&informes.notas.length===0&&!informes.notas.some(n=>n.valor===0));
+chk('los seis informes se numeran desde el Lab 0 y en singular',
+  /Informe 0/.test(informesLab?.innerHTML||'')&&/Informe 5/.test(informesLab?.innerHTML||'')&&!/Informes 1/.test(informesLab?.innerHTML||''));
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);

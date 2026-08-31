@@ -749,9 +749,12 @@ const PRESETS_UC={
   // un Lab 0 online con informe y pares: 5 controles, 6 informes, 6 pares.
   'Laboratorio de Dinámica':{
     evals:[
-      ['Controles',10,{slots:5}],
-      ['Informes',70,{slots:6}],
-      ['Evaluación de pares',20,{slots:6,min:4.0,cap:3.9}],
+      ['Controles',10,{slots:5,slotLabel:'Control'}],
+      // El Lab 0 online también tiene informe y pares. La categoría conserva
+      // el plural porque es su nombre en el programa, pero cada casilla se
+      // nombra como la entrega real: Informe 0 … Informe 5.
+      ['Informes',70,{slots:6,slotLabel:'Informe',slotStart:0}],
+      ['Evaluación de pares',20,{slots:6,slotStart:0,min:4.0,cap:3.9}],
     ],
     noCalcula:[
       'Si no realizas un Control, tu nota máxima en el Informe de ese experimento queda en 4,0',
