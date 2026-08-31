@@ -485,7 +485,7 @@ function renderRamo(){
       return;
     }
     const descarte=descartes.find(d=>d.nodeId===cat.id);
-    const calculoCategoria=calculo.breakdown.find(b=>b.id===cat.id);
+    const calculoCategoria=(calculo.res?.breakdown||[]).find(b=>b.id===cat.id);
     const catAvg=calculoCategoria?.value??avgPond(notas);
     const isOpen=openCats[cat.id]===undefined?!!descarte:openCats[cat.id];
     const notasDescartadas=new Set((descarte?.dropped||[]).map(n=>n.id));
