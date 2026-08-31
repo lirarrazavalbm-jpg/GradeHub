@@ -189,10 +189,17 @@ const TENANT_GLYPHS={
 // semánticos (aprobado / al borde / reprobado), no decorativos. Cada modo tiene
 // sus propios valores: los colores luminosos del modo oscuro no alcanzan
 // contraste sobre las superficies claras.
+// El ámbar de claro se oscureció de #a16207 a #96590a el 2026-08-26. No es
+// estética: con el valor anterior quedaba en 4,56 sobre el fondo de Neutro y
+// 4,57 sobre el de Papel, o sea todo el modo claro pasaba el 4,5:1 por dos
+// centésimas. Cualquier fondo un punto más oscuro lo tumbaba — que es
+// exactamente lo que pasó al intentar diferenciar Pizarra. Ahora hay margen en
+// los tres fondos. El significado no cambia: sigue siendo el ámbar de "al
+// borde", y sigue sin teñirse por tema.
 const SEMAFORO={
   claro:{
     green:'#0f766e',greenBg:'#e6f7f5',greenBorder:'#a7ebe1',
-    yellow:'#a16207',yellowBg:'#fdf9e7',
+    yellow:'#96590a',yellowBg:'#fdf9e7',
     red:'#c02b3f',redBg:'#fdecef',
   },
   oscuro:{
@@ -282,9 +289,16 @@ const FONDOS={
   },
   pizarra:{
     nombre:'Pizarra',
+    // En claro esto era casi Neutro: el fondo estaba a 1,3 de distancia y la
+    // tarjeta era el mismo #ffffff exacto. Elegir Pizarra y que no cambie nada
+    // es peor que no ofrecerlo, y lo reportó una estudiante el 2026-08-25.
+    // Ahora la tarjeta deja de ser blanco puro —que es lo que la hacía
+    // indistinguible— y el conjunto se enfría hacia el gris azulado que ya
+    // tiene en oscuro. La referencia de cuánta diferencia hace falta es Papel,
+    // que en claro sí se distingue.
     claro:{
-      bg:'#f4f7fa',bg2:'#fbfcfd',card:'#ffffff',border:'#dce5ed',border2:'#b8c6d2',muted:'#edf2f6',
-      fg:'#0b1722',fg2:'#3c5063',fg3:'#5a6d7e',
+      bg:'#e6edf5',bg2:'#f2f6fb',card:'#f7fafd',border:'#ccd9e7',border2:'#a3b5c8',muted:'#dde6f1',
+      fg:'#0b1722',fg2:'#3c5063',fg3:'#56697a',
     },
     oscuro:{
       bg:'#0e141b',bg2:'#141c25',card:'#1b2632',border:'#2b3b4c',border2:'#3b5166',muted:'#202c38',
