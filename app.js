@@ -2416,6 +2416,20 @@ function estructuraDe(r){
     });
 }
 
+// Lo que de verdad se reporta: la pauta sin las evaluaciones en 0%.
+//
+// Una evaluación en 0% no aporta al promedio, así que no forma parte de la
+// ponderación — pero sí rompía el consenso, que agrupa por estructura exacta.
+// Pasó de verdad: cinco personas reportaron Métodos Matemáticos I diciendo
+// exactamente lo mismo (tres de 20% y examen de 40%) y quedaron en cinco grupos
+// de uno, porque a cada una le sobró la evaluación vieja de la pauta oficial y
+// la dejó en 0% con un nombre distinto: "Solemne", "N", "O", "X". Cinco
+// personas de acuerdo y consenso cero.
+//
+// Se filtra al ENVIAR y al comparar, no al armar el borrador: en el modal el
+// estudiante tiene que poder ver una fila en 0% para subirla.
+function estructuraParaConsenso(est){return (est||[]).filter(e=>Number(e.peso)>0);}
+
 // Huella estable: dos reportes id\u00e9nticos producen la misma cadena.
 function huellaEstructura(est){
   return est.map(e=>[normName(e.nombre),e.peso,e.slots||1,e.min||0,e.cap||0].join('~')).join('|');
@@ -2532,7 +2546,7 @@ async function enviarReporte(ramoId){
   if(!supabaseClient||!currentUser){
     showToast('Necesitas tener sesi\u00f3n iniciada para reportar',true);return;
   }
-  const est=reporteRamoId===ramoId?reporteDraft.map(e=>({...e})):[];
+  const est=estructuraParaConsenso(reporteRamoId===ramoId?reporteDraft.map(e=>({...e})):[]);
   const estado=estadoReporte(est);
   if(!est.length||!estado.lista){
     const total=document.getElementById('m-rep-total');if(total)total.focus();
@@ -2585,7 +2599,7 @@ async function cargarConsenso(){
 async function consensoParaRamo(r){
   const cons=await cargarConsenso();
   if(!cons)return null;
-  const mine=huellaEstructura(estructuraDe(r));
+  const mine=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
   const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&c.huella!==mine);
   return hit||null;
 }

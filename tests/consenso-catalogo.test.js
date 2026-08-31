@@ -21,6 +21,7 @@ const MALLA_UC = val('MALLA_UC'), SIGLAS_UC = val('SIGLAS_UC');
 const siglaUC = val('siglaUC'), siglaReporteUC = val('siglaReporteUC'), claveReporte = val('claveReporte');
 const estructuraReporte = val('estructuraReporte'), aplicarPesoReporte = val('aplicarPesoReporte');
 const estadoReporte = val('estadoReporte');
+const estructuraParaConsenso = val('estructuraParaConsenso');
 
 console.log('\n=== Siglas UC ===');
 ['ING-PC', 'COM'].forEach(carrera => {
@@ -79,7 +80,9 @@ chk('cada porcentaje queda dentro del rango que acepta Supabase',
   bordesReporte[0].peso === 0 && bordesReporte[1].peso === 100);
 chk('la interfaz usa campos editables y envía el borrador, no la pauta original',
   /class="rep-peso-input"/.test(src) &&
-  /const est=reporteRamoId===ramoId\?reporteDraft/.test(src));
+  /const est=estructuraParaConsenso\(reporteRamoId===ramoId\?reporteDraft/.test(src));
+chk('y lo que viaja no lleva las evaluaciones en 0%',
+  estructuraParaConsenso([{nombre:'Examen',peso:40},{nombre:'X',peso:0}]).length === 1);
 chk('un total distinto de 100 se explica antes de llamar a Supabase',
   /if\(!est\.length\|\|!estado\.lista\)\{[\s\S]{0,280}showToast/.test(src));
 
