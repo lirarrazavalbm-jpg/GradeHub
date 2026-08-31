@@ -63,4 +63,17 @@ chk('marcar varias notas no rompe el render',error===null);
 chk('mantiene visible la prueba junto a Controles',listaAbierta.length===2&&listaAbierta[0]?.innerHTML.includes('Prueba 1')&&listaAbierta[1]?.innerHTML.includes('Controles'));
 chk('Controles conserva la puerta para agregar sus notas',/Agregar nota/.test(listaAbierta[1]?.innerHTML||''));
 
+console.log('\n=== Una cantidad esperada dibuja todas sus casillas ===');
+const reparada=val('normalize')({ramos:[{
+  id:'ramo-slots',nombre:'Ramo con controles fijados',color:'#6d5dd3',
+  categorias:[{id:'controles-fijos',nombre:'Controles',peso:30,directNota:false,slots:3,notas:[]}]
+}]});
+vm.runInContext(`S={...freshState(),ramos:${JSON.stringify(reparada.ramos)}};currentRamoId='ramo-slots';`,ctx);
+error=null;try{val('renderRamo')();}catch(e){error=e;}
+const controlesFijos=byId('cat-list').children[0];
+chk('una categoría guardada con cantidad se repara como casillas fijas',
+  error===null&&reparada.ramos[0].categorias[0].directNota===true);
+chk('la ficha muestra las tres casillas esperadas para Controles',
+  /Controles 1/.test(controlesFijos?.innerHTML||'')&&/Controles 2/.test(controlesFijos?.innerHTML||'')&&/Controles 3/.test(controlesFijos?.innerHTML||''));
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);

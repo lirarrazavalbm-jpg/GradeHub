@@ -50,10 +50,10 @@ const dosNotas = ramo([{ id: 'c', nombre: 'Controles', peso: 30, notas: [{ id: '
 chk('con dos o más notas NO se convierte: se perderían de vista', dosNotas.directNota === false);
 chk('sus dos notas siguen ahí', dosNotas.notas.length === 2);
 
-// Los grupos de una pauta oficial (Laboratorio con 3 espacios) ya son
-// colapsables a propósito: no se tocan.
+// Una cantidad conocida representa casillas fijas: la ficha puede dibujarlas
+// una por una sin que el estudiante tenga que volver a crear cada control.
 const conSlots = ramo([{ id: 'c', nombre: 'Laboratorio', peso: 20, slots: 3, notas: [] }]).categorias[0];
-chk('un grupo con slots conserva su forma', conSlots.directNota === false && conSlots.slots === 3);
+chk('un grupo con slots conserva sus casillas fijas', conSlots.directNota === true && conSlots.slots === 3);
 
 // Y lo que ya venía marcado se respeta tal cual, en los dos sentidos.
 chk('respeta un directNota:true existente',
@@ -139,7 +139,7 @@ vm.runInContext('S={ramos:[{id:"r3",nombre:"Cálculo sintético",categorias:[],g
 vm.runInContext('pautaDraft=[{id:null,nombre:"Laboratorio",peso:0,tieneNotas:false,varias:true,cantidad:3}];', ctx);
 val('guardarPautaManual')();
 const laboratorioPlantilla = val('S.ramos[0].categorias[0]');
-chk('la plantilla conserva las tres casillas del laboratorio', laboratorioPlantilla.directNota === false && laboratorioPlantilla.slots === 3);
+chk('la plantilla conserva las tres casillas fijas del laboratorio', laboratorioPlantilla.directNota === true && laboratorioPlantilla.slots === 3);
 
 // Convertir una que ya tiene varias notas a fila simple mostraría una y
 // escondería el resto sin decirlo. La casilla viene desactivada en ese caso, y
