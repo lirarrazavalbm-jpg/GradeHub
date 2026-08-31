@@ -21,7 +21,7 @@ console.log('\n=== Un grupo repetido puede declarar cuántas notas espera ===');
 vm.runInContext("S={ramos:[{id:'r',nombre:'Ramo sin preset',categorias:[],gates:[]}]};currentRamoId='r';pautaDraft=[{id:null,nombre:'Tareas',peso:40,tieneNotas:false,varias:true,cantidad:4},{id:null,nombre:'Examen',peso:60,tieneNotas:false,varias:false,cantidad:null}];showToast=function(){};closeModal=function(){};renderRamo=function(){};save=function(){};",ctx);
 val('guardarPautaManual')();
 const tareas=val("S.ramos[0].categorias.find(c=>c.nombre==='Tareas')");
-chk('guardar una cantidad explícita la convierte en slots',tareas&&tareas.directNota===false&&tareas.slots===4);
+chk('guardar una cantidad explícita la convierte en casillas fijas',tareas&&tareas.directNota===true&&tareas.slots===4);
 
 console.log('\n=== La ayuda no modifica una pauta existente por sí sola ===');
 const examen=val("S.ramos[0].categorias.find(c=>c.nombre==='Examen')");
@@ -30,6 +30,6 @@ chk('la otra fila conserva exactamente el peso que escribió la persona',examen&
 vm.runInContext("S={ramos:[{id:'manual',nombre:'Pauta ajustada',categorias:[{id:'t',nombre:'Tareas',peso:35,directNota:false,slots:4,notas:[]},{id:'e',nombre:'Examen',peso:65,directNota:true,notas:[]}],gates:[]}]};currentRamoId='manual';pautaDraft=[{id:'t',nombre:'Tareas',peso:35,tieneNotas:false,varias:true,cantidad:4},{id:'e',nombre:'Examen',peso:65,tieneNotas:false,varias:false,cantidad:null}];",ctx);
 val('guardarPautaManual')();
 chk('al guardar sin cambios conserva una pauta manual ajustada',
-  val("S.ramos[0].categorias.map(c=>c.nombre+':'+c.peso+':'+(c.slots||'')).join('|')")==='Tareas:35:4|Examen:65:');
+  val("S.ramos[0].categorias.map(c=>c.nombre+':'+c.peso+':'+(c.slots||'')+':'+c.directNota).join('|')")==='Tareas:35:4:true|Examen:65::true');
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);

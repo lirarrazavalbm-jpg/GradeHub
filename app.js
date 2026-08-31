@@ -203,11 +203,13 @@ function normalize(data) {
       ...c,
       id: idSeguro(c.id),
       ponderaNotas: c.ponderaNotas ?? false,
-      // Las evaluaciones creadas a mano antes de esto quedaron sin `directNota`
-      // y se dibujaban como una lista en la que había que entrar. Se convierten
-      // a fila simple SOLO si tienen 0 o 1 nota: con dos o más, la fila simple
-      // mostraría una y escondería el resto, así que esas se dejan como están.
-      directNota: c.directNota ?? (!c.slots && (c.notas || []).length <= 1),
+      // `slots` declara casillas fijas. Una versión anterior guardaba por error
+      // `directNota:false` junto a `slots`, con lo que la ficha los trataba como
+      // una lista abierta y nunca dibujaba las casillas. Se corrige al cargar:
+      // no cambia notas, pesos ni cálculo, solo recupera la forma que la persona
+      // acababa de declarar. Sin cantidad conocida, `directNota:false` conserva
+      // la lista abierta para controles cuyo número todavía no se sabe.
+      directNota: Number.isInteger(c.slots) && c.slots > 1 ? true : (c.directNota ?? ((c.notas || []).length <= 1)),
       fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
       // La hora va APARTE de la fecha y nunca dentro de ella. Hay miles de
       // evaluaciones guardadas con `fecha` sola: convertirla a fecha-y-hora
@@ -2569,7 +2571,7 @@ function pautaDeConsenso(est){
   (est||[]).forEach(e=>{
     if(!e||!e.nombre)return;
     const id=uid(),slots=e.slots>1?e.slots:0;
-    const cat={id,nombre:e.nombre,peso:Number(e.peso)||0,ponderaNotas:false,directNota:!slots,notas:[]};
+    const cat={id,nombre:e.nombre,peso:Number(e.peso)||0,ponderaNotas:false,directNota:!!slots,notas:[]};
     if(slots)cat.slots=slots;
     categorias.push(cat);
     if(e.min)gates.push({type:'min_grade_required',catId:id,min:e.min,cap:e.cap,nombre:e.nombre});
@@ -2865,7 +2867,7 @@ function openPautaManualModal(){
   // Además de normalizar al cargar, el editor tolera un ramo legado incompleto.
   // Es el camino mayoritario: los ramos sin preset parten sin evaluaciones.
   if(!Array.isArray(r.categorias))r.categorias=[];
-  pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0,varias:c.directNota===false,cantidad:Number.isInteger(c.slots)&&c.slots>1?c.slots:null}));
+  pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0,varias:c.directNota===false||(Number.isInteger(c.slots)&&c.slots>1),cantidad:Number.isInteger(c.slots)&&c.slots>1?c.slots:null}));
   if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});
   renderPautaManualModal();openModal();
   setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-0');if(i)i.focus();},100);
@@ -2957,7 +2959,7 @@ function ramosParaDuplicarPauta(ramos,ramoActualId){
 }
 function pautaDuplicada(ramo){
   return ((ramo&&ramo.categorias)||[]).filter(c=>String(c.nombre||'').trim())
-    .map(c=>({id:null,nombre:String(c.nombre).trim(),peso:Number(c.peso)||0,tieneNotas:false,varias:c.directNota===false,cantidad:Number.isInteger(c.slots)&&c.slots>1?c.slots:null}));
+    .map(c=>({id:null,nombre:String(c.nombre).trim(),peso:Number(c.peso)||0,tieneNotas:false,varias:c.directNota===false||(Number.isInteger(c.slots)&&c.slots>1),cantidad:Number.isInteger(c.slots)&&c.slots>1?c.slots:null}));
 }
 function textoConfirmarPautaDuplicada(origen,copia){
   const cantidad=copia.length;
@@ -3082,21 +3084,25 @@ function guardarPautaManual(){
   r.categorias=r.categorias.filter(c=>ids.has(c.id)||(c.notas||[]).length>0);
   filas.forEach(f=>{
     const existente=f.id&&r.categorias.find(c=>c.id===f.id);
+    const cantidadFija=f.varias&&Number.isInteger(f.cantidad)&&f.cantidad>1;
     // Pasar a fila simple una que ya tiene dos o más notas escondería todas
     // menos la primera, así que ahí se respeta lo que hay. Es la misma regla
     // que aplica normalize() al abrir la app.
     if(existente){
       existente.nombre=f.nombre.trim();existente.peso=f.peso;
       if(f.varias){
-        existente.directNota=false;
-        if(Number.isInteger(f.cantidad)&&f.cantidad>1)existente.slots=f.cantidad;
+        // Cantidad declarada = casillas que la ficha puede mostrar y recorrer.
+        // Sin cantidad, sigue siendo una lista abierta: no inventamos cuántos
+        // controles habrá durante el semestre.
+        existente.directNota=cantidadFija;
+        if(cantidadFija)existente.slots=f.cantidad;
         else delete existente.slots;
       }
       else if((existente.notas||[]).length<=1){existente.directNota=true;delete existente.slots;}
     }
     else{
-      const cat={id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:!f.varias,notas:[]};
-      if(f.varias&&Number.isInteger(f.cantidad)&&f.cantidad>1)cat.slots=f.cantidad;
+      const cat={id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:!f.varias||cantidadFija,notas:[]};
+      if(cantidadFija)cat.slots=f.cantidad;
       r.categorias.push(cat);
     }
   });
