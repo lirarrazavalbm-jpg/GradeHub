@@ -46,4 +46,21 @@ chk('dibuja la categoría sin notas como una fila vacía',filas[1]?.innerHTML.in
 chk('acepta nombre en minúscula, peso como texto, ramo sin gates e id ausente',
   !error&&filas[0]?.innerHTML.includes('40%')&&filas[1]?.innerHTML.includes('60%'));
 
+console.log('\n=== Una categoría abierta no deja la ficha en blanco ===');
+vm.runInContext(`
+  S={...freshState(),ramos:[{
+    id:'ramo-lista',nombre:'Ramo con controles',color:'#6d5dd3',
+    categorias:[
+      {id:'prueba',nombre:'Prueba 1',peso:70,directNota:true,notas:[]},
+      {id:'controles',nombre:'Controles',peso:30,directNota:false,notas:[]}
+    ]
+  }]};
+  currentRamoId='ramo-lista';
+`,ctx);
+error=null;try{val('renderRamo')();}catch(e){error=e;}
+const listaAbierta=byId('cat-list').children;
+chk('marcar varias notas no rompe el render',error===null);
+chk('mantiene visible la prueba junto a Controles',listaAbierta.length===2&&listaAbierta[0]?.innerHTML.includes('Prueba 1')&&listaAbierta[1]?.innerHTML.includes('Controles'));
+chk('Controles conserva la puerta para agregar sus notas',/Agregar nota/.test(listaAbierta[1]?.innerHTML||''));
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);
