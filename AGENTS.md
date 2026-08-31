@@ -620,22 +620,20 @@ select split_part(email,'@',2) as dominio, count(*) from auth.users
 where deleted_at is null group by 1 order by 2 desc;
 ```
 
-**Las pautas tienen fecha de vencimiento y la app no lo sabe.** Hoy nueve
-evaluaciones del catálogo traen fecha fija —`fecha:'2026-09-24'` y compañía— y
-ningún preset declara a qué semestre pertenece. En marzo de 2027, un estudiante
-que agregue Introducción a la Programación va a recibir en su Agenda las fechas
-de septiembre de 2026, presentadas con la misma estrella de "pauta oficial" que
-todo lo demás. No falla nada: son fechas válidas, de otro semestre.
+**Las pautas vencidas YA están resueltas. Lo que queda es declarar el período
+en las que faltan.** Al 2026-08-31: `periodo` existe en el preset,
+`estadoPeriodoPauta()` decide si sigue vigente, `presetRamo()` retiene las
+fechas cuando venció y la ficha muestra "Pauta del 2026-2" o "período sin
+confirmar" (`pauta-periodo` en `render-main.js`). Las diez evaluaciones con
+fecha fija del catálogo pertenecen todas a pautas que sí declaran su período, y
+`tests/pautas-con-fecha-declaran-periodo.test.js` lo exige de acá en adelante.
 
-Se piden dos cosas y conviene no confundirlas, porque tienen vida útil distinta:
-
-- **Mostrar, en chico, de cuándo es la pauta.** Un "pauta del 2026-2" junto a la
-  estrella basta. No es adorno: es lo que le permite al estudiante decidir si le
-  cree, y es la misma lógica del descargo — el número vale lo que valen sus
-  datos, así que hay que decir de cuándo son.
-- **Que la app sepa que un semestre terminó.** Requiere un campo de período en
-  el preset. Con eso puede dejar de ofrecer fechas viejas como si fueran de
-  ahora, y avisar que la pauta es de otro semestre en vez de callarlo.
+Lo que falta es transcripción, no código: **15 pautas con ponderaciones no
+declaran período** —7 de FEN y 8 de la UC— y salen como "período sin confirmar".
+El dato no está en el repo: sale de mirar el PDF de cada programa. No se deduce
+del comentario ni del año: "programa oficial actualizado julio 2026" no dice si
+es 2026-1 o 2026-2, y esa diferencia es justo la que decide si sus fechas se
+entregan o se retienen.
 
 **Las ponderaciones y las fechas NO envejecen igual.** Los porcentajes de un
 programa suelen repetirse entre semestres; las fechas de las pruebas cambian
