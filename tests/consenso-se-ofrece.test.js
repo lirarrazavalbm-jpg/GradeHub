@@ -37,17 +37,30 @@ const REPORTADA = [
 ];
 const hit = { ramo: 'Métodos Matemáticos I', ramo_key: 'metodos matematicos i', estructura: REPORTADA, huella: 'x', respaldos: 5 };
 
-const oficial = val(`presetRamo('Métodos Matemáticos I','fen','IC')`);
+// La pauta de partida va escrita acá y NO se saca del catálogo. Este test es
+// sobre el mecanismo de adoptar un consenso, no sobre un ramo: cuando el
+// catálogo cambió —#275 dejó Métodos Matemáticos I en cuatro evaluaciones— este
+// archivo se cayó por indexar la quinta, con los dos PR verdes por separado y
+// main rojo al juntarlos. Un test de mecanismo que depende de datos editables
+// falla el día que alguien edita los datos, que es justo cuando más molesta.
+const oficial = { categorias: [
+  { id: 'c1', nombre: 'Control 1', peso: 15, notas: [], ponderaNotas: false, directNota: true },
+  { id: 'c2', nombre: 'Control 2', peso: 15, notas: [], ponderaNotas: false, directNota: true },
+  { id: 'c3', nombre: 'Control 3', peso: 15, notas: [], ponderaNotas: false, directNota: true },
+  { id: 'so', nombre: 'Solemne', peso: 25, notas: [], ponderaNotas: false, directNota: true },
+  { id: 'ex', nombre: 'Examen', peso: 30, notas: [], ponderaNotas: false, directNota: true },
+], gates: [{ type: 'min_grade_required', catId: 'ex', min: 3, cap: 3.9, nombre: 'Examen' }] };
+
 const nota = (id, valor) => ({ id, nombre: 'Nota', valor, peso: 1, fecha: null, hora: null, fechaQuitada: false });
 const armar = () => {
   const r = {
     id: 'r1', nombre: 'Métodos Matemáticos I', origen: { tenant: 'fen', carrera: 'IC' },
     categorias: JSON.parse(JSON.stringify(oficial.categorias)), gates: oficial.gates, ausenciasJustificadas: [],
   };
-  // Ya tiene notas puestas: una en un Control que la pauta nueva renombra y no
+  // Ya tiene notas puestas: una en un Control que la pauta reportada no
   // conserva, y otra en el Examen, que sí está en las dos.
-  r.categorias[0].notas = [nota('n1', 5.0)];
-  r.categorias[4].notas = [nota('n2', 4.2)];
+  r.categorias.find(c => c.nombre === 'Control 1').notas = [nota('n1', 5.0)];
+  r.categorias.find(c => c.nombre === 'Examen').notas = [nota('n2', 4.2)];
   r.pautaHuella = val(`huellaPauta(${J(val(`catsDePauta(${J(r.categorias)})`))})`);
   return r;
 };
