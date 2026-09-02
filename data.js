@@ -1481,21 +1481,26 @@ const PRESETS_FEN={
       ['Examen',32],
     ],
   },
-  // Métodos Matemáticos I · ENMEM1005 · programa oficial 2026, común a las nueve
-  // secciones. El programa da la fórmula explícita:
-  // C1*0,15 + C2*0,15 + C3*0,15 + S*0,25 + Exa*0,3.
+  // Métodos Matemáticos I · ENMEM1005 · común a las nueve secciones.
+  // Tres solemnes de 20% y examen de 40%. Confirmado por Martín el 2026-08-31,
+  // y es la misma en otoño y en primavera.
+  //
+  // La versión anterior decía C1*0,15 + C2*0,15 + C3*0,15 + S*0,25 + Exa*0,3 y
+  // estaba vieja. La cazaron los estudiantes antes que nosotros: cinco
+  // reportaron esta misma pauta por separado, cuatro de ellos escribiendo
+  // "Solemne 1/2/3". Es el primer dato del catálogo que llega por esa vía.
   'Métodos Matemáticos I':{
     creditos:6,
+    periodo:'2026-2',
     noCalcula:[
       'Cada evaluación que no rindas se califica con 1,0',
-      'Hay Examen de Segunda Fecha en dos casos: si la Secretaría de Estudios te justificó la inasistencia a un control, la solemne o el examen, o si sacaste bajo 3,0 en el examen pero tu promedio ponderado quedó en 3,95 o más',
+      'Hay Examen de Segunda Fecha en dos casos: si la Secretaría de Estudios te justificó la inasistencia a una solemne o al examen, o si sacaste bajo 3,0 en el examen pero tu promedio ponderado quedó en 3,95 o más',
     ],
     evals:[
-      ['Control 1',15],
-      ['Control 2',15],
-      ['Control 3',15],
-      ['Solemne',25],
-      ['Examen',30,{min:3.0,cap:3.9}],
+      ['Solemne 1',20],
+      ['Solemne 2',20],
+      ['Solemne 3',20],
+      ['Examen',40,{min:3.0,cap:3.9}],
     ],
   },
   // Programación para Analítica de Datos · ENGIN105 · programa oficial.
