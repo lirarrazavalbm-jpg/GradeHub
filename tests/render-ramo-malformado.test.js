@@ -86,4 +86,20 @@ chk('la pauta empieza sin notas ni ceros inventados',error===null&&informes.nota
 chk('los seis informes se numeran desde el Lab 0 y en singular',
   /Informe 0/.test(informesLab?.innerHTML||'')&&/Informe 5/.test(informesLab?.innerHTML||'')&&!/Informes 1/.test(informesLab?.innerHTML||''));
 
+console.log('\n=== Una sola casilla no cierra el grupo ni infla el avance ===');
+informes.notas=[{id:'informe-0',nombre:'Informe 0',valor:5.4,peso:1,slot:0}];
+const labConInforme={id:'lab-con-informe',nombre:'Laboratorio de Dinámica',color:'#6d5dd3',origen:{tenant:'uc',carrera:'ING-PC'},categorias:pautaLab.categorias,gates:pautaLab.gates};
+vm.runInContext(`S={...freshState(),ramos:${JSON.stringify([labConInforme])}};currentRamoId='lab-con-informe';openCats={};`,ctx);
+const promedioAntes=val('ramoAvg')(labConInforme);
+const avance=val('ramoProgress')(labConInforme);
+error=null;try{val('renderRamo')();}catch(e){error=e;}
+const informesConNota=byId('cat-list').children[1];
+chk('la primera nota abre el grupo y deja visible su valor',
+  error===null&&/eval-group-body open/.test(informesConNota?.innerHTML||'')&&/value="5\.4"/.test(informesConNota?.innerHTML||''));
+val('openCats')[informes.id]=false;val('renderRamo')();
+chk('si se cerró a mano conserva esa decisión',
+  !/eval-group-body open/.test(byId('cat-list').children[1]?.innerHTML||''));
+chk('1 de 6 Informes aporta solo una sexta parte de su 70%',avance.pct===12&&avance.pending>80&&avance.pending<90);
+chk('corregir el avance no cambia el promedio parcial del ramo',promedioAntes===5.4&&val('ramoAvg')(labConInforme)===promedioAntes);
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);

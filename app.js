@@ -4694,11 +4694,13 @@ function ramoProgress(r){
   if(total<=0)return {pct:0,pending:0,total:0};
   let done=0;
   categorias.forEach(c=>{
-    // Una categoría incompleta todavía representa una evaluación pendiente.
-    // El avance se usa durante el render de Home: no puede lanzar después de
-    // que la lista ya se vació ni hacer parecer que el ramo desapareció.
-    const a=avgPond(Array.isArray(c.notas)?c.notas:[]);
-    if(a!==null)done+=c.peso;
+    // Una categoría con casillas fijas se evalúa proporcionalmente: una de
+    // seis notas de Informes no puede cerrar el 70% del ramo. Solo cuentan
+    // notas con valor; una anotada con fecha para rendir después sigue pendiente.
+    const notas=Array.isArray(c.notas)?c.notas:[];
+    const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
+    const evaluadas=notas.filter(n=>typeof n.valor==='number').length;
+    done+=c.peso*Math.min(1,evaluadas/objetivo);
   });
   return {pct:Math.round(done/total*100),pending:total-done,total};
 }

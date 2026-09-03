@@ -450,7 +450,11 @@ function renderRamo(){
     if(cat.directNota){
       // Preset con varios espacios (ej: Laboratorio = 3 notas que se promedian) — COLAPSABLE
       if(cat.slots&&cat.slots>1){
-        const av=avgPond(notas);const isOpen=openCats[cat.id];
+        const av=avgPond(notas);
+        // Vacío parte compacto, pero al guardar la primera nota (o dejar una
+        // anotada para después) hay algo concreto que revisar. `openCats` solo
+        // toma el control después de que la persona abrió o cerró a mano.
+        const isOpen=openCats[cat.id]===undefined?notas.length>0:openCats[cat.id];
         const wrap=document.createElement('div');wrap.className='eval-group';
         if(av!=null)wrap.style.borderLeftColor=getColor(av);
         let rows='';
