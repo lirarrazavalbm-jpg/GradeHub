@@ -200,6 +200,14 @@ chk('la llegada al cierre tiene una versión reducida que conserva opacidad sin 
   /\.ramo-progress\.just-completed[^}]*animation-name:\s*ramo-progress-close-reduce/.test(cssCodigo) &&
   /@keyframes\s+ramo-progress-close-reduce\{[^}]*opacity:[^}]*\}[^}]*\}/.test(cssCodigo) &&
   !/@keyframes\s+ramo-progress-close-reduce\{[^}]*transform/.test(cssCodigo));
+const reglaAvanceStats=(cssCodigo.match(/\.stats-progress-fill\{([^}]*)\}/)||[])[1]||'';
+chk('la barra del semestre usa scaleX y la identidad, no el semáforo',
+  /transform-origin:left/.test(reglaAvanceStats) && /transition:transform/.test(reglaAvanceStats) &&
+  /var\(--primary\)/.test(reglaAvanceStats) && !/var\(--(?:green|yellow|red)/.test(reglaAvanceStats));
+chk('Estadísticas llena su barra con el avance real calculado',
+  /stats-progress-fill[^>]*transform:scaleX\(\$\{avance\.pct\/100\}\)/.test(app));
+chk('reduced motion conserva el color final sin recorrer la barra del semestre',
+  /@media\(prefers-reduced-motion:reduce\)[\s\S]*?\.stats-progress-fill\{transition:opacity/.test(cssCodigo));
 // Antes `.open` solo hacía display:flex — el sheet aparecía y desaparecía de
 // golpe, y por acá pasa todo flujo de la app.
 chk('el sheet parte fuera de pantalla', /\.modal-sheet\{transform:translateY\(100%\)/.test(css));

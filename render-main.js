@@ -568,7 +568,8 @@ function renderStats(){
     </div>`;
   } else {
     const avance=avanceEvaluaciones(S.ramos);
-    const previo=ultimoHistorialConGpa(S.historial);
+    const historialPrevio=lecturaHistorialPrevio(S.historial);
+    const previo=historialPrevio.previo;
     const diff=previo&&g!==null?g-previo.gpa:null;
     const tendencia=diff===null?'':Math.abs(diff)<0.05?'igual que':diff>0?'sobre':'bajo';
     // El porcentaje lo dice el número grande y NADIE más. Estaba tres veces en
@@ -581,7 +582,9 @@ function renderStats(){
     // el total ronda los 1000, así que "21% del peso evaluado" era en realidad
     // un 2%. El porcentaje es `avance.pct` y ya está arriba.
     const lectura=diff===null
-      ? `Todavía no tienes un semestre archivado con el que compararte.`
+      ? historialPrevio.estado==='sin_notas'
+        ? 'Tu semestre archivado todavía no tiene notas para compararlo.'
+        : 'Todavía no tienes un semestre archivado con el que compararte.'
       : Math.abs(diff)<0.05?`Vas igual que en ${previo.label||'el semestre anterior'}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${tendencia} ${previo.label||'el semestre anterior'}.`;
     const detalle=diff===null
       ? `${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}`
@@ -593,6 +596,7 @@ function renderStats(){
     <div class="stat-card" style="margin:0 20px 16px;">
       <div class="stat-label">Avance de evaluaciones</div>
       <div class="stat-val" style="color:var(--primary);margin-top:4px;">${avance.pct}%</div>
+      <div class="stats-progress" role="progressbar" aria-label="Evaluaciones completadas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance.pct}"><div class="stats-progress-fill" style="transform:scaleX(${avance.pct/100})"></div></div>
       <div class="stat-sub" style="margin-top:6px;">${lectura}</div>
       <div class="stat-sub" style="margin-top:4px;">${detalle}</div>
     </div>
@@ -676,8 +680,10 @@ function renderStats(){
       html+=`<div class="section-hd stats-history-heading" style="padding:0 20px 8px;"><span class="section-hd-title">Historial</span></div>`;
       validos.forEach(h=>{
         const isOpen=openHist[h.id];
-        const gpaColor=h.gpa!==null?getColor(h.gpa):'var(--fg3)';
-        const ramosRows=h.ramos.map(r=>{
+        const historialGpa=gpaHistorial(h);
+        const gpaColor=historialGpa!==null?getColor(historialGpa):'var(--fg3)';
+        const ramosHistorial=h.ramos.filter(r=>r&&typeof r==='object');
+        const ramosRows=ramosHistorial.map(r=>{
           const avg=histRamoAvg(r);
           const editado=typeof r.avgOverride==='number';
           return `<button class="hist-ramo-row" onclick="openEditHistRamoModal('${esc(h.id)}','${esc(r.id)}')" aria-label="Editar promedio de ${esc(r.nombre)}">
@@ -691,9 +697,9 @@ function renderStats(){
             <div class="hist-header" onclick="toggleHist('${h.id}')">
               <div style="flex:1;">
                 <div style="font-size:0.96875rem;font-weight:700;color:var(--fg);letter-spacing:-.01em;">${esc(h.label)}</div>
-                <div style="font-size:0.75rem;color:var(--fg3);margin-top:3px;">Sem. ${h.careerSemestre} · ${h.ramos.length} ramos</div>
+                <div style="font-size:0.75rem;color:var(--fg3);margin-top:3px;">Sem. ${h.careerSemestre} · ${ramosHistorial.length} ramos</div>
               </div>
-              <span class="hist-gpa" style="color:${gpaColor}">${h.gpa!==null?nf(h.gpa):'—'}</span>
+              <span class="hist-gpa" style="color:${gpaColor}">${historialGpa!==null?nf(historialGpa):'—'}</span>
               <span style="color:var(--fg3);font-size:0.6875rem;">${isOpen?'▲':'▼'}</span>
             </div>
             <div class="hist-body${isOpen?' open':''}">

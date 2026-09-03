@@ -4098,17 +4098,44 @@ function closeConfirm(){document.getElementById('confirm-overlay').classList.rem
 // decidido. Esta métrica usa las ponderaciones de las evaluaciones rendidas.
 function avanceEvaluaciones(ramos){
   let total=0,evaluado=0;
-  (ramos||[]).forEach(r=>categoriasVigentes(r).forEach(c=>{
-    const peso=Number(c.peso)||0;
-    total+=peso;
-    if(avgPond(c.notas)!==null)evaluado+=peso;
-  }));
+  (ramos||[]).forEach(r=>{
+    // El resumen del semestre usa exactamente el mismo criterio que Home.
+    // Una categoría con seis casillas y una nota solo aporta una sexta parte
+    // de su peso; si se contara completa, la barra afirmaría que el semestre
+    // avanzó más de lo que realmente se ha evaluado.
+    const progreso=ramoProgress(r);
+    total+=progreso.total;
+    evaluado+=progreso.total-progreso.pending;
+  });
   return {total,evaluado,pct:total>0?Math.round(evaluado/total*100):0};
 }
 // confirmArchiveSemester agrega lo más reciente al inicio; nunca usar el último
 // elemento del array para comparar el semestre actual.
+function gpaHistorial(h){
+  if(!h||typeof h!=='object')return null;
+  if(typeof h.gpa==='number'&&Number.isFinite(h.gpa))return h.gpa;
+  if(!Array.isArray(h.ramos))return null;
+  // Un respaldo antiguo puede no traer la caché `gpa`. Recalcular al leer
+  // recupera la comparación sin tocar el historial persistido ni subir una
+  // migración masiva a cuentas que ya existen.
+  try{
+    const ramos=h.ramos.filter(r=>r&&typeof r==='object');
+    const calculado=gpa(ramos);
+    return typeof calculado==='number'&&Number.isFinite(calculado)?calculado:null;
+  }catch(e){return null;}
+}
 function ultimoHistorialConGpa(historial){
-  return (historial||[]).find(h=>h&&typeof h.gpa==='number')||null;
+  for(const h of historial||[]){
+    const promedio=gpaHistorial(h);
+    if(promedio!==null)return {...h,gpa:promedio};
+  }
+  return null;
+}
+function lecturaHistorialPrevio(historial){
+  const previo=ultimoHistorialConGpa(historial);
+  if(previo)return {previo,estado:'comparable'};
+  const hayArchivado=(historial||[]).some(h=>h&&Array.isArray(h.ramos));
+  return {previo:null,estado:hayArchivado?'sin_notas':'sin_historial'};
 }
 
 // ─── PROYECCIÓN DEL SEMESTRE ─────────────────────────────────────────────────
