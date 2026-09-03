@@ -102,4 +102,19 @@ chk('si se cerró a mano conserva esa decisión',
 chk('1 de 6 Informes aporta solo una sexta parte de su 70%',avance.pct===12&&avance.pending>80&&avance.pending<90);
 chk('corregir el avance no cambia el promedio parcial del ramo',promedioAntes===5.4&&val('ramoAvg')(labConInforme)===promedioAntes);
 
+console.log('\n=== Recargar conserva y recupera la posición de cada casilla ===');
+const pautaAlRecargar=JSON.parse(JSON.stringify(pautaLab));
+pautaAlRecargar.categorias.find(c=>c.nombre==='Informes').notas=[{id:'informe-0',nombre:'Informe 0',valor:5.4,peso:1,slot:0}];
+const ramaRecargada=val('normalize')({ramos:[{id:'lab-recargado',nombre:'Laboratorio de Dinámica',color:'#6d5dd3',origen:{tenant:'uc',carrera:'ING-PC'},categorias:pautaAlRecargar.categorias,gates:pautaAlRecargar.gates}]});
+const informeRecargado=ramaRecargada.ramos[0].categorias.find(c=>c.nombre==='Informes');
+vm.runInContext(`S={...freshState(),ramos:${JSON.stringify(ramaRecargada.ramos)}};currentRamoId='lab-recargado';openCats={};`,ctx);
+error=null;try{val('renderRamo')();}catch(e){error=e;}
+const informesTrasRecargar=byId('cat-list').children[1];
+chk('Informe 0 sigue asociado a su casilla después de normalizar y recargar',
+  error===null&&informeRecargado.notas[0]?.slot===0&&/value="5\.4"/.test(informesTrasRecargar?.innerHTML||''));
+const respaldoSinSlot=JSON.parse(JSON.stringify(ramaRecargada));
+delete respaldoSinSlot.ramos[0].categorias.find(c=>c.nombre==='Informes').notas[0].slot;
+const legadoRecuperado=val('normalize')(respaldoSinSlot).ramos[0].categorias.find(c=>c.nombre==='Informes');
+chk('una nota ya afectada se recupera solo si su nombre identifica la casilla',legadoRecuperado.notas[0]?.slot===0);
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);

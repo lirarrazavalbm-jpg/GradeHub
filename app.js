@@ -227,6 +227,10 @@ function normalize(data) {
         hora: (n.fecha && HORA_RE.test(n.hora || '')) ? n.hora : null,
         valor: n.valor ?? (typeof n === 'number' ? n : null),
         peso: n.peso || 1,
+        // Las casillas fijas se identifican por posición, no por el nombre.
+        // Si se pierde `slot` al recargar, Informe 0 sigue guardado pero ya no
+        // puede volver a dibujarse en ninguna de las seis casillas.
+        ...(Number.isInteger(n.slot) ? {slot:n.slot} : {}),
         // Una nota puede tener su propia fecha y todavía no tener valor: es una
         // evaluación que viene. La fecha de la categoría sirve cuando todo el
         // grupo cae el mismo día; no alcanza para "Casos y ensayos", que son
@@ -240,6 +244,20 @@ function normalize(data) {
         horaQuitada: !(n.fecha && HORA_RE.test(n.hora || '')) && n.horaQuitada===true,
       }))
     }))
+  }));
+  // Entre el 30 de agosto y este arreglo, normalize descartaba `slot` de las
+  // notas de una categoría con casillas fijas. Recuperamos solo las que se
+  // pueden identificar sin ambigüedad por su nombre exacto (Informe 0, Control
+  // 2, etc.); una nota con otro nombre no se asigna a ojo.
+  data.ramos.forEach(r=>(r.categorias||[]).forEach(c=>{
+    if(!Number.isInteger(c.slots)||c.slots<=1)return;
+    (c.notas||[]).forEach(n=>{
+      if(Number.isInteger(n.slot)&&n.slot>=0&&n.slot<c.slots)return;
+      const nombre=normName(n.nombre||'');
+      const slot=Array.from({length:c.slots},(_,i)=>i)
+        .find(i=>normName(etiquetaCasilla(r,c,i))===nombre);
+      if(slot!==undefined)n.slot=slot;
+    });
   }));
   // Las pautas oficiales llegan DESPUÉS de que el estudiante agregó el ramo.
   // Hasta acá el preset solo se aplicaba al crearlo, así que quien tenía
