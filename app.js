@@ -771,8 +771,26 @@ function promedioCompletoSinDescarte(cat){
   const notas=(cat&&cat.notas||[]).filter(n=>typeof n.valor==='number');
   // Cuatro de cinco no son una aproximación suficiente para decidir que el
   // Examen deja de ser obligatorio.
-  if(notas.length<objetivo)return null;
-  return avgPond(notas);
+  //
+  // Y por eso se cuentan CASILLAS con nota, no notas: dos valores de la misma
+  // casilla son un dato pisado, no dos controles rendidos. Contando notas, tres
+  // controles con dos reescrituras parecían cinco y la app podía declarar a
+  // alguien exento del Examen —con un promedio sacado de intentos repetidos—
+  // por un dato que él nunca escribió. De todos los lugares donde ese error
+  // aparecía, este es el que manda a una persona a no rendir una prueba.
+  //
+  // Y no basta con CONTAR casillas: también hay que promediar una sola por
+  // casilla. Contando bien pero promediando todo, un intento viejo de 1,0
+  // arrastraba el promedio y negaba una eximición que sí correspondía — el
+  // error al revés, igual de malo.
+  const porCasilla=new Map();
+  notas.forEach(n=>{if(Number.isInteger(n.slot))porCasilla.set(n.slot,n);});
+  const vigentes=objetivo>1
+    ? (porCasilla.size?[...porCasilla.values()]:notas)
+    : notas;
+  const rendidas=objetivo>1&&porCasilla.size?porCasilla.size:notas.length;
+  if(rendidas<objetivo)return null;
+  return avgPond(vigentes);
 }
 function estadoEximicion(ramo){
   const def=definicionPresetDelRamo(ramo);
