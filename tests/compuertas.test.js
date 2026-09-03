@@ -144,9 +144,27 @@ const cobertura=ctx.avanceEvaluaciones([{categorias:[
   {peso:30,notas:[{valor:5.0,peso:1}]},{peso:70,notas:[]}
 ]}]);
 eq('avance usa el peso de evaluaciones rendidas', cobertura.pct, 30);
+const coberturaParcial=ctx.avanceEvaluaciones([{categorias:[
+  {peso:10,notas:[]},
+  {peso:70,slots:6,notas:[{valor:5.4,peso:1,slot:0}]},
+  {peso:20,notas:[]}
+]}]);
+eq('una de seis casillas aporta una sexta parte de su peso', coberturaParcial.pct, 12);
 const historialReciente=ctx.ultimoHistorialConGpa([{label:'2026-1',gpa:5.4},{label:'2025-2',gpa:4.8}]);
 if(historialReciente&&historialReciente.label==='2026-1'){ok++;console.log('  OK   compara contra el último semestre archivado');}
 else {fail++;console.log('  FAIL último historial → '+JSON.stringify(historialReciente));}
+const ramoArchivado={id:'hist-ramo',creditos:10,categorias:[{id:'eval',peso:100,notas:[{id:'nota',valor:5.6,peso:1}]}]};
+const historialSinCache=ctx.ultimoHistorialConGpa([{label:'2026-1',ramos:[ramoArchivado]}]);
+eq('un historial sin gpa guardado se recalcula desde sus ramos',historialSinCache?.gpa,5.6);
+const historialMalformado=ctx.ultimoHistorialConGpa([{label:'2026-1',ramos:[null,ramoArchivado]}]);
+eq('una entrada malformada no impide leer los ramos archivados válidos',historialMalformado?.gpa,5.6);
+const lecturaHistorialPrevio=typeof ctx.lecturaHistorialPrevio==='function'?ctx.lecturaHistorialPrevio:null;
+const lecturaSinNotas=lecturaHistorialPrevio?lecturaHistorialPrevio([{label:'2026-1',ramos:[{id:'sin-notas',categorias:[{id:'pendiente',peso:100,notas:[]}]}]}]):null;
+if(lecturaSinNotas?.estado==='sin_notas'){ok++;console.log('  OK   un semestre archivado sin notas no se confunde con no tener historial');}
+else {fail++;console.log('  FAIL historial sin notas → '+JSON.stringify(lecturaSinNotas));}
+const lecturaSinHistorial=lecturaHistorialPrevio?lecturaHistorialPrevio([]):null;
+if(lecturaSinHistorial?.estado==='sin_historial'){ok++;console.log('  OK   sin historial conserva el mensaje de primer semestre');}
+else {fail++;console.log('  FAIL sin historial → '+JSON.stringify(lecturaSinHistorial));}
 
 console.log('\n=== PPA · comparación y créditos pendientes ===');
 eq('PPA sin ramos', ctx.gpa([]), null);
