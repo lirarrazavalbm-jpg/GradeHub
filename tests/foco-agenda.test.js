@@ -167,8 +167,10 @@ chk('el orden activo se expone a tecnologías de asistencia',
 // intención, no el marcado.
 const cssAgenda = fs.readFileSync(__dirname + '/../styles.css', 'utf8');
 const reglaCSSAgenda = selector => {
-  const inicio=cssAgenda.indexOf(selector+'{');
-  return inicio<0?'':cssAgenda.slice(inicio,cssAgenda.indexOf('}',inicio)+1);
+  const literal=selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const match=new RegExp('(^|[\\n}{])('+literal+')\\{').exec(cssAgenda);
+  const exacto=match?match.index+match[1].length:-1;
+  return exacto<0?'':cssAgenda.slice(exacto,cssAgenda.indexOf('}',exacto)+1);
 };
 const reglaOpciones = reglaCSSAgenda('.ag-order-options');
 const reglaOpcion = reglaCSSAgenda('.ag-order-option');
@@ -181,6 +183,8 @@ chk('y se va al extremo, después del título y el conteo',
   /margin-left:auto/.test(reglaEncabezado));
 chk('el grupo no le impone un ancho fijo a la fila',
   !/(?:width|flex-basis):\s*\d+px/.test(reglaOpciones));
+chk('los tres botones ocupan columnas iguales sin escribir un ancho fijo',
+  /display:inline-grid/.test(reglaOpciones) && /grid-template-columns:repeat\(3,1fr\)/.test(reglaOpciones));
 chk('Recomendado no puede cortarse ni desbordarse hacia el botón vecino',
   /white-space:nowrap/.test(reglaOpcion) && /min-width:max-content/.test(reglaOpcion));
 // Delgado, pero no tanto como para no poder tocarlo. 34px es el patrón de un

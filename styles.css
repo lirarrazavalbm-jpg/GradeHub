@@ -707,7 +707,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
    importa. */
 .ag-week-hd{flex-wrap:wrap;row-gap:8px;}
 @media(min-width:480px){.ag-week-hd .ag-order-options{margin-left:auto;}}
-.ag-order-options{display:inline-flex;flex:0 0 auto;gap:2px;padding:2px;background:var(--muted);border:1px solid var(--border);border-radius:9px;}
+.ag-order-options{display:inline-grid;grid-template-columns:repeat(3,1fr);flex:0 0 auto;gap:2px;padding:2px;background:var(--muted);border:1px solid var(--border);border-radius:9px;}
 /* 34px y no 44: es un segmented control, el patrón que iOS usa a 32. El área
    sigue siendo cómoda porque los tres botones están pegados —no hay nada más
    que tocar alrededor— y equivocarse cambia una vista, no borra un dato. */
