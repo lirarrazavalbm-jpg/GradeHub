@@ -258,6 +258,24 @@ function normalize(data) {
         .find(i=>normName(etiquetaCasilla(r,c,i))===nombre);
       if(slot!==undefined)n.slot=slot;
     });
+    // Y el destrozo que dejó ese mismo defecto: mientras `slot` se perdía,
+    // `setSlotNota` no encontraba la nota anterior —limpia con
+    // `filter(n=>n.slot!==slot)`— y agregaba otra. Reescribir Informe 0 seis
+    // veces dejaba SEIS notas de la misma casilla.
+    //
+    // No es cosmético. `avgPond` las promedia todas, así que quien escribió 5,0
+    // y después 6,0 tiene 5,5 de nota en esa categoría: el promedio del ramo
+    // está malo. Y el contador y el avance las cuentan como casillas rendidas,
+    // que es por qué un ramo con una nota decía 6/6 y 70% evaluado.
+    //
+    // Se conserva la ÚLTIMA de cada casilla: `setSlotNota` agrega al final, así
+    // que es la más reciente y la que el estudiante quiso dejar. Las anteriores
+    // eran intentos pisados, no notas distintas.
+    const vistas=new Map();
+    (c.notas||[]).forEach(n=>{if(Number.isInteger(n.slot))vistas.set(n.slot,n);});
+    if(vistas.size<(c.notas||[]).filter(n=>Number.isInteger(n.slot)).length){
+      c.notas=(c.notas||[]).filter(n=>!Number.isInteger(n.slot)||vistas.get(n.slot)===n);
+    }
   }));
   // Las pautas oficiales llegan DESPUÉS de que el estudiante agregó el ramo.
   // Hasta acá el preset solo se aplicaba al crearlo, así que quien tenía
@@ -4744,7 +4762,12 @@ function ramoProgress(r){
     // notas con valor; una anotada con fecha para rendir después sigue pendiente.
     const notas=Array.isArray(c.notas)?c.notas:[];
     const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
-    const evaluadas=notas.filter(n=>typeof n.valor==='number').length;
+    // Se cuentan CASILLAS con nota, no notas: dos valores de la misma casilla
+    // son un dato pisado, no dos evaluaciones rendidas. Sin esto, un duplicado
+    // hace que el ramo se declare más evaluado de lo que está.
+    const evaluadas=objetivo>1
+      ? new Set(notas.filter(n=>typeof n.valor==='number'&&Number.isInteger(n.slot)).map(n=>n.slot)).size
+      : notas.filter(n=>typeof n.valor==='number').length;
     done+=c.peso*Math.min(1,evaluadas/objetivo);
   });
   return {pct:Math.round(done/total*100),pending:total-done,total};

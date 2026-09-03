@@ -489,7 +489,11 @@ function renderRamo(){
             <input class="eval-row-input sm" inputmode="decimal" maxlength="3" placeholder="—" value="${v!=null?fmt(v):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(etiqueta)}"/>
           </div>`;
         }
-        const notasCount=notas.length;
+        // Casillas con nota, no notas: un duplicado de la misma casilla no es
+        // una evaluación más. normalize ya los limpia, pero el contador no
+        // puede depender de que eso haya corrido.
+        const notasCount=new Set(notas.filter(n=>Number.isInteger(n.slot)).map(n=>n.slot)).size
+          || notas.filter(n=>n&&n.valor!=null).length;
         wrap.innerHTML=`
           <div class="eval-group-hd" role="button" tabindex="0" aria-expanded="${isOpen?'true':'false'}" onclick="toggleCat('${cat.id}')">
             <div style="flex:1;min-width:0;">
