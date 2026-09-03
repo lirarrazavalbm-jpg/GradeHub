@@ -1195,6 +1195,17 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 #no-calcula-warning.weight-setup-nudge{width:auto;margin-left:20px;margin-right:20px;}
 .weight-setup-nudge .ic{width:15px;height:15px;color:var(--yellow);flex-shrink:0;margin-top:1px;}
 .weight-setup-nudge b{color:var(--fg);font-weight:600;}
+/* Las reglas del programa van plegadas: el texto completo ocupaba media
+   pantalla en cada carga de la ficha. El resumen sigue visible siempre porque
+   explica por qué el promedio puede no calzar con el del profesor. */
+.reglas-toggle{display:flex;align-items:center;gap:8px;width:100%;padding:0;border:none;background:none;
+  color:var(--fg);font-family:inherit;font-size:0.8125rem;font-weight:600;text-align:left;cursor:pointer;
+  min-height:24px;}
+.reglas-toggle>span:first-child{flex:1;min-width:0;}
+.reglas-chevron{color:var(--fg3);font-size:0.625rem;flex-shrink:0;
+  transition:transform var(--motion-fast) var(--ease-standard);}
+.reglas-cuerpo{display:none;margin-top:8px;}
+.reglas-cuerpo.open{display:block;}
 .weight-setup-nudge button{margin-top:6px;padding:0;border:none;background:none;cursor:pointer;
   font-family:'Onest',sans-serif;font-size:0.78125rem;font-weight:700;color:var(--primary);
   letter-spacing:-.005em;}
