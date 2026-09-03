@@ -204,11 +204,19 @@ function renderHome(){
     } else if(nn===0){
       metaHtml=`<span class="ramo-meta-text">${nc} ${nc===1?'evaluación':'evaluaciones'}</span>`;
     } else {
-      const pctLabel=completo?'100% · cerrado':`${prog.pct}% evaluado`;
-      metaHtml=`<div class="ramo-progress${completo?' is-complete':''}${recienCerrado?' just-completed':''}" aria-hidden="true"><div class="ramo-progress-fill" style="transform:scaleX(${prog.pct/100})"></div></div><span class="ramo-meta-text${completo?' is-complete':''}">${pctLabel}</span>`;
+      const pctLabel=completo?'100%':`${prog.pct}% evaluado`;
+      metaHtml=`<span class="ramo-meta-text${completo?' is-complete':''}">${pctLabel}</span>`;
     }
     const div=document.createElement('div');div.className='ramo-row';div.dataset.ramoId=r.id;div.onclick=()=>openRamo(r.id);
     div.dataset.progress=String(prog.pct);
+    if(nn>0){
+      const tail=Math.min(14,100-prog.pct);
+      div.classList.add('has-progress');
+      if(completo)div.classList.add('is-complete');
+      if(recienCerrado)div.classList.add('just-completed');
+      div.style.setProperty('--ramo-progress',`${prog.pct}%`);
+      div.style.setProperty('--ramo-progress-end',`${Math.min(100,prog.pct+tail)}%`);
+    }
     if(S.sortMode==='manual')div.dataset.reorderable='true';
     div.style.setProperty('--ramo-tint',r.color);
     const control=S.sortMode==='manual'
@@ -616,14 +624,14 @@ function renderStats(){
     const detalle=diff===null
       ? `${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}`
       : `Promedio actual ${nf(g)} · antes ${nf(previo.gpa)}`;
+    const avanceTail=Math.min(14,100-avance.pct);
     html+=`
     <div class="section-hd" style="padding:6px 20px 8px;">
       <span class="section-hd-title">Lectura del semestre</span>
     </div>
-    <div class="stat-card" style="margin:0 20px 16px;">
+    <div class="stat-card stats-progress-card${avance.pct===100?' is-complete':''}" role="progressbar" aria-label="Evaluaciones completadas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance.pct}" style="--stats-progress:${avance.pct}%;--stats-progress-end:${Math.min(100,avance.pct+avanceTail)}%;margin:0 20px 16px;">
       <div class="stat-label">Avance de evaluaciones</div>
       <div class="stat-val" style="color:var(--primary);margin-top:4px;">${avance.pct}%</div>
-      <div class="stats-progress" role="progressbar" aria-label="Evaluaciones completadas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance.pct}"><div class="stats-progress-fill" style="transform:scaleX(${avance.pct/100})"></div></div>
       <div class="stat-sub" style="margin-top:6px;">${lectura}</div>
       <div class="stat-sub" style="margin-top:4px;">${detalle}</div>
     </div>

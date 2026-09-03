@@ -482,29 +482,24 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .section-hd-add{min-height:44px;margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border:0;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-family:'Onest',sans-serif;font-size:0.78125rem;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 5px 14px -7px color-mix(in srgb,var(--primary),transparent 28%);transition:transform var(--motion-press) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
 .section-hd-add .ic{width:15px;height:15px;stroke-width:2.4;}
 @media(hover:hover) and (pointer:fine){.section-hd-add:hover{transform:translateY(-1px);box-shadow:0 8px 18px -8px color-mix(in srgb,var(--primary),transparent 18%);}}
-.ramo-row{position:relative;display:flex;align-items:center;gap:14px;margin:0 20px 10px;padding:18px 22px;background:linear-gradient(115deg,color-mix(in srgb,var(--ramo-tint,transparent),transparent 78%) 0%,color-mix(in srgb,var(--ramo-tint,transparent),transparent 92%) 40%,var(--card) 100%);border:1px solid color-mix(in srgb,var(--ramo-tint,var(--border)),transparent 72%);border-radius:16px;cursor:pointer;overflow:hidden;transition:transform var(--motion-fast) ease,border-color var(--motion-base) ease,box-shadow var(--motion-base) ease;
+.ramo-row{position:relative;isolation:isolate;display:flex;align-items:center;gap:14px;margin:0 20px 10px;padding:18px 22px;background:linear-gradient(115deg,color-mix(in srgb,var(--ramo-tint,transparent),transparent 78%) 0%,color-mix(in srgb,var(--ramo-tint,transparent),transparent 92%) 40%,var(--card) 100%);border:1px solid color-mix(in srgb,var(--ramo-tint,var(--border)),transparent 72%);border-radius:16px;cursor:pointer;overflow:hidden;transition:transform var(--motion-fast) ease,border-color var(--motion-base) ease,box-shadow var(--motion-base) ease;
   /* Banda lateral de color como box-shadow inset — respeta el border-radius sin
      glitches en hover (antes era un div absolute que se cortaba al scale). */
   box-shadow:inset 4px 0 0 0 var(--ramo-tint,var(--primary)), 0 1px 3px rgba(0,0,0,.05);}
 
 .ramo-row:active{transform:scale(.99);}
+.ramo-row.has-progress::before{content:'';position:absolute;z-index:0;inset:0;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 90%) 0%,color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 76%) var(--ramo-progress),transparent var(--ramo-progress-end));pointer-events:none;}
+.ramo-row.has-progress>*{position:relative;z-index:1;}
+/* El 100% es cierre de evaluaciones, no aprobación: usa la identidad del ramo,
+   nunca el semáforo académico. */
+.ramo-row.has-progress.is-complete{background:linear-gradient(125deg,color-mix(in srgb,var(--ramo-tint,var(--primary)),var(--card) 89%),color-mix(in srgb,var(--ramo-tint,var(--primary)),var(--card) 82%));border-color:var(--ramo-tint,var(--primary));box-shadow:inset 4px 0 0 0 var(--ramo-tint,var(--primary)),0 0 0 2px color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 87%),0 1px 3px rgba(0,0,0,.05);}
+.ramo-row.has-progress.is-complete::before{opacity:0;}
+.ramo-row.just-completed::before{animation:ramo-row-close var(--motion-base) var(--ease-out);}
 .ramo-band{display:none;} /* Reemplazado por box-shadow inset arriba */
 .ramo-info{flex:1;min-width:0;}
 .ramo-name{font-size:1rem;font-weight:600;color:var(--fg);letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ramo-meta{font-size:0.78125rem;color:var(--fg3);margin-top:3px;letter-spacing:-.005em;display:flex;align-items:center;gap:8px;}
-.ramo-progress{position:relative;flex:1;min-width:64px;max-width:160px;height:7px;background:color-mix(in srgb,var(--fg3),transparent 76%);border-radius:999px;}
-/* Mismo motivo que .ob-progress-bar: scaleX en vez de width. Esta se repinta por
-   cada ramo en cada render de Home, así que es la que más se nota. */
-.ramo-progress-fill{height:100%;width:100%;transform-origin:left;background:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 25%);border-radius:999px;transition:transform var(--motion-base) var(--ease-out),opacity var(--motion-fast) var(--ease-standard);}
-.ramo-progress.is-complete{background:color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 82%);}
-/* El punto final dice "se cerró" usando la identidad del ramo. No usa check ni
-   verde: cerrar el 100% de las evaluaciones no significa haber aprobado. */
-.ramo-progress.is-complete::after{content:'';position:absolute;width:9px;height:9px;right:-2px;top:50%;transform:translateY(-50%);border:2px solid var(--card);border-radius:50%;background:var(--ramo-tint,var(--primary));box-shadow:0 0 0 1px color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 58%);}
-.ramo-progress.is-complete .ramo-progress-fill{background:var(--ramo-tint,var(--primary));}
-.ramo-progress.just-completed .ramo-progress-fill{animation:ramo-progress-close var(--motion-base) var(--ease-out);}
-.ramo-progress.just-completed + .ramo-meta-text{animation:ramo-progress-label-close var(--motion-base) var(--ease-out);}
-@keyframes ramo-progress-close{from{opacity:.42;transform:scaleX(.86);}to{opacity:1;transform:scaleX(1);}}
-@keyframes ramo-progress-label-close{from{opacity:.42;}to{opacity:1;}}
+@keyframes ramo-row-close{from{opacity:.42;}to{opacity:1;}}
 .ramo-meta-text{white-space:nowrap;}
 .ramo-meta-text.is-complete{color:var(--fg2);font-weight:700;}
 .ramo-nota{font-family:'Onest',sans-serif;font-size:1.375rem;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;transition:color .3s ease;line-height:1;min-width:52px;text-align:right;}
@@ -680,10 +675,15 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .stat-label{font-size:0.65625rem;color:var(--fg3);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;}
 .stat-val{font-family:'Onest',sans-serif;font-size:1.75rem;font-weight:800;letter-spacing:-.035em;color:var(--fg);line-height:1;font-variant-numeric:tabular-nums;}
 .stat-sub{font-size:0.75rem;color:var(--fg3);margin-top:6px;line-height:1.35;letter-spacing:-.005em;overflow-wrap:anywhere;}
-/* Es avance de evaluaciones, no una nota ni una aprobación: conserva el color
-   de identidad incluso al llegar al 100%, igual que el cierre de cada ramo. */
-.stats-progress{height:7px;margin-top:12px;overflow:hidden;border-radius:999px;background:color-mix(in srgb,var(--fg3),transparent 76%);}
-.stats-progress-fill{width:100%;height:100%;transform-origin:left;border-radius:inherit;background:linear-gradient(90deg,var(--primary),var(--accent));transition:transform var(--motion-base) var(--ease-out),opacity var(--motion-fast) var(--ease-standard);}
+/* El avance vive en el fondo de su propia tarjeta: no es una barra separada.
+   El gradiente se desvanece en el borde para que un avance bajo no parezca un
+   bloque y uno al 99% se vea casi completo. */
+.stats-progress-card{position:relative;isolation:isolate;overflow:hidden;}
+.stats-progress-card::before{content:'';position:absolute;z-index:0;inset:0;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--primary),transparent 90%) 0%,color-mix(in srgb,var(--accent),transparent 76%) var(--stats-progress),transparent var(--stats-progress-end));pointer-events:none;}
+.stats-progress-card>*{position:relative;z-index:1;}
+/* Igual que el ramo: completar evaluaciones cierra el período, no lo aprueba. */
+.stats-progress-card.is-complete{background:linear-gradient(125deg,color-mix(in srgb,var(--primary),var(--card) 89%),color-mix(in srgb,var(--accent),var(--card) 82%));border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 86%),var(--shadow);}
+.stats-progress-card.is-complete::before{opacity:0;}
 /* AGENDA */
 .ag-section{margin-bottom:22px;}
 .ag-section-label{font-family:'Onest',sans-serif;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:10px;padding:0 2px;}
@@ -1388,16 +1388,13 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .screen.active{animation-name:screen-rise-reduce;}
   .user-menu.open{animation-name:um-in-reduce;}
   .ob-step{animation-name:ob-step-in-reduce;}
-  /* El cierre conserva el fundido que confirma el cambio, pero la barra deja
-     de recorrer el último tramo. El color final del ramo permanece intacto. */
-  .ramo-progress.just-completed .ramo-progress-fill{animation-name:ramo-progress-close-reduce;}
-  /* El avance del semestre conserva el color final, pero no recorre la barra. */
-  .stats-progress-fill{transition:opacity var(--motion-fast) var(--ease-standard);}
+  /* El cierre conserva el fundido que confirma el cambio, sin desplazamiento. */
+  .ramo-row.just-completed::before{animation-name:ramo-row-close-reduce;}
 }
 @keyframes screen-rise-reduce{from{opacity:0;}to{opacity:1;}}
 @keyframes um-in-reduce{from{opacity:0;}to{opacity:1;}}
 @keyframes ob-step-in-reduce{from{opacity:0;}to{opacity:1;}}
-@keyframes ramo-progress-close-reduce{from{opacity:.42;}to{opacity:1;}}
+@keyframes ramo-row-close-reduce{from{opacity:.42;}to{opacity:1;}}
 /* El levantarse al apuntar solo existe detrás de la barrera táctil, así que
    anularlo también va detrás: fuera de ella no hay nada que anular, y una
    regla `:hover` suelta con transform es justo lo que el test prohíbe. */
