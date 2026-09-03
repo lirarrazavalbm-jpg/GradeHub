@@ -178,11 +178,10 @@ const app = sinComentarios(fs.readFileSync(path.join(raiz, 'app.js'), 'utf8') + 
 const cssCodigo = sinComentarios(css);
 
 console.log('\n=== Cerrar un ramo no significa aprobarlo ===');
-const reglaProgreso = (cssCodigo.match(/\.ramo-progress\{([^}]*)\}/) || [])[1] || '';
-const altoProgreso = parseFloat((reglaProgreso.match(/height:\s*([\d.]+)px/) || [])[1] || 0);
-const anchoProgreso = parseFloat((reglaProgreso.match(/max-width:\s*([\d.]+)px/) || [])[1] || 0);
-chk(`la barra se puede percibir (${altoProgreso}px por hasta ${anchoProgreso}px)`,
-  altoProgreso >= 6 && anchoProgreso >= 140);
+const reglaProgreso = (cssCodigo.match(/\.ramo-row\.has-progress::before\{([^}]*)\}/) || [])[1] || '';
+chk('Home integra el avance como gradiente dentro de la fila del ramo',
+  /background:linear-gradient/.test(reglaProgreso) && /var\(--ramo-progress\)/.test(reglaProgreso) &&
+  /var\(--ramo-progress-end\)/.test(reglaProgreso));
 const fnCierre = (app.match(/function ramoRecienCerrado\([^)]*\)\{[^}]*\}/) || [])[0] || '';
 const ramoRecienCerrado = fnCierre ? vm.runInNewContext(`(${fnCierre})`) : null;
 chk('el efecto ocurre solo al cruzar desde menos de 100 a 100',
@@ -191,23 +190,27 @@ chk('el efecto ocurre solo al cruzar desde menos de 100 a 100',
 chk('Home conserva el avance anterior en el DOM para no repetir el efecto al volver a renderizar',
   /querySelectorAll\(['"]\.ramo-row\[data-progress\]/.test(app) &&
   /dataset\.progress\s*=\s*String\(prog\.pct\)/.test(app));
-chk('el 100% se nombra como cierre y no como aprobación',
-  /100%\s*·\s*cerrado/.test(app) && !/prog\.pct===100[^;\n]*(aprob|éxito|logro)/i.test(app));
-const reglaCierre = (cssCodigo.match(/\.ramo-progress\.is-complete\{([^}]*)\}/) || [])[1] || '';
+chk('el porcentaje queda bajo el nombre y el 100% no se presenta como aprobación',
+  /pctLabel=completo\?'100%':`\$\{prog\.pct\}% evaluado`/.test(app) &&
+  !/prog\.pct===100[^;\n]*(aprob|éxito|logro)/i.test(app));
+const reglaCierre = (cssCodigo.match(/\.ramo-row\.has-progress\.is-complete\{([^}]*)\}/) || [])[1] || '';
 chk('el cierre usa la identidad del ramo y no el semáforo académico',
   /var\(--ramo-tint/.test(reglaCierre) && !/var\(--(?:green|yellow|red)/.test(reglaCierre));
 chk('la llegada al cierre tiene una versión reducida que conserva opacidad sin recorrido',
-  /\.ramo-progress\.just-completed[^}]*animation-name:\s*ramo-progress-close-reduce/.test(cssCodigo) &&
-  /@keyframes\s+ramo-progress-close-reduce\{[^}]*opacity:[^}]*\}[^}]*\}/.test(cssCodigo) &&
-  !/@keyframes\s+ramo-progress-close-reduce\{[^}]*transform/.test(cssCodigo));
-const reglaAvanceStats=(cssCodigo.match(/\.stats-progress-fill\{([^}]*)\}/)||[])[1]||'';
-chk('la barra del semestre usa scaleX y la identidad, no el semáforo',
-  /transform-origin:left/.test(reglaAvanceStats) && /transition:transform/.test(reglaAvanceStats) &&
-  /var\(--primary\)/.test(reglaAvanceStats) && !/var\(--(?:green|yellow|red)/.test(reglaAvanceStats));
-chk('Estadísticas llena su barra con el avance real calculado',
-  /stats-progress-fill[^>]*transform:scaleX\(\$\{avance\.pct\/100\}\)/.test(app));
-chk('reduced motion conserva el color final sin recorrer la barra del semestre',
-  /@media\(prefers-reduced-motion:reduce\)[\s\S]*?\.stats-progress-fill\{transition:opacity/.test(cssCodigo));
+  /\.ramo-row\.just-completed::before\{animation-name:\s*ramo-row-close-reduce/.test(cssCodigo) &&
+  /@keyframes\s+ramo-row-close-reduce\{[^}]*opacity:[^}]*\}[^}]*\}/.test(cssCodigo) &&
+  !/@keyframes\s+ramo-row-close-reduce\{[^}]*transform/.test(cssCodigo));
+const reglaAvanceStats=(cssCodigo.match(/\.stats-progress-card::before\{([^}]*)\}/)||[])[1]||'';
+chk('Estadísticas llena su propia tarjeta con la identidad, no el semáforo',
+  /background:linear-gradient/.test(reglaAvanceStats) && /var\(--primary\)/.test(reglaAvanceStats) &&
+  /var\(--stats-progress\)/.test(reglaAvanceStats) && !/var\(--(?:green|yellow|red)/.test(reglaAvanceStats));
+chk('Estadísticas usa el avance real calculado en la tarjeta',
+  /stats-progress-card[^>]*--stats-progress:\$\{avance\.pct\}%/.test(app) &&
+  /--stats-progress-end:\$\{Math\.min\(100,avance\.pct\+avanceTail\)\}%/.test(app));
+chk('el 100% del semestre usa una tarjeta de cierre, no el color de aprobado',
+  /stats-progress-card\$\{avance\.pct===100\?' is-complete':''\}/.test(app) &&
+  /\.stats-progress-card\.is-complete\{[^}]*var\(--primary\)/.test(cssCodigo) &&
+  !/\.stats-progress-card\.is-complete\{[^}]*(?:var\(--green|var\(--yellow|var\(--red)/.test(cssCodigo));
 // Antes `.open` solo hacía display:flex — el sheet aparecía y desaparecía de
 // golpe, y por acá pasa todo flujo de la app.
 chk('el sheet parte fuera de pantalla', /\.modal-sheet\{transform:translateY\(100%\)/.test(css));
