@@ -224,6 +224,14 @@ function renderHome(){
   });
   if(S.sortMode==='manual')activarReordenRamos(c);
 }
+// Si las reglas del programa están desplegadas es una preferencia de lectura de
+// esta sesión, igual que el orden de la Agenda: no entra a S ni a gradehub_v1.
+// Plegar un texto no justifica migrar el estado guardado de nadie.
+const reglasRamoAbiertas={};
+function toggleReglasRamo(id){
+  reglasRamoAbiertas[id]=!reglasRamoAbiertas[id];
+  renderRamo();
+}
 function renderRamo(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r){goHome();return;}
   document.getElementById('grade-gpa-echo')?.remove();
@@ -345,7 +353,22 @@ function renderRamo(){
     const bloques=[];
     if(delCurso.length)bloques.push(`<b>Reglas de tu curso que el promedio no incluye.</b><br>Están en el programa, pero dependen de información que la app no puede tener:${items(delCurso)}`);
     if(noCalcula.length)bloques.push(`<b>Reglas que todavía no calculamos.</b><br>Las vamos a incorporar. Por ahora el promedio no considera:${items(noCalcula)}`);
-    ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>`;
+    // El texto completo ocupaba media pantalla en cada carga de la ficha, todo
+    // el rato, aunque el estudiante ya lo hubiera leído. Va plegado.
+    //
+    // Pero plegado tiene que seguir DICIENDO que existe: esto explica por qué
+    // su promedio puede no calzar con el del profesor, y esconderlo del todo
+    // sería peor que ocuparle espacio. Por eso el resumen lleva la cuenta.
+    const total=noCalcula.length+delCurso.length;
+    const resumen=`${total} regla${total!==1?'s':''} del programa que el promedio no incluye`;
+    const abierto=reglasRamoAbiertas[r.id]===true;
+    ncw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>
+      <button type="button" class="reglas-toggle" aria-expanded="${abierto?'true':'false'}" onclick="toggleReglasRamo('${esc(r.id)}')">
+        <span>${resumen}</span>
+        <span class="reglas-chevron" aria-hidden="true">${abierto?'▲':'▼'}</span>
+      </button>
+      <div class="reglas-cuerpo${abierto?' open':''}">${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>
+    </div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
 
   const aw=document.getElementById('ausencias-justificadas-warning');
