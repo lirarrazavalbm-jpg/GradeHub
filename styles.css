@@ -499,6 +499,20 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .ramo-info{flex:1;min-width:0;}
 .ramo-name{font-size:1rem;font-weight:600;color:var(--fg);letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ramo-meta{font-size:0.78125rem;color:var(--fg3);margin-top:3px;letter-spacing:-.005em;display:flex;align-items:center;gap:8px;}
+/* La sigla es el dato con el que el estudiante reconoce su ramo en el horario,
+   pero no es el título: va del tamaño de la meta y en el gris de apoyo, para
+   que se lea cuando se la busca y no compita con el nombre. */
+.ramo-sigla{color:var(--fg3);font-variant-numeric:tabular-nums;letter-spacing:.01em;}
+/* En el onboarding la sigla acompaña al nombre del ramo sugerido. Cuando el
+   mismo ramo tiene dos códigos, dejan de ser etiqueta y pasan a ser botones:
+   el estudiante reconoce el suyo por el código de su horario. */
+.course-picker-sigla-fija{margin-left:auto;flex-shrink:0;font-size:0.6875rem;color:var(--fg3);font-variant-numeric:tabular-nums;}
+.course-picker-variantes{margin-left:auto;flex-shrink:0;display:flex;gap:4px;}
+.course-picker-sigla{font:inherit;font-size:0.6875rem;font-variant-numeric:tabular-nums;
+  padding:3px 7px;border-radius:7px;cursor:pointer;
+  border:1px solid var(--border);background:none;color:var(--fg3);}
+.course-picker-sigla.sel{border-color:var(--primary);color:var(--primary);font-weight:600;}
+.course-picker-nota{margin:-2px 0 8px 29px;font-size:0.6875rem;color:var(--fg3);line-height:1.4;}
 @keyframes ramo-row-close{from{opacity:.42;}to{opacity:1;}}
 .ramo-meta-text{white-space:nowrap;}
 .ramo-meta-text.is-complete{color:var(--fg2);font-weight:700;}

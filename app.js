@@ -1099,6 +1099,11 @@ selectedTenant=S.tenant||'fen';applyTheme();
 // y la app crasheaba si Supabase no cargaba.
 let obStep=1;
 const OB_TOTAL=5;
+// Cuántos semestres ofrece el paso 4. Vive acá porque `mallaCubreTodoElPaso`
+// compara contra este número: si crece la lista y una malla no llega, la
+// promesa de "tu malla se carga sola" deja de aparecer sola, sin que nadie
+// tenga que acordarse.
+const OB_SEMESTRES=11;
 // Etiquetas fijas nuestras, de lista cerrada: no son texto del estudiante, y
 // hacen legible el embudo sin tener que traducir números mirando el código.
 const OB_ETAPAS=['nombre','universidad','carrera','semestre','ramos'];
@@ -1113,9 +1118,22 @@ initSemGrid();renderTenantPick();initCarreraGrid();
 document.getElementById('ob-name').addEventListener('input',checkOb);
 
 
+// "Tu malla se carga sola" se promete en el paso 3, cuando todavía no sabemos
+// en qué semestre va la persona. Si la malla no cubre TODOS los semestres que el
+// paso 4 ofrece, la promesa es falsa para parte de la gente: Ingeniería UC llega
+// hasta 4° —de 5° en adelante se separa por major— y Comercial hasta 8°, así que
+// quien va más arriba elegía su carrera leyendo que le cargábamos los ramos y
+// después no le cargaba ninguno. Prometemos solo donde se cumple siempre.
+function mallaCubreTodoElPaso(codigo){
+  if(!codigo)return false;
+  const porCarrera=(mallaFor(selectedTenant)||{})[codigo];
+  if(!porCarrera)return false;
+  for(let i=1;i<=OB_SEMESTRES;i++)if(!porCarrera[i]&&!porCarrera[String(i)])return false;
+  return true;
+}
 function initSemGrid(){
   const g=document.getElementById('sem-grid');g.innerHTML='';
-  for(let i=1;i<=11;i++){
+  for(let i=1;i<=OB_SEMESTRES;i++){
     const b=document.createElement('button');
     b.className='sem-btn'+(i===selectedSem?' sel':'');
     b.textContent=i+'°';
@@ -1139,7 +1157,7 @@ function initCarreraGrid(){
     const elegida=c.malla?c.malla===selectedCarrera:(!selectedCarrera&&c.n===selectedCarreraNombre);
     const b=document.createElement('button');
     b.className='carrera-opt'+(elegida?' sel':'');
-    b.innerHTML=esc(c.n)+(c.malla?' <span class="carrera-tiene-malla">tu malla se carga sola</span>':'');
+    b.innerHTML=esc(c.n)+(mallaCubreTodoElPaso(c.malla)?' <span class="carrera-tiene-malla">tu malla se carga sola</span>':'');
     b.onclick=()=>{
       // `carrera` sigue siendo el código de la malla y manda en todo lo que ya
       // existe. `carreraNombre` es lo declarado, y es lo único que hay cuando
@@ -1203,6 +1221,52 @@ function obToggleRamo(nombre,checked){
   renderObCoursePicker();obRender();
 }
 function obToggleRamoCodificado(nombre,checked){obToggleRamo(decodeURIComponent(nombre),checked);}
+
+// Un mismo ramo puede tener dos códigos. El plan común de Ingeniería UC admite
+// FIS1514 o ICE1514 y los dos se llaman oficialmente "Dinámica", así que la
+// malla sugiere un nombre que no alcanza para saber cuál está tomando: eso lo
+// distingue la sigla de su horario. El catálogo guarda la alternativa como
+// "Dinámica (ICE1514)", y de ahí salen las variantes.
+//
+// El paréntesis tiene que contener una SIGLA, no cualquier texto: hay ramos
+// como "Diseño en Ingeniería Biomédica I (Capstone)" que son otro ramo, no otra
+// versión del mismo, y tratarlos como variante ofrecería una elección falsa.
+function variantesDeRamo(nombre,tenant){
+  const tabla=CREDITOS_POR_TENANT[tenant||selectedTenant];
+  if(!tabla||!nombre)return [];
+  const base=String(nombre);
+  const siglaDe=k=>{const f=tabla[k];return f&&typeof f[1]==='string'?f[1]:null;};
+  const out=tabla[base]?[{nombre:base,sigla:siglaDe(base)}]:[];
+  Object.keys(tabla).forEach(k=>{
+    const m=k.match(/^(.*) \(([A-Z]{2,4}\d{3,4}[A-Z]?)\)$/);
+    if(m&&normName(m[1])===normName(base))out.push({nombre:k,sigla:m[2]});
+  });
+  return out.length>1?out:[];
+}
+// Qué variante eligió, por nombre base. Sin elección, la primera: la que la
+// malla sugiere.
+function variantesSiglaDe(nombre,variantes){const v=variantes.find(x=>x.nombre===nombre);return (v&&v.sigla)||nombre;}
+let obVarianteElegida={};
+function obVarianteDe(base,variantes){
+  const guardada=obVarianteElegida[normName(base)];
+  if(guardada&&variantes.some(v=>v.nombre===guardada))return guardada;
+  return variantes[0].nombre;
+}
+function obElegirVariante(baseCod,nombreCod){
+  const base=decodeURIComponent(baseCod),elegido=decodeURIComponent(nombreCod);
+  const variantes=variantesDeRamo(base);
+  if(!variantes.length)return;
+  const anterior=obVarianteDe(base,variantes);
+  if(anterior===elegido)return;
+  obVarianteElegida[normName(base)]=elegido;
+  // Cambiar de código no puede dejar las dos versiones marcadas ni perder la
+  // marca: si tenía una elegida, la elección se traslada a la nueva.
+  if(obTieneRamo(anterior)){
+    obRamos=obRamos.filter(r=>normName(r.nombre)!==normName(anterior));
+    if(!obTieneRamo(elegido))obRamos.push({nombre:elegido,manual:false});
+  }
+  renderObCoursePicker();obRender();
+}
 function obAgregarCatalogo(nombre){
   if(!obTieneRamo(nombre))obRamos.push({nombre,manual:false});
   renderObCoursePicker();obRender();
@@ -1257,11 +1321,32 @@ function renderObCoursePicker(){
   const box=document.getElementById('ob-course-picker');if(!box)return;
   const sugeridos=obRamosActuales();
   const visibles=obRamosVisibles(sugeridos,obRamos);
-  const rows=visibles.length?visibles.map(nombre=>`
+  const rows=visibles.length?visibles.map(nombre=>{
+    // Si el ramo tiene dos códigos, la fila marca uno y ofrece cambiarlo. No se
+    // pintan como dos ramos distintos: es el mismo, y marcar los dos sería
+    // cargar dos veces el mismo curso.
+    const variantes=variantesDeRamo(nombre);
+    const elegido=variantes.length?obVarianteDe(nombre,variantes):nombre;
+    const sig=variantes.length
+      ? `<span class="course-picker-variantes" role="group" aria-label="Código de ${esc(nombre)}">${variantes.map(v=>`
+          <button type="button" class="course-picker-sigla${v.nombre===elegido?' sel':''}" aria-pressed="${v.nombre===elegido?'true':'false'}" onclick="obElegirVariante('${obCodificarNombre(nombre)}','${obCodificarNombre(v.nombre)}')">${esc(v.sigla||v.nombre)}</button>`).join('')}</span>`
+      : (siglaDeRamo({nombre},selectedTenant)?`<span class="course-picker-sigla-fija">${esc(siglaDeRamo({nombre},selectedTenant))}</span>`:'');
+    // Los dos códigos no traen lo mismo. De FIS1514 tenemos la pauta oficial y
+    // la regla que junta su nota con la del laboratorio; de ICE1514 no tenemos
+    // ninguna de las dos, y no se las copiamos porque son cursos distintos y
+    // ese dato no lo tenemos. Elegir el código que aparece en su horario es lo
+    // correcto igual, pero tiene que saber qué se lleva y qué no.
+    const sinPauta=variantes.length&&!presetRamo(elegido,selectedTenant,selectedCarrera)
+      &&variantes.some(v=>presetRamo(v.nombre,selectedTenant,selectedCarrera));
+    const aviso=sinPauta
+      ? `<p class="course-picker-nota">De ${esc(variantesSiglaDe(elegido,variantes))} todavía no tenemos la pauta: sus evaluaciones las armas tú.</p>`
+      : '';
+    return `
     <label style="display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;">
-      <input type="checkbox" ${obTieneRamo(nombre)?'checked':''} onchange="obToggleRamoCodificado('${obCodificarNombre(nombre)}',this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
+      <input type="checkbox" ${obTieneRamo(elegido)?'checked':''} onchange="obToggleRamoCodificado('${obCodificarNombre(elegido)}',this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
       <span class="course-picker-selected-name">${esc(nombre)}</span>
-    </label>`).join(''):
+      ${sig}
+    </label>${aviso}`;}).join(''):
     '';
   box.innerHTML=`
     <div class="course-picker">
@@ -2309,6 +2394,23 @@ function creditosDe(nombre,tenant,preset){
   if(!tabla)return null;
   const clave=claveCatalogo(nombre,Object.keys(tabla),tenant);
   return clave?tabla[clave][0]:null;
+}
+
+// La sigla de un ramo YA CARGADO, para mostrarla junto al nombre. Sale de la
+// misma tabla que los créditos, así que sirve para las dos universidades y no
+// necesita saber la carrera. Importa donde el nombre no basta: en el plan común
+// hay dos ramos llamados "Dinámica" con códigos distintos, y el estudiante
+// reconoce el suyo por la sigla de su horario, no por el nombre.
+function siglaDeRamo(r,tenant){
+  if(!r||!r.nombre)return null;
+  // En el onboarding la universidad todavía no está en `S`: se está eligiendo,
+  // y vive en `selectedTenant`. Por eso se puede pasar explícita.
+  tenant=tenant||(r.origen&&r.origen.tenant)||S.tenant;
+  const tabla=CREDITOS_POR_TENANT[tenant];
+  if(!tabla)return null;
+  const clave=claveCatalogo(r.nombre,Object.keys(tabla),tenant);
+  const fila=clave?tabla[clave]:null;
+  return fila&&typeof fila[1]==='string'?fila[1]:null;
 }
 
 // Identificador oficial de un ramo UC. La carrera solo sirve para resolver un
@@ -4879,23 +4981,29 @@ function latestGrade(){
 }
 
 function mostRiskyRamo(){
-  // Ramo con avg bajo 5.0 y una nota mínima requerida clara para aprobar
+  // La cuenta de cuánto falta por rendir vive en `notaNecesaria`, que sabe de
+  // casillas declaradas y del ramo vinculado (Dinámica y su laboratorio son dos
+  // actas y una nota). Acá había una tercera copia que repartía por categoría
+  // entera: una categoría con `slots:6` y una nota se daba por cerrada, así que
+  // con un solo informe de seis esta tarjeta pedía 5,2 donde el número real era
+  // 4,07. Tenerla escrita de nuevo es lo que hizo que se equivocara distinto.
   let best=null;
   S.ramos.forEach(r=>{
     if(r.categorias.length===0)return;
     const avg=ramoAvg(r);
     if(avg===null)return;
     if(r2(avg)>=5.0)return; // no está en riesgo
-    const categorias=categoriasVigentes(r);
-    const totalPeso=categorias.reduce((s,c)=>s+c.peso,0);
-    let pesoConNotas=0,sumaPond=0;
-    categorias.forEach(c=>{const a=avgPond(c.notas);if(a!==null){pesoConNotas+=c.peso;sumaPond+=a*c.peso;}});
-    const pesoSinNotas=totalPeso-pesoConNotas;
-    if(pesoSinNotas<=0)return; // ya evaluado todo
-    const needed=(4.0*totalPeso-sumaPond)/pesoSinNotas;
-    if(needed>7.05)return; // no alcanzable
-    if(needed<=1.0)return; // trivial
-    if(!best || needed>best.needed) best={ramo:r,avg,needed,pesoSinNotas};
+    const needed=notaNecesaria(r);
+    if(needed===null)return; // ya evaluado todo
+    if(needed<=1.0)return;   // trivial: le sobra con cualquier nota
+    // Un ramo que ya no se puede aprobar con lo que queda es el que MÁS
+    // necesita aparecer. Antes se descartaba, y la tarjeta vacía se leía como
+    // "no hay problema" justo para quien peor está.
+    const imposible=needed>7.05;
+    const cand={ramo:r,avg,needed,imposible};
+    if(!best) best=cand;
+    else if(best.imposible!==cand.imposible) best=cand.imposible?cand:best;
+    else if(needed>best.needed) best=cand;
   });
   return best;
 }
