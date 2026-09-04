@@ -245,6 +245,21 @@ chk('el detalle conserva un acceso explícito al ramo',
 chk('abrir otra evaluación reemplaza la anterior y tocar la misma la cierra',
   !!proximoDetalleAgenda && proximoDetalleAgenda('uno', 'dos') === 'dos' && proximoDetalleAgenda('uno', 'uno') === null);
 
+const eventoRendido={...evento('ya-rendida',-3,20),pending:false,notas:[{id:'nota-rendida',nombre:'I1',valor:5.4,peso:1}]};
+const detalleRendido=detalleEvaluacionAgendaHTML ? detalleEvaluacionAgendaHTML(eventoRendido,[detalleSiguiente]) : '';
+chk('una evaluación rendida explica la nota registrada, no una meta que ya no necesita',
+  /Nota registrada/.test(detalleRendido) && /5\.4/.test(detalleRendido) && !/para aprobar/.test(detalleRendido));
+chk('una evaluación rendida mantiene la próxima evaluación a mano',
+  /Después/.test(detalleRendido) && /siguiente/.test(detalleRendido));
+const agendaRendidaHTML=funcionAgenda('agendaRendidaHTML');
+chk('la fila rendida sigue siendo un botón nativo para abrir y cerrar con teclado',
+  !!agendaRendidaHTML && /<button type="button"/.test(agendaRendidaHTML(eventoRendido)));
+const agendaEventoKey = funcionAgenda('agendaEventoKey');
+const mismoGrupoA={...evento('caso',3,10),nota:{id:'caso-a',nombre:'Caso 1',valor:null,peso:1}};
+const mismoGrupoB={...evento('caso',5,10),nota:{id:'caso-b',nombre:'Caso 2',valor:null,peso:1}};
+chk('dos evaluaciones fechadas de una misma categoría no comparten panel desplegable',
+  !!agendaEventoKey && agendaEventoKey(mismoGrupoA)!==agendaEventoKey(mismoGrupoB));
+
 const toggleAgendaDetalle = funcionAgenda('toggleAgendaDetalle');
 let segundoTop = 300, desplazamiento = null;
 const detalleUno = { hidden: true }, detalleDos = { hidden: true };

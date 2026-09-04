@@ -94,13 +94,26 @@ function agendaDestacadaHTML(e,posicion){
 }
 
 function agendaEventoKey(e){
-  return `${e.ramo.id}--${e.cat.id}`.replace(/[^a-zA-Z0-9_-]/g,'-');
+  // Una categoría puede traer varias notas con fecha propia. La categoría sola
+  // no alcanza como llave: dos casos distintos compartirían el mismo panel y
+  // los atributos aria dejarían de apuntar a un detalle único.
+  return `${e.ramo.id}--${e.cat.id}--${e.nota?.id||'categoria'}`.replace(/[^a-zA-Z0-9_-]/g,'-');
 }
 
 // La Agenda conoce la nota necesaria como promedio de TODO lo pendiente. Si
 // quedan varias evaluaciones, presentarla como "la nota que necesitas aquí"
 // sería una precisión falsa: depende de cómo le vaya en las demás.
 function referenciaEvaluacionAgenda(e){
+  if(e.estadoAgenda==='con_nota'||e.pending===false){
+    const nota=avgPond(e.notas);
+    return nota===null?{
+      titulo:'Evaluación registrada',
+      texto:'Abre el ramo para revisar cómo quedó anotada.',
+    }:{
+      titulo:`Nota registrada: ${fmt(nota)}`,
+      texto:'Ya cuenta en el promedio actual del ramo.',
+    };
+  }
   const descarte=reglaDescarteConCantidadAbierta(e.ramo);
   if(descarte)return {
     titulo:'Todavía no hay una meta exacta',
@@ -127,7 +140,14 @@ function referenciaEvaluacionAgenda(e){
 function siguienteEvaluacionAgenda(actual,pendientes){
   const cronologia=ordenarAgenda(pendientes,'fecha');
   const indice=cronologia.findIndex(e=>agendaEventoKey(e)===agendaEventoKey(actual));
-  return indice>=0?cronologia[indice+1]||null:null;
+  if(indice>=0)return cronologia[indice+1]||null;
+  // Las rendidas no pertenecen a la lista de pendientes, pero desde su detalle
+  // todavía conviene saber cuál es la próxima cosa que sí queda por preparar.
+  return cronologia.find(e=>{
+    const fechaActual=`${actual.fecha}T${actual.hora||'00:00'}`;
+    const fechaCandidata=`${e.fecha}T${e.hora||'00:00'}`;
+    return fechaCandidata>fechaActual;
+  })||null;
 }
 
 function detalleEvaluacionAgendaHTML(e,pendientes){
@@ -163,6 +183,21 @@ function agendaEventoHTML(e,contenido,pendientes,tipo='row'){
     <span class="ag-event-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></svg></span>
     ${detalleEvaluacionAgendaHTML(e,pendientes)}
   </div>`;
+}
+
+function agendaRendidaHTML(e){
+  const a=avgPond(e.notas);
+  const f=formatEventDate(e.fecha);
+  return `<button type="button" class="ag-row done">
+    <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
+    <div class="ag-row-main">
+      <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span><span class="ag-row-peso">${r2(e.cat.peso||0)}%</span></div>
+      <div class="ag-row-name">${esc(e.nota?e.nota.nombre:e.cat.nombre)}</div>
+      <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
+    </div>
+    ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${fmt(a)}</span>`:""}
+    <span class="chevron-r">›</span>
+  </button>`;
 }
 
 function proximoDetalleAgenda(actual,nuevo){
@@ -419,19 +454,7 @@ function renderAgenda(){
   if(hechas.length>0){
     hechas.sort((a,b)=>b.fecha.localeCompare(a.fecha));
     html+=`<div class="ag-list-hd" style="margin-top:26px;"><span class="section-hd-title">Ya rendidas</span><span class="ag-count">${hechas.length}</span></div>`;
-    html+=hechas.map(e=>{
-      const a=avgPond(e.notas);
-      const f=formatEventDate(e.fecha);
-      return `<button class="ag-row done" onclick="openRamo(\u0027${esc(e.ramo.id)}\u0027)">
-        <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
-        <div class="ag-row-main">
-          <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span><span class="ag-row-peso">${r2(e.cat.peso||0)}%</span></div>
-          <div class="ag-row-name">${esc(e.cat.nombre)}</div>
-          <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
-        </div>
-        ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${fmt(a)}</span>`:""}
-      </button>`;
-    }).join("");
+    html+=hechas.map(e=>agendaEventoHTML(e,agendaRendidaHTML(e),porVenir,'done')).join('');
   }
 
   body.innerHTML=html;
