@@ -21,6 +21,11 @@ console.log('\n=== Elegir universidad no excluye carreras ===');
 const tenants = run('TENANTS');
 chk('UC nombra Comercial en la primera pantalla', /Comercial/i.test(tenants.uc.sub));
 chk('el nombre persistido de UC no cambia sin migrar profiles', tenants.uc.name === 'U. Católica · Ingeniería');
+// Lo que se guarda y lo que se muestra son dos cosas: `name` viaja a `profiles`
+// y arrastra las cuentas viejas; `label` es lo que la persona lee al elegir su
+// universidad, y ahí "· Ingeniería" dejaba fuera a las otras 70 carreras.
+chk('y lo que se muestra ya no dice solo Ingeniería', tenants.uc.label === 'U. Católica');
+chk('un tenant sin label cae en su name', !tenants.fen.label || typeof tenants.fen.label === 'string');
 
 console.log('\n=== Buscar cubre toda la universidad, no solo tu carrera ===');
 const hist = buscar('Historia', 'IICG');

@@ -545,7 +545,7 @@ function renderTenantPick(){
     b.style.setProperty('--tb','var(--primary)');
     b.innerHTML=`${tenantBadge(code,'lg')}
       <span class="tenant-opt-info">
-        <span class="tenant-opt-name">${esc(cfg.name)}</span>
+        <span class="tenant-opt-name">${esc(cfg.label||cfg.name)}</span>
         <span class="tenant-opt-sub">${esc(cfg.sub||'')}</span>
       </span>`;
     b.onclick=()=>selectTenant(code);
@@ -3803,7 +3803,7 @@ function openSettings(){
       const b=document.createElement('button');
       b.className='s-tenant-btn'+(code===settingsTenant?' sel':'');
       b.innerHTML=`<span class="s-tenant-name">${esc(cfg.short)}</span>`;
-      b.title=cfg.name;
+      b.title=cfg.label||cfg.name;
       b.onclick=()=>{
         settingsTenant=code;
         // La carrera elegida puede no existir en la universidad nueva
@@ -3851,7 +3851,8 @@ function openSettings(){
 function correoSugerenciaHref(categoria='sugerencia',mensaje=''){
   const tipos={sugerencia:'Sugerencia',problema:'Problema',otro:'Comentario'};
   const tipo=tipos[categoria]||tipos.otro;
-  const universidad=(TENANTS[S.tenant]||{}).name||'No indicada';
+  const t=TENANTS[S.tenant]||{};
+  const universidad=t.label||t.name||'No indicada';
   const carrera=S.carreraNombre||S.carrera||'No indicada';
   const perfil=[
     `Nombre para mostrar: ${S.userName||'No indicado'}`,
