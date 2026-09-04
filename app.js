@@ -3569,6 +3569,13 @@ function openSettings(){
         <button type="button" onclick="exportarDatos()">Exportar mis datos</button>
         <button type="button" onclick="abrirImportar()">Importar datos</button>
       </div>
+      ${currentUser?`<div class="settings-reset-zone" style="margin-top:0;margin-bottom:12px;">
+        <label class="modal-label" for="s-account-email">Correo de acceso</label>
+        <div class="modal-input"><input type="email" id="s-account-email" value="${esc(currentUser.email||'')}" maxlength="60" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" aria-describedby="s-account-email-help s-account-email-status"/></div>
+        <p class="settings-help" id="s-account-email-help" style="margin:7px 0 10px;">Te mandaremos una confirmación a tu correo actual y al nuevo. No cambia hasta que confirmes ambos.</p>
+        <p id="s-account-email-status" role="alert" aria-live="polite" hidden style="margin:0 0 10px;font-size:0.75rem;line-height:1.4;"></p>
+        <button type="button" class="settings-reset-btn" id="s-account-email-save" onclick="cambiarCorreoCuenta()">Cambiar correo</button>
+      </div>`:''}
       <div class="settings-danger-zone">
         <div class="settings-danger-label">Zona sensible</div>
         <button type="button" class="settings-danger-btn" onclick="confirmarEliminarCuenta()">Eliminar mi cuenta</button>
