@@ -1074,6 +1074,15 @@ const CREDITOS_FEN={
   // tenemos y no se inventa: siete entradas más de esta tabla están igual, y
   // en FEN el código no participa de ningún cálculo ni del consenso.
   'Métodos Cuantitativos II':[6],
+  // Los seis ramos troncales de 5º y 6º. Confirmados por Martín el 2026-09-04
+  // de memoria, no contra el catálogo oficial: van sin código y con esta nota
+  // para que se sepa de dónde salieron. La tabla no es uniforme —los talleres
+  // valen 2 y los idiomas 2 o 4— así que el 6 no es un default, es el dato.
+  'Microeconomía I':[6],
+  'Microeconomía II':[6],
+  'Macroeconomía I':[6],
+  'Macroeconomía II':[6],
+  'Historia Económica':[6],
   'Métodos Matemáticos II':[6,'MEM1505'],
   'Métodos Matemáticos III':[6,'MEM2005'],
   'Métodos Matemáticos IV':[6,'MEM2505'],
