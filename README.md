@@ -46,7 +46,9 @@ La interfaz básica puede probarse localmente sin configurar Supabase. No uses d
 | `index.html` | Estructura principal, carga de scripts y metadatos de la PWA. |
 | `data.js` | Catálogos académicos, pautas, temas y configuración compartida. |
 | `engine.js` | Cálculos académicos puros y reglas de aprobación. |
-| `app.js` | Estado, navegación, autenticación y render principal. |
+| `app.js` | Estado, navegación, editor y adaptadores de cálculo. |
+| `app-session.js` | Autenticación, recuperación, persistencia local y sincronización con Supabase. |
+| `render-main.js` | Render de Inicio, ficha del ramo y Estadísticas. |
 | `render-agenda.js` | Presentación y priorización de la Agenda. |
 | `styles.css` | Sistema visual y adaptación para móvil y escritorio. |
 | `sw.js` | Funcionamiento offline y estrategia de caché. |
@@ -54,7 +56,7 @@ La interfaz básica puede probarse localmente sin configurar Supabase. No uses d
 | `supabase/` | SQL versionado para funciones, políticas y servicios de datos. |
 | `.github/workflows/` | Comprobaciones automáticas y publicación en Cloudflare Pages. |
 
-El orden de carga de los scripts clásicos importa: `data.js` → `engine.js` → `app.js` → `render-agenda.js`.
+El orden de carga de los scripts clásicos importa: `data.js` → `engine.js` → `app.js` → `app-session.js` → `render-main.js` → `render-agenda.js`.
 
 ## Contribuir
 
