@@ -531,6 +531,12 @@ function renderRamo(){
     const calculoCategoria=(calculo.res?.breakdown||[]).find(b=>b.id===cat.id);
     const catAvg=calculoCategoria?.value??avgPond(notas);
     const isOpen=openCats[cat.id]===undefined?!!descarte:openCats[cat.id];
+    // La pauta oficial sigue siendo una referencia del programa: no se ofrece
+    // borrar una evaluación completa por accidente. Si la persona ya la
+    // corrigió, recupera ese control sobre su propia versión. Las filas que la
+    // pauta dejó atrás también se pueden limpiar sin tocar lo oficial.
+    const pautaOficialIntacta=!!definicionPresetDelRamo(r)&&!!r.pautaHuella&&!pautaEditada(r);
+    const puedeEliminar=!pautaOficialIntacta||!!cat.fueraDePauta;
     const notasDescartadas=new Set((descarte?.dropped||[]).map(n=>n.id));
     const explicacionDescarte=descarte?`<div class="drop-rule-note">${esc(textoDescarte(cat,descarte))}</div>`:'';
     const card=document.createElement('div');card.className='cat-card';
@@ -555,7 +561,7 @@ function renderRamo(){
           <div class="cat-peso-tag">${cat.peso}% del ramo · ${notas.length} nota${notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
         </div>
         <span style="font-size:1rem;font-weight:700;color:${getColor(catAvg)}">${fmt(catAvg)}</span>
-        <button aria-label="Eliminar evaluación ${esc(cat.nombre)}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:44px;min-height:44px;background:var(--red-bg);border:none;border-radius:8px;padding:0;cursor:pointer;color:var(--red);font-size:0.8125rem;" onclick="confirmDeleteCat('${cat.id}');event.stopPropagation();"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+        ${puedeEliminar?`<button aria-label="Eliminar evaluación ${esc(cat.nombre)}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:44px;min-height:44px;background:var(--red-bg);border:none;border-radius:8px;padding:0;cursor:pointer;color:var(--red);font-size:0.8125rem;" onclick="confirmDeleteCat('${cat.id}');event.stopPropagation();"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`:''}
         <button aria-label="${isOpen?'Colapsar':'Expandir'} ${esc(cat.nombre)}" aria-expanded="${isOpen?'true':'false'}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:44px;min-height:44px;background:var(--muted);border:none;border-radius:8px;padding:0;cursor:pointer;color:var(--fg2);font-size:0.6875rem;" onclick="toggleCat('${cat.id}');event.stopPropagation();">${isOpen?'▲':'▼'}</button>
       </div>
       <div class="cat-body${isOpen?' open':''}">
