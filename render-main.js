@@ -451,8 +451,8 @@ function renderRamo(){
   const addCatBtn=document.querySelector('.add-cat-btn');
   if(addCatBtn){
     const armar=r.categorias.length===0&&delCatalogo;
-    addCatBtn.textContent=armar?'Armar mi pauta':'Agregar evaluaciones';
-    addCatBtn.setAttribute('aria-label',armar?'Armar mi pauta con nombres y porcentajes':'Agregar evaluaciones');
+    addCatBtn.textContent=armar?'Armar mi pauta':'Editar evaluaciones';
+    addCatBtn.setAttribute('aria-label',armar?'Armar mi pauta con nombres y porcentajes':'Editar evaluaciones');
   }
   if(r.categorias.length===0){
     // Un ramo del catálogo sin pauta oficial NO es lo mismo que uno que el
