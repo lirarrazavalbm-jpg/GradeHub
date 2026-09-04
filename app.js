@@ -1315,7 +1315,14 @@ function obTrackPaso(){
 }
 // Entrar al onboarding reinicia el embudo: si alguien cierra sesión y entra con
 // otra cuenta sin recargar, su paso 1 tiene que volver a contarse.
-function obIniciar(){obStep=1;obMaxPasoVisto=0;obRender();}
+// El paso 2 pregunta dónde estudias, así que empieza sin respuesta. `selectedTenant`
+// nace en 'fen' porque la app tiene que pintarse de algo antes de saber quién eres,
+// pero heredar ese default como si el estudiante lo hubiera elegido dejaba
+// "Continuar" habilitado sin decidir nada: quien no se fijaba avanzaba a las
+// carreras de FEN, donde la primera opción es "Ingeniería Comercial", y se llevaba
+// la malla de otra universidad. `obStepValid(2)` ya exige un tenant; lo que faltaba
+// era no dárselo puesto.
+function obIniciar(){obStep=1;obMaxPasoVisto=0;selectedTenant=null;renderTenantPick();obRender();checkOb();}
 
 function obRender(){
   if(obStep===5)prepararObRamos();
