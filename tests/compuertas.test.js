@@ -360,8 +360,20 @@ function armar(I1, I2, NC, NE, NClab, NI, NP, conLab) {
   const d = presetRamo('Dinámica', 'uc', 'ING-PC'), l = presetRamo('Laboratorio de Dinámica', 'uc', 'ING-PC');
   const vD = { 'Interrogación 1': I1, 'Interrogación 2': I2, 'Controles': NC, 'Examen': NE };
   const vL = { 'Controles': NClab, 'Informes': NI, 'Evaluación de pares': NP };
-  d.categorias.forEach(c => c.notas = vD[c.nombre] == null ? [] : [{ id: 'n' + c.id, nombre: c.nombre, valor: vD[c.nombre], peso: 1 }]);
-  l.categorias.forEach(c => c.notas = vL[c.nombre] == null ? [] : [{ id: 'm' + c.id, nombre: c.nombre, valor: vL[c.nombre], peso: 1 }]);
+  // Esta fábrica representa el curso completamente rendido. Una sola nota en
+  // una categoría con `slots` es una entrega parcial, no el promedio final de
+  // esa categoría: repetir el mismo valor por casilla conserva la fórmula que
+  // este bloque viene a verificar (la relación 70/30 de Dinámica y su lab).
+  const notasCompletas = (c, valor, prefijo) => {
+    if (valor == null) return [];
+    const slots = Number.isInteger(c.slots) && c.slots > 1 ? c.slots : 1;
+    return Array.from({ length: slots }, (_, slot) => ({
+      id: `${prefijo}${c.id}-${slot}`, nombre: c.nombre, valor, peso: 1,
+      ...(slots > 1 ? { slot } : {}),
+    }));
+  };
+  d.categorias.forEach(c => c.notas = notasCompletas(c, vD[c.nombre], 'n'));
+  l.categorias.forEach(c => c.notas = notasCompletas(c, vL[c.nombre], 'm'));
   const din = { id: 'din', nombre: 'Dinámica', categorias: d.categorias, gates: d.gates, aporta: d.aporta };
   const lab = { id: 'lab', nombre: 'Laboratorio de Dinámica', categorias: l.categorias, gates: l.gates };
   setRamos(conLab === false ? [din] : [din, lab]);
