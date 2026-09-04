@@ -173,9 +173,9 @@ function estadoCambioCorreo(mensaje,esError){
   if(aviso){aviso.textContent=mensaje||'';aviso.hidden=!mensaje;aviso.style.color=esError?'var(--red)':'var(--fg2)';}
   if(input){if(esError)input.setAttribute('aria-invalid','true');else input.removeAttribute('aria-invalid');}
 }
-// Supabase conserva el correo actual hasta que la persona confirma los dos
-// mensajes. Por eso no se actualiza `currentUser.email` ni se redibuja Ajustes
-// como si el cambio ya hubiera ocurrido.
+// GradeHub tiene las confirmaciones de correo desactivadas mientras usa el SMTP
+// limitado de Supabase. El cambio debe llegar aplicado en la respuesta; si no,
+// no fingimos que la persona ya puede entrar con la dirección nueva.
 async function cambiarCorreoCuenta(){
   const input=document.getElementById('s-account-email');
   const btn=document.getElementById('s-account-email-save');
@@ -196,11 +196,17 @@ async function cambiarCorreoCuenta(){
     return false;
   }
   const original=btn?btn.textContent:'';
-  if(btn){btn.disabled=true;btn.textContent='Enviando confirmaciones…';}
+  if(btn){btn.disabled=true;btn.textContent='Guardando…';}
   try{
-    const {error}=await supabaseClient.auth.updateUser({email:correo});
+    const {data,error}=await supabaseClient.auth.updateUser({email:correo});
     if(error)throw error;
-    estadoCambioCorreo('Revisa tu correo actual y el nuevo. El cambio se hará recién cuando confirmes los dos mensajes.',false);
+    const correoGuardado=String(data&&data.user&&data.user.email||'').trim().toLowerCase();
+    if(correoGuardado!==correo){
+      estadoCambioCorreo('No pudimos actualizar el correo al tiro. Sigue usando tu correo actual e inténtalo más tarde.',true);
+      return false;
+    }
+    currentUser=data.user;
+    estadoCambioCorreo('Correo actualizado. Desde ahora entra con esta dirección.',false);
     return true;
   }catch(e){
     estadoCambioCorreo(traduceAuthError(e,'cambio_correo'),true);
