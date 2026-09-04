@@ -158,6 +158,13 @@ chk('editar una nota sin nombre explica qué falta',rechazoNombre("confirmEditNo
 chk('editar un ramo sin nombre explica qué falta',rechazoNombre('confirmEditRamo()','m-ramo-name','m-ramo-error'));
 chk('editar una evaluación sin nombre explica qué falta',rechazoNombre("confirmEditCat('cat')",'m-cat-name','m-cat-error'));
 chk('agregar un ramo sin nombre explica qué falta',rechazoNombre('confirmAddRamo()','m-ramo-search','m-ramo-error'));
+function rechazoMallaVacia(){
+  const kit=arnes(fuente());
+  vm.runInContext("_mallaList=['Cálculo'];_mallaSel={'Cálculo':false};confirmAddMalla()",kit.ctx);
+  const boton=kit.ids['malla-btn'],aviso=kit.ids['malla-error'];
+  return boton.focused&&aviso.textContent.includes('Selecciona al menos un ramo')&&aviso.hidden===false;
+}
+chk('la malla explica cuando no hay ningún ramo seleccionado',rechazoMallaVacia());
 function rechazoNombreAjustes(){
   const kit=arnes(fuente());
   vm.runInContext(`

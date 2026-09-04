@@ -1913,9 +1913,10 @@ function openMallaModal(){
     <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:4px;">${esc(carrerasFor(S.tenant)[S.carrera]||'')}</p>
     <p style="font-size:0.75rem;color:var(--fg3);margin-bottom:10px;">Desmarca los que no estés tomando. Los electivos los agregas aparte.</p>
     <div style="max-height:42vh;overflow-y:auto;margin-bottom:12px;">${rows}</div>
+    <p id="malla-error" role="alert" hidden style="margin:0 0 10px;font-size:0.75rem;line-height:1.4;color:var(--red);"></p>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Ahora no</button>
-      <button class="btn-confirm" id="malla-btn" onclick="confirmAddMalla()">Agregar</button>
+      <button class="btn-confirm" id="malla-btn" onclick="confirmAddMalla()" aria-describedby="malla-error">Agregar</button>
     </div>`;
   openModal();updateMallaBtn();
 }
@@ -1923,7 +1924,12 @@ function toggleMalla(i,checked){const n=_mallaList[i];if(n!==undefined)_mallaSel
 function updateMallaBtn(){
   const btn=document.getElementById('malla-btn');if(!btn)return;
   const c=_mallaList.filter(n=>_mallaSel[n]).length;
-  btn.disabled=c===0;btn.textContent=c?`Agregar ${c} ramo${c!==1?'s':''}`:'Agregar';
+  btn.disabled=false;btn.removeAttribute('aria-disabled');
+  btn.textContent=c?`Agregar ${c} ramo${c!==1?'s':''}`:'Agregar';
+  if(c){
+    const error=document.getElementById('malla-error');
+    if(error){error.textContent='';error.hidden=true;}
+  }
 }
 
 // Devuelve {categorias, gates} para un ramo del catálogo, o null.
@@ -2129,7 +2135,12 @@ function presetRamo(nombre,tenant,carrera,ahora){
 
 function confirmAddMalla(){
   const elegidos=_mallaList.filter(n=>_mallaSel[n]);
-  if(!elegidos.length)return;
+  if(!elegidos.length){
+    const error=document.getElementById('malla-error');
+    if(error){error.textContent='Selecciona al menos un ramo para agregar.';error.hidden=false;}
+    const btn=document.getElementById('malla-btn');if(btn)btn.focus();
+    return false;
+  }
   elegidos.forEach(n=>{
     // Por findPresetName y no por el nombre crudo: la malla dice
     // "Filosofía: ¿Para Qué?" y el preset "Filosofía: ¿para qué?". Buscando
