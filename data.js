@@ -1262,8 +1262,14 @@ const PRESETS_FEN={
   // Solemne, si faltas al 2 o al 3 te ponen el Examen. No son intercambiables.
   // Las pruebas sorpresa sí se quedan agrupadas: el programa dice que son cinco
   // pero no las identifica ni las fecha — son sorpresa, no hay agenda que poner.
+  //
+  // Las tres fechas estaban acá arriba, en este comentario, desde que se
+  // transcribió el programa: escritas pero fuera del alcance de la app, así que
+  // ningún estudiante las veía en su Agenda. Ahora van en la pauta. El programa
+  // las enumera en este orden, que además es el cronológico.
   'Introducción a la Microeconomía':{
     creditos:6,
+    periodo:'2026-2',
     recuperativo:{min:3.6,max:3.9,nota:4.0},
     // El programa dice exactamente qué ocurre en cada caso. Reemplazar una
     // nota y mover un peso no son la misma regla: se declaran separadas para
@@ -1285,9 +1291,10 @@ const PRESETS_FEN={
     ],
     evals:[
       ['Solemne',30],
-      ['Control 1',10],
-      ['Control 2',10],
-      ['Control 3',10],
+      ['Control 1',10,{fecha:'2026-08-21'}],
+      ['Control 2',10,{fecha:'2026-10-16'}],
+      ['Control 3',10,{fecha:'2026-11-06'}],
+      // Las pruebas sorpresa no llevan fecha a propósito: son sorpresa.
       ['Pruebas sorpresa',5,{slots:5}],
       ['Examen',35],
     ],
