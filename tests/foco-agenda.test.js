@@ -248,7 +248,7 @@ chk('abrir otra evaluación reemplaza la anterior y tocar la misma la cierra',
 const eventoRendido={...evento('ya-rendida',-3,20),pending:false,notas:[{id:'nota-rendida',nombre:'I1',valor:5.4,peso:1}]};
 const detalleRendido=detalleEvaluacionAgendaHTML ? detalleEvaluacionAgendaHTML(eventoRendido,[detalleSiguiente]) : '';
 chk('una evaluación rendida explica la nota registrada, no una meta que ya no necesita',
-  /Nota registrada/.test(detalleRendido) && /5,4/.test(detalleRendido) && !/para aprobar/.test(detalleRendido));
+  /Nota registrada/.test(detalleRendido) && /5\.4/.test(detalleRendido) && !/para aprobar/.test(detalleRendido));
 chk('una evaluación rendida mantiene la próxima evaluación a mano',
   /Después/.test(detalleRendido) && /siguiente/.test(detalleRendido));
 const agendaRendidaHTML=funcionAgenda('agendaRendidaHTML');
