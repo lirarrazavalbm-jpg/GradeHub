@@ -156,6 +156,15 @@ que se olvidaba de registrar simplemente no corría, sin que nada avisara. Pasó
 `tests/arranque.test.js` estuvo en el repo sin ejecutarse porque se perdió al
 resolver uno de esos conflictos.
 
+**Un test de mecanismo no se arma con datos del catálogo.** Si lo que pruebas es
+cómo se comporta el código, escribe la pauta de ejemplo dentro del test en vez de
+sacarla con `presetRamo()`. El catálogo es justo lo que se edita a propósito y
+todo el tiempo, así que atarle un test convierte una corrección de contenido en
+un fallo lejano. Pasó el 2026-08-31: dos PR verdes por separado dejaron `main`
+rojo al juntarse, porque uno cambió una pauta a cuatro evaluaciones y el otro
+indexaba la quinta. Buscar por nombre en vez de por índice ayuda también: un
+cambio de datos sale como comprobación en rojo y no como `TypeError`.
+
 ## Desplegar
 
 **Mergear a `main` publica en gradehub.cl.** El workflow corre los tests primero
@@ -538,6 +547,8 @@ saber dónde empezar a mirar.
 | La barra de orden de la Agenda ocupa demasiado | #207 — se subió al encabezado |
 | El orden manual no se puede arrastrar | *"El orden manual ahora se puede decidir de verdad"* + #176 (el ícono) y #204 (el foco con teclado) |
 | El consenso de reportes no lo consume nadie | #234 — se aplica solo en ramos sin pauta, etiquetado como reportado por estudiantes |
+| El consenso no se veía en los ramos que ya tienen pauta | #274 — se ofrece, con la pauta a la vista, y nunca se aplica solo |
+| Una evaluación en 0% rompía el consenso | #272 — no viaja en el reporte: cinco personas de acuerdo daban cinco grupos de una |
 | Actualizar la pauta oficial borraba notas | #235 — se emparejan por nombre normalizado y lo que sale de la pauta queda en 0% con sus notas |
 | Contabilidad no se podía reportar (la pauta sumaba 99,9) | #236 — `estructuraDe` redondeaba a un decimal; de paso el orden dejó de depender del idioma del dispositivo |
 | Gestión de Personas y Marketing solo aparecían en un semestre | #225 — van en 2° y en 3°, que es como se cursan |
@@ -673,15 +684,19 @@ mismo dato de uso, no una implementación:
 
 ### Las reglas que el motor todavía no calcula
 
-`drop_lowest` fue la primera de `noCalcula` que pasó a calcularse. Quedan, en
-orden de dificultad:
+`drop_lowest` fue la primera de `noCalcula` que pasó a calcularse. La segunda
+fueron las **inasistencias justificadas**: `ausenciasJustificadas` se declara en
+el preset (hoy solo Micro, que es el único programa que dice a qué evaluación
+pasa el porcentaje), `presetRamo()` la resuelve a ids y el estudiante marca la
+inasistencia en la ficha. Está hecha: no la vuelvas a proponer.
+
+Quedan, en orden de dificultad:
 
 | Regla | Qué falta |
 |---|---|
 | Eximición del examen con Casos ≥ 5,5 (Gestión de Personas) | Falta el dato: “Casos y ensayos” está agrupado y el programa no dice cuántos casos son. Sin poder contar cuántos quedaron bajo 4,0 no se puede decidir la eximición; requiere rediseño del preset FEN con Martín, no un `if` por ramo. |
 | Examen de Segunda Fecha (Métodos) | El programa da quién puede rendirlo (examen bajo 3,0 y promedio ≥ 3,95; en Métodos I también una inasistencia justificada), pero no dice con qué nota queda el ramo al aprobarlo. Falta una nota fija o fórmula oficial; no se puede reutilizar el recuperativo de Micro sin inventarla. |
 | ±10 décimas por evaluación entre compañeros | El dato no existe en la app |
-| Inasistencias justificadas: el % pasa a otra evaluación | Depende del programa. Micro SÍ dice a cuál (Control 1 → Solemne; Control 2 y 3 → Examen), así que ahí es modelable; en otros no se especifica |
 | Busuu reprobatorio (Inglés IV) | El programa dice que reprueba pero no fija la nota mínima, así que no hay umbral que declarar |
 
 Y una que **no es calculable y no lo va a ser**: el 75% de asistencia a los
