@@ -69,6 +69,7 @@ const pautaUC=(nombre,esperada)=>chk(nombre+' conserva sus ponderaciones oficial
   evalsUC(UC[nombre]).map(([n,p])=>n+':'+p).join('|')===esperada);
 pautaUC('Introducción a la Programación','Interrogación 1:15|Interrogación 2:20|Examen:30|Tarea 1:5|Tarea 2:5|Tarea 3:5|Nota de participación:16|Talleres de Inteligencia Artificial:4');
 pautaUC('Principios Ecológicos y Medio Ambiente','Prueba 1:25|Prueba 2:40|Prueba 3:35');
+pautaUC('Biología de la Célula','Interrogaciones:45.5|Talleres:14|Trabajos prácticos:7|Trabajo grupal:3.5|Examen final:30');
 pautaUC('Introducción al Álgebra Lineal','Interrogación 1:20|Interrogación 2:25|Interrogación 3:25|Examen:30');
 pautaUC('Introducción a la Macroeconomía','C1:16|P1:22|P2:22|PP:10|Examen:30');
 pautaUC('Probabilidad y Estadística','C1:8|P1:20|C2:8|P2:20|C3:8|Examen:30|Control sorpresa 1:2|Control sorpresa 2:2|Control sorpresa 3:2');
@@ -94,6 +95,14 @@ chk('Revelación y Fe conserva sus tres fechas oficiales',
 chk('Principios Ecológicos conserva las tres evaluaciones de Biología 2026-2',
   UC['Principios Ecológicos y Medio Ambiente'].periodo==='2026-2' &&
   evalsUC(UC['Principios Ecológicos y Medio Ambiente']).map(([, ,x])=>x&&x.fecha).join('|')==='2026-09-01|2026-11-03|2026-12-01');
+const biologiaCelular=UC['Biología de la Célula'];
+const evalsBiologia=evalsUC(biologiaCelular);
+chk('Biología de la Célula conserva sus casillas declaradas sin inventar fechas',
+  biologiaCelular.periodo==='2026-2'&&biologiaCelular.creditos===10&&
+  (evalsBiologia.find(([n])=>n==='Interrogaciones')||[])[2].slots===3&&
+  (evalsBiologia.find(([n])=>n==='Trabajos prácticos')||[])[2].slots===2&&
+  !!(evalsBiologia.find(([n])=>n==='Talleres')||[])[2].lista&&
+  evalsBiologia.every(([, ,x])=>!x||!x.fecha));
 chk('Programación conserva la compuerta de evaluaciones principales',
   UC['Introducción a la Programación'].grupos[0].min===4&&UC['Introducción a la Programación'].grupos[0].cap===3.9);
 // "La evaluación de pares es reprobatoria: si el promedio es menor a 4, serán
