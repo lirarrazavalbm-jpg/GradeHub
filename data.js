@@ -1070,6 +1070,10 @@ const CREDITOS_FEN={
   'Métodos Cuantitativos I':[6,'MEC3005'],
   // IICG y CA lo cursan sin número: es el mismo MEC3005 de IC. Ver SINONIMOS.
   'Métodos Cuantitativos':[6,'MEC3005'],
+  // Confirmado por Martín el 2026-09-04. Va sin código porque todavía no lo
+  // tenemos y no se inventa: siete entradas más de esta tabla están igual, y
+  // en FEN el código no participa de ningún cálculo ni del consenso.
+  'Métodos Cuantitativos II':[6],
   'Métodos Matemáticos II':[6,'MEM1505'],
   'Métodos Matemáticos III':[6,'MEM2005'],
   'Métodos Matemáticos IV':[6,'MEM2505'],
