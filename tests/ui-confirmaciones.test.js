@@ -169,6 +169,14 @@ chk('usar el resto explica cuando ya no queda porcentaje libre',rechazoPauta(
 chk('quitar una fila explica cuando ya tiene notas',rechazoPauta(
   "pautaDraft=[{id:'a',nombre:'I1',peso:100,tieneNotas:true}];quitarPautaFila(0)",
   'ya tiene notas'));
+function confirmacionQuitarPauta(){
+  const kit=arnes(fuente());
+  vm.runInContext("pautaDraft=[{id:'a',nombre:'Interrogación 1',peso:30,tieneNotas:false}];quitarPautaFila(0)",kit.ctx);
+  return kit.ids['confirm-overlay'].classList.contains('open')&&
+    kit.ids['confirm-title'].textContent==='¿Quitar \"Interrogación 1\"?'&&
+    vm.runInContext('pautaDraft.length',kit.ctx)===1;
+}
+chk('quitar una evaluación pide confirmación antes de sacar la fila',confirmacionQuitarPauta());
 chk('las acciones siguen disponibles para poder explicar la condición',
   !/id="m-add-cat-btn"[^>]*\sdisabled/.test(appSrc)&&
   !/id="m-add-nota-btn"[^>]*\sdisabled/.test(appSrc)&&

@@ -3231,7 +3231,7 @@ function renderPautaManualModal(){
     </div>`;
   }).join('');
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Agregar evaluaciones</div>
+    <div class="modal-title">Editar evaluaciones</div>
     <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:-4px 0 12px;">Escribe cada evaluación con el porcentaje que vale del ramo. Puedes guardar aunque te falten algunas; el resto solo se asigna cuando tú eliges la fila.</p>
     ${plantillas}
     ${duplicar}
@@ -3299,8 +3299,13 @@ function agregarPautaFila(){
 function quitarPautaFila(i){
   if(!pautaDraft[i])return false;
   if(pautaDraft[i].tieneNotas){mostrarErrorPauta(i,'Esta evaluación ya tiene notas, por eso no se puede quitar.','quitar');return false;}
-  limpiarErrorPauta();
-  pautaDraft.splice(i,1);if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
+  const nombre=String(pautaDraft[i].nombre||'').trim();
+  showConfirm(nombre?`¿Quitar "${nombre}"?`:'¿Quitar esta evaluación?',
+    'Se quitará de esta pauta. Puedes volver a agregarla antes de guardar.',()=>{
+      limpiarErrorPauta();
+      pautaDraft.splice(i,1);if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
+    },{label:'Quitar evaluación',focusCancel:true});
+  return true;
 }
 function pautaTecla(e,i,campo){
   if(e.key!=='Enter')return;e.preventDefault();

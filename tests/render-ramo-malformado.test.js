@@ -63,6 +63,21 @@ chk('marcar varias notas no rompe el render',error===null);
 chk('mantiene visible la prueba junto a Controles',listaAbierta.length===2&&listaAbierta[0]?.innerHTML.includes('Prueba 1')&&listaAbierta[1]?.innerHTML.includes('Controles'));
 chk('Controles conserva la puerta para agregar sus notas',/Agregar nota/.test(listaAbierta[1]?.innerHTML||''));
 
+console.log('\n=== Una pauta oficial no invita a borrar una evaluación ===');
+const pautaBiocel=val("presetRamo('Biología de la Célula','uc','ING-PC')");
+const biocel={id:'biocel',nombre:'Biología de la Célula',color:'#6d5dd3',origen:{tenant:'uc',carrera:'ING-PC'},categorias:pautaBiocel.categorias,gates:pautaBiocel.gates};
+biocel.pautaHuella=val(`huellaPauta(${JSON.stringify(pautaBiocel.categorias)})`);
+vm.runInContext(`S={...freshState(),ramos:${JSON.stringify([biocel])}};currentRamoId='biocel';`,ctx);
+error=null;try{val('renderRamo')();}catch(e){error=e;}
+const talleres=byId('cat-list').children.find(f=>f.innerHTML.includes('Talleres'));
+chk('Talleres oficial no muestra un botón que borra toda la evaluación',
+  error===null&&!/Eliminar evaluación Talleres/.test(talleres?.innerHTML||''));
+val('S').ramos[0].categorias.find(c=>c.nombre==='Talleres').peso=15;
+val('renderRamo')();
+const talleresCorregidos=byId('cat-list').children.find(f=>f.innerHTML.includes('Talleres'));
+chk('una pauta que la persona corrigió conserva la opción de borrar su propia fila',
+  /Eliminar evaluación Talleres/.test(talleresCorregidos?.innerHTML||''));
+
 console.log('\n=== Una cantidad esperada dibuja todas sus casillas ===');
 const reparada=val('normalize')({ramos:[{
   id:'ramo-slots',nombre:'Ramo con controles fijados',color:'#6d5dd3',

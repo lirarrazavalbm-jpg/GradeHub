@@ -62,8 +62,8 @@ chk('respeta un directNota:false existente',
   ramo([{ id: 'c', nombre: 'P', peso: 10, directNota: false, notas: [] }]).categorias[0].directNota === false);
 
 console.log('\n=== "Configurar pauta" era jerga ===');
-chk('el botón de la ficha dice Agregar evaluaciones',
-  /Agregar evaluaciones<\/button>/.test(fs.readFileSync(raiz + 'index.html', 'utf8')));
+chk('el botón de la ficha dice Editar evaluaciones',
+  /Editar evaluaciones<\/button>/.test(fs.readFileSync(raiz + 'index.html', 'utf8')));
 chk('el modal ya no se llama Configurar pauta', !/Configurar pauta/.test(src));
 
 console.log('\n=== Un ramo del catálogo sin pauta tiene un camino claro ===');
