@@ -3023,11 +3023,24 @@ function leerHora(idBase){
   return HORA_RE.test(h.value||'')?h.value:null;
 }
 
+let addCatError='';
+function mostrarErrorCampo(inputId,errorId,mensaje){
+  const input=document.getElementById(inputId),error=document.getElementById(errorId);
+  if(error){error.textContent=mensaje;error.hidden=false;}
+  if(input){input.setAttribute('aria-invalid','true');input.focus();}
+}
+function limpiarErrorCampo(inputId,errorId){
+  const input=document.getElementById(inputId),error=document.getElementById(errorId);
+  if(input)input.removeAttribute('aria-invalid');
+  if(error){error.textContent='';error.hidden=true;}
+}
 function openAddCatModal(prefillDate){
+  addCatError='';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Nueva evaluación</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-cat-name" placeholder="Ej: Prueba 1, Tarea 2, Laboratorio" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-cat-name" placeholder="Ej: Prueba 1, Tarea 2, Laboratorio" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-cat-error"/></div>
+    <p id="m-cat-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     ${pesoControlHTML(30,null)}
     <label class="modal-label" style="display:flex;align-items:center;gap:10px;text-transform:none;font-weight:500;letter-spacing:0;cursor:pointer;margin:2px 0 14px;line-height:1.35;">
       <input type="checkbox" id="m-cat-varias" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
@@ -3036,16 +3049,18 @@ function openAddCatModal(prefillDate){
     ${campoFechaHoraHTML('m-cat',prefillDate||'',null,false)}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-confirm" id="m-add-cat-btn" onclick="confirmAddCat()" disabled>Agregar evaluación</button>
+      <button class="btn-confirm" id="m-add-cat-btn" onclick="confirmAddCat()">Agregar evaluación</button>
     </div>`;
   openModal();wirePesoControl();
   setTimeout(()=>document.getElementById('m-cat-name').focus(),100);
-  document.getElementById('m-cat-name').addEventListener('input',()=>{document.getElementById('m-add-cat-btn').disabled=!document.getElementById('m-cat-name').value.trim();});
+  document.getElementById('m-cat-name').addEventListener('input',()=>{if(addCatError){addCatError='';limpiarErrorCampo('m-cat-name','m-cat-error');}});
   document.getElementById('m-cat-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAddCat();});
 }
 function confirmAddCat(){
-  const name=document.getElementById('m-cat-name').value.trim();
-  const peso=readPesoControl(30);if(!name)return;
+  const input=document.getElementById('m-cat-name');
+  const name=(input&&input.value||'').trim();
+  const peso=readPesoControl(30);
+  if(!name){addCatError='Escribe el nombre de la evaluación para agregarla.';mostrarErrorCampo('m-cat-name','m-cat-error',addCatError);return false;}
   const fechaInput=document.getElementById('m-cat-fecha');
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;
   const r=S.ramos.find(x=>x.id===currentRamoId);
@@ -3068,12 +3083,14 @@ function confirmAddCat(){
 // pauta real. Los pesos pueden quedar incompletos porque en semana 1 muchas
 // veces todavía no está toda la información.
 let pautaDraft=[];
+let pautaDraftError='',pautaDraftErrorIndex=null,pautaDraftErrorTarget='';
 function openPautaManualModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   // Además de normalizar al cargar, el editor tolera un ramo legado incompleto.
   // Es el camino mayoritario: los ramos sin preset parten sin evaluaciones.
   if(!Array.isArray(r.categorias))r.categorias=[];
   pautaDraft=r.categorias.map(c=>({id:c.id,nombre:c.nombre,peso:Number(c.peso)||0,tieneNotas:(c.notas||[]).length>0,varias:c.directNota===false||(Number.isInteger(c.slots)&&c.slots>1),cantidad:Number.isInteger(c.slots)&&c.slots>1?c.slots:null}));
+  pautaDraftError='';pautaDraftErrorIndex=null;pautaDraftErrorTarget='';
   if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});
   renderPautaManualModal();openModal();
   setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-0');if(i)i.focus();},100);
@@ -3199,16 +3216,17 @@ function renderPautaManualModal(){
     // El editor nunca decide un porcentaje. Solo calcula el resto y se lo
     // ofrece a la fila vacía que la persona eligió explícitamente.
     const resto=restoParaPautaFila(i);
-    const usarResto=fila.peso===0&&resto>0?`<button type="button" onclick="usarRestoPauta(${i})" style="margin-top:4px;padding:0;border:0;background:none;color:var(--primary);font:700 10px 'Onest',sans-serif;cursor:pointer;white-space:nowrap;">Usar ${r2(resto)}%</button>`:'';
+    const errorEnFila=pautaDraftErrorIndex===i;
+    const usarResto=fila.peso===0?`<button type="button" onclick="usarRestoPauta(${i})" style="margin-top:4px;padding:0;border:0;background:none;color:var(--primary);font:700 10px 'Onest',sans-serif;cursor:pointer;white-space:nowrap;">${resto>0?`Usar ${r2(resto)}%`:'Usar el resto'}</button>`:'';
     const cantidad=fila.varias?`<div style="grid-column:1 / -1;display:flex;align-items:center;gap:7px;padding:7px 9px;margin-top:-2px;border-radius:9px;background:var(--muted);font-size:0.75rem;color:var(--fg2);"><span style="flex:1;min-width:0;">Se promedian varias notas</span><label style="display:flex;align-items:center;gap:4px;white-space:nowrap;">Esperas <input type="text" inputmode="numeric" id="m-pauta-cantidad-${i}" value="${fila.cantidad||''}" placeholder="—" maxlength="3" oninput="actualizarPautaCantidad(${i},this.value)" aria-label="Cantidad esperada de notas para ${esc(fila.nombre||'evaluación')}" style="width:32px;padding:5px 4px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit;text-align:center;"/> notas</label></div>`:'';
     return `
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 52px 30px;gap:6px;align-items:center;margin:8px 0;">
-      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="${NOMBRE_MAX}" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
-      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span>${usarResto}</div>
+      <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="${NOMBRE_MAX}" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" ${errorEnFila&&pautaDraftErrorTarget==='nombre'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
+      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" ${errorEnFila&&pautaDraftErrorTarget==='peso'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span>${usarResto}</div>
       <label title="Son varias notas que se promedian" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:40px;cursor:pointer;font-size:0.5625rem;color:var(--fg3);font-weight:700;line-height:1;">
         <input type="checkbox" ${fila.varias?'checked':''} onchange="actualizarPautaVarias(${i},this.checked)" aria-label="${esc(fila.nombre||'Evaluación')}: son varias notas que se promedian" style="width:17px;height:17px;accent-color:var(--primary);"/><span style="margin-top:2px;">VARIAS</span>
       </label>
-      <button type="button" onclick="quitarPautaFila(${i})" ${fila.tieneNotas?'disabled title="No puedes borrar una evaluación que ya tiene notas"':''} aria-label="Quitar evaluación" style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:1.25rem;cursor:pointer;${fila.tieneNotas?'opacity:.35;cursor:not-allowed;':''}">×</button>
+      <button type="button" id="m-pauta-quitar-${i}" onclick="quitarPautaFila(${i})" title="${fila.tieneNotas?'Esta evaluación ya tiene notas':'Quitar evaluación'}" aria-label="Quitar evaluación" ${errorEnFila&&pautaDraftErrorTarget==='quitar'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="height:40px;border:0;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:1.25rem;cursor:pointer;">×</button>
       ${cantidad}
     </div>`;
   }).join('');
@@ -3219,6 +3237,7 @@ function renderPautaManualModal(){
     ${duplicar}
     <datalist id="m-pauta-sugerencias">${sugerencias}</datalist>
     <div id="m-pauta-total" style="padding:10px 12px;border-radius:10px;background:var(--muted);color:var(--fg2);font-size:0.8125rem;font-weight:600;margin-bottom:10px;">${pautaResumen()}</div>
+    <p id="m-pauta-error" role="alert"${pautaDraftError?'':' hidden'} style="margin:-3px 0 10px;font-size:0.8125rem;color:var(--red);">${esc(pautaDraftError)}</p>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 52px 30px;gap:6px;font-size:0.6875rem;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">
       <span>Evaluación</span><span>Peso</span><span title="Son varias notas que se promedian" style="text-align:center;">Notas</span><span></span>
     </div>
@@ -3229,7 +3248,16 @@ function renderPautaManualModal(){
       <button class="btn-confirm" onclick="guardarPautaManual()">Guardar</button>
     </div>`;
 }
-function actualizarPautaNombre(i,valor){if(pautaDraft[i])pautaDraft[i].nombre=valor;}
+function limpiarErrorPauta(){
+  pautaDraftError='';pautaDraftErrorIndex=null;pautaDraftErrorTarget='';
+  const error=document.getElementById('m-pauta-error');if(error){error.textContent='';error.hidden=true;}
+}
+function mostrarErrorPauta(i,mensaje,target){
+  pautaDraftError=mensaje;pautaDraftErrorIndex=i;pautaDraftErrorTarget=target;
+  renderPautaManualModal();
+  setTimeout(()=>{const control=document.getElementById(`m-pauta-${target}-${i}`);if(control)control.focus();},0);
+}
+function actualizarPautaNombre(i,valor){limpiarErrorPauta();if(pautaDraft[i])pautaDraft[i].nombre=valor;}
 function actualizarPautaVarias(i,valor){
   if(!pautaDraft[i])return;
   pautaDraft[i].varias=!!valor;
@@ -3248,13 +3276,15 @@ function restoParaPautaFila(i){
   return r2(Math.max(0,100-usado));
 }
 function usarRestoPauta(i){
-  if(!pautaDraft[i])return;
-  const resto=restoParaPautaFila(i);if(resto<=0)return;
+  if(!pautaDraft[i])return false;
+  const resto=restoParaPautaFila(i);if(resto<=0){mostrarErrorPauta(i,'No queda porcentaje libre para repartir en esta evaluación.','peso');return false;}
+  limpiarErrorPauta();
   pautaDraft[i].peso=resto;
   renderPautaManualModal();
   setTimeout(()=>{const input=document.getElementById('m-pauta-peso-'+i);if(input)input.focus();},0);
 }
 function actualizarPautaPeso(i,valor){
+  limpiarErrorPauta();
   if(!pautaDraft[i])return;
   const limpio=String(valor||'').replace(/[^0-9]/g,'');
   const peso=Math.min(100,parseInt(limpio,10)||0);
@@ -3267,7 +3297,9 @@ function agregarPautaFila(){
   setTimeout(()=>{const i=document.getElementById('m-pauta-nombre-'+(pautaDraft.length-1));if(i)i.focus();},0);
 }
 function quitarPautaFila(i){
-  if(!pautaDraft[i]||pautaDraft[i].tieneNotas)return;
+  if(!pautaDraft[i])return false;
+  if(pautaDraft[i].tieneNotas){mostrarErrorPauta(i,'Esta evaluación ya tiene notas, por eso no se puede quitar.','quitar');return false;}
+  limpiarErrorPauta();
   pautaDraft.splice(i,1);if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
 }
 function pautaTecla(e,i,campo){
@@ -3321,14 +3353,17 @@ function guardarPautaManual(){
 }
 function abrirPautaDesdeNota(){closeModal();setTimeout(openPautaManualModal,120);}
 
+let addNotaError='';
 function openAddNotaModal(catId){
+  addNotaError='';
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
   const pauta=estadoPauta(r.categorias);
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Nueva nota — ${esc(cat.nombre)}</div>
     ${pauta.lista?'':`<div class="weight-setup-nudge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"/><path d="M3 8h18"/><path d="M4 8l2 10h12l2-10"/></svg><div><b>Tu pauta suma ${r2(pauta.total)}%.</b><br>Esta nota se guarda igual. Completa el resto cuando tengas la pauta.<br><button type="button" onclick="abrirPautaDesdeNota()">Editar pauta</button></div></div>`}
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-nota-name" placeholder="Ej: Prueba 1" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-nota-name" placeholder="Ej: Prueba 1" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-nota-error"/></div>
+    <p id="m-nota-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— déjala vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" placeholder="Ej: 5.5"/></div>
     ${campoFechaHoraHTML('m-nota','',null,false)}
@@ -3343,31 +3378,29 @@ function openAddNotaModal(catId){
     </div>
     <div class="modal-btns" style="margin-top:14px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-confirm" id="m-add-nota-btn" onclick="confirmAddNota('${catId}')" disabled>Agregar nota</button>
+      <button class="btn-confirm" id="m-add-nota-btn" onclick="confirmAddNota('${catId}')">Agregar nota</button>
     </div>`;
   openModal();
   setTimeout(()=>document.getElementById('m-nota-name').focus(),100);
   function checkValid(){
-    const n=document.getElementById('m-nota-name').value.trim();
     const v=parseNota(document.getElementById('m-nota-val').value);
-    // Solo el nombre es obligatorio: sin nota queda pendiente.
-    document.getElementById('m-add-nota-btn').disabled=!n;
     const btn=document.getElementById('m-add-nota-btn');
     if(btn)btn.textContent=isNaN(v)?'Anotar como pendiente':'Agregar nota';
   }
-  document.getElementById('m-nota-name').addEventListener('input',checkValid);
+  document.getElementById('m-nota-name').addEventListener('input',()=>{if(addNotaError){addNotaError='';limpiarErrorCampo('m-nota-name','m-nota-error');}checkValid();});
   document.getElementById('m-nota-val').addEventListener('input',checkValid);
 }
 function togglePondSlider(){
   document.getElementById('pond-slider-wrap').style.display=document.getElementById('m-pond-toggle').checked?'block':'none';
 }
 function confirmAddNota(catId){
-  const name=document.getElementById('m-nota-name').value.trim();
+  const input=document.getElementById('m-nota-name');
+  const name=(input&&input.value||'').trim();
   const val=parseNota(document.getElementById('m-nota-val').value);
   // La nota puede quedar pendiente: se registra qué viene y cuándo, y el valor
   // se agrega al rendirla. `gradesOf` y `avgPond` ya ignoran las que no tienen
   // valor, así que una pendiente no arrastra el promedio hacia abajo.
-  if(!name)return;
+  if(!name){addNotaError='Escribe el nombre de la nota para agregarla.';mostrarErrorCampo('m-nota-name','m-nota-error',addNotaError);return false;}
   const fechaNota=(document.getElementById('m-nota-fecha')||{}).value||null;
   const usaPond=document.getElementById('m-pond-toggle').checked;
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
@@ -4344,7 +4377,9 @@ function confirmEditCat(catId){
 }
 
 // ─── EDITAR NOTA ─────────────────────────────────────────────────────────────
+let editNotaError='';
 function openEditNotaModal(catId,notaId){
+  editNotaError='';
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
@@ -4352,7 +4387,8 @@ function openEditNotaModal(catId,notaId){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar nota</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(n.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(n.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-nota-error"/></div>
+    <p id="m-nota-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
     ${campoFechaHoraHTML('m-nota',n.fecha,n.hora,true)}
@@ -4370,20 +4406,15 @@ function openEditNotaModal(catId,notaId){
     </div>`;
   openModal();
   setTimeout(()=>document.getElementById('m-nota-name').focus(),100);
-  function checkValid(){
-    const nm=document.getElementById('m-nota-name').value.trim();
-    // Sin nota se guarda igual: queda pendiente.
-    document.getElementById('m-edit-nota-btn').disabled=!nm;
-  }
-  document.getElementById('m-nota-name').addEventListener('input',checkValid);
-  document.getElementById('m-nota-val').addEventListener('input',checkValid);
+  document.getElementById('m-nota-name').addEventListener('input',()=>{if(editNotaError){editNotaError='';limpiarErrorCampo('m-nota-name','m-nota-error');}});
 }
 function confirmEditNota(catId,notaId){
-  const name=document.getElementById('m-nota-name').value.trim();
+  const input=document.getElementById('m-nota-name');
+  const name=(input&&input.value||'').trim();
   const val=parseNota(document.getElementById('m-nota-val').value);
   // Igual que al crearla: sin valor queda pendiente. Es el camino de vuelta —
   // se anota la evaluación cuando se sabe la fecha y se completa al rendirla.
-  if(!name)return;
+  if(!name){editNotaError='Escribe el nombre de la nota para guardarla.';mostrarErrorCampo('m-nota-name','m-nota-error',editNotaError);return false;}
   const fechaNota=(document.getElementById('m-nota-fecha')||{}).value||null;
   const usaPond=document.getElementById('m-pond-toggle').checked;
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;

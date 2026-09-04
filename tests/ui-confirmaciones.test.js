@@ -6,10 +6,11 @@ const raiz=__dirname+'/../';
 
 function elemento(){
   const clases=new Set();
+  const atributos={};
   return {
     style:{setProperty(){},removeProperty(){}},textContent:'',innerHTML:'',value:'',className:'',onclick:null,parentElement:null,
     classList:{add:c=>clases.add(c),remove:c=>clases.delete(c),contains:c=>clases.has(c)},
-    addEventListener(){},focus(){},select(){},setAttribute(){},removeAttribute(){},getAttribute(){return null;},
+    addEventListener(){},focus(){this.focused=true;},select(){},setAttribute(k,v){atributos[k]=String(v);},removeAttribute(k){delete atributos[k];},getAttribute(k){return atributos[k]||null;},
     querySelector(){return null;},querySelectorAll(){return [];},appendChild(){},remove(){},dataset:{},clientWidth:400,
   };
 }
@@ -143,5 +144,40 @@ function calendarioDesdeAgendaSinFechas(src){
 const calendarioVacio=calendarioDesdeAgendaSinFechas(fuente());
 chk('con cero fechas, Agenda deja abrir el menú y llegar a importar un .ics',
   calendarioVacio.botonVisible&&calendarioVacio.abrioModal&&/abrirImportarCalendario\(\)/.test(calendarioVacio.html));
+
+console.log('\n=== Acciones que explican por qué no pueden continuar ===');
+function rechazoNombre(codigo,campo,error){
+  const kit=arnes(fuente());
+  vm.runInContext(codigo,kit.ctx);
+  const input=kit.ids[campo],aviso=kit.ids[error];
+  return input.getAttribute('aria-invalid')==='true'&&input.focused&&aviso.textContent.length>0;
+}
+chk('una evaluación sin nombre explica qué falta',rechazoNombre('confirmAddCat()','m-cat-name','m-cat-error'));
+chk('una nota nueva sin nombre explica qué falta',rechazoNombre("confirmAddNota('cat')",'m-nota-name','m-nota-error'));
+chk('editar una nota sin nombre explica qué falta',rechazoNombre("confirmEditNota('cat','nota')",'m-nota-name','m-nota-error'));
+
+function rechazoPauta(codigo,fragmento){
+  const kit=arnes(fuente());
+  vm.runInContext(codigo,kit.ctx);
+  const estado=vm.runInContext(`typeof pautaDraftError==='string'&&pautaDraftError.includes(${JSON.stringify(fragmento)})`,kit.ctx);
+  const html=kit.ids['modal-content'].innerHTML;
+  return estado&&html.includes('role="alert"')&&html.includes(fragmento)&&html.includes('aria-invalid="true"');
+}
+chk('usar el resto explica cuando ya no queda porcentaje libre',rechazoPauta(
+  "pautaDraft=[{id:'a',nombre:'I1',peso:0,tieneNotas:false},{id:'b',nombre:'I2',peso:100,tieneNotas:false}];usarRestoPauta(0)",
+  'No queda porcentaje libre'));
+chk('quitar una fila explica cuando ya tiene notas',rechazoPauta(
+  "pautaDraft=[{id:'a',nombre:'I1',peso:100,tieneNotas:true}];quitarPautaFila(0)",
+  'ya tiene notas'));
+chk('las acciones siguen disponibles para poder explicar la condición',
+  !/id="m-add-cat-btn"[^>]*\sdisabled/.test(appSrc)&&
+  !/id="m-add-nota-btn"[^>]*\sdisabled/.test(appSrc)&&
+  !/id="m-edit-nota-btn"[^>]*\sdisabled/.test(appSrc)&&
+  !/quitarPautaFila\(\$\{i\}\)" \$\{fila\.tieneNotas\?'disabled/.test(appSrc));
+chk('cada error se anuncia y queda asociado al campo que hay que corregir',
+  /id="m-cat-error" role="alert"/.test(appSrc)&&
+  /id="m-nota-error" role="alert"/.test(appSrc)&&
+  /id="m-pauta-error" role="alert"/.test(appSrc)&&
+  /aria-describedby="m-pauta-error"/.test(appSrc));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);
