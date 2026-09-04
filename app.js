@@ -4440,6 +4440,22 @@ function confirmEditNota(catId,notaId){
 }
 
 // ─── CALCULADORA NOTA MÍNIMA ─────────────────────────────────────────────────
+// La factibilidad se decide con el valor real, no con el número que se muestra.
+// Redondear 7,001 a 7,0 antes de comparar hacía parecer contradictorio un
+// resultado imposible. Si se pasa del máximo, mostramos el mínimo a dos
+// decimales redondeado hacia arriba: nunca una nota menor a la que calcula el
+// motor.
+function resumenMetaCalculadora(needed){
+  const eps=1e-9;
+  if(!Number.isFinite(needed))return null;
+  if(needed>7+eps){
+    const minimo=Math.ceil((needed-eps)*100)/100;
+    return {estado:'inalcanzable',texto:minimo.toFixed(2)};
+  }
+  if(needed>=7-eps)return {estado:'maxima',texto:'7.0'};
+  if(needed<1)return {estado:'margen',texto:r2(needed).toFixed(1)};
+  return {estado:'normal',texto:r2(needed).toFixed(1),numero:r2(needed)};
+}
 function openCalculadoraModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
 
@@ -4481,7 +4497,7 @@ function openCalculadoraModal(){
       } else {el.innerHTML=`<span style="color:var(--fg3)">No hay notas ingresadas aún.</span>`;}
       return;
     }
-    const neededR=r2(needed);
+    const metaCalculada=resumenMetaCalculadora(needed);
     const pendientes=calculoRamoConCompuertas(r).res.emptyLeaves;
     // Una categoría puede estar a medio rendir: "secciones sin notas" la
     // omitía por completo. Las hojas pendientes sí incluyen cada Informe,
@@ -4491,13 +4507,15 @@ function openCalculadoraModal(){
       :'como promedio de las evaluaciones que te faltan';
     // Condición pendiente de piso (ej: Podcast sin nota aún)
     const condPend=(r.gates||[]).filter(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);return c&&avgPond(c.notas)===null;}).map(g=>`<div style="font-size:0.75rem;color:var(--yellow);margin-top:8px;">Además, ${esc(g.nombre)} debe ser ≥ ${g.min.toFixed(1)} o repruebas pese al promedio.</div>`).join('');
-    if(neededR>7){
-      el.innerHTML=`<span style="color:var(--red)">Necesitarías un <b>${neededR.toFixed(1)}</b> — ya no es posible llegar a ${target.toFixed(1)}.</span>`;
-    } else if(neededR<1){
+    if(metaCalculada.estado==='inalcanzable'){
+      el.innerHTML=`<span style="color:var(--red)">Necesitarías un <b>${metaCalculada.texto}</b> — ya no es posible llegar a ${target.toFixed(1)}.</span>`;
+    } else if(metaCalculada.estado==='maxima'){
+      el.innerHTML=`<div style="margin-top:4px;">Necesitas un promedio de<br/><b style="font-size:2rem;color:var(--yellow)">${metaCalculada.texto}</b><br/><span style="font-size:0.75rem;color:var(--fg3)">Es posible, pero casi imposible: necesitas la nota máxima en todo lo que te falta.</span>${condPend}</div>`;
+    } else if(metaCalculada.estado==='margen'){
       el.innerHTML=`<span style="color:var(--green)">Con cualquier nota llegas a ${target.toFixed(1)}.</span>${condPend}`;
     } else {
-      const col=neededR>=5.5?'var(--yellow)':'var(--green)';
-      el.innerHTML=`<div style="margin-top:4px;">Necesitas un promedio de<br/><b style="font-size:2rem;color:${col}">${neededR.toFixed(1)}</b><br/><span style="font-size:0.75rem;color:var(--fg3)">${dondeTxt}</span>${condPend}</div>`;
+      const col=metaCalculada.numero>=5.5?'var(--yellow)':'var(--green)';
+      el.innerHTML=`<div style="margin-top:4px;">Necesitas un promedio de<br/><b style="font-size:2rem;color:${col}">${metaCalculada.texto}</b><br/><span style="font-size:0.75rem;color:var(--fg3)">${dondeTxt}</span>${condPend}</div>`;
     }
   };
 }
