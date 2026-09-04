@@ -1913,9 +1913,10 @@ function openMallaModal(){
     <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:4px;">${esc(carrerasFor(S.tenant)[S.carrera]||'')}</p>
     <p style="font-size:0.75rem;color:var(--fg3);margin-bottom:10px;">Desmarca los que no estés tomando. Los electivos los agregas aparte.</p>
     <div style="max-height:42vh;overflow-y:auto;margin-bottom:12px;">${rows}</div>
+    <p id="malla-error" role="alert" hidden style="margin:0 0 10px;font-size:0.75rem;line-height:1.4;color:var(--red);"></p>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Ahora no</button>
-      <button class="btn-confirm" id="malla-btn" onclick="confirmAddMalla()">Agregar</button>
+      <button class="btn-confirm" id="malla-btn" onclick="confirmAddMalla()" aria-describedby="malla-error">Agregar</button>
     </div>`;
   openModal();updateMallaBtn();
 }
@@ -1923,7 +1924,12 @@ function toggleMalla(i,checked){const n=_mallaList[i];if(n!==undefined)_mallaSel
 function updateMallaBtn(){
   const btn=document.getElementById('malla-btn');if(!btn)return;
   const c=_mallaList.filter(n=>_mallaSel[n]).length;
-  btn.disabled=c===0;btn.textContent=c?`Agregar ${c} ramo${c!==1?'s':''}`:'Agregar';
+  btn.disabled=false;btn.removeAttribute('aria-disabled');
+  btn.textContent=c?`Agregar ${c} ramo${c!==1?'s':''}`:'Agregar';
+  if(c){
+    const error=document.getElementById('malla-error');
+    if(error){error.textContent='';error.hidden=true;}
+  }
 }
 
 // Devuelve {categorias, gates} para un ramo del catálogo, o null.
@@ -2129,7 +2135,12 @@ function presetRamo(nombre,tenant,carrera,ahora){
 
 function confirmAddMalla(){
   const elegidos=_mallaList.filter(n=>_mallaSel[n]);
-  if(!elegidos.length)return;
+  if(!elegidos.length){
+    const error=document.getElementById('malla-error');
+    if(error){error.textContent='Selecciona al menos un ramo para agregar.';error.hidden=false;}
+    const btn=document.getElementById('malla-btn');if(btn)btn.focus();
+    return false;
+  }
   elegidos.forEach(n=>{
     // Por findPresetName y no por el nombre crudo: la malla dice
     // "Filosofía: ¿Para Qué?" y el preset "Filosofía: ¿para qué?". Buscando
@@ -2158,18 +2169,19 @@ function openAddRamoModal(){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Agregar ramo</div>
     <label class="modal-label">${etiquetaRamo}${hayCatalogo&&uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· lo buscamos en la malla ${esc(uni)}</span>`:''}</label>
-    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="${ejemploRamo}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
+    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="${ejemploRamo}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none" aria-describedby="m-ramo-error"/></div>
+    <p id="m-ramo-error" role="alert" hidden style="margin:7px 0 0;font-size:0.75rem;line-height:1.4;color:var(--red);"></p>
     ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()" disabled>Agregar ramo</button>
+      <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()">Agregar ramo</button>
     </div>`;
   openModal();
 
   const input=document.getElementById('m-ramo-search');
   setTimeout(()=>{input.focus();},100);
   const pintar=()=>{
-    document.getElementById('m-add-ramo-btn').disabled=!input.value.trim();
+    limpiarErrorCampo('m-ramo-search','m-ramo-error');
     if(hayCatalogo)renderCatalogResults(input.value);
   };
   input.addEventListener('input',pintar);
@@ -2983,7 +2995,11 @@ function parseCreditos(raw){
   return (!isNaN(n)&&n>0&&n<=60)?n:null;
 }
 function confirmAddRamo(){
-  const name=document.getElementById('m-ramo-search').value.trim();if(!name)return;
+  const name=document.getElementById('m-ramo-search').value.trim();
+  if(!name){
+    mostrarErrorCampo('m-ramo-search','m-ramo-error','Escribe el nombre o la sigla del ramo para agregarlo.');
+    return false;
+  }
   // Si el nombre coincide con un ramo del catálogo del tenant, carga sus ponderaciones oficiales.
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
@@ -3485,6 +3501,7 @@ function openSettings(){
   let settingsSem=S.careerSemestre;
   let settingsCarrera=S.carrera;
   let settingsName=S.userName;
+  let settingsNameError='';
   // Se declara acá arriba: los render*Grid() se llaman antes de las definiciones
   // de función y con `let` más abajo caería en la zona muerta temporal (TDZ).
   let settingsTenant=S.tenant||'fen';
@@ -3513,8 +3530,9 @@ function openSettings(){
     if(section==='perfil')return `
       <label class="modal-label">Nombre para mostrar</label>
       <div class="settings-name-field">
-        <div class="modal-input"><input type="text" id="s-name" value="${esc(settingsName)}" maxlength="30" autocomplete="off"/></div>
-        <p class="settings-name-hint">Aparece en el saludo de inicio.</p>
+        <div class="modal-input"><input type="text" id="s-name" value="${esc(settingsName)}" maxlength="30" autocomplete="off" aria-describedby="s-name-hint s-name-error"/></div>
+        <p id="s-name-error" role="alert" ${settingsNameError?'':'hidden'} style="margin:7px 0 0;font-size:0.75rem;line-height:1.4;color:var(--red);">${esc(settingsNameError)}</p>
+        <p class="settings-name-hint" id="s-name-hint">Aparece en el saludo de inicio.</p>
       </div>
       ${guardarBtn()}`;
     if(section==='academico')return `
@@ -3608,7 +3626,7 @@ function openSettings(){
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
       if(inp){
-        inp.addEventListener('input',()=>{settingsName=inp.value;checkSave();});
+        inp.addEventListener('input',()=>{settingsName=inp.value;if(settingsNameError){settingsNameError='';limpiarErrorCampo('s-name','s-name-error');}checkSave();});
         inp.addEventListener('keydown',e=>{if(e.key==='Enter')window.saveSettings();});
         setTimeout(()=>{inp.focus();inp.select();},100);
       }
@@ -3619,7 +3637,9 @@ function openSettings(){
 
   function checkSave(){
     const btn=document.getElementById('s-save-btn');
-    if(btn)btn.disabled=!settingsName.trim();
+    // El nombre se valida al guardar para poder explicar qué falta. Dejar el
+    // botón apagado convertía Enter y el toque en una acción que no respondía.
+    if(btn){btn.disabled=false;btn.removeAttribute('aria-disabled');}
   }
   function renderModoGrid(){
     const g=document.getElementById('s-modo-grid');if(!g)return;g.innerHTML='';
@@ -3699,7 +3719,12 @@ function openSettings(){
     }
   },120);
   window.saveSettings=function(){
-    const name=settingsName.trim();if(!name)return;
+    const name=settingsName.trim();
+    if(!name){
+      settingsNameError='Escribe tu nombre para guardar los cambios.';
+      mostrarErrorCampo('s-name','s-name-error',settingsNameError);
+      return false;
+    }
     const cambioUni=settingsTenant!==S.tenant;
     S.userName=name;S.careerSemestre=settingsSem;S.carrera=settingsCarrera;S.tenant=settingsTenant;
     selectedTenant=settingsTenant;
@@ -4314,13 +4339,16 @@ function loQueFaltaPorRamo(ramos){
 function toggleHist(id){openHist[id]=!openHist[id];renderStats();}
 
 // ─── EDITAR RAMO ─────────────────────────────────────────────────────────────
+let editRamoError='';
 function openEditRamoModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
+  editRamoError='';
   modalColor=r.color;
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar ramo</div>
     <label class="modal-label">Nombre del ramo</label>
-    <div class="modal-input"><input type="text" id="m-ramo-name" value="${esc(r.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-ramo-name" value="${esc(r.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-ramo-error"/></div>
+    <p id="m-ramo-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     <label class="modal-label">Créditos <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(SCT — opcional)</span></label>
     <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-creditos" value="${r.creditos!=null?r.creditos:''}" placeholder="Ej: 10" maxlength="3" autocomplete="off"/></div>
     <label class="modal-label">Color</label>
@@ -4332,9 +4360,12 @@ function openEditRamoModal(){
   renderModalColors();openModal();
   setTimeout(()=>{const i=document.getElementById('m-ramo-name');i.focus();i.select();},100);
   document.getElementById('m-ramo-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditRamo();});
+  document.getElementById('m-ramo-name').addEventListener('input',()=>{if(editRamoError){editRamoError='';limpiarErrorCampo('m-ramo-name','m-ramo-error');}});
 }
 function confirmEditRamo(){
-  const name=document.getElementById('m-ramo-name').value.trim();if(!name)return;
+  const input=document.getElementById('m-ramo-name');
+  const name=(input&&input.value||'').trim();
+  if(!name){editRamoError='Escribe el nombre del ramo para guardarlo.';mostrarErrorCampo('m-ramo-name','m-ramo-error',editRamoError);return false;}
   const r=S.ramos.find(x=>x.id===currentRamoId);
   r.nombre=name;r.color=modalColor;
   r.creditos=parseCreditos((document.getElementById('m-ramo-creditos')||{}).value);
@@ -4342,13 +4373,16 @@ function confirmEditRamo(){
 }
 
 // ─── EDITAR CATEGORÍA ────────────────────────────────────────────────────────
+let editCatError='';
 function openEditCatModal(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
+  editCatError='';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar evaluación</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-cat-name" value="${esc(cat.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-cat-name" value="${esc(cat.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-cat-error"/></div>
+    <p id="m-cat-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     ${pesoControlHTML(cat.peso,catId)}
     ${cat.slots>1?'':`<label class="modal-label" style="display:flex;align-items:center;gap:10px;text-transform:none;font-weight:500;letter-spacing:0;cursor:pointer;margin:2px 0 14px;line-height:1.35;${(cat.notas||[]).length>1?'opacity:.55;cursor:not-allowed;':''}">
       <input type="checkbox" id="m-cat-varias" ${cat.directNota===false?'checked':''} ${(cat.notas||[]).length>1?'disabled':''} style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
@@ -4366,9 +4400,12 @@ function openEditCatModal(catId){
   openModal();wirePesoControl();
   setTimeout(()=>{const i=document.getElementById('m-cat-name');i.focus();i.select();},100);
   document.getElementById('m-cat-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditCat(catId);});
+  document.getElementById('m-cat-name').addEventListener('input',()=>{if(editCatError){editCatError='';limpiarErrorCampo('m-cat-name','m-cat-error');}});
 }
 function confirmEditCat(catId){
-  const name=document.getElementById('m-cat-name').value.trim();if(!name)return;
+  const input=document.getElementById('m-cat-name');
+  const name=(input&&input.value||'').trim();
+  if(!name){editCatError='Escribe el nombre de la evaluación para guardarla.';mostrarErrorCampo('m-cat-name','m-cat-error',editCatError);return false;}
   const peso=readPesoControl(cat0Peso(catId));
   const fechaInput=document.getElementById('m-cat-fecha');
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;

@@ -24,7 +24,7 @@ function arnes(src){
     window:{addEventListener(){},matchMedia:()=>({matches:false,addEventListener(){},addListener(){}})},
     document:{getElementById:get,createElement:elemento,addEventListener(){},documentElement:{...elemento(),style:{setProperty(){},removeProperty(){}}},querySelector:()=>stub,querySelectorAll:()=>[],body:stub},
     localStorage:{getItem(){return null},setItem(k,v){writes.push([k,v])},removeItem(){}},navigator:{},location:{origin:'',pathname:'',hash:''},
-    setTimeout:fn=>fn(),clearTimeout(){},console,
+    setTimeout:fn=>fn(),clearTimeout(){},requestAnimationFrame:fn=>fn(),cancelAnimationFrame(){},console,
   };
   vm.createContext(ctx);vm.runInContext(src,ctx);return {ctx,ids,action,writes};
 }
@@ -155,6 +155,28 @@ function rechazoNombre(codigo,campo,error){
 chk('una evaluación sin nombre explica qué falta',rechazoNombre('confirmAddCat()','m-cat-name','m-cat-error'));
 chk('una nota nueva sin nombre explica qué falta',rechazoNombre("confirmAddNota('cat')",'m-nota-name','m-nota-error'));
 chk('editar una nota sin nombre explica qué falta',rechazoNombre("confirmEditNota('cat','nota')",'m-nota-name','m-nota-error'));
+chk('editar un ramo sin nombre explica qué falta',rechazoNombre('confirmEditRamo()','m-ramo-name','m-ramo-error'));
+chk('editar una evaluación sin nombre explica qué falta',rechazoNombre("confirmEditCat('cat')",'m-cat-name','m-cat-error'));
+chk('agregar un ramo sin nombre explica qué falta',rechazoNombre('confirmAddRamo()','m-ramo-search','m-ramo-error'));
+function rechazoMallaVacia(){
+  const kit=arnes(fuente());
+  vm.runInContext("_mallaList=['Cálculo'];_mallaSel={'Cálculo':false};confirmAddMalla()",kit.ctx);
+  const boton=kit.ids['malla-btn'],aviso=kit.ids['malla-error'];
+  return boton.focused&&aviso.textContent.includes('Selecciona al menos un ramo')&&aviso.hidden===false;
+}
+chk('la malla explica cuando no hay ningún ramo seleccionado',rechazoMallaVacia());
+function rechazoNombreAjustes(){
+  const kit=arnes(fuente());
+  vm.runInContext(`
+    S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',historial:[],modo:'sistema',acento:'turquesa',fondo:'neutro'};
+    currentUser=null;
+    openSettings('perfil');
+    window.saveSettings();
+  `,kit.ctx);
+  const input=kit.ids['s-name'],aviso=kit.ids['s-name-error'];
+  return input.getAttribute('aria-invalid')==='true'&&input.focused&&aviso.textContent.length>0;
+}
+chk('Ajustes explica que falta el nombre antes de guardar',rechazoNombreAjustes());
 
 function rechazoPauta(codigo,fragmento){
   const kit=arnes(fuente());
@@ -184,6 +206,8 @@ chk('las acciones siguen disponibles para poder explicar la condición',
   !/quitarPautaFila\(\$\{i\}\)" \$\{fila\.tieneNotas\?'disabled/.test(appSrc));
 chk('cada error se anuncia y queda asociado al campo que hay que corregir',
   /id="m-cat-error" role="alert"/.test(appSrc)&&
+  /id="m-ramo-error" role="alert"/.test(appSrc)&&
+  /id="m-ramo-search"[^>]*aria-describedby="m-ramo-error"/.test(appSrc)&&
   /id="m-nota-error" role="alert"/.test(appSrc)&&
   /id="m-pauta-error" role="alert"/.test(appSrc)&&
   /aria-describedby="m-pauta-error"/.test(appSrc));
