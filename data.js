@@ -106,7 +106,15 @@ const _COMUN={
 // el código en CREDITOS_FEN—. Las mallas no se tocan: cada carrera sigue
 // nombrando el ramo como lo nombra su programa.
 const SINONIMOS={
-  fen:{'Métodos Cuantitativos':'Métodos Cuantitativos I'},
+  fen:{
+    'Métodos Cuantitativos':'Métodos Cuantitativos I',
+    // Contador Auditor lo escribe en singular y Control de Gestión en plural.
+    // Es el mismo ramo, confirmado por Martín el 2026-09-04. Ninguno de los dos
+    // tiene código todavía, así que el canónico se eligió por elegir: da lo
+    // mismo cuál, porque esto solo decide en qué grupo caen sus reportes y cada
+    // malla sigue mostrando el nombre que usa su programa.
+    'Estrategia y Presupuestos':'Estrategia y Presupuesto',
+  },
 };
 const MALLA={
   // Ing. Comercial. La mención (Ciencias Económicas o Administración) se elige
