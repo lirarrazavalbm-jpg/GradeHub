@@ -717,8 +717,35 @@ function parseNota(raw){
 // initials recibe texto plano; esc() se aplica después sobre el resultado
 function initials(s){return s.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();}
 // ─── ADAPTADOR FENnotas → árbol del motor ────────────────────────────────────
+// Las casillas declaradas viven en la estructura de cálculo, no en S. Así una
+// categoría de seis informes con solo el Informe 0 sigue teniendo cinco hojas
+// pendientes para la meta, pero no se inventan notas ni se sincroniza nada.
+function hojasCategoria(c){
+  const notas=Array.isArray(c&&c.notas)?c.notas:[];
+  const slots=Number.isInteger(c&&c.slots)&&c.slots>1?c.slots:0;
+  if(!slots)return notas.map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}));
+  // Una reescritura de la misma casilla es una corrección, no otra entrega.
+  // `setSlotNota` ya deja solo la última al guardar; este Map protege también
+  // respaldos antiguos o importados que todavía traen las dos versiones.
+  const porSlot=new Map(),sinSlot=[];
+  notas.forEach(n=>{
+    if(Number.isInteger(n.slot)&&n.slot>=0&&n.slot<slots)porSlot.set(n.slot,n);
+    else sinSlot.push(n);
+  });
+  const reales=[...porSlot.values(),...sinSlot];
+  const ids=new Set(reales.map(n=>n.id));
+  const hojas=reales.map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}));
+  for(let slot=0;slot<slots;slot++){
+    if(porSlot.has(slot))continue;
+    let id=`__gh_pendiente_slot__${c.id}__${slot}`;
+    while(ids.has(id))id+='_';
+    ids.add(id);
+    hojas.push({id,name:`${c.nombre} pendiente ${slot+1}`,weight:1,type:'leaf'});
+  }
+  return hojas;
+}
 // Convierte un ramo (categorias→notas) en la estructura del motor. Resultado de
-// ramoAvg idéntico al cálculo histórico: no migra datos ni cambia números.
+// ramoAvg idéntico al cálculo histórico: las hojas sin valor no entran al promedio.
 function ramoToStructure(r){
   return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
     id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
@@ -727,7 +754,7 @@ function ramoToStructure(r){
       // rendidos"). Sin la clave el motor no descarta nada, así que los ramos
       // manuales y los presets que no la declaran calculan igual que siempre.
       drop_lowest:c.dropLowest||null,
-      children:(c.notas||[]).map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}))}))};
+      children:hojasCategoria(c)}))};
 }
 function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
 
@@ -5273,33 +5300,50 @@ function diasHasta(iso){
 function reglaDescarteConCantidadAbierta(ramo){
   return (ramo.categorias||[]).find(c=>c.dropLowest&&!Number.isInteger(c.slots))||null;
 }
+// Separa lo ya aportado de lo que sigue pendiente usando las hojas efectivas
+// del motor. Para categorías abiertas se conserva el modelo previo: sin slots
+// declarados no podemos inventar cuántas evaluaciones faltan, pero una categoría
+// sin nota sigue representando todo su peso pendiente.
+function estadoParaNotaNecesaria(ramo){
+  const categorias=categoriasVigentes(ramo);
+  const total=categorias.reduce((s,c)=>s+(Number(c.peso)||0),0);
+  if(total<=0)return {total:0,conocido:0,pendiente:0};
+  const estructura=ramoToStructure(ramo),notas=gradesOf(ramo);
+  const pesos=gh_effWeights(estructura);
+  const valores=new Map(resumenCategoriasCalculadas(ramo).map(c=>[c.id,c.valor]));
+  let conocido=0,pesoConocido=0;
+  categorias.forEach(c=>{
+    const slots=Number.isInteger(c.slots)&&c.slots>1;
+    if(!slots){
+      const valor=valores.get(c.id),peso=Number(c.peso)||0;
+      if(typeof valor==='number'){conocido+=valor*peso;pesoConocido+=peso;}
+      return;
+    }
+    const grupo=estructura.children.find(h=>h.id===c.id);
+    (grupo?.children||[]).forEach(hoja=>{
+      const valor=notas[hoja.id],peso=(pesos[hoja.id]||0)*total;
+      if(typeof valor==='number'){conocido+=valor*peso;pesoConocido+=peso;}
+    });
+  });
+  return {total,conocido:conocido/total,pendiente:Math.max(0,1-pesoConocido/total)};
+}
 function notaNecesaria(ramo){
-  const categorias=resumenCategoriasCalculadas(ramo);
-  const total=categorias.reduce((s,c)=>s+c.peso,0);
-  if(total<=0)return null;
-  let pesoCon=0,suma=0;
-  categorias.forEach(c=>{if(c.valor!==null&&c.valor!==undefined){pesoCon+=c.peso;suma+=c.valor*c.peso;}});
+  const propio=estadoParaNotaNecesaria(ramo);
+  if(propio.total<=0)return null;
   // Si otro ramo aporta parte de la nota (el laboratorio de Dinámica), sus
-  // evaluaciones NO están en `categorias` y hay que traerlas a la cuenta. Sin
-  // esto, "¿qué nota necesito?" respondería sobre el 70% de la cátedra como si
-  // fuera el ramo completo: un número más bajo que el real, en la pregunta que
-  // es la razón de existir de la app.
+  // evaluaciones NO están en este árbol. Se traen con el mismo desglose de
+  // hojas para no declarar cerrado un laboratorio con una sola entrega.
   const link=ramo.aporta;
   if(link&&link.peso){
     const p=link.peso/100;
-    // Todo se lleva a la escala de la nota final: lo propio vale (1-p).
-    let totalF=total*(1-p),sumaF=suma*(1-p),pesoConF=pesoCon*(1-p);
-    totalF+=total*p;
     const otro=ramoVinculado(ramo);
-    const externo=otro?ramoAvg(otro):null;
-    if(externo!==null){sumaF+=externo*total*p;pesoConF+=total*p;}
-    const faltaF=totalF-pesoConF;
-    if(faltaF<=0)return null;
-    return (4.0*totalF-sumaF)/faltaF;
+    const externo=otro?estadoParaNotaNecesaria(otro):{conocido:0,pendiente:1};
+    const conocido=propio.conocido*(1-p)+externo.conocido*p;
+    const pendiente=propio.pendiente*(1-p)+externo.pendiente*p;
+    return pendiente>0?(4.0-conocido)/pendiente:null;
   }
-  const pesoSin=total-pesoCon;
-  if(pesoSin<=0)return null;
-  return (4.0*total-suma)/pesoSin;
+  if(propio.pendiente<=0)return null;
+  return (4.0-propio.conocido)/propio.pendiente;
 }
 
 // Convierte una nota recién ingresada en una consecuencia académica concreta.
