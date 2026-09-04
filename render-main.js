@@ -144,14 +144,19 @@ function renderHome(){
     }
     const risky=mostRiskyRamo();
     if(risky){
-      const warnColor=r2(risky.avg)<4.0?'#ff7a8f':'#ffcf5c';
+      // El caso sin salida no se pinta como una advertencia más: si ya no se
+      // puede aprobar con lo que queda, la etiqueta y el color tienen que
+      // decirlo, no pedir una nota que no existe en la escala.
+      const warnColor=(risky.imposible||r2(risky.avg)<4.0)?'#ff7a8f':'#ffcf5c';
       cards.push(`
         <div class="insight-card" style="--insight-color:${warnColor}" onclick="openRamo('${esc(risky.ramo.id)}')">
           <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg></div>
           <div class="insight-body">
-            <div class="insight-label">Ramo en riesgo</div>
+            <div class="insight-label">${risky.imposible?'Ya no alcanza':'Ramo en riesgo'}</div>
             <div class="insight-title">${esc(risky.ramo.nombre)}</div>
-            <div class="insight-meta">Necesitas <span class="strong">${nf(risky.needed)}</span> promedio en lo pendiente para aprobar</div>
+            <div class="insight-meta">${risky.imposible
+              ?'Con lo que queda por rendir ya no se llega a 4,0'
+              :`Necesitas <span class="strong">${nf(risky.needed)}</span> promedio en lo pendiente para aprobar`}</div>
           </div>
           <span class="chevron-r">›</span>
         </div>`);
@@ -207,6 +212,7 @@ function renderHome(){
       const pctLabel=completo?'100%':`${prog.pct}% evaluado`;
       metaHtml=`<span class="ramo-meta-text${completo?' is-complete':''}">${pctLabel}</span>`;
     }
+    const sig=siglaDeRamo(r);
     const div=document.createElement('div');div.className='ramo-row';div.dataset.ramoId=r.id;div.onclick=()=>openRamo(r.id);
     div.dataset.progress=String(prog.pct);
     if(nn>0){
@@ -226,7 +232,7 @@ function renderHome(){
       : '<span class="chevron-r">›</span>';
     div.innerHTML=`
       <div class="ramo-band" style="background:${esc(r.color)}"></div>
-      <div class="ramo-info"><div class="ramo-name">${esc(r.nombre)}</div><div class="ramo-meta">${metaHtml}</div></div>
+      <div class="ramo-info"><div class="ramo-name">${esc(r.nombre)}</div><div class="ramo-meta">${sig?`<span class="ramo-sigla">${esc(sig)}</span>`:''}${metaHtml}</div></div>
       <div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div>${control}`;
     c.appendChild(div);
   });
