@@ -28,9 +28,13 @@ console.log('\n=== Laboratorio de Dinámica · casillas que aún faltan ===');
 const conInforme0=laboratorio([{id:'informe-0',nombre:'Informe 0',valor:6.5,peso:1,slot:0}]);
 eq('una nota de seis informes conserva el promedio parcial',ramoAvg(conInforme0),6.5);
 eq('con cinco informes y dos categorías pendientes necesita 3,67',notaNecesaria(conInforme0),3.67);
+eq('para meta 5, la calculadora cuenta los cinco Informes que faltan',notaNecesaria(conInforme0,5),4.80);
 const calculoConUno=calcular(ramoToStructure(conInforme0),gradesOf(conInforme0));
 chk('las dieciséis casillas que faltan llegan al motor',calculoConUno.emptyLeaves.length===16);
 chk('las casillas pendientes se derivan sin agregarse al ramo guardado',conInforme0.categorias.find(c=>c.nombre==='Informes').notas.length===1);
+const appSrc=fs.readFileSync(path.join(raiz,'app.js'),'utf8');
+chk('la calculadora reutiliza la meta por casillas, no una cuenta por categoría',
+  /const needed=notaNecesaria\(r,target\)/.test(appSrc));
 
 console.log('\n=== Una corrección no inventa otra casilla rendida ===');
 const corregido=laboratorio([
