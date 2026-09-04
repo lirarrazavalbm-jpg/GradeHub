@@ -1206,6 +1206,13 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   transition:transform var(--motion-fast) var(--ease-standard);}
 .reglas-cuerpo{display:none;margin-top:8px;}
 .reglas-cuerpo.open{display:block;}
+/* `.weight-setup-nudge button` es más específico que `.reglas-toggle`, así que
+   el resumen plegable recibía el margen del botón de ponderaciones y bajaba 6px.
+   Sumado a su `min-height` táctil, el texto quedaba centrado 18px más abajo que
+   el icono. El icono toma esa misma altura táctil y el SVG se centra solo dentro
+   de ella, así que siguen alineados si la altura del toggle cambia. */
+.weight-setup-nudge .reglas-toggle{margin-top:0;}
+#no-calcula-warning .ic{height:24px;margin-top:0;}
 .weight-setup-nudge button{margin-top:6px;padding:0;border:none;background:none;cursor:pointer;
   font-family:'Onest',sans-serif;font-size:0.78125rem;font-weight:700;color:var(--primary);
   letter-spacing:-.005em;}
