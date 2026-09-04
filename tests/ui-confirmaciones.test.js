@@ -157,6 +157,7 @@ chk('una nota nueva sin nombre explica qué falta',rechazoNombre("confirmAddNota
 chk('editar una nota sin nombre explica qué falta',rechazoNombre("confirmEditNota('cat','nota')",'m-nota-name','m-nota-error'));
 chk('editar un ramo sin nombre explica qué falta',rechazoNombre('confirmEditRamo()','m-ramo-name','m-ramo-error'));
 chk('editar una evaluación sin nombre explica qué falta',rechazoNombre("confirmEditCat('cat')",'m-cat-name','m-cat-error'));
+chk('agregar un ramo sin nombre explica qué falta',rechazoNombre('confirmAddRamo()','m-ramo-search','m-ramo-error'));
 function rechazoNombreAjustes(){
   const kit=arnes(fuente());
   vm.runInContext(`
@@ -199,6 +200,7 @@ chk('las acciones siguen disponibles para poder explicar la condición',
 chk('cada error se anuncia y queda asociado al campo que hay que corregir',
   /id="m-cat-error" role="alert"/.test(appSrc)&&
   /id="m-ramo-error" role="alert"/.test(appSrc)&&
+  /id="m-ramo-search"[^>]*aria-describedby="m-ramo-error"/.test(appSrc)&&
   /id="m-nota-error" role="alert"/.test(appSrc)&&
   /id="m-pauta-error" role="alert"/.test(appSrc)&&
   /aria-describedby="m-pauta-error"/.test(appSrc));

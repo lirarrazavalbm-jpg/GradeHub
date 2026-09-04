@@ -2158,18 +2158,19 @@ function openAddRamoModal(){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Agregar ramo</div>
     <label class="modal-label">${etiquetaRamo}${hayCatalogo&&uni?` <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">· lo buscamos en la malla ${esc(uni)}</span>`:''}</label>
-    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="${ejemploRamo}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
+    <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="${ejemploRamo}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none" aria-describedby="m-ramo-error"/></div>
+    <p id="m-ramo-error" role="alert" hidden style="margin:7px 0 0;font-size:0.75rem;line-height:1.4;color:var(--red);"></p>
     ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()" disabled>Agregar ramo</button>
+      <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()">Agregar ramo</button>
     </div>`;
   openModal();
 
   const input=document.getElementById('m-ramo-search');
   setTimeout(()=>{input.focus();},100);
   const pintar=()=>{
-    document.getElementById('m-add-ramo-btn').disabled=!input.value.trim();
+    limpiarErrorCampo('m-ramo-search','m-ramo-error');
     if(hayCatalogo)renderCatalogResults(input.value);
   };
   input.addEventListener('input',pintar);
@@ -2983,7 +2984,11 @@ function parseCreditos(raw){
   return (!isNaN(n)&&n>0&&n<=60)?n:null;
 }
 function confirmAddRamo(){
-  const name=document.getElementById('m-ramo-search').value.trim();if(!name)return;
+  const name=document.getElementById('m-ramo-search').value.trim();
+  if(!name){
+    mostrarErrorCampo('m-ramo-search','m-ramo-error','Escribe el nombre o la sigla del ramo para agregarlo.');
+    return false;
+  }
   // Si el nombre coincide con un ramo del catálogo del tenant, carga sus ponderaciones oficiales.
   const presetName=findPresetName(name,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
