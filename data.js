@@ -1100,6 +1100,60 @@ const CREDITOS_FEN={
   'Introducción a la Economía':[6,null],
   'Métodos Matemáticos I':[6,null],
   'Programación para Analítica de Datos':[6,null],
+
+  // ─── Por la regla de créditos de la FEN, no ramo por ramo ───────────────
+  // Martín la fijó el 2026-09-04: los ramos troncales valen 6, los talleres y
+  // electivos 2, Inglés I a III 2 e Inglés IV 4. La tabla de arriba ya la
+  // cumplía en sus 46 entradas, así que acá se aplica al resto de las mallas.
+  //
+  // Es la primera vez que este archivo se llena con una regla en vez de con un
+  // dato por ramo. Va anotado para que se sepa: si aparece el catálogo oficial
+  // y alguno no calza, el catálogo manda y esto se corrige sin discusión.
+  'Microeconomía III':[6,null],
+  'Microeconomía IV':[6,null],
+  'Macroeconomía III':[6,null],
+  'Macroeconomía IV':[6,null],
+  'Fundamentos de Costos':[6,null],
+  'Ética y Negocios':[6,null],
+  'Gestión de Riesgos y Control Interno':[6,null],
+  'Contabilidad Financiera':[6,null],
+  'Sistemas Tributación en la Renta':[6,null],
+  'Análisis Contable':[6,null],
+  'Fundamentos de Auditoría':[6,null],
+  'Sistemas de Tributación Tipo Consumo':[6,null],
+  'Análisis Financiero e Inversiones':[6,null],
+  'Sistemas de Aplicaciones':[6,null],
+  'Estrategia y Presupuesto':[6,null],
+  'Estrategia y Presupuestos':[6,null],
+  'Desarrollo de Auditoría':[6,null],
+  'Economía de los Impuestos':[6,null],
+  'Gestión Financiera Corporativa':[6,null],
+  'Investigación Operativa':[6,null],
+  'Auditoría de Tecnología de la Información':[6,null],
+  'Derecho y Empresa':[6,null],
+  'Gestión Legal Tributaria':[6,null],
+  'Machine Learning':[6,null],
+  'Gestión de Procesos de Negocios':[6,null],
+  'Contabilidad Avanzada':[6,null],
+  'Control Financiero':[6,null],
+  'Sistemas de Administración de Bases de Datos':[6,null],
+  'Planificación y Diseño Organizacional':[6,null],
+  'Control de Gestión I':[6,null],
+  'Control de Gestión II':[6,null],
+  'Transformación Digital':[6,null],
+  'Toma de Decisiones Bajo Incertidumbre':[6,null],
+  'Juegos y Estrategias':[6,null],
+
+  // Talleres de semestre, como Taller de Negocios que ya estaba en 2.
+  'Taller de Política Pública':[2,null],
+  'Taller Práctico Profesional/Social I':[2,null],
+  'Taller Práctico Profesional/Social II':[2,null],
+
+  // Quedan fuera a propósito, porque la regla no los alcanza:
+  //   Práctica Profesional, Taller de Práctica Profesional, Taller de
+  //   Integración Profesional y AFE (Trabajo de Cierre) son el ÚNICO ramo de
+  //   su semestre, así que cargan el semestre entero y 2 sería absurdo.
+  //   Inglés V corta la serie después del IV, que ya sube a 4.
 };
 
 // Siglas de TODOS los ramos UC que hoy se pueden cargar desde una malla.
