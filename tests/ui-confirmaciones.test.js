@@ -24,7 +24,7 @@ function arnes(src){
     window:{addEventListener(){},matchMedia:()=>({matches:false,addEventListener(){},addListener(){}})},
     document:{getElementById:get,createElement:elemento,addEventListener(){},documentElement:{...elemento(),style:{setProperty(){},removeProperty(){}}},querySelector:()=>stub,querySelectorAll:()=>[],body:stub},
     localStorage:{getItem(){return null},setItem(k,v){writes.push([k,v])},removeItem(){}},navigator:{},location:{origin:'',pathname:'',hash:''},
-    setTimeout:fn=>fn(),clearTimeout(){},console,
+    setTimeout:fn=>fn(),clearTimeout(){},requestAnimationFrame:fn=>fn(),cancelAnimationFrame(){},console,
   };
   vm.createContext(ctx);vm.runInContext(src,ctx);return {ctx,ids,action,writes};
 }
