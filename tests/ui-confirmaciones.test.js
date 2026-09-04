@@ -157,6 +157,18 @@ chk('una nota nueva sin nombre explica qué falta',rechazoNombre("confirmAddNota
 chk('editar una nota sin nombre explica qué falta',rechazoNombre("confirmEditNota('cat','nota')",'m-nota-name','m-nota-error'));
 chk('editar un ramo sin nombre explica qué falta',rechazoNombre('confirmEditRamo()','m-ramo-name','m-ramo-error'));
 chk('editar una evaluación sin nombre explica qué falta',rechazoNombre("confirmEditCat('cat')",'m-cat-name','m-cat-error'));
+function rechazoNombreAjustes(){
+  const kit=arnes(fuente());
+  vm.runInContext(`
+    S={ramos:[],userName:'',careerSemestre:1,carrera:null,tenant:'fen',historial:[],modo:'sistema',acento:'turquesa',fondo:'neutro'};
+    currentUser=null;
+    openSettings('perfil');
+    window.saveSettings();
+  `,kit.ctx);
+  const input=kit.ids['s-name'],aviso=kit.ids['s-name-error'];
+  return input.getAttribute('aria-invalid')==='true'&&input.focused&&aviso.textContent.length>0;
+}
+chk('Ajustes explica que falta el nombre antes de guardar',rechazoNombreAjustes());
 
 function rechazoPauta(codigo,fragmento){
   const kit=arnes(fuente());

@@ -3485,6 +3485,7 @@ function openSettings(){
   let settingsSem=S.careerSemestre;
   let settingsCarrera=S.carrera;
   let settingsName=S.userName;
+  let settingsNameError='';
   // Se declara acá arriba: los render*Grid() se llaman antes de las definiciones
   // de función y con `let` más abajo caería en la zona muerta temporal (TDZ).
   let settingsTenant=S.tenant||'fen';
@@ -3513,8 +3514,9 @@ function openSettings(){
     if(section==='perfil')return `
       <label class="modal-label">Nombre para mostrar</label>
       <div class="settings-name-field">
-        <div class="modal-input"><input type="text" id="s-name" value="${esc(settingsName)}" maxlength="30" autocomplete="off"/></div>
-        <p class="settings-name-hint">Aparece en el saludo de inicio.</p>
+        <div class="modal-input"><input type="text" id="s-name" value="${esc(settingsName)}" maxlength="30" autocomplete="off" aria-describedby="s-name-hint s-name-error"/></div>
+        <p id="s-name-error" role="alert" ${settingsNameError?'':'hidden'} style="margin:7px 0 0;font-size:0.75rem;line-height:1.4;color:var(--red);">${esc(settingsNameError)}</p>
+        <p class="settings-name-hint" id="s-name-hint">Aparece en el saludo de inicio.</p>
       </div>
       ${guardarBtn()}`;
     if(section==='academico')return `
@@ -3608,7 +3610,7 @@ function openSettings(){
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
       if(inp){
-        inp.addEventListener('input',()=>{settingsName=inp.value;checkSave();});
+        inp.addEventListener('input',()=>{settingsName=inp.value;if(settingsNameError){settingsNameError='';limpiarErrorCampo('s-name','s-name-error');}checkSave();});
         inp.addEventListener('keydown',e=>{if(e.key==='Enter')window.saveSettings();});
         setTimeout(()=>{inp.focus();inp.select();},100);
       }
@@ -3619,7 +3621,9 @@ function openSettings(){
 
   function checkSave(){
     const btn=document.getElementById('s-save-btn');
-    if(btn)btn.disabled=!settingsName.trim();
+    // El nombre se valida al guardar para poder explicar qué falta. Dejar el
+    // botón apagado convertía Enter y el toque en una acción que no respondía.
+    if(btn){btn.disabled=false;btn.removeAttribute('aria-disabled');}
   }
   function renderModoGrid(){
     const g=document.getElementById('s-modo-grid');if(!g)return;g.innerHTML='';
@@ -3699,7 +3703,12 @@ function openSettings(){
     }
   },120);
   window.saveSettings=function(){
-    const name=settingsName.trim();if(!name)return;
+    const name=settingsName.trim();
+    if(!name){
+      settingsNameError='Escribe tu nombre para guardar los cambios.';
+      mostrarErrorCampo('s-name','s-name-error',settingsNameError);
+      return false;
+    }
     const cambioUni=settingsTenant!==S.tenant;
     S.userName=name;S.careerSemestre=settingsSem;S.carrera=settingsCarrera;S.tenant=settingsTenant;
     selectedTenant=settingsTenant;
