@@ -66,9 +66,9 @@ chk('cada evento sabe de qué nota es', evs[0].nota && evs[0].nota.nombre === 'C
 console.log('\n=== Guardar sin nota está permitido en las dos vías ===');
 const app = fs.readFileSync(raiz + 'app.js', 'utf8');
 chk('al crear, solo el nombre es obligatorio',
-  /function confirmAddNota[\s\S]{0,400}if\(!name\)return;/.test(app));
+  /function confirmAddNota[\s\S]{0,520}if\(!name\)\{addNotaError=[\s\S]{0,180}mostrarErrorCampo/.test(app));
 chk('al editar, también',
-  /function confirmEditNota[\s\S]{0,400}if\(!name\)return;/.test(app));
+  /function confirmEditNota[\s\S]{0,520}if\(!name\)\{editNotaError=[\s\S]{0,180}mostrarErrorCampo/.test(app));
 chk('y el valor vacío se guarda como null, no como cero',
   /valor:isNaN\(val\)\?null:val/.test(app));
 
