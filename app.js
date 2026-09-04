@@ -4442,15 +4442,10 @@ function confirmEditNota(catId,notaId){
 // ─── CALCULADORA NOTA MÍNIMA ─────────────────────────────────────────────────
 function openCalculadoraModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
-  const categorias=resumenCategoriasCalculadas(r);
-  const totalPeso=categorias.reduce((a,c)=>a+c.peso,0);
-  let pesoConNotas=0,sumaPonderada=0;
-  categorias.forEach(c=>{if(c.valor!==null&&c.valor!==undefined){pesoConNotas+=c.peso;sumaPonderada+=c.valor*c.peso;}});
-  const pesoSinNotas=totalPeso-pesoConNotas;
 
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2"/><path d="M8 7h8"/><path d="M8 12h3"/><path d="M8 16h3"/><path d="M15 12v5"/></svg> Calculadora</div>
-    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:14px;">¿Qué promedio necesitas en las secciones sin notas para llegar a tu meta?</p>
+    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:14px;">¿Qué promedio necesitas en las evaluaciones que te faltan para llegar a tu meta?</p>
     <label class="modal-label">Promedio meta en el ramo</label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-calc-target" placeholder="Ej: 5.5" oninput="calcResult()"/></div>
     <div id="calc-result" style="min-height:52px;margin-top:4px;"></div>
@@ -4475,7 +4470,10 @@ function openCalculadoraModal(){
       el.innerHTML=`<span style="color:var(--red)"><b>${esc(gateHit.nombre)}</b> está bajo ${gateHit.min.toFixed(1)}: la nota queda topada en ${gateHit.cap.toFixed(1)}. Para llegar a ${target.toFixed(1)} primero debes subir esa evaluación.</span>`;
       return;
     }
-    if(pesoSinNotas===0){
+    const estado=estadoParaNotaNecesaria(r);
+    if(estado.total===0){el.innerHTML='';return;}
+    const needed=notaNecesaria(r,target);
+    if(needed===null){
       const avg=ramoAvg(r);
       if(avg!==null){
         const ok=avg>=target;
@@ -4483,12 +4481,14 @@ function openCalculadoraModal(){
       } else {el.innerHTML=`<span style="color:var(--fg3)">No hay notas ingresadas aún.</span>`;}
       return;
     }
-    if(totalPeso===0||pesoSinNotas<=0){el.innerHTML='';return;}
-    const needed=(target*totalPeso-sumaPonderada)/pesoSinNotas;
     const neededR=r2(needed);
-    // Si falta una sola sección, nombrarla (más útil que "las secciones sin notas").
-    const vacias=categorias.filter(c=>c.valor===null||c.valor===undefined);
-    const dondeTxt=vacias.length===1?`en <b>${esc(vacias[0].nombre)}</b>`:`en las secciones sin notas (${r2(pesoSinNotas)}% del ramo)`;
+    const pendientes=calculoRamoConCompuertas(r).res.emptyLeaves;
+    // Una categoría puede estar a medio rendir: "secciones sin notas" la
+    // omitía por completo. Las hojas pendientes sí incluyen cada Informe,
+    // Control o entrega que falte dentro del conjunto.
+    const dondeTxt=pendientes.length===1
+      ?`en <b>${esc(pendientes[0].name)}</b>`
+      :'como promedio de las evaluaciones que te faltan';
     // Condición pendiente de piso (ej: Podcast sin nota aún)
     const condPend=(r.gates||[]).filter(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);return c&&avgPond(c.notas)===null;}).map(g=>`<div style="font-size:0.75rem;color:var(--yellow);margin-top:8px;">Además, ${esc(g.nombre)} debe ser ≥ ${g.min.toFixed(1)} o repruebas pese al promedio.</div>`).join('');
     if(neededR>7){
@@ -5370,7 +5370,12 @@ function estadoParaNotaNecesaria(ramo){
   });
   return {total,conocido:conocido/total,pendiente:Math.max(0,1-pesoConocido/total)};
 }
-function notaNecesaria(ramo){
+// La calculadora y la ficha preguntan por metas distintas, pero ambas tienen
+// que contar las mismas casillas pendientes. `meta` deja que la calculadora
+// reutilice el desglose por hojas en vez de volver a cerrar una categoría al
+// aparecer su primera nota.
+function notaNecesaria(ramo,meta){
+  const objetivo=Number.isFinite(meta)?meta:4.0;
   const propio=estadoParaNotaNecesaria(ramo);
   if(propio.total<=0)return null;
   // Si otro ramo aporta parte de la nota (el laboratorio de Dinámica), sus
@@ -5383,10 +5388,10 @@ function notaNecesaria(ramo){
     const externo=otro?estadoParaNotaNecesaria(otro):{conocido:0,pendiente:1};
     const conocido=propio.conocido*(1-p)+externo.conocido*p;
     const pendiente=propio.pendiente*(1-p)+externo.pendiente*p;
-    return pendiente>0?(4.0-conocido)/pendiente:null;
+    return pendiente>0?(objetivo-conocido)/pendiente:null;
   }
   if(propio.pendiente<=0)return null;
-  return (4.0-propio.conocido)/propio.pendiente;
+  return (objetivo-propio.conocido)/propio.pendiente;
 }
 
 // Convierte una nota recién ingresada en una consecuencia académica concreta.
