@@ -153,15 +153,61 @@ function enterApp(){
   showMainApp();
 }
 
-function traduceAuthError(e){
+function traduceAuthError(e,contexto){
   const m=((e&&e.message)||'').toLowerCase();
   // No confirmar si un correo ya tiene cuenta: esa diferencia permite enumerar
   // usuarios y preparar phishing o credential stuffing. Registro existente y
   // registro aceptado tienen que verse iguales hacia afuera.
-  if(m.includes('already')||m.includes('exists'))return MSG_VERIFICA;
+  if(m.includes('already')||m.includes('exists'))return contexto==='cambio_correo'
+    ?'Ese correo ya está asociado a otra cuenta.'
+    :MSG_VERIFICA;
   if(m.includes('invalid login')||m.includes('credentials'))return 'Usuario o contraseña incorrectos.';
   if(m.includes('password'))return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres e incluir letras y números.';
   return 'No se pudo conectar. Revisa tu internet e intenta de nuevo.';
+}
+
+function correoValido(correo){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);}
+function estadoCambioCorreo(mensaje,esError){
+  const aviso=document.getElementById('s-account-email-status');
+  const input=document.getElementById('s-account-email');
+  if(aviso){aviso.textContent=mensaje||'';aviso.hidden=!mensaje;aviso.style.color=esError?'var(--red)':'var(--fg2)';}
+  if(input){if(esError)input.setAttribute('aria-invalid','true');else input.removeAttribute('aria-invalid');}
+}
+// Supabase conserva el correo actual hasta que la persona confirma los dos
+// mensajes. Por eso no se actualiza `currentUser.email` ni se redibuja Ajustes
+// como si el cambio ya hubiera ocurrido.
+async function cambiarCorreoCuenta(){
+  const input=document.getElementById('s-account-email');
+  const btn=document.getElementById('s-account-email-save');
+  const correo=(input&&input.value||'').trim().toLowerCase();
+  estadoCambioCorreo('',false);
+  if(!correoValido(correo)){
+    estadoCambioCorreo('Ingresa un correo electrónico válido.',true);
+    if(input)input.focus();
+    return false;
+  }
+  if(currentUser&&correo===String(currentUser.email||'').toLowerCase()){
+    estadoCambioCorreo('Ese ya es el correo de acceso de tu cuenta.',true);
+    if(input)input.focus();
+    return false;
+  }
+  if(!supabaseClient||!supabaseClient.auth||!currentUser){
+    estadoCambioCorreo('Necesitas iniciar sesión para cambiar tu correo.',true);
+    return false;
+  }
+  const original=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Enviando confirmaciones…';}
+  try{
+    const {error}=await supabaseClient.auth.updateUser({email:correo});
+    if(error)throw error;
+    estadoCambioCorreo('Revisa tu correo actual y el nuevo. El cambio se hará recién cuando confirmes los dos mensajes.',false);
+    return true;
+  }catch(e){
+    estadoCambioCorreo(traduceAuthError(e,'cambio_correo'),true);
+    return false;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=original;}
+  }
 }
 
 async function submitAuth(){
