@@ -127,14 +127,14 @@ const MALLA={
     3:['Introducción a la Microeconomía','Gestión de Riesgos y Control Interno','Métodos Matemáticos III','Estadística I','Introducción al Pensamiento Económico y Político','Inglés II'],
     4:['Introducción a la Macroeconomía','Finanzas','Razonamiento Basado en Datos','Contabilidad Financiera','Estadística II','Inglés III'],
     5:['Sistemas Tributación en la Renta','Métodos Cuantitativos','Análisis Contable','Fundamentos de Auditoría','Inglés IV'],
-    6:['Sistemas de Tributación Tipo Consumo','Análisis Financiero e Inversiones','Sistemas de Aplicaciones','Estrategia y Presupuesto','Desarrollo de Auditoría','Inglés V'],
+    6:['Sistemas de Tributación Tipo Consumo','Análisis Financiero e Inversiones','Sistemas de Aplicaciones','Estrategia y Presupuesto','Desarrollo de Auditoría'],
     7:['Economía de los Impuestos','Gestión Financiera Corporativa','Investigación Operativa','Auditoría de Tecnología de la Información','Derecho y Empresa'],
     8:['Gestión Legal Tributaria','Machine Learning','Gestión de Procesos de Negocios','Contabilidad Avanzada','Control Financiero'],
     9:['Taller de Integración Profesional'],10:['Práctica Profesional'],11:['AFE (Trabajo de Cierre)'],
   },
   'IICG':{..._COMUN,
     5:['Métodos Cuantitativos','Contabilidad Financiera','Estrategia y Presupuestos','Sistemas de Administración de Bases de Datos','Inglés IV'],
-    6:['Investigación Operativa','Análisis Contable','Planificación y Diseño Organizacional','Sistemas de Aplicaciones','Inglés V','Derecho y Empresa'],
+    6:['Investigación Operativa','Análisis Contable','Planificación y Diseño Organizacional','Sistemas de Aplicaciones','Derecho y Empresa'],
     7:['Machine Learning','Análisis Financiero e Inversiones','Control de Gestión I','Transformación Digital'],
     8:['Toma de Decisiones Bajo Incertidumbre','Juegos y Estrategias','Gestión Financiera Corporativa','Control de Gestión II','Gestión de Procesos de Negocios'],
     9:['Taller de Integración Profesional'],10:['Práctica Profesional'],11:['AFE (Trabajo de Cierre)'],
@@ -1153,7 +1153,7 @@ const CREDITOS_FEN={
   //   Práctica Profesional, Taller de Práctica Profesional, Taller de
   //   Integración Profesional y AFE (Trabajo de Cierre) son el ÚNICO ramo de
   //   su semestre, así que cargan el semestre entero y 2 sería absurdo.
-  //   Inglés V corta la serie después del IV, que ya sube a 4.
+  //   Inglés V salió de la malla: la serie termina en el IV.
 };
 
 // Siglas de TODOS los ramos UC que hoy se pueden cargar desde una malla.
