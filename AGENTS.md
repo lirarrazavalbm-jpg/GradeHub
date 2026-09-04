@@ -55,42 +55,45 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 
 ## Dónde está cada cosa
 
-**No leas `app.js` entero: son ~40k tokens.** Ubica por `grep -n` y lee el trozo.
+**No leas `app.js` entero: son ~40k tokens.** Ubica con `rg -n` y lee el trozo.
 
 | Vas a tocar | Archivo | Cómo llegar |
 |---|---|---|
-| malla, carrera, preset, tema, portal | `data.js` | léelo completo, son 17 KB |
+| malla, carrera, preset, tema, portal | `data.js` | léelo completo |
 | promedio de un ramo | `app.js` | `grep -n "function ramoAvg"` |
 | promedio general (GPA, créditos) | `app.js` | `grep -n "function gpa\|totalCreditos"` |
 | compuertas | `app.js` | `grep -n "function gatesActivas\|group_min"` |
 | "¿qué nota necesito?" | `engine.js` | `grep -n "function solveForTarget"` |
 | motor de estructura/pesos | `engine.js` | `grep -n "function calculateFinalGrade"` |
-| pantalla principal | `app.js` | `grep -n "function renderHome"` |
-| ficha de un ramo | `app.js` | `grep -n "function renderRamo"` |
-| estadísticas | `app.js` | `grep -n "function renderStats"` |
+| pantalla principal | `render-main.js` | `rg -n "function renderHome"` |
+| ficha de un ramo | `render-main.js` | `rg -n "function renderRamo"` |
+| estadísticas | `render-main.js` | `rg -n "function renderStats"` |
 | agenda | `render-agenda.js` | `grep -n "function renderAgenda"` |
 | aplicar un tema | `app.js` | `grep -n "function applyTheme"` |
 | cargar preset del catálogo | `app.js` | `grep -n "function presetRamo"` |
-| auth y sync a Supabase | `app.js` | `grep -n "supabaseClient\|function syncToCloud"` |
+| auth y sync a Supabase | `app-session.js` | `rg -n "function boot\|function afterLogin\|function syncToCloud"` |
 | estilos | `styles.css` | `grep -n "^\.<clase>"` |
 
 ## Arquitectura
 
-Sin build, sin frameworks. Seis archivos que se despliegan tal cual:
+Sin build, sin frameworks. Ocho archivos de la app se despliegan tal cual:
 
 | Archivo | Qué tiene |
 |---|---|
 | `index.html` | Estructura, logo en base64, metadatos |
 | `data.js` | Mallas, carreras, presets, temas, portales — solo literales |
 | `engine.js` | El motor: `calculateFinalGrade`, `solveForTarget`, compuertas y descartes |
-| `app.js` | Render, auth y el resto de la interfaz |
+| `app.js` | Estado, navegación, editor y adaptadores de cálculo |
+| `app-session.js` | Auth, recuperación, persistencia local y sync con Supabase |
+| `render-main.js` | `renderHome`, `renderRamo` y `renderStats` |
 | `render-agenda.js` | `renderAgenda`, separado de `app.js` por tamaño |
 | `styles.css` | Estilos y la base neutra compartida |
 
 El orden de carga en `index.html` es `data.js` → `engine.js` → `app.js` →
-`render-agenda.js`, y no es decorativo: son `<script>` clásicos, así que sus
-`const` quedan en el ámbito léxico global y cada uno ve a los anteriores sin
-imports. Si inviertes el orden, `ReferenceError` en el primer render.
+`app-session.js` → `render-main.js` → `render-agenda.js`, y no es decorativo:
+son `<script>` clásicos, así que sus `const` quedan en el ámbito léxico global y
+cada uno ve a los anteriores sin imports. Si inviertes el orden, aparece un
+`ReferenceError` en el primer render.
 
 **Contenido va en `data.js`, comportamiento en `app.js`.** Agregar una malla, una
 carrera o un preset no debería tocar `app.js`. Si tienes que escribir un `if` de
@@ -208,9 +211,10 @@ ramo = {
 }
 ```
 
-Una categoría con `slots` solo crea hojas del motor cuando la nota existe. Una
-regla que requiera el ramo completamente evaluado debe contar sus casillas, no
-usar solo `calculateFinalGrade(...).complete`.
+`slots` declara cuántas casillas espera una categoría. El motor deriva hojas
+pendientes para las casillas sin nota —nunca se guardan en `S`—, para que metas
+y avance no den por cerrado un 70% con un solo informe. Sin `slots`, no se
+inventa cuántas evaluaciones faltan.
 
 ### Compuertas
 
@@ -231,11 +235,10 @@ falta, cae a promedio simple. Mezclar daría un número engañoso.
 
 ## Temas
 
-Un registro `THEMES` en `data.js` con una entrada por universidad. Agregar una es
-agregar una entrada — no hay condicionales de tenant repartidos por el código.
-
-Cada tema define acento (`primary`, `accent`, `secondary`) y superficies
-(`bg`, `card`, `border`…). Las superficies solo se aplican en modo oscuro.
+`GRADEHUB_THEME` conserva la identidad turquesa por defecto. `ACENTOS` cambia
+solo la identidad visual; `FONDOS` define superficies y texto para claro y
+oscuro; `SEMAFORO` conserva el significado académico. No los mezcles: elegir un
+fondo o acento no puede cambiar aprobado, al borde o reprobado.
 
 `oculto:true` en `TENANTS` saca una universidad del selector sin borrar nada.
 Hoy UAI y UANDES están ocultas: se lanza con FEN y UC.
@@ -258,7 +261,7 @@ tocar todo, es lo único que evita conflictos.
 |---|---|---|
 | Contenido FEN | `data.js` — mallas, presets y carreras de FEN | `ms` |
 | Contenido UC | `data.js` — mallas, presets, carreras y créditos de UC | `li` |
-| Motor y render | el cálculo y las pantallas en `app.js` | `codex` |
+| Motor y experiencia | `engine.js`, `app.js`, `app-session.js`, `render-main.js`, `render-agenda.js` | `codex` |
 | Infra y seguridad | workflows, `sw.js`, `styles.css`, `_headers` | `li` |
 
 Si tu tarea te obliga a salir de tu carril, no lo hagas: dilo primero.
@@ -598,28 +601,6 @@ Por eso los cuatro puntos de la auditoría de seguridad pasan a ser lo PRIMERO
 que hace Martín, antes que cualquier cosa de esta cola. Mientras sigan abiertos,
 están descritos en un archivo que cualquiera puede leer.
 
-**Nadie puede cambiar su correo, y eso encierra cuentas.** `updateUser` solo se
-usa para la contraseña: no hay ningún camino en la app para corregir la
-dirección. Como el registro no verifica el correo, alguien que se equivocó al
-escribirlo —un `gmial.com`, un dedo de más— entra igual y no se entera. El día
-que olvide su contraseña, el correo de recuperación se va a un buzón que no
-existe y **queda encerrado con sus notas adentro**, sin ninguna vuelta posible.
-
-No es un problema futuro que aparezca al activar la verificación: está abierto
-ahora, con todas las cuentas creadas desde el lanzamiento. Activar la
-verificación lo empeora —esas personas tampoco podrían verificar—, así que el
-cambio de correo tiene que existir **antes**, no después.
-
-Supabase lo soporta con `updateUser({email})`, que manda confirmación a la
-dirección vieja y a la nueva, así que depende del correo propio (#150) igual que
-todo lo demás. Para dimensionarlo, esta consulta muestra si hay dominios con
-pinta de error sin exponer ninguna dirección:
-
-```sql
-select split_part(email,'@',2) as dominio, count(*) from auth.users
-where deleted_at is null group by 1 order by 2 desc;
-```
-
 **Las pautas vencidas YA están resueltas. Lo que queda es declarar el período
 en las que faltan.** Al 2026-08-31: `periodo` existe en el preset,
 `estadoPeriodoPauta()` decide si sigue vigente, `presetRamo()` retiene las
@@ -642,69 +623,9 @@ sus fechas con seguridad no. Tratarlas como una sola cosa lleva a descartar
 pautas todavía buenas o a cargar fechas falsas: son dos decisiones separadas y
 el modelo tiene que poder decirlas por separado.
 
-**El correo de contacto no lleva a ninguna parte, y debería traer el borrador
-listo.** En el formulario de sugerencias, "¿Prefieres escribirnos por correo?"
-termina en el correo de GradeHub. **Ya es un `mailto:`** (`app.js`, busca
-`feedback-contact`), así que el problema no es que falte el enlace: es que al
-tocarlo no pasa nada visible. Antes de escribir código hay que averiguar cuál de
-las causas es —el `mailto:` no abre en la PWA instalada, o abre y el usuario no
-lo percibe, o el enlace no se lee como enlace—, porque cada una se arregla
-distinto. Reproducirlo en el teléfono es el primer paso, no el último.
-
-Y lo que se pide además: que el borrador venga armado, con la categoría
-—sugerencia o problema— y algo que identifique la cuenta en el asunto. Es un
-`mailto:` con `subject` y `body`, sin backend ni permisos nuevos.
-
-Tres cosas a tener en cuenta:
-
-- El remitente ya dice quién escribe, así que repetir el correo en el asunto no
-  agrega nada. Lo que sirve para responder es la categoría y algún dato que
-  permita ubicar la cuenta.
-- Todo lo que se ponga en el asunto o el cuerpo queda a la vista si esa persona
-  reenvía el correo. Nada de identificadores internos que no le digan nada a
-  ella.
-- `mailto:` depende de que el sistema tenga un cliente de correo asociado. En
-  los correos institucionales UC eso es Outlook; quien use webmail en el
-  navegador puede quedarse sin nada. El enlace es un atajo, no puede ser el
-  único camino: el formulario de la app tiene que seguir siendo el principal.
-
-**Faltan colores de fondo elegibles.** Hoy `ACENTOS` cambia el color de
-identidad, pero el fondo no se elige. Ojo con lo que ya está escrito más arriba
-en este archivo: las superficies de los temas (`bg`, `card`, `border`) solo se
-aplican en modo oscuro. Agregar fondos claros elegibles cruza esa regla, así que
-se acuerda antes de escribir código.
-
-**La tipografía es la que usa todo el mundo.** Inter (37 usos) y Sora (33),
-desde Google Fonts. Inter es la fuente por defecto de casi toda interfaz moderna
-y de casi todo lo generado por IA: funciona bien y no dice nada. Se pide
-explorar alternativas con más carácter. Dos restricciones concretas: la CSP ya
-permite `fonts.googleapis.com` y `fonts.gstatic.com` —una fuente de otro
-proveedor obliga a tocar `_headers` y `sw.js`, que cachea las fuentes— y cada
-familia nueva pesa en la descarga. El texto de la app se lee en pantallas
-chicas y con números: lo que no se negocia es la legibilidad de las notas y que
-los dígitos sean tabulares donde se alinean en columna.
-
-**La barra de avance del ramo y el momento de llegar a 100%.** Hoy
-`.ramo-progress-fill` ya se rellena según el porcentaje evaluado —usa
-`transform:scaleX()` desde que se arregló lo de animar `width`— pero mide 3px de
-alto y máximo 96px de ancho, así que el llenado casi no se percibe. Se pide que
-se note, y que al llegar al 100% pase algo.
-
-**Cuidado con qué significa ese 100%.** Es "ya se evaluó todo el ramo", NO "lo
-aprobaste": alguien puede tener el 100% evaluado y haber reprobado. Si la
-celebración es verde o se parece al semáforo, le va a decir a esa persona
-exactamente lo contrario de lo que le pasó. Y lo que se agregue tiene que
-respetar `prefers-reduced-motion`, que en esta app no apaga todo sino que
-conserva opacidad y color y elimina desplazamientos.
-
-**Notificaciones.** Primer paso concreto de la dirección nueva y el único que no
-depende de la App Store. Falta el handler de push en `sw.js`, pedir el permiso
-en el momento correcto —no al entrar, sino cuando ya hay algo que avisar— y el
-disparador diario, que puede salir de `pg_cron` en Supabase. Ojo con lo que
-distingue una notificación útil de una molesta: la app sabe qué viene, cuánto
-pesa y qué nota se necesita, así que puede avisar "mañana tienes la I2 de
-Cálculo, vale 25%" en vez de un recordatorio genérico. Sin fechas cargadas no
-hay nada que notificar, así que va después de que la Agenda sea cómoda.
+**No priorizar PWA instalada ni notificaciones por ahora.** La gente usa
+GradeHub desde el navegador; antes de invertir en push, widgets o permisos hay
+que resolver necesidades visibles en ese camino y volver a medir la adopción.
 
 **Aceptar términos al crear la cuenta, y actualizar la política.** Se pide un
 paso explícito de aceptación en el registro. Dos cosas que hay que resolver
