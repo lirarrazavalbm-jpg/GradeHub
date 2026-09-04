@@ -592,6 +592,32 @@ const PRESETS_UC={
       'Si tu promedio ponderado de las Pruebas supera 4,0, las décimas que ganes en los talleres se suman a tu nota final, con un máximo de 5 décimas',
     ],
   },
+  // Biología de la Célula · BIO141C · secciones 4 y 5 · programa oficial
+  // 2026-2. Los porcentajes de Interrogaciones, Talleres, Trabajos prácticos y
+  // Trabajo grupal forman la nota de presentación; esa nota vale 70% y el
+  // Examen final el 30% restante. Los pesos de abajo son ese producto exacto.
+  //
+  // El programa confirma tres Interrogaciones y dos Trabajos prácticos, pero
+  // no reparte su porcentaje interno. Se mantienen como categorías con
+  // casillas, en vez de inventar tercios. Tampoco se precargan las fechas de
+  // las Interrogaciones: asociar una fecha única a una categoría agrupada sería
+  // presentar como cierta una división que el documento no declara.
+  'Biología de la Célula':{
+    periodo:'2026-2',
+    creditos:10,
+    evals:[
+      ['Interrogaciones',45.5,{slots:3,slotLabel:'Interrogación'}],
+      ['Talleres',14,{lista:true}],
+      ['Trabajos prácticos',7,{slots:2,slotLabel:'Trabajo práctico'}],
+      ['Trabajo grupal',3.5],
+      ['Examen final',30],
+    ],
+    noCalcula:[
+      'Puedes eximirte del Examen si cumples simultáneamente las condiciones de notas y asistencia de Taller que define el programa; la app no registra la asistencia ni separa los controles formativos de Taller',
+      'Con 100% de los controles de Taller puedes eliminar la peor nota, pero el programa no especifica cuántos controles habrá durante el semestre',
+      'El Examen es reprobatorio bajo las condiciones de Interrogaciones y Talleres que define el programa, pero no publica la fórmula con que se transforma esa situación en la nota final',
+    ],
+  },
   // Los pesos y las fechas salen del programa clase a clase (MAT1620-2026-S2),
   // no del documento de normativa: ese es solo reglamento y no publica ninguna
   // ponderación. Las cuatro fechas caen lunes en 2026, como dice el programa.

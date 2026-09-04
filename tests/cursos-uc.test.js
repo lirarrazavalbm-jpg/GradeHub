@@ -6,7 +6,8 @@
 // esta clase. Tres pidieron "biocel", cada uno con su grafía.
 //
 // Este test fija las dos mitades: que estén disponibles para buscar, y que no
-// se cuelen como si fueran ramos de malla con pauta.
+// se cuelen como si fueran ramos de malla. Algunos pueden recibir una pauta
+// oficial después de que aparezca su programa, aunque sigan fuera de malla.
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
 const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
@@ -36,17 +37,16 @@ chk('ningún nombre viene vacío ni cortado', CURSOS_UC.every(([, n]) => typeof 
 chk('no hay siglas repetidas', new Set(CURSOS_UC.map(c => c[0])).size === CURSOS_UC.length);
 chk('no hay nombres repetidos', new Set(CURSOS_UC.map(c => normName(c[1]))).size === CURSOS_UC.length);
 
-console.log('\n=== No invaden la malla ni fingen tener pauta ===');
+console.log('\n=== No invaden la malla y solo prometen pautas verificadas ===');
 const enMalla = new Set();
 Object.values(MALLA_UC).forEach(sems => Object.values(sems).forEach(rs => rs.forEach(r => enMalla.add(normName(typeof r === 'string' ? r : (r.n || r.nombre))))));
 chk('ninguno duplica un ramo que ya está en una malla',
   CURSOS_UC.every(([, n]) => !enMalla.has(normName(n))));
-// Si alguno consigue su programa oficial, su pauta va a PRESETS_UC y este test
-// avisa para moverlo: un curso no puede estar en las dos listas a la vez.
-chk('ninguno tiene pauta declarada en PRESETS_UC',
-  CURSOS_UC.every(([, n]) => !Object.keys(PRESETS_UC).some(k => normName(k) === normName(n))));
-chk('la carga devuelve null para todos, no una pauta inventada',
-  CURSOS_UC.every(([, n]) => presetRamo(n, 'uc', 'ING-PC') === null));
+const cursosConPauta=CURSOS_UC.filter(([,n])=>Object.keys(PRESETS_UC).some(k=>normName(k)===normName(n)));
+chk('cada pauta fuera de malla se puede cargar desde su programa verificado',
+  cursosConPauta.length>0&&cursosConPauta.every(([,n])=>!!presetRamo(n,'uc','ING-PC')));
+chk('Biología de la Célula deja de llegar vacía',
+  !!presetRamo('Biología de la Célula','uc','ING-PC'));
 
 console.log('\n=== El buscador los encuentra ===');
 const cat = catalogo('uc', 'ING-PC');
@@ -55,8 +55,8 @@ chk('todos aparecen en el catálogo de la universidad',
   CURSOS_UC.every(([, n]) => porNombre.has(normName(n))));
 chk('entran como fuera de malla (semestre 0)',
   CURSOS_UC.every(([, n]) => (porNombre.get(normName(n)) || {}).semestre === 0));
-chk('y sin prometer ponderaciones',
-  CURSOS_UC.every(([, n]) => (porNombre.get(normName(n)) || {}).tienePreset === false));
+chk('solo promete ponderaciones cuando su preset existe',
+  CURSOS_UC.every(([,n])=>(porNombre.get(normName(n))||{}).tienePreset===cursosConPauta.some(([,p])=>normName(p)===normName(n))));
 // El caso que originó todo: tres estudiantes escribieron "biocel" a mano.
 chk('"Biología de la Célula" está en el catálogo', porNombre.has(normName('Biología de la Célula')));
 chk('y "Experiencia Creyente y Secularismo" también', porNombre.has(normName('Experiencia Creyente y Secularismo')));
