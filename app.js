@@ -4314,13 +4314,16 @@ function loQueFaltaPorRamo(ramos){
 function toggleHist(id){openHist[id]=!openHist[id];renderStats();}
 
 // ─── EDITAR RAMO ─────────────────────────────────────────────────────────────
+let editRamoError='';
 function openEditRamoModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
+  editRamoError='';
   modalColor=r.color;
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar ramo</div>
     <label class="modal-label">Nombre del ramo</label>
-    <div class="modal-input"><input type="text" id="m-ramo-name" value="${esc(r.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-ramo-name" value="${esc(r.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-ramo-error"/></div>
+    <p id="m-ramo-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     <label class="modal-label">Créditos <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(SCT — opcional)</span></label>
     <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-creditos" value="${r.creditos!=null?r.creditos:''}" placeholder="Ej: 10" maxlength="3" autocomplete="off"/></div>
     <label class="modal-label">Color</label>
@@ -4332,9 +4335,12 @@ function openEditRamoModal(){
   renderModalColors();openModal();
   setTimeout(()=>{const i=document.getElementById('m-ramo-name');i.focus();i.select();},100);
   document.getElementById('m-ramo-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditRamo();});
+  document.getElementById('m-ramo-name').addEventListener('input',()=>{if(editRamoError){editRamoError='';limpiarErrorCampo('m-ramo-name','m-ramo-error');}});
 }
 function confirmEditRamo(){
-  const name=document.getElementById('m-ramo-name').value.trim();if(!name)return;
+  const input=document.getElementById('m-ramo-name');
+  const name=(input&&input.value||'').trim();
+  if(!name){editRamoError='Escribe el nombre del ramo para guardarlo.';mostrarErrorCampo('m-ramo-name','m-ramo-error',editRamoError);return false;}
   const r=S.ramos.find(x=>x.id===currentRamoId);
   r.nombre=name;r.color=modalColor;
   r.creditos=parseCreditos((document.getElementById('m-ramo-creditos')||{}).value);
@@ -4342,13 +4348,16 @@ function confirmEditRamo(){
 }
 
 // ─── EDITAR CATEGORÍA ────────────────────────────────────────────────────────
+let editCatError='';
 function openEditCatModal(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
+  editCatError='';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar evaluación</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-cat-name" value="${esc(cat.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-cat-name" value="${esc(cat.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-cat-error"/></div>
+    <p id="m-cat-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     ${pesoControlHTML(cat.peso,catId)}
     ${cat.slots>1?'':`<label class="modal-label" style="display:flex;align-items:center;gap:10px;text-transform:none;font-weight:500;letter-spacing:0;cursor:pointer;margin:2px 0 14px;line-height:1.35;${(cat.notas||[]).length>1?'opacity:.55;cursor:not-allowed;':''}">
       <input type="checkbox" id="m-cat-varias" ${cat.directNota===false?'checked':''} ${(cat.notas||[]).length>1?'disabled':''} style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
@@ -4366,9 +4375,12 @@ function openEditCatModal(catId){
   openModal();wirePesoControl();
   setTimeout(()=>{const i=document.getElementById('m-cat-name');i.focus();i.select();},100);
   document.getElementById('m-cat-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditCat(catId);});
+  document.getElementById('m-cat-name').addEventListener('input',()=>{if(editCatError){editCatError='';limpiarErrorCampo('m-cat-name','m-cat-error');}});
 }
 function confirmEditCat(catId){
-  const name=document.getElementById('m-cat-name').value.trim();if(!name)return;
+  const input=document.getElementById('m-cat-name');
+  const name=(input&&input.value||'').trim();
+  if(!name){editCatError='Escribe el nombre de la evaluación para guardarla.';mostrarErrorCampo('m-cat-name','m-cat-error',editCatError);return false;}
   const peso=readPesoControl(cat0Peso(catId));
   const fechaInput=document.getElementById('m-cat-fecha');
   const fecha=(fechaInput&&fechaInput.value)?fechaInput.value:null;

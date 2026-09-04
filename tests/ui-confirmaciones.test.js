@@ -155,6 +155,8 @@ function rechazoNombre(codigo,campo,error){
 chk('una evaluación sin nombre explica qué falta',rechazoNombre('confirmAddCat()','m-cat-name','m-cat-error'));
 chk('una nota nueva sin nombre explica qué falta',rechazoNombre("confirmAddNota('cat')",'m-nota-name','m-nota-error'));
 chk('editar una nota sin nombre explica qué falta',rechazoNombre("confirmEditNota('cat','nota')",'m-nota-name','m-nota-error'));
+chk('editar un ramo sin nombre explica qué falta',rechazoNombre('confirmEditRamo()','m-ramo-name','m-ramo-error'));
+chk('editar una evaluación sin nombre explica qué falta',rechazoNombre("confirmEditCat('cat')",'m-cat-name','m-cat-error'));
 
 function rechazoPauta(codigo,fragmento){
   const kit=arnes(fuente());
@@ -184,6 +186,7 @@ chk('las acciones siguen disponibles para poder explicar la condición',
   !/quitarPautaFila\(\$\{i\}\)" \$\{fila\.tieneNotas\?'disabled/.test(appSrc));
 chk('cada error se anuncia y queda asociado al campo que hay que corregir',
   /id="m-cat-error" role="alert"/.test(appSrc)&&
+  /id="m-ramo-error" role="alert"/.test(appSrc)&&
   /id="m-nota-error" role="alert"/.test(appSrc)&&
   /id="m-pauta-error" role="alert"/.test(appSrc)&&
   /aria-describedby="m-pauta-error"/.test(appSrc));
