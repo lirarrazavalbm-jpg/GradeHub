@@ -132,7 +132,14 @@ export async function onRequestGet({ params }) {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
       'Content-Disposition': 'inline; filename="gradehub.ics"',
-      'Cache-Control': 'public, max-age=3600',
+      // `private`, no `public`: el token va en la URL y la respuesta dice qué
+      // ramos cursa esta persona y cuándo son sus pruebas. `public` autoriza a
+      // cualquier caché compartida del camino —el edge, un proxy de la U, uno
+      // corporativo— a guardar eso. No es fuga entre usuarios, porque cada
+      // token es su propia URL; es que el día que un token se filtre, los datos
+      // ya están sembrados fuera de la base. Google consulta desde sus
+      // servidores y cachea igual: `private` no lo afecta.
+      'Cache-Control': 'private, max-age=3600',
       // Es un secreto en la URL: que no quede en índices ni en cachés ajenas.
       'X-Robots-Tag': 'noindex, nofollow',
     },
