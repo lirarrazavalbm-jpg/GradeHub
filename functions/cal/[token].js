@@ -19,13 +19,25 @@ function icsEscape(s) {
   return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 }
 
-// El RFC 5545 pide máximo 75 octetos por línea; se pliega con CRLF + espacio.
+// El RFC 5545 pide máximo 75 OCTETOS por línea, no caracteres. Contar
+// caracteres se pasa del límite en cuanto hay acentos: "Introducción a la
+// Microeconomía" ocupa 31 caracteres y 34 bytes en UTF-8, y ningún ramo de la
+// FEN se llama sin tildes. Se pliega con CRLF + un espacio, y ese espacio
+// cuenta para el largo de la línea que abre.
+//
+// Se recorre por carácter y no por índice para no cortar uno en dos: partir
+// "ó" por la mitad deja un byte suelto a cada lado del corte.
+const OCTETOS = new TextEncoder();
 function icsFold(line) {
-  if (line.length <= 73) return line;
-  const out = [line.slice(0, 73)];
-  let rest = line.slice(73);
-  while (rest.length > 72) { out.push(' ' + rest.slice(0, 72)); rest = rest.slice(72); }
-  if (rest.length) out.push(' ' + rest);
+  if (OCTETOS.encode(line).length <= 75) return line;
+  const out = [];
+  let actual = '', largo = 0;
+  for (const ch of line) {
+    const b = OCTETOS.encode(ch).length;
+    if (largo + b > 75) { out.push(actual); actual = ' '; largo = 1; }
+    actual += ch; largo += b;
+  }
+  if (actual) out.push(actual);
   return out.join('\r\n');
 }
 
