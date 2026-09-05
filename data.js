@@ -668,6 +668,23 @@ const PRESETS_UC={
       'Una evaluación atrasada con justificación formal se rinde el último día de clases',
     ],
   },
+  // Formación General UC · TSL-596 · programa oficial 2026-2. La infografía
+  // y las presentaciones se realizan en más de una sesión; el programa no
+  // asigna una fecha individual a cada estudiante, así que no se fuerza una
+  // fecha falsa en Agenda. El Ensayo personal sí tiene una entrega única.
+  'Ciudadanía y Derechos humanos: Enfoques interdisciplinarios':{
+    periodo:'2026-2',
+    creditos:10,
+    evals:[
+      ['Infografía',30],
+      ['Ensayo personal',30,{fecha:'2026-10-27'}],
+      ['Presentaciones orales',30],
+      ['Actividades asincrónicas',10],
+    ],
+    reglasDelCurso:[
+      'Necesitas rendir todas las evaluaciones y tener al menos 60% de asistencia; la app no registra asistencia',
+    ],
+  },
   // Los pesos y las fechas salen del programa clase a clase (MAT1620-2026-S2),
   // no del documento de normativa: ese es solo reglamento y no publica ninguna
   // ponderación. Las cuatro fechas caen lunes en 2026, como dice el programa.

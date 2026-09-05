@@ -20,5 +20,9 @@ chk('Ficción policial conserva su estructura ponderada',!!noir&&noir.creditos==
 chk('los tres controles quedan como casillas del bloque, no como pesos inventados',!!noir&&noir.evals[0][1]===30&&noir.evals[0][2].slots===3&&noir.evals[0][2].slotLabel==='Control');
 chk('Ficción policial conserva la regla de asistencia sin fingir que se calcula',!!noir&&!noir.periodo&&!conFechas(noir)&&noir.reglasDelCurso.some(r=>r.includes('75%')));
 
+const ciudadania=presets['Ciudadanía y Derechos humanos: Enfoques interdisciplinarios'];
+chk('Ciudadanía y Derechos Humanos conserva sus cuatro evaluaciones y el 100%',!!ciudadania&&ciudadania.periodo==='2026-2'&&ciudadania.creditos===10&&pesos(ciudadania)===100&&ciudadania.evals.map(e=>e[1]).join('|')==='30|30|30|10');
+chk('Ciudadanía solo agenda la entrega inequívoca del ensayo',!!ciudadania&&ciudadania.evals[1][2].fecha==='2026-10-27'&&ciudadania.evals.filter(e=>e[2]&&e[2].fecha).length===1&&ciudadania.reglasDelCurso.some(r=>r.includes('60%')));
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);
