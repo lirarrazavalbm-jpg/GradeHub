@@ -60,6 +60,15 @@ chk('solo promete ponderaciones cuando su preset existe',
 // El caso que originó todo: tres estudiantes escribieron "biocel" a mano.
 chk('"Biología de la Célula" está en el catálogo', porNombre.has(normName('Biología de la Célula')));
 chk('y "Experiencia Creyente y Secularismo" también', porNombre.has(normName('Experiencia Creyente y Secularismo')));
+const programasSinSiglaVerificada=[
+  'Fundamentos Básicos de Cultura Sorda y Lengua de Señas Chilena',
+  'El misterioso caso del curso de ficción policial (Edición especial Santiago Negro)',
+];
+chk('los programas recibidos se encuentran por nombre sin inventarles sigla',
+  programasSinSiglaVerificada.every(nombre=>{
+    const fila=porNombre.get(normName(nombre));
+    return fila&&fila.tienePreset===true&&fila.sigla===null&&!!presetRamo(nombre,'uc','ING-PC');
+  }));
 
 console.log('\n=== Ingeniería UC no termina en cuarto semestre ===');
 // La tabla de SCT ya contiene los ramos de los 34 majors. Dejarla solo para

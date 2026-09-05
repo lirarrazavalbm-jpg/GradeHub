@@ -20,7 +20,11 @@ let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
 // Palabras que pertenecen a UNA universidad y no deben cruzarse.
-const SOLO_FEN = /solemne|casos y ensayos|control(es)? de lectura/i;
+// "Controles de lectura" dejó de pertenecer a una sola universidad: el
+// programa UC LET202G-1 lo usa literalmente. Prohibirlo haría que el test
+// fuerce a cambiar un nombre oficial; Solemne y Casos y ensayos sí siguen
+// siendo vocabulario propio de FEN en los datos que conocemos.
+const SOLO_FEN = /solemne|casos y ensayos/i;
 const SOLO_UC = /interrogaci[oó]n/i;
 
 const textoDe = x => JSON.stringify(x);
