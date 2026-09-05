@@ -63,6 +63,7 @@ chk('y "Experiencia Creyente y Secularismo" también', porNombre.has(normName('E
 const programasSinSiglaVerificada=[
   'Fundamentos Básicos de Cultura Sorda y Lengua de Señas Chilena',
   'El misterioso caso del curso de ficción policial (Edición especial Santiago Negro)',
+  'Ciudadanía y Derechos humanos: Enfoques interdisciplinarios',
 ];
 chk('los programas recibidos se encuentran por nombre sin inventarles sigla',
   programasSinSiglaVerificada.every(nombre=>{
