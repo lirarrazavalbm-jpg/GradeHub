@@ -20,6 +20,7 @@ const SHELL = [
   '/engine.js?v=__ASSET_VERSION__',
   '/app.js?v=__ASSET_VERSION__',
   '/app-session.js?v=__ASSET_VERSION__',
+  '/marketplace.js?v=__ASSET_VERSION__',
   '/render-main.js?v=__ASSET_VERSION__',
   '/render-agenda.js?v=__ASSET_VERSION__',
   '/styles.css?v=__ASSET_VERSION__',
