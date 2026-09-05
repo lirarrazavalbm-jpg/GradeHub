@@ -698,6 +698,29 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 /* Igual que el ramo: completar evaluaciones cierra el período, no lo aprueba. */
 .stats-progress-card.is-complete{background:linear-gradient(125deg,color-mix(in srgb,var(--primary),var(--card) 89%),color-mix(in srgb,var(--accent),var(--card) 82%));border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 86%),var(--shadow);}
 .stats-progress-card.is-complete::before{opacity:0;}
+.stats-situation-card{padding:18px 18px 16px;}
+.stats-situation-top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;}
+.stats-situation-gpa{font-size:2.25rem;line-height:.98;letter-spacing:-.055em;margin-top:5px;}
+.stats-situation-progress{display:flex;flex-direction:column;align-items:flex-end;gap:1px;padding-top:3px;font-variant-numeric:tabular-nums;}
+.stats-situation-progress span{font-size:1.25rem;line-height:1;font-weight:800;color:var(--primary);letter-spacing:-.04em;}
+.stats-situation-progress small{font-size:.6875rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--fg3);}
+.stats-situation-reading{margin-top:17px;font-size:.9375rem;font-weight:650;line-height:1.35;color:var(--fg);letter-spacing:-.015em;}
+.stats-priority-row{margin-bottom:8px;min-height:72px;}
+.stats-priority-value{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:66px;font-size:1.375rem;line-height:1;font-weight:800;letter-spacing:-.045em;font-variant-numeric:tabular-nums;}
+.stats-priority-value small{font-size:.625rem;font-weight:700;letter-spacing:.035em;text-transform:uppercase;color:var(--fg3);}
+.stats-ramo-list{margin:0 20px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);}
+.stats-ramo-row{width:100%;min-height:70px;display:grid;grid-template-columns:4px minmax(0,1fr) auto auto;align-items:center;gap:12px;border:0;border-bottom:1px solid var(--border);padding:11px 15px 11px 0;background:transparent;color:inherit;text-align:left;font-family:'Onest',sans-serif;cursor:pointer;}
+.stats-ramo-row:last-child{border-bottom:none;}
+.stats-ramo-color{align-self:stretch;border-radius:0 5px 5px 0;}
+.stats-ramo-main{min-width:0;display:flex;flex-direction:column;gap:4px;}
+.stats-ramo-main strong{font-size:.90625rem;line-height:1.2;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stats-ramo-main small{font-size:.71875rem;line-height:1.25;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stats-ramo-progress{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:.8125rem;font-weight:750;line-height:1;color:var(--fg2);font-variant-numeric:tabular-nums;}
+.stats-ramo-progress small{font-size:.59375rem;font-weight:700;letter-spacing:.035em;text-transform:uppercase;color:var(--fg3);}
+.stats-ramo-avg{min-width:30px;font-size:1.0625rem;font-weight:800;line-height:1;text-align:right;letter-spacing:-.04em;font-variant-numeric:tabular-nums;}
+.stats-range-card{padding:17px 18px 16px;}
+@media(hover:hover) and (pointer:fine){.stats-ramo-row:hover{background:var(--muted);}}
+@media(max-width:380px){.stats-ramo-row{gap:9px;padding-right:11px;}.stats-ramo-progress{display:none;}.stats-situation-gpa{font-size:2rem;}}
 /* AGENDA */
 .ag-section{margin-bottom:22px;}
 .ag-section-label{font-family:'Onest',sans-serif;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:10px;padding:0 2px;}

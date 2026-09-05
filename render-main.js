@@ -583,15 +583,8 @@ function renderRamo(){
 function renderStats(){
   const body=document.getElementById('stats-body');const g=gpa(S.ramos);
   const heroTitle=document.getElementById('stats-hero-title');
-  let totalNotas=0,ramosAprobados=0,ramosEnRiesgo=0,ramosReprobados=0;
+  let totalNotas=0;
   S.ramos.forEach(r=>{
-    const avg=ramoAvg(r);
-    if(avg!==null){
-      const v=r2(avg);
-      if(v>=5.0)ramosAprobados++;
-      else if(v>=4.0)ramosEnRiesgo++;
-      else ramosReprobados++;
-    }
     r.categorias.forEach(cat=>{cat.notas.forEach(n=>{
       if(n.valor!==null)totalNotas++;
     });});
@@ -604,14 +597,17 @@ function renderStats(){
 
   let html='';
   if(totalNotas===0){
+    const ramosConPauta=S.ramos.filter(r=>Array.isArray(r.categorias)&&r.categorias.length>0).length;
+    const evaluaciones=S.ramos.reduce((n,r)=>n+(Array.isArray(r.categorias)?r.categorias.length:0),0);
     html+=`<div class="ag-empty" style="margin:20px 20px 0;">
       <div class="ag-empty-icon" aria-hidden="true">
         <svg viewBox="0 0 64 64" width="52" height="52" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 56h48"/><rect x="12" y="34" width="8" height="18" rx="1.5"/><rect x="28" y="22" width="8" height="30" rx="1.5"/><rect x="44" y="14" width="8" height="38" rx="1.5"/>
         </svg>
       </div>
-      <div class="ag-empty-title">Aún no hay números que contar.</div>
-      <div class="ag-empty-desc">Cuando agregues tus primeras notas, acá vas a ver tu promedio, ramos aprobados, mejores y peores notas, y todo el histórico.</div>
+      <div class="ag-empty-title">Tu semestre todavía está empezando.</div>
+      <div class="ag-empty-desc">Ya tienes ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'} y ${evaluaciones} ${evaluaciones===1?'evaluación configurada':'evaluaciones configuradas'}. Cuando llegue tu primera nota, acá vas a ver qué ramo pide más atención y cuánto necesitas en cada uno.</div>
+      ${ramosConPauta<S.ramos.length?`<div class="ag-empty-desc" style="margin-top:8px;">${S.ramos.length-ramosConPauta} ${S.ramos.length-ramosConPauta===1?'ramo todavía no tiene':'ramos todavía no tienen'} pauta para poder estimar lo que falta.</div>`:''}
     </div>`;
   } else {
     const avance=avanceEvaluaciones(S.ramos);
@@ -619,100 +615,89 @@ function renderStats(){
     const previo=historialPrevio.previo;
     const diff=previo&&g!==null?g-previo.gpa:null;
     const tendencia=diff===null?'':Math.abs(diff)<0.05?'igual que':diff>0?'sobre':'bajo';
-    // El porcentaje lo dice el número grande y NADIE más. Estaba tres veces en
-    // la misma tarjeta —la píldora del encabezado, el número grande y otra vez
-    // al final del detalle—, así que el ojo lo leía como tres datos distintos
-    // que casualmente coincidían.
-    //
-    // Y el del detalle además estaba mal: `avance.evaluado` es la SUMA de los
-    // pesos ya evaluados de todos los ramos, no un porcentaje. Con diez ramos
-    // el total ronda los 1000, así que "21% del peso evaluado" era en realidad
-    // un 2%. El porcentaje es `avance.pct` y ya está arriba.
     const lectura=diff===null
       ? historialPrevio.estado==='sin_notas'
         ? 'Tu semestre archivado todavía no tiene notas para compararlo.'
         : 'Todavía no tienes un semestre archivado con el que compararte.'
       : Math.abs(diff)<0.05?`Vas igual que en ${previo.label||'el semestre anterior'}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${tendencia} ${previo.label||'el semestre anterior'}.`;
-    const detalle=diff===null
-      ? `${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}`
-      : `Promedio actual ${nf(g)} · antes ${nf(previo.gpa)}`;
+    const detalle=diff===null?`${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}`:`Antes ${nf(previo.gpa)} · ahora ${nf(g)}`;
     const avanceTail=Math.min(14,100-avance.pct);
+    const falta=loQueFaltaPorRamo(S.ramos);
+    const necesidadPorRamo=new Map(falta.map(x=>[x.ramo.id,x]));
+    const mapa=S.ramos.map(r=>({ramo:r,avg:ramoAvg(r),progreso:ramoProgress(r),necesidad:necesidadPorRamo.get(r.id)||null}));
+    const filaNecesidad=x=>{
+      const imposible=x.necesita>7.05;
+      const valor=imposible?'—':fmt(Math.max(1,x.necesita));
+      const color=imposible?'var(--red)':'var(--fg)';
+      const sub=imposible
+        ? 'Ya no alcanza solo con lo pendiente'
+        : x.abierto
+          ? `Vas ${fmt(x.avg)} · puede bajar según cuántas notas te tomen`
+          : `Vas ${fmt(x.avg)} en lo evaluado`;
+      return `<button class="ag-row stats-priority-row" onclick="openRamo('${esc(x.ramo.id)}')">
+        <span class="ag-row-bar" style="background:${esc(x.ramo.color)}"></span>
+        <div class="ag-row-main">
+          <div class="ag-row-name">${esc(x.ramo.nombre)}</div>
+          <div class="ag-row-sub">${sub}</div>
+        </div>
+        <div class="stats-priority-value"><span style="color:${color};">${valor}</span><small>${imposible?'sin salida':'necesitas'}</small></div>
+      </button>`;
+    };
+    const filaMapa=x=>{
+      const {ramo,avg,progreso,necesidad}=x;
+      const cerrado=progreso.pct===100;
+      const imposible=necesidad&&necesidad.necesita>7.05;
+      const estado=avg===null?'Aún sin notas':imposible?'Ya no alcanza solo con lo pendiente':cerrado?'Todo evaluado':necesidad?`Necesitas ${fmt(Math.max(1,necesidad.necesita))} en lo que queda`:`Vas ${fmt(avg)} en lo evaluado`;
+      return `<button class="stats-ramo-row" onclick="openRamo('${esc(ramo.id)}')">
+        <span class="stats-ramo-color" style="background:${esc(ramo.color)}"></span>
+        <span class="stats-ramo-main"><strong>${esc(ramo.nombre)}</strong><small>${estado}</small></span>
+        <span class="stats-ramo-progress">${cerrado?'100%':`${progreso.pct}%`}<small>evaluado</small></span>
+        <span class="stats-ramo-avg" style="color:${avg===null?'var(--fg3)':getColor(avg)}">${avg===null?'—':fmt(avg)}</span>
+      </button>`;
+    };
     html+=`
     <div class="section-hd" style="padding:6px 20px 8px;">
-      <span class="section-hd-title">Lectura del semestre</span>
+      <span class="section-hd-title">Tu semestre hoy</span>
     </div>
-    <div class="stat-card stats-progress-card${avance.pct===100?' is-complete':''}" role="progressbar" aria-label="Evaluaciones completadas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance.pct}" style="--stats-progress:${avance.pct}%;--stats-progress-end:${Math.min(100,avance.pct+avanceTail)}%;margin:0 20px 16px;">
-      <div class="stat-label">Avance de evaluaciones</div>
-      <div class="stat-val" style="color:var(--primary);margin-top:4px;">${avance.pct}%</div>
-      <div class="stat-sub" style="margin-top:6px;">${lectura}</div>
+    <div class="stat-card stats-progress-card${avance.pct===100?' is-complete':''} stats-situation-card" role="progressbar" aria-label="${avance.pct}% de las evaluaciones evaluado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance.pct}" style="--stats-progress:${avance.pct}%;--stats-progress-end:${Math.min(100,avance.pct+avanceTail)}%;margin:0 20px 16px;">
+      <div class="stats-situation-top">
+        <div><div class="stat-label">Promedio actual</div><div class="stat-val stats-situation-gpa" style="color:${getColor(g)}">${g!==null?nf(g):'—'}</div><div class="stat-sub">${gpaMode(S.ramos)==='creditos'?`Ponderado · ${totalCreditos(S.ramos)} créditos`:'Promedio simple'}</div></div>
+        <div class="stats-situation-progress"><span>${avance.pct}%</span><small>evaluado</small></div>
+      </div>
+      <div class="stats-situation-reading">${lectura}</div>
       <div class="stat-sub" style="margin-top:4px;">${detalle}</div>
     </div>
-    <div class="section-hd" style="padding:6px 20px 8px;">
-      <span class="section-hd-title">Resumen</span>
-    </div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-icon-wrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></div><div class="stat-label">Promedio</div><div class="stat-val" style="color:${getColor(g)}">${g!==null?nf(g):'—'}</div><div class="stat-sub">${gpaMode(S.ramos)==='creditos'?`ponderado · ${totalCreditos(S.ramos)} créditos`:`simple · ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`}</div></div>
-      <div class="stat-card"><div class="stat-icon-wrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div><div class="stat-label">Notas</div><div class="stat-val">${totalNotas}</div><div class="stat-sub">ingresadas</div></div>
-      <div class="stat-card"><div class="stat-icon-wrap stat-icon-good"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="M22 4 12 14l-3-3"/></svg></div><div class="stat-label">Aprobados</div><div class="stat-val" style="color:${ramosAprobados>0?'var(--green)':'var(--fg3)'}">${ramosAprobados}</div><div class="stat-sub">promedio ≥ 5.0</div></div>
-      <div class="stat-card"><div class="stat-icon-wrap ${ramosReprobados>0?'stat-icon-bad':'stat-icon-warn'}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div><div class="stat-label">En riesgo</div><div class="stat-val" style="color:${ramosReprobados>0?'var(--red)':ramosEnRiesgo>0?'var(--yellow)':'var(--fg3)'}">${ramosReprobados+ramosEnRiesgo}</div><div class="stat-sub">${ramosReprobados>0?ramosReprobados+' bajo 4.0':'entre 4.0 y 5.0'}</div></div>
-    </div>
     ${(()=>{
-      // Mejor y peor nota del semestre estaban acá. Se ven bien y no deciden
-      // nada: saber que tu mejor nota fue un 6,8 en octubre no cambia qué haces
-      // mañana. Lo que sigue son las dos preguntas que el estudiante sí tiene.
       const proy=proyeccionSemestre(S.ramos);
-      const falta=loQueFaltaPorRamo(S.ramos);
       let out='';
-      if(proy){
-        out+=`
-        <div class="section-hd" style="padding:0 20px 8px;">
-          <span class="section-hd-title">Hasta dónde puedes llegar</span>
-        </div>
-        <div class="stat-card" style="margin:0 20px 16px;">
-          <div class="stat-label">Tu promedio final va a caer acá</div>
-          <div class="stat-val" style="margin-top:4px;">
-            <span style="color:${getColor(proy.piso)}">${nf(proy.piso)}</span>
-            <span style="color:var(--fg3);font-weight:600;"> a </span>
-            <span style="color:${getColor(proy.techo)}">${nf(proy.techo)}</span>
-          </div>
-          <div class="stat-sub" style="margin-top:6px;">El piso es sacar 1,0 en todo lo que te queda; el techo, 7,0 en todo. Incluye las reglas de tus ramos que topan la nota.</div>
-        </div>`;
-      }
       if(falta.length){
-        const fila=x=>{
-          // Sobre 7,0 el ramo ya no se salva sólo con lo pendiente. Decirlo así
-          // es más honesto que mostrar un 7,4 que nadie puede sacar.
-          const imposible=x.necesita>7.05;
-          const valor=imposible?'—':fmt(Math.max(1,x.necesita));
-          // NO se tiñe con el semáforo, y no es un descuido. El semáforo dice
-          // aprobado / al borde / reprobado, y esto no es una nota obtenida sino
-          // una exigencia: pintarlo con la misma escala deja "necesitas 5,1" en
-          // verde y "necesitas 3,7" en naranjo, o sea el color diciendo lo
-          // contrario de lo que significa. El orden ya comunica la urgencia —el
-          // más exigente arriba— y el rojo queda para lo único que sí es una
-          // mala noticia: que ya no alcance.
-          const color=imposible?'var(--red)':'var(--fg)';
-          const sub=imposible
-            ? 'Ya no alcanza sólo con lo pendiente'
-            : x.abierto
-              ? `Vas ${fmt(x.avg)} · puede bajar según cuántos controles te tomen`
-              : `Vas ${fmt(x.avg)} en lo evaluado`;
-          return `<button class="ag-row" onclick="openRamo('${esc(x.ramo.id)}')">
-            <span class="ag-row-bar" style="background:${esc(x.ramo.color)}"></span>
-            <div class="ag-row-main">
-              <div class="ag-row-name">${esc(x.ramo.nombre)}</div>
-              <div class="ag-row-sub">${sub}</div>
-            </div>
-            <span class="ramo-nota" style="--grade-color:${color};color:${color};min-width:auto;">${valor}</span>
-          </button>`;
-        };
         out+=`
         <div class="section-hd" style="padding:0 20px 8px;">
-          <span class="section-hd-title">Qué necesitas para aprobar</span>
+          <span class="section-hd-title">Qué mirar primero</span>
         </div>
         <div style="padding:0 20px;">
-          <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:0 0 10px;">Promedio que tienes que sacar en lo que te queda de cada ramo. El más exigente va primero.</p>
-          ${falta.map(fila).join('')}
+          <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:0 0 10px;">Los ramos que más nota te exigen en lo pendiente. Tócalos para revisar su pauta.</p>
+          ${falta.slice(0,3).map(filaNecesidad).join('')}
+        </div>`;
+      }
+      out+=`
+      <div class="section-hd" style="padding:20px 20px 8px;">
+        <span class="section-hd-title">Mapa de tus ramos</span>
+      </div>
+      <div class="stats-ramo-list">${mapa.map(filaMapa).join('')}</div>`;
+      if(proy){
+        out+=`
+        <div class="section-hd" style="padding:20px 20px 8px;">
+          <span class="section-hd-title">Rango del semestre</span>
+        </div>
+        <div class="stat-card stats-range-card" style="margin:0 20px 16px;">
+          <div class="stat-label">Tu promedio final puede quedar entre</div>
+          <div class="stat-val" style="margin-top:4px;">
+            <span style="color:${getColor(proy.piso)}">${nf(proy.piso)}</span>
+            <span style="color:var(--fg3);font-weight:600;"> y </span>
+            <span style="color:${getColor(proy.techo)}">${nf(proy.techo)}</span>
+          </div>
+          <div class="stat-sub" style="margin-top:6px;">El rango considera sacar entre 1,0 y 7,0 en todo lo pendiente, incluidas las reglas que pueden topar una nota.</div>
         </div>`;
       }
       return out;
