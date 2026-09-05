@@ -1023,7 +1023,11 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .sim-chip.hyp{background:var(--primary-light);color:var(--primary);}
 .sim-chip-x{background:none;border:none;cursor:pointer;color:inherit;font-size:0.8125rem;padding:0 2px;opacity:.7;}
 .sim-add{display:flex;gap:6px;}
-.sim-add input{flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;font-family:'Onest',sans-serif;color:var(--fg);background:var(--bg2);outline:none;}
+.sim-add input{flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;font-family:'Onest',sans-serif;color:var(--fg);background:var(--bg2);outline:none;transition:border-color var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
+/* Era el único `outline:none` del archivo sin nada que lo reemplace: se enfocaba
+   y no se notaba. El resto ya resuelve su foco con borde y halo, o con
+   :focus-within en el contenedor. */
+.sim-add input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 85%);}
 .sim-add button{padding:7px 14px;background:var(--primary);color:var(--primary-fg);border:none;border-radius:8px;font-size:0.8125rem;font-weight:600;cursor:pointer;}
 
 /* ═══ PANTALLAS GRANDES ══════════════════════════════════════════════════
