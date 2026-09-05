@@ -631,6 +631,43 @@ const PRESETS_UC={
       'El Examen es reprobatorio bajo las condiciones de Interrogaciones y Talleres que define el programa, pero no publica la fórmula con que se transforma esa situación en la nota final',
     ],
   },
+  // Formación General UC · programa recibido con el nombre de archivo
+  // "CFG FON 104", pero el propio documento declara la sigla como pendiente.
+  // Por eso la pauta se encuentra por nombre y no se inventa un código para la
+  // búsqueda o el consenso. El cronograma viene fechado en 2025 aunque el
+  // archivo se titula 2024: sus porcentajes sirven como estructura, pero esas
+  // fechas no son una pauta vigente y no se cargan en Agenda.
+  'Fundamentos Básicos de Cultura Sorda y Lengua de Señas Chilena':{
+    creditos:10,
+    evals:[
+      ['Deletreo manual',10],
+      ['Exposición grupal Cultura Sorda',20],
+      ['Diálogo en parejas LSCh',15],
+      ['Conversación con Instructor Sordo',15],
+      ['Proyecto final grupal (A+S)',30],
+      ['Participación: autoevaluación',5],
+      ['Participación: coevaluación',5],
+    ],
+  },
+  // Formación General UC · LET202G-1 · programa de la edición especial
+  // Santiago Negro recibido en septiembre de 2026. El diagnóstico vale 0% y
+  // queda fuera de la pauta. El documento enumera tres controles, pero no les
+  // asigna porcentajes distintos: se modelan como tres casillas de un mismo
+  // bloque de 30%, no como tres 10% inventados. No trae calendario de fechas.
+  'El misterioso caso del curso de ficción policial (Edición especial Santiago Negro)':{
+    creditos:10,
+    evals:[
+      ['Controles de lectura',30,{slots:3,slotLabel:'Control'}],
+      ['Exposiciones orales',15],
+      ['Co evaluación',10],
+      ['Participación en foros',15],
+      ['Dossier Santiago Negro',30],
+    ],
+    reglasDelCurso:[
+      'Necesitas asistir al menos al 75% de las clases; el programa indica que no cumplirlo reprueba el curso',
+      'Una evaluación atrasada con justificación formal se rinde el último día de clases',
+    ],
+  },
   // Los pesos y las fechas salen del programa clase a clase (MAT1620-2026-S2),
   // no del documento de normativa: ese es solo reglamento y no publica ninguna
   // ponderación. Las cuatro fechas caen lunes en 2026, como dice el programa.
