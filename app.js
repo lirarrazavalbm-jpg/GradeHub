@@ -4325,6 +4325,26 @@ function closeModal(){
 }
 function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 // Cerrar con tecla Escape (confirmación tiene prioridad sobre el modal)
+// Un <div role="button"> no responde al teclado por su cuenta: el navegador solo
+// le da comportamiento de botón a <button>. Sin esto, el elemento se enfoca con
+// Tab, se ve enfocado, y apretar Enter no hace nada — peor que no poder llegar,
+// porque promete una interacción que no ocurre.
+//
+// Va delegado y no atributo por atributo: en este archivo el patrón estaba
+// escrito de tres formas distintas —con onkeydown, sin él, y sin tabindex— y
+// cada elemento nuevo repetía el olvido. Espacio además de Enter, porque un
+// botón de verdad responde a los dos.
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const el=e.target&&e.target.closest&&e.target.closest('[role="button"]');
+  if(!el||el.tagName==='BUTTON'||el.tagName==='A'||el.disabled)return;
+  // Un campo dentro de la tarjeta se queda con su tecla: Enter en un input es
+  // enviar, no activar el contenedor.
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))return;
+  e.preventDefault();
+  el.click();
+});
+
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if(document.getElementById('confirm-overlay').classList.contains('open'))closeConfirm();
