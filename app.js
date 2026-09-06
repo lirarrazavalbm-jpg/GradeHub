@@ -3876,7 +3876,19 @@ function openSettings(){
     const g=document.getElementById('s-carrera-grid');if(!g)return;g.innerHTML='';
     const q=normName(settingsCarreraFiltro||'');
     const todas=carrerasDeclarables(settingsTenant);
-    const vistas=q?todas.filter(c=>normName(c.n).includes(q)):todas;
+    // Sin búsqueda se muestra SOLO la carrera elegida. Setenta y un botones
+    // empujaban el resto de Ajustes fuera de la pantalla para cambiar un dato que
+    // casi nadie toca dos veces. La lista completa aparece al escribir, igual que
+    // el buscador de ramos, y el campo de arriba dice qué hacer para verla.
+    const elegidaDe=c=>c.malla?c.malla===settingsCarrera:(!settingsCarrera&&c.n===settingsCarreraNombre);
+    const vistas=q?todas.filter(c=>normName(c.n).includes(q)):todas.filter(elegidaDe);
+    if(!q&&!vistas.length&&settingsCarreraNombre){
+      // Declaró algo que no está en la lista oficial: igual tiene que verlo.
+      const b=document.createElement('button');
+      b.className='carrera-opt sel';b.textContent=settingsCarreraNombre;
+      b.onclick=()=>{const i=document.getElementById('s-carrera-buscar');if(i)i.focus();};
+      g.appendChild(b);
+    }
     vistas.forEach(c=>{
       const elegida=c.malla?c.malla===settingsCarrera:(!settingsCarrera&&c.n===settingsCarreraNombre);
       const b=document.createElement('button');

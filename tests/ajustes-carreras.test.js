@@ -23,6 +23,14 @@ console.log('\n=== Una carrera sin malla igual se puede declarar ===');
 chk('se guarda también el nombre declarado', /S\.carreraNombre=settingsCarreraNombre/.test(app));
 chk('y hay salida para lo que no está en la lista', /Usar «/.test(grid));
 
+console.log('\n=== La lista viene colapsada ===');
+// Setenta y un botones empujaban el resto de Ajustes fuera de la pantalla para
+// cambiar un dato que casi nadie toca dos veces.
+chk('sin búsqueda solo se muestra la carrera elegida',
+  /todas\.filter\(elegidaDe\)/.test(grid));
+chk('y una carrera declarada a mano tampoco desaparece',
+  /settingsCarreraNombre\)\{/.test(grid));
+
 console.log('\n=== Cambiar de universidad no deja restos ===');
 chk('al cambiar de tenant se limpian código, nombre y filtro',
   /settingsCarrera=null;settingsCarreraNombre=null/.test(app) && /settingsCarreraFiltro=''/.test(app));
