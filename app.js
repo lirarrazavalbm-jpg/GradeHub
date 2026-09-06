@@ -530,6 +530,47 @@ function mallaFor(t){
   if(t==='fen')return MALLA;
   return {};   // sin malla verificada: el estudiante arma sus ramos
 }
+
+// La malla de UNA carrera, mirando también las que se cargan aparte. Es distinta
+// de `mallaFor`, que alimenta el buscador: si las 69 mallas nuevas entraran al
+// catálogo de búsqueda, un estudiante de Ingeniería buscando "Ecolog" recibiría
+// "Ecología Veterinaria" antes que el ramo con pauta oficial que sí puede tomar.
+// El buscador se queda con las mallas validadas; estas solo SUGIEREN el semestre
+// de quien estudia esa carrera.
+function mallaDeCarrera(tenant,carrera){
+  if(!carrera)return null;
+  const base=(mallaFor(tenant)||{})[carrera];
+  if(base)return base;
+  if(tenant==='uc'&&typeof MALLAS_UC_EXTRA!=='undefined')return MALLAS_UC_EXTRA[carrera]||null;
+  return null;
+}
+
+// Las 69 mallas UC que no son Ingeniería ni Comercial viven en `mallas-uc.js`,
+// 73 KB que solo le sirven a quien estudia esa carrera. Se traen cuando se
+// necesitan y no en cada carga: meterlas en data.js habría cobrado ese peso a
+// todo el mundo, incluida la gente de FEN.
+//
+// Si la descarga falla, la app se comporta como antes de que existieran: sin
+// sugerencia de ramos y con el buscador, que es exactamente el estado actual de
+// esas carreras. Un fallo acá no puede dejar a nadie peor que hoy.
+let _mallasExtra=null;
+function cargarMallasUC(){
+  if(_mallasExtra)return _mallasExtra;
+  _mallasExtra=new Promise(resolve=>{
+    if(typeof MALLAS_UC_EXTRA!=='undefined')return resolve(true);
+    const s=document.createElement('script');
+    // Hereda el ?v=<sha> del propio app.js: el deploy sella los assets del HTML y
+    // este se pide desde JS, así que sin copiar ese query quedaría sin versionar
+    // y el service worker podría servir una copia vieja tras un deploy.
+    const propio=document.querySelector('script[src*="app.js"]');
+    const qs=propio&&propio.src.includes('?')?propio.src.slice(propio.src.indexOf('?')):'';
+    s.src='mallas-uc.js'+qs;
+    s.onload=()=>resolve(true);
+    s.onerror=()=>{_mallasExtra=null;resolve(false);};
+    document.head.appendChild(s);
+  });
+  return _mallasExtra;
+}
 function selectTenant(t){
   selectedTenant=t;selectedCarrera=null;applyTheme();renderTenantPick();initCarreraGrid();checkOb();
   // En onboarding avanzamos solo: el usuario ve la selección y pasa al siguiente paso
@@ -1126,7 +1167,7 @@ document.getElementById('ob-name').addEventListener('input',checkOb);
 // después no le cargaba ninguno. Prometemos solo donde se cumple siempre.
 function mallaCubreTodoElPaso(codigo){
   if(!codigo)return false;
-  const porCarrera=(mallaFor(selectedTenant)||{})[codigo];
+  const porCarrera=mallaDeCarrera(selectedTenant,codigo);
   if(!porCarrera)return false;
   for(let i=1;i<=OB_SEMESTRES;i++)if(!porCarrera[i]&&!porCarrera[String(i)])return false;
   return true;
@@ -1202,9 +1243,14 @@ function obStepValid(step,datos){
 }
 function obProgressPct(step){return Math.round(step/OB_TOTAL*100);}
 
-function obRamosActuales(){return ((mallaFor(selectedTenant)[selectedCarrera]||{})[selectedSem]||[]);}
+function obRamosActuales(){return ((mallaDeCarrera(selectedTenant,selectedCarrera)||{})[selectedSem]||[]);}
 function prepararObRamos(){
   const key=[selectedTenant,selectedCarrera,selectedSem].join(':');
+  // Traer la malla antes de decidir qué sugerir. Si no llega, el paso 5 muestra
+  // el buscador sin sugerencias, que es como funcionan hoy estas carreras.
+  if(selectedTenant==='uc'&&selectedCarrera&&!MALLA_UC[selectedCarrera]&&typeof MALLAS_UC_EXTRA==='undefined'){
+    cargarMallasUC().then(ok=>{if(ok){obRamosKey=null;prepararObRamos();}});
+  }
   if(key===obRamosKey)return;
   obRamosKey=key;obManualOpen=false;
   obRamos=obRamosActuales().map(nombre=>({nombre,manual:false}));

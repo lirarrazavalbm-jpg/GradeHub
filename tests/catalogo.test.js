@@ -10,7 +10,11 @@ const ctx = {
   navigator: {}, location: { origin: '', pathname: '', hash: '' }, setTimeout, clearTimeout, console
 };
 vm.createContext(ctx);
-vm.runInContext(['data.js', 'engine.js', 'app.js', 'render-agenda.js'].map(f => fs.readFileSync(__dirname + '/../' + f, 'utf8')).join('\n'), ctx);
+// `mallas-uc.js` entra acá aunque en el navegador se cargue bajo demanda: la
+// promesa que este test cuida —que ninguna carrera diga tener malla sin
+// tenerla— vale igual esté el dato donde esté, y de paso comprueba que ese
+// archivo es JS válido.
+vm.runInContext(['data.js', 'mallas-uc.js', 'engine.js', 'app.js', 'render-agenda.js'].map(f => fs.readFileSync(__dirname + '/../' + f, 'utf8')).join('\n'), ctx);
 const run = e => vm.runInContext(e, ctx);
 const buscar = (q, car) => run('searchCatalog(' + JSON.stringify(q) + ',"fen",' + JSON.stringify(car) + ',2)');
 
@@ -210,10 +214,13 @@ chk('Contador Auditor se declara pero no carga malla',
   !DECL.fen.find(c => c.n === 'Contador Auditor').malla);
 // Toda carrera que diga tener malla tiene que tenerla de verdad, o el
 // estudiante la elige esperando que se cargue sola y no pasa nada.
+// Se pregunta por `mallaDeCarrera` y no por `mallaFor`: la malla puede vivir en
+// data.js o en mallas-uc.js, que se carga aparte. Lo que la promesa exige es que
+// exista en alguna parte, no en cuál de los dos archivos está.
 ['uc', 'fen'].forEach(t => {
-  const mallas = run('mallaFor')(t);
+  const deCarrera = run('mallaDeCarrera');
   chk(`en ${t}, toda carrera marcada con malla existe en la malla`,
-    DECL[t].filter(c => c.malla).every(c => !!mallas[c.malla]));
+    DECL[t].filter(c => c.malla).every(c => !!deCarrera(t, c.malla)));
 });
 // Las que tienen malla van primero: son el caso común y tienen que estar a un
 // toque, aunque la lista tenga 71 entradas.
