@@ -3605,6 +3605,96 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&document.getElementById('user-menu').classList.contains('open'))closeUserMenu();
 });
 
+// ─── AGENTES CONECTADOS ────────────────────────────────────────────────────
+// El código vive solamente mientras esta pestaña está abierta. No es un token,
+// no se guarda en S ni en localStorage, y vence en el servidor a los 5 minutos.
+// Guardarlo haría que alguien pudiera volver a abrir la app y encontrar una
+// llave de acceso todavía a la vista.
+const AGENTE_CODIGO_MS=5*60*1000;
+let agenteCodigoActual='',agenteCodigoVence=0,agentesConectados=[],agentesCargando=false,agentesError='';
+let _agenteCodigoTimer=null;
+
+function fechaAgente(valor,vacio){
+  const fecha=valor?new Date(valor):null;
+  if(!fecha||isNaN(fecha.getTime()))return vacio;
+  return new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(fecha);
+}
+function detenerCodigoAgente(){if(_agenteCodigoTimer){clearInterval(_agenteCodigoTimer);_agenteCodigoTimer=null;}}
+function pintarCodigoAgente(){
+  const raiz=document.getElementById('s-agent-code');
+  if(!raiz){detenerCodigoAgente();return;}
+  const quedan=Math.max(0,agenteCodigoVence-Date.now());
+  const vencido=!!agenteCodigoActual&&quedan<=0;
+  if(!agenteCodigoActual||quedan<=0){
+    agenteCodigoActual='';agenteCodigoVence=0;detenerCodigoAgente();
+    raiz.innerHTML=`<div class="agent-code-expired" role="status">${vencido?'Este código venció. Genera otro para conectar un agente.':'Genera un código temporal para conectar un agente.'}</div>`;
+    const btn=document.getElementById('s-agent-code-create');if(btn){btn.disabled=false;btn.textContent=vencido?'Generar otro código':'Generar código';}
+    return;
+  }
+  const total=Math.ceil(quedan/1000),min=Math.floor(total/60),seg=String(total%60).padStart(2,'0');
+  raiz.innerHTML=`<div class="agent-code-live" role="status"><span class="agent-code-value">${esc(agenteCodigoActual)}</span><span>Vence en ${min}:${seg}</span></div>`;
+  const btn=document.getElementById('s-agent-code-create');if(btn){btn.disabled=false;btn.textContent='Generar otro código';}
+  if(!_agenteCodigoTimer)_agenteCodigoTimer=setInterval(pintarCodigoAgente,1000);
+}
+function pintarAgentesConectados(){
+  const raiz=document.getElementById('s-agent-list');if(!raiz)return;
+  if(agentesCargando){raiz.innerHTML='<div class="agent-list-empty" aria-live="polite">Buscando tus agentes conectados…</div>';return;}
+  if(agentesError){raiz.innerHTML=`<div class="agent-list-empty" role="alert">${esc(agentesError)} <button type="button" class="agent-retry" onclick="cargarAgentesConectados()">Reintentar</button></div>`;return;}
+  if(!agentesConectados.length){raiz.innerHTML='<div class="agent-list-empty">Todavía no tienes agentes conectados.</div>';return;}
+  raiz.innerHTML=agentesConectados.map(a=>{
+    const nombre=a.agente||'Agente';
+    return `<article class="agent-link-card">
+      <div class="agent-link-heading"><div><b>${esc(nombre)}</b><span>Conectado desde ${esc(fechaAgente(a.created_at,'fecha no disponible'))}</span></div><button type="button" class="agent-revoke" onclick="confirmarRevocarAgente('${esc(a.id)}')">Desconectar</button></div>
+      <dl class="agent-link-meta"><div><dt>Último uso</dt><dd>${esc(fechaAgente(a.last_used_at,'Aún no se ha usado'))}</dd></div><div><dt>Vence</dt><dd>${esc(fechaAgente(a.expires_at,'fecha no disponible'))}</dd></div></dl>
+    </article>`;
+  }).join('');
+}
+async function cargarAgentesConectados(){
+  if(!currentUser||!supabaseClient)return;
+  agentesCargando=true;agentesError='';pintarAgentesConectados();
+  try{
+    const {data,error}=await supabaseClient.rpc('listar_agentes');
+    if(error)throw error;
+    // Copiar solo las cinco columnas declaradas por la RPC: aunque el servidor
+    // cambie su respuesta, la interfaz jamás debe terminar mostrando un token.
+    agentesConectados=(Array.isArray(data)?data:[]).map(a=>{
+      const id=String(a.id||'');
+      return {id:/^[A-Za-z0-9_-]{1,64}$/.test(id)?id:'',agente:typeof a.agente==='string'?a.agente:'Agente',created_at:a.created_at||null,last_used_at:a.last_used_at||null,expires_at:a.expires_at||null};
+    }).filter(a=>a.id);
+  }catch(e){
+    agentesError='No pudimos cargar tus agentes conectados. Intenta de nuevo en un momento.';
+  }finally{agentesCargando=false;pintarAgentesConectados();}
+}
+async function crearCodigoAgente(){
+  if(!currentUser||!supabaseClient){showToast('Inicia sesión para conectar un agente',true);return;}
+  const btn=document.getElementById('s-agent-code-create');
+  if(btn){btn.disabled=true;btn.textContent='Generando…';}
+  try{
+    const {data,error}=await supabaseClient.rpc('crear_codigo_agente');
+    if(error)throw error;
+    if(typeof data!=='string'||!/^[-A-Z2-9]{6}$/i.test(data))throw new Error('código inválido');
+    agenteCodigoActual=data.toUpperCase();agenteCodigoVence=Date.now()+AGENTE_CODIGO_MS;
+    pintarCodigoAgente();
+  }catch(e){
+    showToast('No pudimos generar el código. Intenta de nuevo.',true);
+    if(btn){btn.disabled=false;btn.textContent='Generar código';}
+  }
+}
+function confirmarRevocarAgente(id){
+  const agente=agentesConectados.find(a=>a.id===id);
+  if(!agente)return;
+  showConfirm(`¿Desconectar ${agente.agente||'este agente'}?`,'Dejará de ver tus notas, ramos y fechas al tiro. Puedes conectarlo de nuevo cuando quieras.',()=>revocarAgente(id),{label:'Desconectar',danger:true,focusCancel:true});
+}
+async function revocarAgente(id){
+  if(!currentUser||!supabaseClient)return;
+  try{
+    const {error}=await supabaseClient.rpc('revocar_agente',{p_id:id});
+    if(error)throw error;
+    agentesConectados=agentesConectados.filter(a=>a.id!==id);
+    pintarAgentesConectados();showToast('Agente desconectado');
+  }catch(e){showToast('No pudimos desconectar ese agente. Intenta de nuevo.',true);}
+}
+
 function openSettings(){
   const initialSection=arguments[0];
   let settingsSem=S.careerSemestre;
@@ -3614,13 +3704,14 @@ function openSettings(){
   // Se declara acá arriba: los render*Grid() se llaman antes de las definiciones
   // de función y con `let` más abajo caería en la zona muerta temporal (TDZ).
   let settingsTenant=S.tenant||'fen';
-  const directSection=['perfil','academico','calendario','apariencia','sugerencias','datos'].includes(initialSection)?initialSection:'';
+  const directSection=['perfil','academico','calendario','apariencia','agentes','sugerencias','datos'].includes(initialSection)?initialSection:'';
   let activeSection=directSection||(window.matchMedia('(min-width:768px)').matches?'perfil':'');
   const icons={
     perfil:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.4 3.5-5.3 7.5-5.3s6.7 1.9 7.5 5.3"/></svg>',
     academico:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg>',
     calendario:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',
     apariencia:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+    agentes:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h.01M8 13h.01M11 9h5M11 13h5M8 17h8"/></svg>',
     sugerencias:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 9h8M8 13h5"/></svg>',
     datos:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v7c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 12v7c0 1.7 3.1 3 7 3s7-1.3 7-3v-7"/></svg>',
     arrow:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>'
@@ -3630,6 +3721,7 @@ function openSettings(){
     ['Estudio','academico','Información académica','Universidad, carrera y semestre'],
     ['Estudio','calendario','Calendario','Apple, Google y Outlook'],
     ['Preferencias','apariencia','Apariencia','Cómo se ve la app'],
+    ['Tu cuenta','agentes','Agentes conectados','Controla quién puede ver tus notas'],
     ['Ayuda','sugerencias','Sugerencias y comentarios','Cuéntanos qué mejorar'],
     ['Datos','datos','Datos y cuenta','Respaldos y acciones de cuenta']
   ];
@@ -3678,6 +3770,16 @@ function openSettings(){
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>
       <label class="modal-label accent-picker-label">Fondo</label>
       <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
+    if(section==='agentes')return currentUser?`
+      <div class="agent-explainer"><b>Un agente puede ver tus ramos, notas y fechas; agregar ramos y proponer pautas.</b><span>No puede escribir tus notas.</span></div>
+      <label class="modal-label">Conectar mi agente</label>
+      <p class="settings-help" style="margin-top:0;">Genera un código de 6 caracteres y úsalo en tu agente. Dura 5 minutos y solo sirve una vez.</p>
+      <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-code-create" onclick="crearCodigoAgente()">Generar código</button>
+      <div id="s-agent-code" class="agent-code-box" aria-live="polite"></div>
+      <div class="agent-list-heading"><label class="modal-label">Agentes conectados</label><span>Los puedes desconectar cuando quieras.</span></div>
+      <button type="button" class="agent-refresh" onclick="cargarAgentesConectados()">Actualizar lista</button>
+      <div id="s-agent-list" class="agent-list" aria-live="polite"></div>`
+      :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>La conexión queda atada a tu cuenta para que puedas ver y desconectar tus agentes.</p></div>`;
     if(section==='sugerencias'){
       const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a id="feedback-contact" href="${esc(correoSugerenciaHref())}" onclick="actualizarCorreoSugerencia()">gradehub.app@gmail.com</a></p>`;
       return currentUser?`
@@ -3732,6 +3834,7 @@ function openSettings(){
     if(activeSection==='academico'){renderSettingsSemGrid();renderSettingsTenantGrid();renderSettingsCarreraGrid();}
     if(activeSection==='apariencia'){renderModoGrid();renderAcentoGrid();renderFondoGrid();}
     if(activeSection==='calendario'&&currentUser)pintarFeedCalendario();
+    if(activeSection==='agentes'&&currentUser){pintarCodigoAgente();cargarAgentesConectados();}
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
       if(inp){
