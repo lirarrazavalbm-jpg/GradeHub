@@ -1224,6 +1224,7 @@ function initCarreraGrid(){
   }
 }
 function filtrarCarreras(v){carreraFiltro=v;initCarreraGrid();}
+function filtrarCarrerasAjustes(v){window._sFiltro&&window._sFiltro(v);}
 // ─── ONBOARDING POR PASOS ────────────────────────────────────────────────────
 
 // La validación es independiente por paso: la lista sugerida nunca obliga a
@@ -3654,7 +3655,7 @@ document.addEventListener('keydown',e=>{
 function openSettings(){
   const initialSection=arguments[0];
   let settingsSem=S.careerSemestre;
-  let settingsCarrera=S.carrera;
+  let settingsCarrera=S.carrera,settingsCarreraNombre=S.carreraNombre||null,settingsCarreraFiltro='';
   let settingsName=S.userName;
   let settingsNameError='';
   // Se declara acá arriba: los render*Grid() se llaman antes de las definiciones
@@ -3695,6 +3696,7 @@ function openSettings(){
       <div id="s-tenant-grid" class="s-tenant-grid"></div>
       <p class="settings-help">Cambia tu catálogo disponible. Tus ramos y notas no se tocan.</p>
       <label class="modal-label">Carrera</label>
+      <div class="modal-input" style="margin-bottom:10px;"><input type="text" id="s-carrera-buscar" placeholder="Busca tu carrera" autocomplete="off" oninput="filtrarCarrerasAjustes(this.value)"/></div>
       <div id="s-carrera-grid" class="settings-carrera-grid"></div>
       <label class="modal-label">Semestre de carrera</label>
       <div class="sem-grid" id="s-sem-grid"></div>
@@ -3853,18 +3855,45 @@ function openSettings(){
       b.onclick=()=>{
         settingsTenant=code;
         // La carrera elegida puede no existir en la universidad nueva
-        if(!carrerasFor(code)[settingsCarrera])settingsCarrera=null;
+        if(!carrerasFor(code)[settingsCarrera]){settingsCarrera=null;settingsCarreraNombre=null;}
+        settingsCarreraFiltro='';
         renderSettingsTenantGrid();renderSettingsCarreraGrid();
       };
       g.appendChild(b);
     });
   }
+  // Ajustes mostraba `carrerasFor()`, que en la UC son TRES opciones: plan común,
+  // Comercial y "Otra". El onboarding, en cambio, ofrece las 71 declarables. Así
+  // que quien entraba por el onboarding declarando Odontología y después abría
+  // Ajustes no encontraba su carrera por ninguna parte.
+  //
+  // Con 71 opciones la lista no se recorre con el dedo, así que va con buscador,
+  // el mismo que ya existe en el paso 3. Y como muchas no tienen malla, se guarda
+  // también el NOMBRE: el código es lo que carga los ramos, el nombre es lo único
+  // que hay cuando no tenemos su malla.
+  window._sFiltro=v=>{settingsCarreraFiltro=v;renderSettingsCarreraGrid();};
   function renderSettingsCarreraGrid(){
     const g=document.getElementById('s-carrera-grid');if(!g)return;g.innerHTML='';
-    Object.entries(carrerasFor(settingsTenant)).forEach(([code,label])=>{
-      const b=document.createElement('button');b.className='carrera-opt'+(code===settingsCarrera?' sel':'');
-      b.textContent=label;b.onclick=()=>{settingsCarrera=code;renderSettingsCarreraGrid();};g.appendChild(b);
+    const q=normName(settingsCarreraFiltro||'');
+    const todas=carrerasDeclarables(settingsTenant);
+    const vistas=q?todas.filter(c=>normName(c.n).includes(q)):todas;
+    vistas.forEach(c=>{
+      const elegida=c.malla?c.malla===settingsCarrera:(!settingsCarrera&&c.n===settingsCarreraNombre);
+      const b=document.createElement('button');
+      b.className='carrera-opt'+(elegida?' sel':'');
+      b.innerHTML=esc(c.n)+(mallaCubreTodoElPaso(c.malla)?' <span class="carrera-tiene-malla">tu malla se carga sola</span>':'');
+      b.onclick=()=>{settingsCarrera=c.malla||null;settingsCarreraNombre=c.n;renderSettingsCarreraGrid();};
+      g.appendChild(b);
     });
+    // Misma salida que en el onboarding: la lista oficial envejece y nadie puede
+    // quedarse sin poder declarar lo que estudia.
+    if(q){
+      const b=document.createElement('button');
+      b.className='carrera-opt'+(!settingsCarrera&&settingsCarreraFiltro.trim()===settingsCarreraNombre?' sel':'');
+      b.innerHTML='Usar «'+esc(settingsCarreraFiltro.trim())+'»';
+      b.onclick=()=>{settingsCarrera=null;settingsCarreraNombre=settingsCarreraFiltro.trim();renderSettingsCarreraGrid();};
+      g.appendChild(b);
+    }
   }
   setTimeout(()=>{
     const inp=document.getElementById('s-name');
@@ -3881,7 +3910,7 @@ function openSettings(){
       return false;
     }
     const cambioUni=settingsTenant!==S.tenant;
-    S.userName=name;S.careerSemestre=settingsSem;S.carrera=settingsCarrera;S.tenant=settingsTenant;
+    S.userName=name;S.careerSemestre=settingsSem;S.carrera=settingsCarrera;S.carreraNombre=settingsCarreraNombre;S.tenant=settingsTenant;
     selectedTenant=settingsTenant;
     applyTheme();
     save();syncProfile();track('settings_saved',{cambio_universidad:cambioUni});
