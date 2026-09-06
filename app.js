@@ -3539,6 +3539,7 @@ document.addEventListener('keydown',e=>{
 // llave de acceso todavía a la vista.
 const AGENTE_CODIGO_MS=5*60*1000;
 let agenteCodigoActual='',agenteCodigoVence=0,agentesConectados=[],agentesCargando=false,agentesError='';
+let propuestasPautaAgente=[],propuestasPautaCargando=false;
 let _agenteCodigoTimer=null;
 
 function fechaAgente(valor,vacio){
@@ -3620,6 +3621,150 @@ async function revocarAgente(id){
     agentesConectados=agentesConectados.filter(a=>a.id!==id);
     pintarAgentesConectados();showToast('Agente desconectado');
   }catch(e){showToast('No pudimos desconectar ese agente. Intenta de nuevo.',true);}
+}
+
+// Las propuestas no viven en S: son mensajes pendientes del agente, no una
+// parte de la pauta que alguien ya eligió. Guardarlas junto al semestre haría
+// que una copia vieja las reviviera después de descartarlas en otro dispositivo.
+function propuestaPautaLimpia(valor){
+  if(!valor||typeof valor!=='object')return null;
+  const id=String(valor.id||'');
+  const ramo=String(valor.ramo||'').trim();
+  const ramoKey=String(valor.ramo_key||'').trim();
+  const fuente=String(valor.fuente||'').trim();
+  if(!/^[0-9a-f-]{36}$/i.test(id)||!ramo||!ramoKey||!fuente||!Array.isArray(valor.evaluaciones))return null;
+  const nombres=new Set();
+  const evaluaciones=[];
+  for(const fila of valor.evaluaciones){
+    const nombre=String(fila&&fila.nombre||'').trim();
+    const peso=Number(fila&&fila.peso);
+    const casillas=fila&&fila.casillas==null?null:Number(fila.casillas);
+    const clave=normName(nombre);
+    if(!nombre||!clave||nombres.has(clave)||!Number.isFinite(peso)||peso<=0||peso>100
+      ||(casillas!==null&&(!Number.isInteger(casillas)||casillas<2||casillas>100)))return null;
+    nombres.add(clave);evaluaciones.push({nombre,peso:r2(peso),casillas});
+  }
+  const total=r2(evaluaciones.reduce((s,e)=>s+e.peso,0));
+  if(!evaluaciones.length||evaluaciones.length>30||Math.abs(total-100)>=0.05)return null;
+  return {id,ramo,ramoKey,evaluaciones,fuente,createdAt:valor.created_at||null};
+}
+function ramoDePropuestaPauta(propuesta){
+  const clave=normName(propuesta&&propuesta.ramoKey);
+  return (S.ramos||[]).find(r=>normName((r.origen&&r.origen.ramoKey)||r.nombre)===clave)
+    ||(S.ramos||[]).find(r=>normName(r.nombre)===normName(propuesta&&propuesta.ramo))||null;
+}
+async function cargarPropuestasPautaAgente(opts){
+  opts=opts||{};
+  if(!currentUser||!supabaseClient)return [];
+  propuestasPautaCargando=true;
+  try{
+    const {data,error}=await supabaseClient.rpc('listar_propuestas_pauta_agente');
+    if(error)throw error;
+    propuestasPautaAgente=(Array.isArray(data)?data:[]).map(propuestaPautaLimpia).filter(Boolean);
+    if(opts.mostrar&&propuestasPautaAgente.length)abrirPropuestasPautaAgente();
+    else if(opts.mostrar&&opts.avisar)showToast('No tienes pautas pendientes');
+    return propuestasPautaAgente;
+  }catch(e){
+    // La bandeja es una mejora, no una razón para impedir que alguien entre a
+    // sus notas. La tabla se aplica manualmente y mientras no exista la app
+    // sigue funcionando exactamente como antes.
+    if(opts.avisar)showToast('No pudimos cargar las pautas pendientes. Intenta de nuevo.',true);
+    return [];
+  }finally{propuestasPautaCargando=false;}
+}
+function filasPropuestaPauta(propuesta){
+  return propuesta.evaluaciones.map(e=>`<li><b>${esc(e.nombre)}</b><span>${r2(e.peso)}%${e.casillas?` · ${e.casillas} notas`:''}</span></li>`).join('');
+}
+function abrirPropuestasPautaAgente(){
+  if(!propuestasPautaAgente.length){showToast('No tienes pautas pendientes');return;}
+  const tarjetas=propuestasPautaAgente.map(p=>{
+    const ramo=ramoDePropuestaPauta(p);
+    const sinRamo=!ramo;
+    return `<article class="agent-proposal-card">
+      <div class="agent-proposal-heading"><div><b>${esc(ramo?ramo.nombre:p.ramo)}</b><span>Propuesta recibida ${esc(fechaAgente(p.createdAt,'recientemente'))}</span></div><span class="agent-proposal-total">100%</span></div>
+      <p class="agent-proposal-source"><b>Fuente:</b> ${esc(p.fuente)}</p>
+      <ul class="agent-proposal-list">${filasPropuestaPauta(p)}</ul>
+      ${sinRamo?`<p class="agent-proposal-warning">Este ramo ya no está en tu semestre. Puedes descartar la propuesta.</p>`:`<p class="agent-proposal-help">Revisa que calce con tu programa. Aplicarla conserva las notas que ya hayas puesto con el mismo nombre.</p>`}
+      <div class="modal-btns agent-proposal-actions">
+        <button type="button" class="btn-cancel" onclick="confirmarDescartarPropuestaPauta('${esc(p.id)}')">Descartar</button>
+        ${sinRamo?'':`<button type="button" class="btn-confirm" onclick="confirmarAplicarPropuestaPauta('${esc(p.id)}')">Aplicar pauta</button>`}
+      </div>
+    </article>`;
+  }).join('');
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Pautas por revisar</div>
+    <p class="modal-desc">Tu agente propuso estas evaluaciones desde un programa. <b>No se han aplicado.</b> Revísalas antes de decidir.</p>
+    <div class="agent-proposals">${tarjetas}</div>
+    <div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeModal()">Lo reviso después</button></div>`;
+  openModal();
+}
+function propuestaConReglaQueCambia(r,propuesta){
+  const nombres=new Set(propuesta.evaluaciones.map(e=>normName(e.nombre)));
+  const porId=new Map((r.categorias||[]).map(c=>[c.id,c]));
+  const ids=[];
+  (r.gates||[]).forEach(g=>{if(g.catId)ids.push(g.catId);(g.catIds||[]).forEach(id=>ids.push(id));});
+  return ids.some(id=>{const cat=porId.get(id);return cat&&!nombres.has(normName(cat.nombre));});
+}
+function confirmarAplicarPropuestaPauta(id){
+  const propuesta=propuestasPautaAgente.find(p=>p.id===id);
+  const ramo=ramoDePropuestaPauta(propuesta);
+  if(!propuesta||!ramo){showToast('Esta propuesta ya no está disponible',true);return;}
+  if(propuestaConReglaQueCambia(ramo,propuesta)){
+    showToast('Esta propuesta cambia una evaluación con una regla de aprobación. Revísala manualmente para no perder esa regla.',true);return;
+  }
+  showConfirm(`¿Aplicar la pauta de ${ramo.nombre}?`,'Cambiarán los nombres y porcentajes de las evaluaciones. Las notas que ya ingresaste se conservan cuando coinciden por nombre.',()=>aplicarPropuestaPauta(id),{label:'Aplicar pauta',danger:false,focusCancel:true});
+}
+async function resolverPropuestaPauta(id,accion){
+  const {error}=await supabaseClient.rpc('resolver_propuesta_pauta_agente',{p_id:id,p_accion:accion});
+  if(error)throw error;
+  propuestasPautaAgente=propuestasPautaAgente.filter(p=>p.id!==id);
+}
+async function aportarPropuestaAlCatalogo(r){
+  const estructura=estructuraParaConsenso(estructuraDe(r));
+  const estado=estadoReporte(estructura);
+  if(!estructura.length||!estado.lista)return false;
+  try{
+    const {error}=await supabaseClient.rpc('submit_catalog_report',{
+      p_tenant:S.tenant,p_carrera:(r.origen&&r.origen.carrera)||S.carrera,
+      p_ramo:r.nombre,p_ramo_norm:normName(r.nombre),p_ramo_sigla:siglaReporteUC(r),
+      p_estructura:estructura,p_huella:huellaEstructura(estructura),p_nota:null,
+    });
+    return !error;
+  }catch(e){return false;}
+}
+async function aplicarPropuestaPauta(id){
+  const propuesta=propuestasPautaAgente.find(p=>p.id===id);
+  const ramo=ramoDePropuestaPauta(propuesta);
+  if(!propuesta||!ramo||!currentUser||!supabaseClient)return;
+  try{
+    // Primero se marca resuelta en el servidor: si la red cae, no alteramos la
+    // pauta local y no dejamos una propuesta que se pueda aplicar dos veces.
+    await resolverPropuestaPauta(id,'aplicada');
+    const nuevas=propuesta.evaluaciones.map(e=>{
+      const anterior=(ramo.categorias||[]).find(c=>normName(c.nombre)===normName(e.nombre));
+      const cat={id:anterior?anterior.id:uid(),nombre:e.nombre,peso:e.peso,ponderaNotas:false,directNota:true,notas:[]};
+      if(e.casillas)cat.slots=e.casillas;
+      return cat;
+    });
+    fusionarPauta(ramo,nuevas);
+    // El agente leyó ponderaciones, no reglas del programa. Al confirmar su
+    // estructura no inventamos ni reemplazamos compuertas, aportes o recuperativos.
+    ramo.pautaHuella=null;
+    save();track('pauta_agente_confirmada',{evaluaciones:propuesta.evaluaciones.length});
+    const reportada=await aportarPropuestaAlCatalogo(ramo);
+    closeModal();
+    if(currentRamoId===ramo.id)renderRamo();else renderHome();
+    showToast(reportada?'Pauta aplicada · también la sumamos al consenso':'Pauta aplicada · no pudimos sumarla al consenso ahora');
+  }catch(e){showToast('No pudimos aplicar esta pauta. Intenta de nuevo.',true);}
+}
+function confirmarDescartarPropuestaPauta(id){
+  const propuesta=propuestasPautaAgente.find(p=>p.id===id);if(!propuesta)return;
+  showConfirm('¿Descartar esta pauta?','Se elimina esta propuesta pendiente. No cambia tus ramos ni tus notas.',async()=>{
+    try{
+      await resolverPropuestaPauta(id,'descartada');
+      if(propuestasPautaAgente.length)abrirPropuestasPautaAgente();else{closeModal();showToast('Propuesta descartada');}
+    }catch(e){showToast('No pudimos descartar esta propuesta. Intenta de nuevo.',true);}
+  },{label:'Descartar',danger:true,focusCancel:true});
 }
 
 function openSettings(){
@@ -3706,6 +3851,7 @@ function openSettings(){
       <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
     if(section==='agentes')return currentUser?`
       <div class="agent-explainer"><b>Un agente puede ver tus ramos, notas y fechas; agregar ramos y proponer pautas.</b><span>No puede escribir tus notas.</span></div>
+      <div class="agent-proposal-entry"><div><b>Pautas por revisar</b><span>Las propuestas no cambian nada hasta que las confirmes.</span></div><button type="button" class="agent-refresh" onclick="cargarPropuestasPautaAgente({mostrar:true,avisar:true})">Ver propuestas</button></div>
       <label class="modal-label">Conectar mi agente</label>
       <p class="settings-help" style="margin-top:0;">Genera un código de 6 caracteres y úsalo en tu agente. Dura 5 minutos y solo sirve una vez.</p>
       <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-code-create" onclick="crearCodigoAgente()">Generar código</button>

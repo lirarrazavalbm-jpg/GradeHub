@@ -15,7 +15,7 @@
 // pueda pegar en el lugar equivocado, y desconectar desde Ajustes lo corta de
 // verdad.
 
-import { HERRAMIENTAS, NOMBRES } from './herramientas.js';
+import { HERRAMIENTAS, NOMBRES, validarPropuestaPauta } from './herramientas.js';
 
 const SUPABASE_URL = 'https://lsulsnswzesyekpsvlql.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
@@ -52,12 +52,62 @@ const error = (id, code, message) => json({ jsonrpc: '2.0', id, error: { code, m
 // puerta que nadie revisó.
 function comoMcp(h) {
   const properties = {};
-  for (const [k, v] of Object.entries(h.args || {})) properties[k] = { type: 'string', description: v };
+  for (const [k, v] of Object.entries(h.args || {})) {
+    properties[k] = typeof v === 'string' ? { type: 'string', description: v } : v;
+  }
   return {
     name: h.nombre,
     description: h.resumen,
     inputSchema: { type: 'object', properties },
   };
+}
+
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+// La propuesta solo puede caer sobre un ramo que ya está en el semestre. Así
+// nunca crea un ramo a espaldas de la persona ni queda una pauta huérfana que
+// la app no pueda revisar y aplicar con sus notas a la vista.
+function ramoParaPropuesta(estado, consulta) {
+  const ramos = Array.isArray(estado.ramos) ? estado.ramos : [];
+  const q = norm(consulta);
+  if (!q) return null;
+  return ramos.find(r => norm(r.nombre) === q)
+    || ramos.find(r => norm(r.origen && r.origen.ramoKey) === q)
+    || ramos.find(r => norm(r.nombre).includes(q));
+}
+
+function errorPropuesta(valor) {
+  if (!valor || typeof valor !== 'object') return 'No se pudo guardar la propuesta.';
+  const mensaje = String(valor.message || valor.details || '');
+  // La RPC devuelve errores pensados para que el agente los corrija. No se
+  // reenvía el resto de la respuesta de PostgREST: puede incluir detalles de
+  // infraestructura que no ayudan a arreglar una pauta.
+  return mensaje.startsWith('Propuesta inválida:') || mensaje.startsWith('No se encontró') || mensaje.startsWith('La conexión')
+    ? mensaje
+    : 'No se pudo guardar la propuesta.';
+}
+
+async function guardarPropuestaPauta(token, estado, args) {
+  const ramo = ramoParaPropuesta(estado, args.ramo);
+  if (!ramo) return { error: 'No se encontró ese ramo en el semestre. Pídele a la persona que lo agregue primero.' };
+  const evaluaciones = args.evaluaciones;
+  const invalida = validarPropuestaPauta(args);
+  if (invalida) return { error: invalida };
+  const clave = String((ramo.origen && ramo.origen.ramoKey) || norm(ramo.nombre));
+  try {
+    const r = await rpc('proponer_pauta_agente', {
+      p_token: token,
+      p_ramo: String(ramo.nombre || '').trim(),
+      p_ramo_key: clave,
+      p_evaluaciones: evaluaciones,
+      p_fuente: String(args.fuente || '').trim(),
+    });
+    if (!r.ok) return { error: errorPropuesta(await r.json().catch(() => null)) };
+    const data = await r.json();
+    return { id: data, ramo: ramo.nombre, mensaje: 'Propuesta guardada. La persona la revisará en GradeHub antes de aplicarla.' };
+  } catch {
+    return { error: 'No se pudo conectar con GradeHub para guardar la propuesta.' };
+  }
 }
 
 // Da forma a cada herramienta sobre el estado. Solo lectura por ahora: las dos
@@ -156,7 +206,14 @@ export async function onRequestPost({ request, params }) {
     // Token vencido o revocado: la RPC devuelve null y acá se corta.
     if (!estado) return error(id, -32001, 'Esta conexión ya no es válida. Vuelve a vincular desde Ajustes.');
 
-    const datos = despachar(nombre, estado, args.arguments || {});
+    const argumentos = args.arguments || {};
+    if (nombre === 'proponer_pauta') {
+      const propuesta = await guardarPropuestaPauta(token, estado, argumentos);
+      if (propuesta.error) return error(id, -32602, propuesta.error);
+      return respuesta(id, { content: [{ type: 'text', text: JSON.stringify(propuesta) }] });
+    }
+
+    const datos = despachar(nombre, estado, argumentos);
     if (datos === undefined) return error(id, -32601, `Herramienta aún no disponible: ${nombre}`);
 
     return respuesta(id, {
