@@ -159,3 +159,230 @@ function solveForTarget(structure,grades,target,overrides={}){
   const feasible=reqRounded>=scaleMin&&reqRounded<=scaleMax&&gateWarnings.length===0;
   return {feasible,requiredAverage:reqRounded,emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
 }
+
+// Adaptador del estado de GradeHub para el núcleo. No lee el DOM ni el estado
+// global: la app y, más adelante, una Pages Function entregan sus dependencias.
+// Las funciones internas se mantienen junto al motor para que la misma cuenta
+// de casillas, descartes, compuertas y ramos vinculados no se reescriba afuera.
+function gh_crearCalculoRamo(deps){
+  const normName=deps.normName;
+  const copiarRecuperativo=deps.copiarRecuperativo;
+  const definicionPresetDelRamo=deps.definicionPresetDelRamo;
+  const S={get ramos(){return deps.ramos();}};
+
+  function hojasCategoria(c){
+    const notas=Array.isArray(c&&c.notas)?c.notas:[];
+    const slots=Number.isInteger(c&&c.slots)&&c.slots>1?c.slots:0;
+    if(!slots)return notas.map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}));
+    const porSlot=new Map(),sinSlot=[];
+    notas.forEach(n=>{
+      if(Number.isInteger(n.slot)&&n.slot>=0&&n.slot<slots)porSlot.set(n.slot,n);
+      else sinSlot.push(n);
+    });
+    const reales=[...porSlot.values(),...sinSlot];
+    const ids=new Set(reales.map(n=>n.id));
+    const hojas=reales.map(n=>({id:n.id,name:n.nombre,weight:(n.peso||1),type:'leaf'}));
+    for(let slot=0;slot<slots;slot++){
+      if(porSlot.has(slot))continue;
+      let id=`__gh_pendiente_slot__${c.id}__${slot}`;
+      while(ids.has(id))id+='_';
+      ids.add(id);
+      hojas.push({id,name:`${c.nombre} pendiente ${slot+1}`,weight:1,type:'leaf'});
+    }
+    return hojas;
+  }
+  function ramoToStructure(r){
+    return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
+      id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
+      children:categoriasVigentes(r).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
+        drop_lowest:c.dropLowest||null,
+        children:hojasCategoria(c)}))};
+  }
+  function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
+  function avgPond(notas){let tv=0,tp=0;notas.forEach(n=>{if(n.valor!==null){tv+=n.valor*(n.peso||1);tp+=(n.peso||1);}});return tp>0?tv/tp:null;}
+  function promedioCompletoSinDescarte(cat){
+    const objetivo=Number.isInteger(cat&&cat.slots)&&cat.slots>1?cat.slots:1;
+    const notas=(cat&&cat.notas||[]).filter(n=>typeof n.valor==='number');
+    const porCasilla=new Map();
+    notas.forEach(n=>{if(Number.isInteger(n.slot))porCasilla.set(n.slot,n);});
+    const vigentes=objetivo>1
+      ? (porCasilla.size?[...porCasilla.values()]:notas)
+      : notas;
+    const rendidas=objetivo>1&&porCasilla.size?porCasilla.size:notas.length;
+    if(rendidas<objetivo)return null;
+    return avgPond(vigentes);
+  }
+  function estadoEximicion(ramo){
+    const def=definicionPresetDelRamo(ramo);
+    const regla=!Array.isArray(def)&&def&&def.eximicion;
+    if(!regla||!Array.isArray(regla.segun)||regla.ignoraDescartes!==true)return null;
+    const categorias=ramo.categorias||[];
+    const examen=categorias.find(c=>normName(c.nombre)===normName(regla.evaluacion));
+    if(!examen)return null;
+    if(avgPond(examen.notas)!==null)return {activa:false,pendiente:false,examenId:examen.id,razon:'examen_rendido'};
+    const fuentes=regla.segun.map(nombre=>categorias.find(c=>normName(c.nombre)===normName(nombre))).filter(Boolean);
+    if(fuentes.length!==regla.segun.length)return null;
+    const promedios=fuentes.map(promedioCompletoSinDescarte);
+    if(promedios.some(p=>p===null))return {activa:false,pendiente:true,examenId:examen.id};
+    const pesoTotal=fuentes.reduce((s,c)=>s+(Number(c.peso)||0),0);
+    const promedio=pesoTotal>0?fuentes.reduce((s,c,i)=>s+promedios[i]*(Number(c.peso)||0),0)/pesoTotal:null;
+    return {activa:promedio!==null&&promedio>=regla.min,pendiente:false,examenId:examen.id,promedio,regla};
+  }
+  function categoriaEximida(ramo,cat){const estado=estadoEximicion(ramo);return !!(estado&&estado.activa&&estado.examenId===cat.id);}
+  function categoriasVigentes(ramo){return (ramo&&ramo.categorias||[]).filter(c=>!categoriaEximida(ramo,c));}
+  function estadoAusenciasJustificadas(ramo){
+    if(!ramo||!ramo.reglasAusenciaJustificada)return null;
+    return gh_prepararAusenciasJustificadas(ramoToStructure(ramo),gradesOf(ramo),ramo.reglasAusenciaJustificada,ramo.ausenciasJustificadas);
+  }
+  function avgDeGrupo(r,catIds){
+    const set=new Set(catIds||[]);
+    let num=0,den=0;
+    (r.categorias||[]).forEach(c=>{
+      if(!set.has(c.id))return;
+      const a=avgPond(c.notas);
+      if(a===null)return;
+      num+=a*(c.peso||0);den+=(c.peso||0);
+    });
+    return den>0?num/den:null;
+  }
+  function avgDeGrupoCalculado(res,estructura,catIds){
+    const valores=new Map((res.breakdown||[]).map(n=>[n.id,n.value]));
+    const nodos=new Map((estructura.children||[]).map(n=>[n.id,n]));
+    let num=0,den=0;
+    (catIds||[]).forEach(id=>{
+      const peso=Number((nodos.get(id)||{}).weight)||0,valor=valores.get(id);
+      if(peso>0&&valor!==null&&valor!==undefined){num+=valor*peso;den+=peso;}
+    });
+    return den>0?num/den:null;
+  }
+  function calculoRamoConCompuertas(r){
+    const ausencias=estadoAusenciasJustificadas(r);
+    const estructura=ausencias?ausencias.estructura:ramoToStructure(r);
+    const notas=ausencias?ausencias.notas:gradesOf(r);
+    const res=calculateFinalGrade(estructura,notas);
+    let v=res.raw,limitadoPorCompuerta=false;
+    if(v!==null && Array.isArray(r.gates)){
+      for(const g of r.gates){
+        if(g.type==='min_grade_required'){
+          const node=res.breakdown.find(b=>b.id===g.catId);
+          if(node && node.value!==null && node.value < g.min){
+            const siguiente=Math.min(v,g.cap);if(siguiente<v)limitadoPorCompuerta=true;v=siguiente;
+          }
+        } else if(g.type==='group_min'){
+          const ga=avgDeGrupoCalculado(res,estructura,g.catIds);
+          if(ga!==null && ga < g.min){
+            const tope=(g.cap==='self')?ga:g.cap;
+            const siguiente=Math.min(v,tope);if(siguiente<v)limitadoPorCompuerta=true;v=siguiente;
+          }
+        }
+      }
+    }
+    return {res,valor:v,limitadoPorCompuerta,estructura,notas,ausencias};
+  }
+  function ramoCompletamenteEvaluado(r,calculo){
+    const cubiertas=new Set((calculo&&calculo.ausencias&&calculo.ausencias.activas||[]).map(x=>x.desdeId));
+    const categorias=categoriasVigentes(r);
+    return categorias.length>0&&categorias.every(c=>{
+      if(cubiertas.has(c.id))return true;
+      const objetivo=Number.isInteger(c.slots)&&c.slots>1?c.slots:1;
+      return (c.notas||[]).filter(n=>typeof n.valor==='number').length>=objetivo;
+    });
+  }
+  function estadoRecuperativo(r,calculo){
+    const regla=copiarRecuperativo(r&&r.recuperativo);if(!regla)return null;
+    const base=calculo||calculoRamoConCompuertas(r);
+    return gh_estadoRecuperativo(base.valor,ramoCompletamenteEvaluado(r,base),base.limitadoPorCompuerta,regla,r.recuperativoRendido);
+  }
+  function resumenCategoriasCalculadas(r,calculo){
+    const base=calculo||calculoRamoConCompuertas(r);
+    const valores=new Map((base.res.breakdown||[]).map(n=>[n.id,n.value]));
+    return (base.estructura.children||[]).filter(c=>(Number(c.weight)||0)>0).map(c=>({id:c.id,nombre:c.name,peso:Number(c.weight)||0,valor:valores.get(c.id)}));
+  }
+  function ramoAvg(r,visitados){
+    const base=calculoRamoConCompuertas(r);
+    const recuperativo=estadoRecuperativo(r,base);
+    const v=recuperativo?recuperativo.valor:base.valor;
+    return combinarConRamoVinculado(r,v,visitados);
+  }
+  function ramoVinculado(r){
+    if(!r||!r.aporta||!r.aporta.ramo)return null;
+    const objetivo=normName(r.aporta.ramo);
+    return (S.ramos||[]).find(x=>x!==r&&normName(x.nombre)===objetivo)||null;
+  }
+  function combinarConRamoVinculado(r,propio,visitados){
+    const link=r&&r.aporta;
+    if(!link||propio===null)return propio;
+    const vistos=visitados||new Set();
+    if(vistos.has(r.id))return propio;
+    vistos.add(r.id);
+    const otro=ramoVinculado(r);
+    if(!otro)return propio;
+    const externo=ramoAvg(otro,vistos);
+    if(externo===null)return propio;
+    const p=(link.peso||0)/100;
+    let v=propio*(1-p)+externo*p;
+    if(typeof link.min==='number'&&(propio<link.min||externo<link.min))v=Math.min(propio,externo);
+    return v;
+  }
+  function gatesActivas(r){
+    const calculo=calculoRamoConCompuertas(r);
+    const valores=new Map((calculo.res.breakdown||[]).map(n=>[n.id,n.value]));
+    const out=[];
+    (r.gates||[]).forEach(g=>{
+      if(g.type==='min_grade_required'){
+        const c=(r.categorias||[]).find(x=>x.id===g.catId);
+        if(!c)return;
+        const a=valores.get(c.id);
+        if(a!==null&&a<g.min)out.push({nombre:g.nombre||c.nombre,actual:a,min:g.min,cap:g.cap});
+      } else if(g.type==='group_min'){
+        const ga=avgDeGrupoCalculado(calculo.res,calculo.estructura,g.catIds);
+        if(ga!==null&&ga<g.min){
+          out.push({nombre:g.nombre||'Requisito',actual:ga,min:g.min,cap:(g.cap==='self')?ga:g.cap,grupo:true});
+        }
+      }
+    });
+    return out;
+  }
+  function estadoParaNotaNecesaria(ramo){
+    const categorias=categoriasVigentes(ramo);
+    const total=categorias.reduce((s,c)=>s+(Number(c.peso)||0),0);
+    if(total<=0)return {total:0,conocido:0,pendiente:0};
+    const estructura=ramoToStructure(ramo),notas=gradesOf(ramo);
+    const pesos=gh_effWeights(estructura);
+    const valores=new Map(resumenCategoriasCalculadas(ramo).map(c=>[c.id,c.valor]));
+    let conocido=0,pesoConocido=0;
+    categorias.forEach(c=>{
+      const slots=Number.isInteger(c.slots)&&c.slots>1;
+      if(!slots){
+        const valor=valores.get(c.id),peso=Number(c.peso)||0;
+        if(typeof valor==='number'){conocido+=valor*peso;pesoConocido+=peso;}
+        return;
+      }
+      const grupo=estructura.children.find(h=>h.id===c.id);
+      (grupo?.children||[]).forEach(hoja=>{
+        const valor=notas[hoja.id],peso=(pesos[hoja.id]||0)*total;
+        if(typeof valor==='number'){conocido+=valor*peso;pesoConocido+=peso;}
+      });
+    });
+    return {total,conocido:conocido/total,pendiente:Math.max(0,1-pesoConocido/total)};
+  }
+  function notaNecesaria(ramo,meta){
+    const objetivo=Number.isFinite(meta)?meta:4.0;
+    const propio=estadoParaNotaNecesaria(ramo);
+    if(propio.total<=0)return null;
+    const link=ramo.aporta;
+    if(link&&link.peso){
+      const p=link.peso/100;
+      const otro=ramoVinculado(ramo);
+      const externo=otro?estadoParaNotaNecesaria(otro):{conocido:0,pendiente:1};
+      const conocido=propio.conocido*(1-p)+externo.conocido*p;
+      const pendiente=propio.pendiente*(1-p)+externo.pendiente*p;
+      return pendiente>0?(objetivo-conocido)/pendiente:null;
+    }
+    if(propio.pendiente<=0)return null;
+    return (objetivo-propio.conocido)/propio.pendiente;
+  }
+  return {hojasCategoria,ramoToStructure,gradesOf,avgPond,promedioCompletoSinDescarte,estadoEximicion,categoriaEximida,categoriasVigentes,estadoAusenciasJustificadas,avgDeGrupo,avgDeGrupoCalculado,calculoRamoConCompuertas,ramoCompletamenteEvaluado,estadoRecuperativo,resumenCategoriasCalculadas,ramoAvg,ramoVinculado,combinarConRamoVinculado,gatesActivas,estadoParaNotaNecesaria,notaNecesaria};
+}
+
+if(typeof module!=='undefined'&&module.exports)module.exports={gh_crearCalculoRamo};
