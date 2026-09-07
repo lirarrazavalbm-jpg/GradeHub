@@ -1,4 +1,8 @@
 const PASS_MIN = 8;
+// La versión acompaña a cada aceptación para poder saber qué texto leyó alguien
+// si cambian los términos o la política. Las cuentas anteriores no la traen y
+// siguen entrando: esta constancia se exige solo al crear una cuenta nueva.
+const LEGAL_ACCEPTANCE_VERSION = '2026-09-07';
 
 // UN SOLO TEXTO para dos caminos que tienen que verse iguales desde afuera: el
 // registro que no devolvió sesión y el correo que YA tenía cuenta. Si difieren,
@@ -71,6 +75,11 @@ function toggleAuthMode(){
   confirmWrap.style.display=authMode==='signup'?'block':'none';
   confirmWrap.setAttribute('aria-hidden',authMode==='signup'?'false':'true');
   document.getElementById('auth-pass2').value='';
+  const legalWrap=document.getElementById('auth-legal-accept-wrap');
+  const legalAccept=document.getElementById('auth-legal-accept');
+  legalWrap.style.display=authMode==='signup'?'block':'none';
+  legalWrap.setAttribute('aria-hidden',authMode==='signup'?'false':'true');
+  if(authMode!=='signup'&&legalAccept)legalAccept.checked=false;
   // Al iniciar sesión no se anuncia un mínimo: sería mentirle a quien creó su
   // cuenta cuando el mínimo era otro.
   document.getElementById('auth-pass').placeholder=authMode==='login'?'Tu contraseña':PASS_MIN+'+ caracteres, letras y números';
@@ -231,6 +240,13 @@ async function submitAuth(){
     const policyError=passwordPolicyError(p);
     if(policyError){authError(policyError);return;}
     if(p!==p2){authError('Las contraseñas no coinciden.');return;}
+    const legalAccept=document.getElementById('auth-legal-accept');
+    if(!legalAccept||!legalAccept.checked){
+      authError('Para crear tu cuenta, acepta los términos y la política de privacidad.');
+      if(legalAccept){legalAccept.setAttribute('aria-invalid','true');legalAccept.focus();}
+      return;
+    }
+    legalAccept.removeAttribute('aria-invalid');
   }
   if(!supabaseClient){authError('Falta configurar Supabase (URL y clave) en el código.');return;}
 
@@ -241,7 +257,9 @@ async function submitAuth(){
       const {data,error}=await supabaseClient.auth.signUp({email,password:p});
       if(error)throw error;
       if(!data.session){authError(MSG_VERIFICA,'info');btn.disabled=false;btn.textContent=orig;return;}
-      currentUser=data.user;await afterSignup();
+      currentUser=data.user;
+      await registrarAceptacionLegal();
+      await afterSignup();
     }else{
       const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:p});
       if(error)throw error;
@@ -411,6 +429,18 @@ async function syncProfile(){
       semestre:S.careerSemestre||null,
     });
   }catch(e){}
+}
+// Se guarda apenas se crea la cuenta, antes del onboarding. Así no depende de
+// que la persona alcance a configurar sus ramos para que exista la constancia.
+// Las columnas son opcionales para no reinterpretar ni bloquear perfiles previos.
+async function registrarAceptacionLegal(){
+  if(!supabaseClient||!currentUser)throw new Error('No pudimos registrar la aceptación.');
+  const {error}=await supabaseClient.from('profiles').upsert({
+    id:currentUser.id,
+    terminos_aceptados_en:new Date().toISOString(),
+    terminos_version:LEGAL_ACCEPTANCE_VERSION,
+  });
+  if(error)throw error;
 }
 async function signOut(){
   try{await supabaseClient.auth.signOut();}catch(e){}

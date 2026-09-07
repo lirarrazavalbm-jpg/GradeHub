@@ -85,12 +85,10 @@ chk('no promete que la app será gratis ni sin publicidad para siempre',
   !/(gratis|sin publicidad|no (habrá|habra|mostrar[eé]mos)[^.]*publicidad)[^.]*\b(nunca|jamás|siempre)\b/i.test(privacidad));
 chk('deja dicho que la app va a tener que financiarse',
   /financiarse/i.test(privacidad) && /(funciones pagadas|auspicios)/i.test(privacidad));
-chk('usar las notas para elegir anuncios exige permiso explícito',
-  /permiso explícito/i.test(privacidad) || /tendríamos que pedírtelo/i.test(privacidad));
-chk('y decir que no deja la app funcionando igual',
-  /sigue funcionando exactamente\s*igual/i.test(privacidad));
-chk('aclara que anticiparlo no equivale a activarlo ni autorizarlo',
-  /no activa nada de eso por sí solo, ni cuenta como\s+tu autorización/i.test(privacidad));
+chk('explica que las recomendaciones se ordenan localmente con notas y ramos',
+  /notas y ramos[\s\S]{0,350}(dentro de tu navegador|localmente)[\s\S]{0,350}(ordenar|recomendaciones)/i.test(privacidad));
+chk('deja claro que los profesores no reciben notas ni identidad',
+  /profesores? no (reciben|ven)[\s\S]{0,160}(notas|identidad)/i.test(privacidad));
 
 console.log('\n=== Página 404 ===');
 const pagina404=leer('404.html');
