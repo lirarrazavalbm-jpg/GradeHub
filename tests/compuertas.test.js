@@ -158,6 +158,17 @@ const historialSinCache=ctx.ultimoHistorialConGpa([{label:'2026-1',ramos:[ramoAr
 eq('un historial sin gpa guardado se recalcula desde sus ramos',historialSinCache?.gpa,5.6);
 const historialMalformado=ctx.ultimoHistorialConGpa([{label:'2026-1',ramos:[null,ramoArchivado]}]);
 eq('una entrada malformada no impide leer los ramos archivados válidos',historialMalformado?.gpa,5.6);
+// La caché `gpa` puede faltar en un respaldo, pero una corrección que alguien
+// hizo sobre el ramo archivado sigue siendo la fuente más fiel de ese semestre.
+const historialConOverride=ctx.ultimoHistorialConGpa([{label:'2026-1',ramos:[{id:'hist-editado',creditos:10,avgOverride:5.2,categorias:[]}]}]);
+eq('un historial sin caché conserva el promedio corregido a mano',historialConOverride?.gpa,5.2);
+// Dinámica combina su nota con el laboratorio. Al recalcular un archivo, el
+// vínculo tiene que mirar los ramos DENTRO de ese archivo, no los del semestre
+// actual, que normalmente ya quedó vacío al archivar.
+const dinamicaHistorica={id:'hist-dinamica',nombre:'Dinámica',creditos:10,aporta:{ramo:'Laboratorio de Dinámica',peso:30,min:4},categorias:[{id:'catedra',peso:100,notas:[{id:'d1',valor:5,peso:1}]}]};
+const laboratorioHistorico={id:'hist-lab',nombre:'Laboratorio de Dinámica',creditos:0,categorias:[{id:'lab',peso:100,notas:[{id:'l1',valor:7,peso:1}]}]};
+const historialVinculado=ctx.ultimoHistorialConGpa([{label:'2026-1',ramos:[dinamicaHistorica,laboratorioHistorico]}]);
+eq('un historial sin caché conserva el vínculo entre Dinámica y su laboratorio',historialVinculado?.gpa,5.6);
 const lecturaHistorialPrevio=typeof ctx.lecturaHistorialPrevio==='function'?ctx.lecturaHistorialPrevio:null;
 const lecturaSinNotas=lecturaHistorialPrevio?lecturaHistorialPrevio([{label:'2026-1',ramos:[{id:'sin-notas',categorias:[{id:'pendiente',peso:100,notas:[]}]}]}]):null;
 if(lecturaSinNotas?.estado==='sin_notas'){ok++;console.log('  OK   un semestre archivado sin notas no se confunde con no tener historial');}

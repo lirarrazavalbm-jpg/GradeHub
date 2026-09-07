@@ -298,26 +298,29 @@ function gh_crearCalculoRamo(deps){
     const valores=new Map((base.res.breakdown||[]).map(n=>[n.id,n.value]));
     return (base.estructura.children||[]).filter(c=>(Number(c.weight)||0)>0).map(c=>({id:c.id,nombre:c.name,peso:Number(c.weight)||0,valor:valores.get(c.id)}));
   }
-  function ramoAvg(r,visitados){
+  function ramoAvg(r,visitados,ramosContexto){
+    // Las correcciones manuales solo viven en un ramo archivado. Si falta la
+    // caché del semestre, siguen siendo el resultado que la persona confirmó.
+    if(r&&typeof r.avgOverride==='number'&&Number.isFinite(r.avgOverride))return r.avgOverride;
     const base=calculoRamoConCompuertas(r);
     const recuperativo=estadoRecuperativo(r,base);
     const v=recuperativo?recuperativo.valor:base.valor;
-    return combinarConRamoVinculado(r,v,visitados);
+    return combinarConRamoVinculado(r,v,visitados,ramosContexto);
   }
-  function ramoVinculado(r){
+  function ramoVinculado(r,ramosContexto){
     if(!r||!r.aporta||!r.aporta.ramo)return null;
     const objetivo=normName(r.aporta.ramo);
-    return (S.ramos||[]).find(x=>x!==r&&normName(x.nombre)===objetivo)||null;
+    return (ramosContexto||S.ramos||[]).find(x=>x!==r&&normName(x.nombre)===objetivo)||null;
   }
-  function combinarConRamoVinculado(r,propio,visitados){
+  function combinarConRamoVinculado(r,propio,visitados,ramosContexto){
     const link=r&&r.aporta;
     if(!link||propio===null)return propio;
     const vistos=visitados||new Set();
     if(vistos.has(r.id))return propio;
     vistos.add(r.id);
-    const otro=ramoVinculado(r);
+    const otro=ramoVinculado(r,ramosContexto);
     if(!otro)return propio;
-    const externo=ramoAvg(otro,vistos);
+    const externo=ramoAvg(otro,vistos,ramosContexto);
     if(externo===null)return propio;
     const p=(link.peso||0)/100;
     let v=propio*(1-p)+externo*p;
