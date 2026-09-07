@@ -90,7 +90,7 @@ chk('ya no cuelga del modal de editar', !/openReportModal/.test(editar));
 // solo después de crear una pauta completa y abre una revisión: no envía nada
 // por sí solo ni duplica una acción constante en otra pantalla.
 chk('solo ofrece compartir desde el hito de crear una pauta completa',
-  (src.match(/openReportModal\(/g) || []).length === 3 &&
+  (src.match(/rep\.onclick=\(\)=>openReportModal\(r\.id\)/g) || []).length === 1 &&
   /function ofrecerCompartirPauta\(r\)[\s\S]{0,500}showConfirm[\s\S]{0,500}openReportModal\(r\.id\)/.test(src));
 // El texto viejo ("¿Le cambiaron las ponderaciones?") daba por hecho que la
 // pauta existe y cambió. Hoy el caso mayoritario es que no la tenemos.

@@ -160,8 +160,8 @@ if (nombreMax !== 80) {
   console.error('NOMBRE_MAX debe ser 80 para admitir nombres académicos largos');
   process.exit(1);
 }
-if ((app.match(/maxlength="\$\{NOMBRE_MAX\}"/g) || []).length !== 9 || /maxlength="40"/.test(app)) {
-  console.error('los 9 campos de nombres deben usar NOMBRE_MAX, sin límites antiguos de 40');
+if ((app.match(/maxlength="\$\{NOMBRE_MAX\}"/g) || []).length !== 10 || /maxlength="40"/.test(app)) {
+  console.error('los 10 campos de nombres deben usar NOMBRE_MAX, sin límites antiguos de 40');
   process.exit(1);
 }
 if (!/class="course-picker-selected-name"/.test(app)) {

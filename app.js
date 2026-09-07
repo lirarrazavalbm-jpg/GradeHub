@@ -2643,7 +2643,7 @@ function claveCanonica(clave,tenant,carrera){
 
 // Estructura m\u00ednima y ordenada de un ramo, para comparar y contar consenso.
 function estructuraDe(r){
-  return catsDePauta(r.categorias)
+  return ordenarEstructuraConsenso(catsDePauta(r.categorias)
     .map(c=>{
       const g=(r.gates||[]).find(x=>x.catId===c.id);
       // r2, no un decimal. Con un decimal, los tres Controles de Lectura de
@@ -2656,18 +2656,21 @@ function estructuraDe(r){
       if(c.slots>1)o.slots=c.slots;
       if(g){o.min=g.min;o.cap=g.cap;}
       return o;
-    })
-    // Orden por nombre normalizado, NO por localeCompare(): sin locale fijo,
-    // localeCompare usa el idioma del dispositivo y "Óptica" va antes de "Oral"
-    // en español pero después en polaco. El orden viaja dentro de `estructura`
-    // y de la huella, así que dos estudiantes con la MISMA pauta y distinto
-    // idioma no agruparían nunca y el consenso no se formaría, en silencio.
-    // El segundo criterio desempata los nombres que normalizan igual.
-    .sort((a,b)=>{
-      const ka=normName(a.nombre),kb=normName(b.nombre);
-      if(ka!==kb)return ka<kb?-1:1;
-      return a.nombre<b.nombre?-1:a.nombre>b.nombre?1:0;
-    });
+    }));
+}
+
+// Orden por nombre normalizado, NO por localeCompare(): sin locale fijo,
+// localeCompare usa el idioma del dispositivo y "Óptica" va antes de "Oral"
+// en español pero después en polaco. El orden viaja dentro de `estructura` y
+// de la huella, así que dos estudiantes con la MISMA pauta y distinto idioma
+// no agruparían nunca y el consenso no se formaría, en silencio. El segundo
+// criterio desempata los nombres que normalizan igual.
+function ordenarEstructuraConsenso(est){
+  return [...(est||[])].sort((a,b)=>{
+    const ka=normName(a.nombre),kb=normName(b.nombre);
+    if(ka!==kb)return ka<kb?-1:1;
+    return a.nombre<b.nombre?-1:a.nombre>b.nombre?1:0;
+  });
 }
 
 // Lo que de verdad se reporta: la pauta sin las evaluaciones en 0%.
@@ -2682,16 +2685,20 @@ function estructuraDe(r){
 //
 // Se filtra al ENVIAR y al comparar, no al armar el borrador: en el modal el
 // estudiante tiene que poder ver una fila en 0% para subirla.
-function estructuraParaConsenso(est){return (est||[]).filter(e=>Number(e.peso)>0);}
+function estructuraParaConsenso(est){
+  return ordenarEstructuraConsenso((est||[])
+    .filter(e=>Number(e.peso)>0)
+    .map(e=>({...e,nombre:limpiarNombreAjeno(e.nombre)})));
+}
 
 // Huella estable: dos reportes id\u00e9nticos producen la misma cadena.
 function huellaEstructura(est){
-  return est.map(e=>[normName(e.nombre),e.peso,e.slots||1,e.min||0,e.cap||0].join('~')).join('|');
+  return ordenarEstructuraConsenso(est).map(e=>[normName(e.nombre),e.peso,e.slots||1,e.min||0,e.cap||0].join('~')).join('|');
 }
 
 // El reporte tiene su propio borrador: corregir lo que se envía al catálogo no
 // puede cambiar la pauta, las notas ni los promedios guardados del estudiante.
-let reporteDraft=[],reporteRamoId=null;
+let reporteDraft=[],reporteRamoId=null,reporteComentarioDraft='';
 function estructuraReporte(r){return estructuraDe(r).map(e=>({...e}));}
 function parsePesoReporte(raw){
   const txt=String(raw==null?'':raw).trim().replace(',','.');
@@ -2702,12 +2709,27 @@ function aplicarPesoReporte(est,i,raw){
   if(!est||!est[i])return est;
   est[i]={...est[i],peso:parsePesoReporte(raw)};return est;
 }
+function aplicarNombreReporte(est,i,raw){
+  if(!est||!est[i])return est;
+  est[i]={...est[i],nombre:String(raw==null?'':raw)};return est;
+}
+function agregarFilaReporte(est){
+  if(!est)return est;
+  est.push({nombre:'',peso:0});return est;
+}
+function quitarFilaReporte(est,i){
+  if(!est||!est[i])return est;
+  est.splice(i,1);return est;
+}
 function estadoReporte(est){
+  const reportables=estructuraParaConsenso(est);
+  const sinNombre=reportables.some(e=>!String(e.nombre||'').trim());
   const total=r2((est||[]).reduce((s,e)=>s+(Number(e.peso)||0),0));
   const diferencia=r2(100-total);
-  return {total,diferencia,lista:Math.abs(diferencia)<0.05};
+  return {total,diferencia,sinNombre,lista:reportables.length>0&&!sinNombre&&Math.abs(diferencia)<0.05};
 }
 function textoEstadoReporte(estado){
+  if(estado.sinNombre)return'Ponle nombre a cada evaluación que tenga porcentaje.';
   if(estado.lista)return'Lista para enviar.';
   return estado.diferencia>0
     ?`Falta ${r2(estado.diferencia)}% para llegar a 100.`
@@ -2734,6 +2756,18 @@ function actualizarReportePeso(i,input){
 function normalizarReportePeso(i,input){
   if(input&&reporteDraft[i])input.value=r2(reporteDraft[i].peso);
 }
+function actualizarReporteNombre(i,input){
+  if(!input)return;
+  aplicarNombreReporte(reporteDraft,i,input.value);pintarEstadoReporte();
+}
+function actualizarReporteComentario(input){reporteComentarioDraft=input?input.value:'';}
+function agregarReporteFila(){
+  agregarFilaReporte(reporteDraft);openReportModal(reporteRamoId,true);
+  setTimeout(()=>{const campo=document.getElementById(`m-rep-nombre-${reporteDraft.length-1}`);if(campo)campo.focus();},0);
+}
+function quitarReporteFila(i){
+  quitarFilaReporte(reporteDraft,i);openReportModal(reporteRamoId,true);
+}
 
 // La sigla de un reporte UC no puede depender solo de la malla que ya tenemos.
 // Los majors aparecen en CREDITOS_UC antes de que exista su malla: si caen al
@@ -2757,33 +2791,36 @@ function claveReporte(r){
   return (o&&o.ramoKey)||siglaReporteUC(r)||ramoKey(r&&r.nombre,o&&o.tenant,o&&o.carrera);
 }
 
-function openReportModal(ramoId){
+function openReportModal(ramoId,conservarBorrador=false){
   const r=S.ramos.find(x=>x.id===(ramoId||currentRamoId));
   if(!r){showToast('No se encontr\u00f3 el ramo',true);return;}
-  const est=estructuraReporte(r);
-  if(est.length===0){showToast('Agrega las evaluaciones antes de reportar',true);return;}
-  reporteDraft=est;reporteRamoId=r.id;
+  const est=conservarBorrador?reporteDraft:estructuraReporte(r);
+  if(!est.length&&!conservarBorrador){showToast('Agrega las evaluaciones antes de reportar',true);return;}
+  if(!conservarBorrador){reporteDraft=est;reporteComentarioDraft='';}
+  reporteRamoId=r.id;
   const estado=estadoReporte(est);
   const filas=est.map((e,i)=>`
     <div class="rep-row">
-      <label class="rep-name" for="m-rep-peso-${i}">${esc(e.nombre)}${e.slots?` <span class="rep-tag">${e.slots} notas</span>`:''}${e.min?` <span class="rep-tag">m\u00edn ${nf(e.min)}</span>`:''}</label>
+      <div class="rep-name"><input type="text" id="m-rep-nombre-${i}" value="${esc(e.nombre)}" placeholder="Ej: Prueba ${i+1}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-label="Nombre de la evaluaci\u00f3n ${i+1}" oninput="actualizarReporteNombre(${i},this)" style="width:100%;min-height:44px;padding:9px 10px;border:1.5px solid var(--border2);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;font-weight:600;"/>${e.slots?` <span class="rep-tag">${e.slots} notas</span>`:''}${e.min?` <span class="rep-tag">m\u00edn ${nf(e.min)}</span>`:''}</div>
       <span class="rep-peso-field"><input class="rep-peso-input" type="text" inputmode="decimal" id="m-rep-peso-${i}" name="ponderacion-${i}" value="${r2(e.peso)}" maxlength="5" autocomplete="off" aria-describedby="m-rep-balance" oninput="actualizarReportePeso(${i},this)" onblur="normalizarReportePeso(${i},this)"/><span class="rep-peso-suffix" aria-hidden="true">%</span></span>
+      <button type="button" onclick="quitarReporteFila(${i})" aria-label="Quitar ${esc(e.nombre||'evaluaci\u00f3n')} del reporte" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem 'Onest',sans-serif;cursor:pointer;">Quitar</button>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Reportar ponderaciones</div>
+    <div class="modal-title">Reportar pauta</div>
     <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin-bottom:14px;">
-      Ajusta los porcentajes de <b>${esc(r.nombre)}</b> para que calcen con tu curso. Si varios
+      Ajusta las evaluaciones y porcentajes de <b>${esc(r.nombre)}</b> para que calcen con tu curso. Si varios
       estudiantes reportan lo mismo, pasa a ser la versi\u00f3n sugerida del cat\u00e1logo.
     </p>
     <div class="rep-box">
       ${filas}
+      <button type="button" onclick="agregarReporteFila()" style="width:100%;margin:8px 0 4px;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 0.8125rem 'Onest',sans-serif;cursor:pointer;">+ Agregar evaluaci\u00f3n</button>
       <div class="rep-total ${estado.lista?'ok':'warn'}" id="m-rep-total" role="status" aria-live="polite" tabindex="-1">
         <span>Suma</span><span id="m-rep-suma">${r2(estado.total)}%</span>
       </div>
     </div>
     <p class="rep-balance ${estado.lista?'ok':'warn'}" id="m-rep-balance">${textoEstadoReporte(estado)}</p>
     <label class="modal-label" for="m-rep-nota" style="margin-top:16px;">Comentario <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional)</span></label>
-    <div class="modal-input"><input type="text" id="m-rep-nota" placeholder="Ej: el profe cambi\u00f3 el examen a 40%" maxlength="120" autocomplete="off"/></div>
+    <div class="modal-input"><input type="text" id="m-rep-nota" value="${esc(reporteComentarioDraft)}" placeholder="Ej: el profe cambi\u00f3 el examen a 40%" maxlength="120" autocomplete="off" oninput="actualizarReporteComentario(this)"/></div>
     <p style="font-size:0.71875rem;color:var(--fg3);line-height:1.45;margin:-4px 0 14px;">
       Se env\u00eda solo la estructura del ramo y tu universidad. Nunca tus notas.
     </p>
@@ -2818,12 +2855,12 @@ async function enviarReporte(ramoId){
       p_ramo_sigla:siglaReporteUC(r),
       p_estructura:est,
       p_huella:huellaEstructura(est),
-      p_nota:(notaEl&&notaEl.value.trim())||null,
+      p_nota:reporteComentarioDraft.trim()||((notaEl&&notaEl.value.trim())||null),
     });
     if(error)throw error;
     track('reporte_catalogo',{tenant:S.tenant});
     closeModal();
-    reporteDraft=[];reporteRamoId=null;
+    reporteDraft=[];reporteRamoId=null;reporteComentarioDraft='';
     showToast('Gracias \u00b7 tu reporte qued\u00f3 registrado');
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent='Enviar reporte';}

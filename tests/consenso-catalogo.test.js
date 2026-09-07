@@ -1,7 +1,8 @@
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
-const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
-  .map(f => fs.readFileSync(raiz + f, 'utf8')).join('\n');
+const appPath = process.env.GRADEHUB_APP || raiz + 'app.js';
+const src = ['data.js', 'engine.js']
+  .map(f => fs.readFileSync(raiz + f, 'utf8')).concat(fs.readFileSync(appPath, 'utf8'), fs.readFileSync(raiz + 'render-agenda.js', 'utf8')).join('\n');
 const sql = fs.readFileSync(raiz + 'supabase/catalog_consensus.sql', 'utf8');
 
 const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };
@@ -21,7 +22,12 @@ const MALLA_UC = val('MALLA_UC'), SIGLAS_UC = val('SIGLAS_UC');
 const siglaUC = val('siglaUC'), siglaReporteUC = val('siglaReporteUC'), claveReporte = val('claveReporte');
 const estructuraReporte = val('estructuraReporte'), aplicarPesoReporte = val('aplicarPesoReporte');
 const estadoReporte = val('estadoReporte');
-const estructuraParaConsenso = val('estructuraParaConsenso');
+const estructuraParaConsenso = val('estructuraParaConsenso'), huellaEstructura = val('huellaEstructura');
+const editorEstructuraPresente = /function aplicarNombreReporte\(/.test(src) &&
+  /function agregarFilaReporte\(/.test(src) && /function quitarFilaReporte\(/.test(src);
+const aplicarNombreReporte = editorEstructuraPresente ? val('aplicarNombreReporte') : null;
+const agregarFilaReporte = editorEstructuraPresente ? val('agregarFilaReporte') : null;
+const quitarFilaReporte = editorEstructuraPresente ? val('quitarFilaReporte') : null;
 
 console.log('\n=== Siglas UC ===');
 ['ING-PC', 'COM'].forEach(carrera => {
@@ -85,6 +91,31 @@ chk('y lo que viaja no lleva las evaluaciones en 0%',
   estructuraParaConsenso([{nombre:'Examen',peso:40},{nombre:'X',peso:0}]).length === 1);
 chk('un total distinto de 100 se explica antes de llamar a Supabase',
   /if\(!est\.length\|\|!estado\.lista\)\{[\s\S]{0,280}showToast/.test(src));
+
+console.log('\n=== El reporte también puede corregir la estructura ===');
+const estructuraVieja = [
+  { nombre: 'Prueba 1', peso: 20 },
+  { nombre: 'Evaluación que ya no existe', peso: 20 },
+  { nombre: 'Examen', peso: 60 },
+];
+if(editorEstructuraPresente){
+  quitarFilaReporte(estructuraVieja, 1);
+  agregarFilaReporte(estructuraVieja);
+  aplicarNombreReporte(estructuraVieja, 2, 'Control 3');
+  aplicarPesoReporte(estructuraVieja, 2, '20');
+}
+const estructuraCorregida = estructuraParaConsenso(estructuraVieja);
+chk('quitar y agregar cambian solo el borrador que se reporta',
+  editorEstructuraPresente && estructuraCorregida.length === 3 &&
+  !estructuraCorregida.some(e => e.nombre === 'Evaluación que ya no existe') &&
+  estructuraCorregida.some(e => e.nombre === 'Control 3') &&
+  estadoReporte(estructuraVieja).lista);
+chk('una misma pauta genera la misma huella aunque se agregue en otro orden',
+  editorEstructuraPresente && huellaEstructura(estructuraCorregida) === huellaEstructura([...estructuraCorregida].reverse()));
+chk('el modal permite editar nombres, quitar y agregar evaluaciones',
+  /id="m-rep-nombre-\$\{i\}"/.test(src) &&
+  /onclick="quitarReporteFila\(\$\{i\}\)"/.test(src) &&
+  /onclick="agregarReporteFila\(\)"/.test(src));
 
 console.log('\n=== RPC segura y agregada ===');
 const consenso = sql.slice(sql.indexOf('create or replace function public.catalog_consensus'));
