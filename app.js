@@ -844,21 +844,21 @@ function ramosDelPromedio(ramos){
 function tieneCreditos(r){return typeof r.creditos==='number'&&r.creditos>=0;}
 
 function gpaMode(ramos){
-  const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null);
+  const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r,undefined,ramos)!==null);
   if(conNota.length===0)return 'empty';
   return conNota.every(tieneCreditos)?'creditos':'simple';
 }
 function gpa(ramos){
-  const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r)!==null);
+  const conNota=ramosDelPromedio(ramos).filter(r=>ramoAvg(r,undefined,ramos)!==null);
   if(conNota.length===0)return null;
   // `map` pasa (elemento, índice, array), así que `conNota.map(ramoAvg)` metía
   // el índice en el segundo parámetro de `ramoAvg(r,visitados)`. Del segundo
   // ramo en adelante `visitados` valía un número y `vistos.has(...)` reventaba,
   // tumbando el render entero. La lambda pasa un solo argumento a propósito.
-  const simple=()=>{const a=conNota.map(r=>ramoAvg(r));return a.reduce((x,y)=>x+y,0)/a.length;};
+  const simple=()=>{const a=conNota.map(r=>ramoAvg(r,undefined,ramos));return a.reduce((x,y)=>x+y,0)/a.length;};
   if(gpaMode(ramos)==='creditos'){
     let num=0,den=0;
-    conNota.forEach(r=>{const a=ramoAvg(r);num+=a*r.creditos;den+=r.creditos;});
+    conNota.forEach(r=>{const a=ramoAvg(r,undefined,ramos);num+=a*r.creditos;den+=r.creditos;});
     // Todo lo rendido vale 0 SCT (un semestre de puros laboratorios): no hay con
     // qué ponderar, pero el estudiante igual tiene notas y merece ver su
     // promedio. Antes devolvía null y la pantalla quedaba sin número.
