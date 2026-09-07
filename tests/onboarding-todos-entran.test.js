@@ -14,7 +14,7 @@
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
 const src = ['data.js', 'engine.js', 'app.js', 'app-session.js', 'render-main.js', 'render-agenda.js']
-  .map(f => fs.readFileSync(raiz + f, 'utf8')).join('\n');
+  .map(f => fs.readFileSync(f === 'app.js' && process.env.GRADEHUB_APP ? process.env.GRADEHUB_APP : raiz + f, 'utf8')).join('\n');
 
 const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, clientHeight: 400, scrollTop: 0, dataset: {}, click() {}, closest() { return stub }, insertBefore() {}, removeChild() {}, remove() {}, getBoundingClientRect() { return { top: 0, left: 0, width: 0, height: 0, bottom: 0, right: 0 } }, children: [], firstElementChild: null, contains() { return false } };
 const ctx = {
@@ -71,6 +71,18 @@ if (atrapadas.length) console.log('       atrapadas: ' + atrapadas.slice(0, 8).j
 
 console.log('\n=== También quien escribe una carrera que no está en la lista ===');
 chk('una carrera declarada a mano entra', intentar('uc', null, 'Programa nuevo que no existe en la lista', 3).entro);
+
+console.log('\n=== UAndes sin malla verificada sigue teniendo una salida clara ===');
+chk('UAndes aparece al elegir universidad', run('tenantsVisibles().some(([codigo])=>codigo==="uandes")'));
+run('selectedTenant="uandes"'); run('selectedCarrera="ING-UA"');
+run('selectedCarreraNombre="Ingeniería Civil"'); run('selectedSem=1'); run('obRamos=[]'); run('obManualOpen=false');
+const introUandes=run('obCoursePickerIntro([])');
+chk('explica que la malla falta y orienta a agregar ramos a mano', /malla verificada/i.test(introUandes)&&/a mano/i.test(introUandes));
+const getElementByIdOriginal=ctx.document.getElementById;
+ctx.document.getElementById=id=>id==='ob-course-picker'?stub:null;
+run('renderObCoursePicker()');
+ctx.document.getElementById=getElementByIdOriginal;
+chk('prioriza agregar un ramo manual y no un buscador vacío', stub.innerHTML.includes('Agregar un ramo de mi horario')&&!stub.innerHTML.includes('id="ob-course-search"'));
 
 console.log('\n=== En cualquier semestre ===');
 const semestres = [1, 5, 11].map(s => intentar('uc', 'ING-PC', 'Ingeniería', s).entro);

@@ -1349,6 +1349,12 @@ function obCoursePickerIntro(sugeridos){
   if(selectedTenant==='uc'&&selectedCarrera==='ING-PC'&&selectedSem>=5){
     return 'Desde 5° Ingeniería UC se separa por major. No asumimos cuál tomas: busca por nombre o sigla de tu horario y arma este semestre a tu medida.';
   }
+  // Hay universidades con carreras declarables pero sin malla ni catálogo
+  // verificados. Un buscador sin datos ofrece una salida que no existe: acá se
+  // parte directo por el único camino honesto, los ramos del horario.
+  if(Object.keys(mallaFor(selectedTenant)||{}).length===0&&selectedCarreraNombre){
+    return `Todavía no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Para empezar, agrega los ramos de tu horario a mano.`;
+  }
   if(!selectedCarrera&&selectedCarreraNombre){
     return `Todavía no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Puedes armar tu semestre buscando ramos de tu universidad o agregando los de tu horario.`;
   }
@@ -1368,6 +1374,7 @@ function renderObCoursePicker(){
   const box=document.getElementById('ob-course-picker');if(!box)return;
   const sugeridos=obRamosActuales();
   const visibles=obRamosVisibles(sugeridos,obRamos);
+  const sinCatalogoVerificado=Object.keys(mallaFor(selectedTenant)||{}).length===0;
   const rows=visibles.length?visibles.map(nombre=>{
     // Si el ramo tiene dos códigos, la fila marca uno y ofrece cambiarlo. No se
     // pintan como dos ramos distintos: es el mismo, y marcar los dos sería
@@ -1398,16 +1405,17 @@ function renderObCoursePicker(){
   box.innerHTML=`
     <div class="course-picker">
       <p class="course-picker-intro">${obCoursePickerIntro(sugeridos)}</p>
+      ${sinCatalogoVerificado&&!visibles.length?'':`
       <div class="course-picker-section">
         <label class="modal-label">${sugeridos.length?`Sugeridos para ${selectedSem}°`:'Tu semestre'}</label>
         ${rows}
-      </div>
-      <div class="course-picker-section">
+      </div>`}
+      ${sinCatalogoVerificado?'':`<div class="course-picker-section">
         <label class="modal-label" for="ob-course-search">${obCourseSearchLabel()}</label>
         <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="ob-course-search" type="text" placeholder="${obCourseSearchPlaceholder()}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none"/></div>
         <div id="ob-course-results"></div>
-      </div>
-      <button class="course-picker-manual" type="button" onclick="obToggleManual()">¿No aparece? Agregar un ramo a mano</button>
+      </div>`}
+      <button class="course-picker-manual" type="button" onclick="obToggleManual()">${sinCatalogoVerificado?'Agregar un ramo de mi horario':'¿No aparece? Agregar un ramo a mano'}</button>
       ${obManualOpen?`<div class="course-picker-search" style="margin-top:8px;"><input id="ob-manual-name" type="text" placeholder="Ej.: Electivo de cine" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="ob-manual-error"/><button type="button" onclick="obAgregarManual()" style="border:0;background:none;color:var(--primary);font:inherit;font-weight:700;">Agregar</button></div><p id="ob-manual-error" role="alert"${obManualError?'':' hidden'} style="margin:6px 0 0;font-size:0.8125rem;color:var(--red);">${esc(obManualError)}</p>`:''}
     </div>`;
   const search=document.getElementById('ob-course-search');
