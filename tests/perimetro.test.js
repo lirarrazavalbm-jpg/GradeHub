@@ -7,6 +7,9 @@ const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
 const headers = fs.readFileSync(path.join(raiz, '_headers'), 'utf8');
 const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
 const app = fs.readFileSync(path.join(raiz, 'app.js'), 'utf8') + '\n' + fs.readFileSync(path.join(raiz, 'app-session.js'), 'utf8');
+// Permite probar la regla contra el archivo anterior sin reemplazar el árbol.
+// Un test que nunca falló no demuestra que la delegación haya cerrado nada.
+const agenda = fs.readFileSync(process.env.GRADEHUB_AGENDA || path.join(raiz, 'render-agenda.js'), 'utf8');
 
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
@@ -41,6 +44,11 @@ chk('frame-ancestors none corta el clickjacking', /frame-ancestors 'none'/.test(
 chk('object-src none', /object-src 'none'/.test(csp));
 chk('base-uri self impide reescribir las rutas relativas', /base-uri 'self'/.test(csp));
 chk('default-src self', /default-src 'self'/.test(csp));
+
+console.log('\n=== La Agenda no abre una nueva puerta de scripts inline ===');
+// La CSP todavía requiere unsafe-inline mientras se migra archivo por archivo.
+// Este primer corte evita que render-agenda.js vuelva a sumar handlers inline.
+chk('render-agenda.js no usa onclick inline', !/\bonclick\s*=/.test(agenda));
 
 console.log('\n=== Todo origen que la app usa está declarado ===');
 // Si se agrega un servicio y no se suma a la CSP, deja de funcionar en silencio.
