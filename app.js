@@ -2940,15 +2940,52 @@ const CONSENSO_AUTO=3;
 // presetRamo(), pero solo con lo que el reporte trae de verdad: pesos, `slots`
 // y las compuertas de nota mínima. Fechas, grupos, descartes y `aporta` no
 // viajan en el reporte, así que no se inventan acá.
+// Frontera de confianza: acá entra texto escrito por otro estudiante.
+//
+// Escapar en el render evita que se EJECUTE, y eso ya está resuelto en toda la
+// app. Lo que no resuelve es lo que se puede hacer sin ejecutar nada: un
+// carácter de anulación bidireccional da vuelta el resto de la línea, los de
+// ancho cero no se ven pero cuentan, y los de control ensucian la ficha. Nada
+// de eso es el nombre de una evaluación.
+//
+// Se limpia UNA vez, al entrar, y no en cada render: si la basura no se guarda,
+// no hay que acordarse de filtrarla en los seis lugares que la pintan.
+function limpiarNombreAjeno(s){
+  const limpio=String(s==null?'':s)
+    // Tabulador, salto de línea y retorno quedan fuera de este barrido: los
+    // recoge el colapso de espacios de más abajo. Borrarlos acá pegaría las
+    // palabras que separaban y "Solemne\n1" quedaría como "Solemne1".
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g,'')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  // Por código y no por índice: cortar a la mitad un emoji deja media pareja.
+  return [...limpio].slice(0,NOMBRE_MAX).join('');
+}
+
+// La estructura reportada, con la forma que usa el resto de la app.
+//
+// Los rangos se vuelven a comprobar acá aunque el SQL ya los valide. No es
+// desconfianza del servidor: es que este dato lo escribió un desconocido, y la
+// validación que lo dejó entrar vive en otro archivo que se puede cambiar sin
+// que nadie mire este. Un `min` fuera de escala toparía la nota final de otro
+// estudiante, que es lo único que esta app no puede permitirse.
 function pautaDeConsenso(est){
   const categorias=[],gates=[];
+  const enEscala=v=>typeof v==='number'&&isFinite(v)&&v>=SIM_MIN&&v<=SIM_MAX;
   (est||[]).forEach(e=>{
-    if(!e||!e.nombre)return;
-    const id=uid(),slots=e.slots>1?e.slots:0;
-    const cat={id,nombre:e.nombre,peso:Number(e.peso)||0,ponderaNotas:false,directNota:!!slots,notas:[]};
+    if(!e)return;
+    const nombre=limpiarNombreAjeno(e.nombre);
+    if(!nombre)return;
+    const peso=Math.min(100,Math.max(0,Number(e.peso)||0));
+    // `typeof number` y no Number(): el SQL exige que venga como número, así
+    // que un "3" no viene de un reporte legítimo y no hay por qué adivinarle.
+    const slots=typeof e.slots==='number'&&Number.isInteger(e.slots)&&e.slots>1&&e.slots<=100?e.slots:0;
+    const id=uid();
+    const cat={id,nombre,peso,ponderaNotas:false,directNota:!!slots,notas:[]};
     if(slots)cat.slots=slots;
     categorias.push(cat);
-    if(e.min)gates.push({type:'min_grade_required',catId:id,min:e.min,cap:e.cap,nombre:e.nombre});
+    if(enEscala(e.min))gates.push({type:'min_grade_required',catId:id,min:e.min,cap:enEscala(e.cap)?e.cap:SIM_MIN,nombre});
   });
   return {categorias,gates};
 }
