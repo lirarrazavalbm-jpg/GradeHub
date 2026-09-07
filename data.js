@@ -168,7 +168,10 @@ const TENANTS={
   // completo (tema, carreras, presets) para quien ya lo tenga seleccionado.
   // Quitar la marca cuando se quiera lanzar.
   uai:{name:'U. Adolfo Ibáñez', short:'UAI', mono:'UAI', sub:'Todas las carreras', oculto:true},
-  uandes:{name:'U. de los Andes', short:'UANDES', mono:'UA', sub:'Todas las carreras', oculto:true},
+  // UAndes ya tiene carreras declarables, aunque todavía no una malla verificada.
+  // Se ofrece igual: el onboarding deja armar el semestre con los ramos del
+  // horario, sin inventar sugerencias ni ponderaciones.
+  uandes:{name:'U. de los Andes', short:'UANDES', mono:'UA', sub:'Carreras y ramos manuales'},
 };
 
 // ─── GLIFOS DE UNIVERSIDAD ───────────────────────────────────────────────────
