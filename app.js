@@ -2643,7 +2643,7 @@ function claveCanonica(clave,tenant,carrera){
 
 // Estructura m\u00ednima y ordenada de un ramo, para comparar y contar consenso.
 function estructuraDe(r){
-  return catsDePauta(r.categorias)
+  return ordenarEstructuraConsenso(catsDePauta(r.categorias)
     .map(c=>{
       const g=(r.gates||[]).find(x=>x.catId===c.id);
       // r2, no un decimal. Con un decimal, los tres Controles de Lectura de
@@ -2656,18 +2656,23 @@ function estructuraDe(r){
       if(c.slots>1)o.slots=c.slots;
       if(g){o.min=g.min;o.cap=g.cap;}
       return o;
-    })
-    // Orden por nombre normalizado, NO por localeCompare(): sin locale fijo,
-    // localeCompare usa el idioma del dispositivo y "Óptica" va antes de "Oral"
-    // en español pero después en polaco. El orden viaja dentro de `estructura`
-    // y de la huella, así que dos estudiantes con la MISMA pauta y distinto
-    // idioma no agruparían nunca y el consenso no se formaría, en silencio.
-    // El segundo criterio desempata los nombres que normalizan igual.
-    .sort((a,b)=>{
-      const ka=normName(a.nombre),kb=normName(b.nombre);
-      if(ka!==kb)return ka<kb?-1:1;
-      return a.nombre<b.nombre?-1:a.nombre>b.nombre?1:0;
-    });
+    }));
+}
+
+// Orden por nombre normalizado, NO por localeCompare(): sin locale fijo,
+// localeCompare usa el idioma del dispositivo y "Óptica" va antes de "Oral"
+// en español pero después en polaco. El orden viaja dentro de `estructura` y
+// de la huella, así que dos estudiantes con la MISMA pauta y distinto idioma
+// no agruparían nunca y el consenso no se formaría, en silencio. El segundo
+// criterio desempata los nombres que normalizan igual.
+function ordenarEstructuraConsenso(est){
+  return [...(est||[])].sort((a,b)=>{
+    const ka=nombreHuella(a.nombre),kb=nombreHuella(b.nombre);
+    if(ka!==kb)return ka<kb?-1:1;
+    const na=normName(a.nombre),nb=normName(b.nombre);
+    if(na!==nb)return na<nb?-1:1;
+    return a.nombre<b.nombre?-1:a.nombre>b.nombre?1:0;
+  });
 }
 
 // Lo que de verdad se reporta: la pauta sin las evaluaciones en 0%.
@@ -2685,8 +2690,18 @@ function estructuraDe(r){
 function estructuraParaConsenso(est){return (est||[]).filter(e=>Number(e.peso)>0);}
 
 // Huella estable: dos reportes id\u00e9nticos producen la misma cadena.
+function nombreHuella(nombre){
+  // `normName` es el buscador de toda la app. Esta tolerancia es solo del
+  // consenso: cambia "Solemne3" en "solemne 3", pero no toca cómo se buscan
+  // ramos ni los nombres que alguien ve o guarda.
+  return normName(nombre)
+    .replace(/\s+/g,' ')
+    .replace(/([a-z])(?=\d)|(\d)(?=[a-z])/g,'$& ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
 function huellaEstructura(est){
-  return est.map(e=>[normName(e.nombre),e.peso,e.slots||1,e.min||0,e.cap||0].join('~')).join('|');
+  return ordenarEstructuraConsenso(est).map(e=>[nombreHuella(e.nombre),e.peso,e.slots||1,e.min||0,e.cap||0].join('~')).join('|');
 }
 
 // El reporte tiene su propio borrador: corregir lo que se envía al catálogo no

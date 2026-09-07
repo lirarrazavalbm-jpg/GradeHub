@@ -1,8 +1,11 @@
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
-const src = ['data.js', 'engine.js', 'app.js', 'render-agenda.js']
-  .map(f => fs.readFileSync(raiz + f, 'utf8')).join('\n');
+const appPath = process.env.GRADEHUB_APP || raiz + 'app.js';
+const src = ['data.js', 'engine.js']
+  .map(f => fs.readFileSync(raiz + f, 'utf8')).concat(fs.readFileSync(appPath, 'utf8'), fs.readFileSync(raiz + 'render-agenda.js', 'utf8')).join('\n');
 const sql = fs.readFileSync(raiz + 'supabase/catalog_consensus.sql', 'utf8');
+const rutaRecalculo = raiz + 'supabase/recalcular_huellas_catalogo.sql';
+const recalculo = fs.existsSync(rutaRecalculo) ? fs.readFileSync(rutaRecalculo, 'utf8') : '';
 
 const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };
 const ctx = {
@@ -21,7 +24,7 @@ const MALLA_UC = val('MALLA_UC'), SIGLAS_UC = val('SIGLAS_UC');
 const siglaUC = val('siglaUC'), siglaReporteUC = val('siglaReporteUC'), claveReporte = val('claveReporte');
 const estructuraReporte = val('estructuraReporte'), aplicarPesoReporte = val('aplicarPesoReporte');
 const estadoReporte = val('estadoReporte');
-const estructuraParaConsenso = val('estructuraParaConsenso');
+const estructuraParaConsenso = val('estructuraParaConsenso'), huellaEstructura = val('huellaEstructura'), normName = val('normName');
 
 console.log('\n=== Siglas UC ===');
 ['ING-PC', 'COM'].forEach(carrera => {
@@ -85,6 +88,22 @@ chk('y lo que viaja no lleva las evaluaciones en 0%',
   estructuraParaConsenso([{nombre:'Examen',peso:40},{nombre:'X',peso:0}]).length === 1);
 chk('un total distinto de 100 se explica antes de llamar a Supabase',
   /if\(!est\.length\|\|!estado\.lista\)\{[\s\S]{0,280}showToast/.test(src));
+
+console.log('\n=== Huella de reportes ===');
+const solemneConEspacio = [{nombre:'Solemne 3',peso:40},{nombre:'Examen',peso:60}];
+const solemnePegada = [{nombre:'Solemne3',peso:40},{nombre:'Examen',peso:60}];
+const solemneConEspaciosExtra = [{nombre:'Solemne   3',peso:40},{nombre:'Examen',peso:60}];
+chk('la huella junta el número pegado y los espacios internos',
+  huellaEstructura(solemneConEspacio) === huellaEstructura(solemnePegada) &&
+  huellaEstructura(solemneConEspacio) === huellaEstructura(solemneConEspaciosExtra));
+chk('normName sigue distinguiendo el espacio: la tolerancia es solo de la huella',
+  normName('Solemne 3') !== normName('Solemne3'));
+chk('la RPC agrupa por la huella canónica aunque la estructura conserve el texto reportado',
+  /\), grupos as \([\s\S]{0,700}group by ramo_key, huella[\s\S]{0,180}having sum\(respaldos_estructura\) >= 3/i.test(sql) &&
+  /array_agg\(estructura order by respaldos_estructura desc/i.test(sql));
+chk('el recálculo histórico es una transacción y rehace las huellas desde la estructura',
+  /begin;/i.test(recalculo) && /update public\.catalog_reports/i.test(recalculo) &&
+  /jsonb_array_elements\(cr\.estructura\)/i.test(recalculo) && /commit;/i.test(recalculo));
 
 console.log('\n=== RPC segura y agregada ===');
 const consenso = sql.slice(sql.indexOf('create or replace function public.catalog_consensus'));

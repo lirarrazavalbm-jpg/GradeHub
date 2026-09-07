@@ -148,16 +148,33 @@ language sql
 security definer
 set search_path = public
 as $$
-  select
-    min(cr.ramo) as ramo,
-    coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm) as ramo_key,
-    cr.estructura,
-    cr.huella,
-    count(distinct cr.user_id)::integer as respaldos
-  from public.catalog_reports as cr
-  where cr.tenant = p_tenant
-  group by coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm), cr.estructura, cr.huella
-  having count(distinct cr.user_id) >= 3
+  -- `estructura` conserva exactamente lo que cada estudiante reportó; no es
+  -- una identidad. "Solemne3" y "Solemne 3" tienen JSON distinto, pero la
+  -- misma huella canónica y tienen que sumar el mismo respaldo.
+  with estructuras as (
+    select
+      min(cr.ramo) as ramo,
+      coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm) as ramo_key,
+      cr.huella,
+      cr.estructura,
+      count(distinct cr.user_id)::integer as respaldos_estructura,
+      max(cr.updated_at) as ultimo_reporte
+    from public.catalog_reports as cr
+    where cr.tenant = p_tenant
+    group by coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm), cr.huella, cr.estructura
+  ), grupos as (
+    select
+      min(ramo) as ramo,
+      ramo_key,
+      (array_agg(estructura order by respaldos_estructura desc, ultimo_reporte desc, estructura::text))[1] as estructura,
+      huella,
+      sum(respaldos_estructura)::integer as respaldos
+    from estructuras
+    group by ramo_key, huella
+    having sum(respaldos_estructura) >= 3
+  )
+  select ramo, ramo_key, estructura, huella, respaldos
+  from grupos
   order by respaldos desc, ramo_key;
 $$;
 
