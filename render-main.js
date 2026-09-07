@@ -132,7 +132,7 @@ function renderHome(){
     if(ne){
       const daysLabel=ne.daysUntil===0?'hoy':ne.daysUntil===1?'mañana':`en ${ne.daysUntil} días`;
       cards.push(`
-        <div class="insight-card" style="--insight-color:${esc(ne.ramo.color)}" onclick="openRamo('${esc(ne.ramo.id)}')">
+        <div class="insight-card" role="button" tabindex="0" style="--insight-color:${esc(ne.ramo.color)}" onclick="openRamo('${esc(ne.ramo.id)}')">
           <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></div>
           <div class="insight-body">
             <div class="insight-label">Próxima evaluación</div>
@@ -149,7 +149,7 @@ function renderHome(){
       // decirlo, no pedir una nota que no existe en la escala.
       const warnColor=(risky.imposible||r2(risky.avg)<4.0)?'#ff7a8f':'#ffcf5c';
       cards.push(`
-        <div class="insight-card" style="--insight-color:${warnColor}" onclick="openRamo('${esc(risky.ramo.id)}')">
+        <div class="insight-card" role="button" tabindex="0" style="--insight-color:${warnColor}" onclick="openRamo('${esc(risky.ramo.id)}')">
           <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg></div>
           <div class="insight-body">
             <div class="insight-label">${risky.imposible?'Ya no alcanza':'Ramo en riesgo'}</div>
@@ -168,7 +168,7 @@ function renderHome(){
       if(lg){
         const noteColor=getColor(lg.nota.valor);
         cards.push(`
-          <div class="insight-card" style="--insight-color:${noteColor}" onclick="openRamo('${esc(lg.ramo.id)}')">
+          <div class="insight-card" role="button" tabindex="0" style="--insight-color:${noteColor}" onclick="openRamo('${esc(lg.ramo.id)}')">
             <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
             <div class="insight-body">
               <div class="insight-label">Última nota</div>
@@ -562,7 +562,7 @@ function renderRamo(){
       }).join('');
     card.innerHTML=`
       <div class="cat-header">
-        <div class="cat-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" onkeydown="if(event.key==='Enter'){openEditCatModal('${cat.id}')}" style="cursor:pointer;">
+        <div class="cat-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" style="cursor:pointer;">
           <div class="cat-name">${esc(cat.nombre)}</div>
           <div class="cat-peso-tag">${cat.peso}% del ramo · ${notas.length} nota${notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
         </div>
@@ -741,7 +741,7 @@ function renderStats(){
         }).join('');
         html+=`
           <div class="hist-card">
-            <div class="hist-header" onclick="toggleHist('${h.id}')">
+            <div class="hist-header" role="button" tabindex="0" onclick="toggleHist('${h.id}')">
               <div style="flex:1;">
                 <div style="font-size:0.96875rem;font-weight:700;color:var(--fg);letter-spacing:-.01em;">${esc(h.label)}</div>
                 <div style="font-size:0.75rem;color:var(--fg3);margin-top:3px;">Sem. ${h.careerSemestre} · ${ramosHistorial.length} ramos</div>
