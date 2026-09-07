@@ -548,6 +548,10 @@ saber dónde empezar a mirar.
 | El orden manual no se puede arrastrar | *"El orden manual ahora se puede decidir de verdad"* + #176 (el ícono) y #204 (el foco con teclado) |
 | El consenso de reportes no lo consume nadie | #234 — se aplica solo en ramos sin pauta, etiquetado como reportado por estudiantes |
 | El consenso no se veía en los ramos que ya tienen pauta | #274 — se ofrece, con la pauta a la vista, y nunca se aplica solo |
+| El correo salía 2 por hora y sin autenticar | #150 — Resend + SPF/DKIM/DMARC propios, 30 por hora, entregado en 2 s |
+| Las plantillas de correo estaban en inglés | #320 — en español y versionadas en `supabase/plantillas-correo.md` |
+| El feed de calendario se cacheaba público | #314 — `private`, y el plegado del .ics pasó a contar octetos |
+| El consenso guardaba texto ajeno sin limpiar | #315 — bidi, ancho cero y control se filtran al entrar; rangos revalidados |
 | Una evaluación en 0% rompía el consenso | #272 — no viaja en el reporte: cinco personas de acuerdo daban cinco grupos de una |
 | Actualizar la pauta oficial borraba notas | #235 — se emparejan por nombre normalizado y lo que sale de la pauta queda en 0% con sus notas |
 | Contabilidad no se podía reportar (la pauta sumaba 99,9) | #236 — `estructuraDe` redondeaba a un decimal; de paso el orden dejó de depender del idioma del dispositivo |
@@ -646,12 +650,23 @@ diseñar, no improvisar— y dónde queda constancia de que aceptaron, porque si
 se guarda, el paso es decorativo. La política se actualiza junto con esto para
 que las dos páginas digan lo mismo.
 
-**Arreglar la verificación por correo.** Está desactivada porque el SMTP
-integrado de Supabase despacha dos correos por hora. No se puede reactivar antes
-de tener correo propio con dominio verificado — issue #150, asignado a Martín —
-y cuando se reactive hay que volver a redactar el aviso del registro, que hoy
-dice "Ya puedes entrar con ese correo y tu contraseña" justamente porque no se
-manda ningún correo. Está anotado en `app.js`, junto a `MSG_VERIFICA`.
+**Reactivar la verificación por correo. Ya no hay nada que la bloquee.** El
+correo propio está resuelto desde el 2026-09-06 (#150, cerrado): Resend como
+SMTP en Supabase, `gradehub.cl` con SPF, DKIM y DMARC propios, remitente
+`hola@gradehub.cl` —que además recibe, vía Email Routing— y el límite subido de
+2 a 30 correos por hora. Una recuperación de contraseña real llegó a bandeja de
+entrada en 2 segundos con SPF, DKIM y DMARC en `pass`.
+
+Lo que falta es la decisión y un texto. **Activarla obliga a reescribir el aviso
+del registro el mismo día**: hoy dice "Ya puedes entrar con ese correo y tu
+contraseña" justamente porque no se manda ningún correo, y con la confirmación
+encendida esa frase pasa a ser falsa. Está anotado en `app.js`, junto a
+`MSG_VERIFICA`. La plantilla en español ya está escrita, en
+`supabase/plantillas-correo.md`.
+
+Y no es solo higiene: **es el control que sostiene el consenso de reportes.** Ese
+umbral son tres `user_id` distintos, y mientras crear una cuenta no cueste nada,
+"tres personas" no significa tres personas.
 
 ### Lo que espera una decisión, no un agente
 
