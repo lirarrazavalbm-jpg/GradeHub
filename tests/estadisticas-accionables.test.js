@@ -14,9 +14,10 @@ const stats=render.slice(inicio,fin);
 console.log('\n=== Estadísticas guía decisiones, no cuenta tarjetas ===');
 chk('el estado temprano reconoce el semestre sin notas y lo que ya está configurado',
   stats.includes('Tu semestre todavía está empezando.')&&stats.includes('evaluaciones configuradas'));
-chk('la situación junta promedio actual y avance real en una lectura',
+chk('la situación parte por el avance y deja el promedio general en Inicio',
   /stats-situation-card[^>]*aria-label="\$\{avance\.pct\}% de las evaluaciones evaluado"/.test(stats)&&
-  stats.includes('Promedio actual')&&stats.includes('stats-situation-progress'));
+  /stats-situation-top[\s\S]{0,500}<div class="stat-label">Avance del semestre<\/div>[\s\S]{0,300}\$\{avance\.pct\}%/.test(stats)&&
+  !/stats-situation-top[\s\S]{0,700}Promedio actual/.test(stats));
 chk('la prioridad usa la misma cuenta de nota necesaria y aparece antes del mapa',
   stats.includes('const falta=loQueFaltaPorRamo(S.ramos);')&&stats.includes('Qué mirar primero')&&
   stats.indexOf('Qué mirar primero')<stats.indexOf('Mapa de tus ramos')&&/falta\.slice\(0,3\)/.test(stats));

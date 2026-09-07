@@ -704,10 +704,10 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .stats-progress-card.is-complete::before{opacity:0;}
 .stats-situation-card{padding:18px 18px 16px;}
 .stats-situation-top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;}
-.stats-situation-gpa{font-size:2.25rem;line-height:.98;letter-spacing:-.055em;margin-top:5px;}
+.stats-situation-value{font-size:2.25rem;line-height:.98;letter-spacing:-.055em;margin-top:5px;color:var(--primary);font-variant-numeric:tabular-nums;}
 .stats-situation-progress{display:flex;flex-direction:column;align-items:flex-end;gap:1px;padding-top:3px;font-variant-numeric:tabular-nums;}
 .stats-situation-progress span{font-size:1.25rem;line-height:1;font-weight:800;color:var(--primary);letter-spacing:-.04em;}
-.stats-situation-progress small{font-size:.6875rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--fg3);}
+.stats-situation-progress small{font-size:.6875rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--fg3);white-space:nowrap;}
 .stats-situation-reading{margin-top:17px;font-size:.9375rem;font-weight:650;line-height:1.35;color:var(--fg);letter-spacing:-.015em;}
 .stats-priority-row{margin-bottom:8px;min-height:72px;}
 .stats-priority-value{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:66px;font-size:1.375rem;line-height:1;font-weight:800;letter-spacing:-.045em;font-variant-numeric:tabular-nums;}
@@ -724,7 +724,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .stats-ramo-avg{min-width:30px;font-size:1.0625rem;font-weight:800;line-height:1;text-align:right;letter-spacing:-.04em;font-variant-numeric:tabular-nums;}
 .stats-range-card{padding:17px 18px 16px;}
 @media(hover:hover) and (pointer:fine){.stats-ramo-row:hover{background:var(--muted);}}
-@media(max-width:380px){.stats-ramo-row{gap:9px;padding-right:11px;}.stats-ramo-progress{display:none;}.stats-situation-gpa{font-size:2rem;}}
+@media(max-width:380px){.stats-ramo-row{gap:9px;padding-right:11px;}.stats-ramo-progress{display:none;}.stats-situation-value{font-size:2rem;}}
 /* AGENDA */
 .ag-section{margin-bottom:22px;}
 .ag-section-label{font-family:'Onest',sans-serif;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:10px;padding:0 2px;}
