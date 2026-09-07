@@ -56,7 +56,7 @@ function cambiarOrdenAgenda(orden){
 function agendaOrdenHTML(activo=agendaOrdenActual){
   const opciones=[['recomendado','Recomendado'],['fecha','Fecha'],['peso','Peso']];
   return `<div class="ag-order-options" role="group" aria-label="Ordenar evaluaciones pendientes">
-      ${opciones.map(([valor,label])=>`<button type="button" class="ag-order-option${activo===valor?' active':''}" aria-pressed="${activo===valor?'true':'false'}" onclick="cambiarOrdenAgenda('${valor}')">${label}</button>`).join('')}
+      ${opciones.map(([valor,label])=>`<button type="button" class="ag-order-option${activo===valor?' active':''}" aria-pressed="${activo===valor?'true':'false'}" data-agenda-action="ordenar" data-agenda-orden="${valor}">${label}</button>`).join('')}
     </div>`;
 }
 
@@ -80,7 +80,7 @@ function razonDestacadaAgenda(e){
 function agendaDestacadaHTML(e,posicion){
   if(!e)return '';
   const f=formatEventDate(e.fecha);
-  return `<button class="ag-priority-card ${e.nivel}" style="--ag-course:${esc(e.ramo.color)}" onclick="openRamo('${esc(e.ramo.id)}')">
+  return `<button type="button" class="ag-priority-card ${e.nivel}" style="--ag-course:${esc(e.ramo.color)}">
     <span class="ag-priority-bar" aria-hidden="true"></span>
     <div class="ag-priority-top">
       <span class="ag-priority-rank ${e.nivel}">${posicion===0?'Tu foco ahora':'Siguiente'}</span>
@@ -172,7 +172,7 @@ function detalleEvaluacionAgendaHTML(e,pendientes){
       <strong>${esc(despues.titulo)}</strong>
       <span>${esc(despues.texto)}</span>
     </div>
-    <button type="button" class="ag-event-course" onclick="openRamo('${esc(e.ramo.id)}')">Ver ramo</button>
+    <button type="button" class="ag-event-course" data-agenda-action="ver-ramo" data-ramo-id="${esc(e.ramo.id)}">Ver ramo</button>
   </div>`;
 }
 
@@ -240,12 +240,35 @@ function activarDetallesAgenda(body){
     const chevronAnterior=trigger.querySelector('.chevron-r');
     if(chevronAnterior)chevronAnterior.remove();
     if(chevron)trigger.appendChild(chevron);
-    trigger.removeAttribute('onclick');
     trigger.classList.add('ag-event-trigger');
     trigger.id=`ag-trigger-${key}`;
     trigger.setAttribute('aria-expanded','false');
     trigger.setAttribute('aria-controls',`ag-detail-${key}`);
     trigger.addEventListener('click',()=>toggleAgendaDetalle(trigger));
+  });
+}
+
+// Los botones de la Agenda se resuelven desde un solo listener del contenedor.
+// Así se conserva el teclado nativo de los botones y no se vuelve a abrir una
+// puerta de scripts inline mientras los demás archivos migran por separado.
+function activarAccionesAgenda(body){
+  if(!body||body.dataset.agendaAccionesActivas)return;
+  body.dataset.agendaAccionesActivas='true';
+  body.addEventListener('click',evento=>{
+    const boton=evento.target&&evento.target.closest?evento.target.closest('[data-agenda-action]'):null;
+    if(!boton||!body.contains(boton))return;
+    const accion=boton.dataset.agendaAction;
+    evento.preventDefault();
+    evento.stopPropagation();
+    if(accion==='ordenar')cambiarOrdenAgenda(boton.dataset.agendaOrden);
+    else if(accion==='ver-ramo')openRamo(boton.dataset.ramoId);
+    else if(accion==='agregar-fecha')abrirFechaAgenda(agendaSinFecha()[0]);
+    else if(accion==='completar-nota')completarNotaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
+    else if(accion==='corregir-fecha')corregirFechaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
+    else if(accion==='agregar-evaluacion'){
+      openRamo(boton.dataset.ramoId);
+      setTimeout(openAddCatModal,320);
+    }else if(accion==='agregar-ramo')openAddRamoModal();
   });
 }
 
@@ -274,7 +297,7 @@ function agendaSinFechaHTML(sinFecha){
       <strong>${sinFecha.length} evaluación${sinFecha.length!==1?'es':''} sin fecha</strong>
       <span>Parte por ${esc(primera.cat.nombre)} · ${esc(primera.ramo.nombre)}</span>
     </div>
-    <button type="button" class="ag-undated-action" onclick="abrirFechaAgenda(agendaSinFecha()[0])">Agregar fecha</button>
+    <button type="button" class="ag-undated-action" data-agenda-action="agregar-fecha">Agregar fecha</button>
   </section>`;
 }
 
@@ -329,8 +352,8 @@ function agendaFechasPasadasHTML(eventos){
           <span>${esc(e.ramo.nombre)}</span>
         </div>
         <div class="ag-waiting-actions">
-          <button type="button" class="ag-waiting-primary" onclick="completarNotaDesdeAgenda('${esc(e.ramo.id)}','${esc(e.cat.id)}','${esc(notaId)}')">${e.nota?'Completar nota':'Poner nota'}</button>
-          <button type="button" class="ag-waiting-secondary" onclick="corregirFechaDesdeAgenda('${esc(e.ramo.id)}','${esc(e.cat.id)}','${esc(notaId)}')">Corregir fecha</button>
+          <button type="button" class="ag-waiting-primary" data-agenda-action="completar-nota" data-ramo-id="${esc(e.ramo.id)}" data-cat-id="${esc(e.cat.id)}" data-nota-id="${esc(notaId)}">${e.nota?'Completar nota':'Poner nota'}</button>
+          <button type="button" class="ag-waiting-secondary" data-agenda-action="corregir-fecha" data-ramo-id="${esc(e.ramo.id)}" data-cat-id="${esc(e.cat.id)}" data-nota-id="${esc(notaId)}">Corregir fecha</button>
         </div>
       </article>`;
     }).join('')}</div>
@@ -339,6 +362,7 @@ function agendaFechasPasadasHTML(eventos){
 
 function renderAgenda(){
   const body=document.getElementById("agenda-body");if(!body)return;
+  activarAccionesAgenda(body);
   agendaDetalleAbierto=null;
   const events=agendaEvents();
   const sinFecha=agendaSinFecha();
@@ -360,7 +384,8 @@ function renderAgenda(){
       ? "Agrega la fecha de tus pruebas, entregas y exámenes. Van a aparecer acá ordenadas por lo que más te conviene atender primero."
       : "Necesitas al menos un ramo con evaluaciones para empezar a llenar la agenda.";
     const ctaLabel=primeraSinFecha?"Poner primera fecha":hayRamos?"Agregar evaluación":"Agregar mi primer ramo";
-    const ctaAction=primeraSinFecha?"abrirFechaAgenda(agendaSinFecha()[0])":hayRamos?"openRamo(\u0027"+esc(primerRamo.id)+"\u0027);setTimeout(openAddCatModal,320);":"openAddRamoModal();";
+    const ctaAction=primeraSinFecha?'agregar-fecha':hayRamos?'agregar-evaluacion':'agregar-ramo';
+    const ctaRamo=hayRamos?` data-ramo-id="${esc(primerRamo.id)}"`:'';
     body.innerHTML=`
       <div class="ag-empty">
         <div class="ag-empty-icon" aria-hidden="true">
@@ -373,7 +398,7 @@ function renderAgenda(){
         </div>
         <div class="ag-empty-title">${title}</div>
         <div class="ag-empty-desc">${desc}</div>
-        <button class="ag-empty-cta" onclick="${ctaAction}">${ctaLabel}</button>
+        <button type="button" class="ag-empty-cta" data-agenda-action="${ctaAction}"${ctaRamo}>${ctaLabel}</button>
       </div>`;
     return;
   }
