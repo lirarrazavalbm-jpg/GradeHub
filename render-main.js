@@ -620,7 +620,6 @@ function renderStats(){
         ? 'Tu semestre archivado todavía no tiene notas para compararlo.'
         : 'Todavía no tienes un semestre archivado con el que compararte.'
       : Math.abs(diff)<0.05?`Vas igual que en ${previo.label||'el semestre anterior'}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${tendencia} ${previo.label||'el semestre anterior'}.`;
-    const detalle=diff===null?`${totalNotas} nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}`:`Antes ${nf(previo.gpa)} · ahora ${nf(g)}`;
     const avanceTail=Math.min(14,100-avance.pct);
     const falta=loQueFaltaPorRamo(S.ramos);
     const necesidadPorRamo=new Map(falta.map(x=>[x.ramo.id,x]));
@@ -657,15 +656,14 @@ function renderStats(){
     };
     html+=`
     <div class="section-hd" style="padding:6px 20px 8px;">
-      <span class="section-hd-title">Tu semestre hoy</span>
+      <span class="section-hd-title">Ritmo del semestre</span>
     </div>
     <div class="stat-card stats-progress-card${avance.pct===100?' is-complete':''} stats-situation-card" role="progressbar" aria-label="${avance.pct}% de las evaluaciones evaluado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance.pct}" style="--stats-progress:${avance.pct}%;--stats-progress-end:${Math.min(100,avance.pct+avanceTail)}%;margin:0 20px 16px;">
       <div class="stats-situation-top">
-        <div><div class="stat-label">Promedio actual</div><div class="stat-val stats-situation-gpa" style="color:${getColor(g)}">${g!==null?nf(g):'—'}</div><div class="stat-sub">${gpaMode(S.ramos)==='creditos'?`Ponderado · ${totalCreditos(S.ramos)} créditos`:'Promedio simple'}</div></div>
-        <div class="stats-situation-progress"><span>${avance.pct}%</span><small>evaluado</small></div>
+        <div><div class="stat-label">Avance del semestre</div><div class="stat-val stats-situation-value">${avance.pct}%</div><div class="stat-sub">del peso evaluable ya tiene nota</div></div>
+        <div class="stats-situation-progress"><span>${totalNotas}</span><small>nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}</small></div>
       </div>
       <div class="stats-situation-reading">${lectura}</div>
-      <div class="stat-sub" style="margin-top:4px;">${detalle}</div>
     </div>
     ${(()=>{
       const proy=proyeccionSemestre(S.ramos);
