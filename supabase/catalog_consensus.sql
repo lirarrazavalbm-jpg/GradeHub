@@ -148,17 +148,36 @@ language sql
 security definer
 set search_path = public
 as $$
-  select
-    min(cr.ramo) as ramo,
-    coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm) as ramo_key,
-    cr.estructura,
-    cr.huella,
-    count(distinct cr.user_id)::integer as respaldos
-  from public.catalog_reports as cr
-  where cr.tenant = p_tenant
-  group by coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm), cr.estructura, cr.huella
-  having count(distinct cr.user_id) >= 3
-  order by respaldos desc, ramo_key;
+  -- `huella` es la forma normalizada de la pauta y es la única identidad que
+  -- decide si dos personas coinciden. `estructura` conserva el texto tal como
+  -- lo escribió cada una para mostrar la propuesta: agrupar por ambos dividía
+  -- votos iguales cuando solo cambiaban mayúsculas o acentos en los nombres.
+  with reportes as (
+    select cr.*,
+      coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm) as ramo_key
+    from public.catalog_reports as cr
+    where cr.tenant = p_tenant
+  ), agrupados as (
+    select
+      min(ramo) as ramo,
+      ramo_key,
+      huella,
+      count(distinct user_id)::integer as respaldos
+    from reportes
+    group by ramo_key, huella
+    having count(distinct user_id) >= 3
+  ), muestra as (
+    -- La propuesta necesita una estructura para dibujarse. Elegimos la última
+    -- de forma estable; no altera el conteo ni hace público quién la envió.
+    select distinct on (ramo_key, huella)
+      ramo_key, huella, estructura
+    from reportes
+    order by ramo_key, huella, updated_at desc, user_id
+  )
+  select a.ramo, a.ramo_key, m.estructura, a.huella, a.respaldos
+  from agrupados as a
+  join muestra as m using (ramo_key, huella)
+  order by a.respaldos desc, a.ramo_key;
 $$;
 
 revoke all on function public.submit_catalog_report(text, text, text, text, text, jsonb, text, text) from public, anon;
