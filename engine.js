@@ -124,7 +124,10 @@ function gh_projectGrades(grades,emptyLeaves,value){
   emptyLeaves.forEach(l=>{projected[l.id]=value;});
   return projected;
 }
-function solveForTarget(structure,grades,target,overrides={}){
+function solveForTarget(structure,grades,target,overrides={},options={}){
+  // La interfaz distingue 7 de 7,001: el adaptador puede pedir el resultado
+  // sin redondear y extender la búsqueda para explicar una meta inalcanzable.
+  const requiredValue=n=>options.precision===null?n:gh_excelRound(n,2);
   const meta=gh_meta(structure);const scaleMin=meta?.grade_scale?.min??1.0,scaleMax=meta?.grade_scale?.max??7.0;
   const direct=calculateFinalGrade(structure,grades,overrides);const effW=gh_effWeights(structure,overrides);
   let known=0;for(const id in grades){if(typeof grades[id]==='number'&&effW[id]!=null)known+=grades[id]*effW[id];}
@@ -145,17 +148,20 @@ function solveForTarget(structure,grades,target,overrides={}){
     conditions.push('El cálculo supone la misma nota en todas las evaluaciones pendientes y considera que la peor nota del grupo se descarta según la regla del programa.');
     const finalCon=value=>calculateFinalGrade(structure,gh_projectGrades(grades,direct.emptyLeaves,value),overrides).raw;
     const conMax=finalCon(scaleMax);
-    if(conMax===null||conMax<target||gateWarnings.length>0)return {feasible:false,requiredAverage:gh_excelRound(scaleMax,2),emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
+    if(conMax===null||gateWarnings.length>0||(!options.extrapolate&&conMax<target))return {feasible:false,requiredAverage:gh_excelRound(scaleMax,2),emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
     const conMin=finalCon(scaleMin);
     if(conMin!==null&&conMin>=target)return {feasible:true,requiredAverage:scaleMin,emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
     let lo=scaleMin,hi=scaleMax;
+    if(options.extrapolate){
+      while(finalCon(hi)<target&&Number.isFinite(hi*2))hi*=2;
+    }
     for(let i=0;i<48;i++){
       const mid=(lo+hi)/2;
       if(finalCon(mid)!==null&&finalCon(mid)>=target)hi=mid;else lo=mid;
     }
-    return {feasible:true,requiredAverage:gh_excelRound(hi,2),emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
+    return {feasible:hi<=scaleMax,requiredAverage:requiredValue(hi),emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
   }
-  const required=(target-known)/remainingWeight;const reqRounded=gh_excelRound(required,2);
+  const required=(target-known)/remainingWeight;const reqRounded=requiredValue(required);
   const feasible=reqRounded>=scaleMin&&reqRounded<=scaleMax&&gateWarnings.length===0;
   return {feasible,requiredAverage:reqRounded,emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
 }
@@ -371,19 +377,41 @@ function gh_crearCalculoRamo(deps){
   }
   function notaNecesaria(ramo,meta){
     const objetivo=Number.isFinite(meta)?meta:4.0;
-    const propio=estadoParaNotaNecesaria(ramo);
-    if(propio.total<=0)return null;
+    const notas={};
+    function preparar(r,prefijo){
+      const base=calculoRamoConCompuertas(r);
+      const valores=new Map(base.res.breakdown.map(n=>[n.id,n.value]));
+      const categorias=new Map(categoriasVigentes(r).map(c=>[c.id,c]));
+      function copiar(node){
+        const id=prefijo+node.id;
+        if(typeof base.notas[node.id]==='number')notas[id]=base.notas[node.id];
+        return {...node,id,...(node.children?{children:node.children.map(copiar)}:{})};
+      }
+      return {...base.estructura,children:base.estructura.children.map(node=>{
+        const cat=categorias.get(node.id),valor=valores.get(node.id);
+        // Una lista sin cantidad declarada conserva su promedio conocido. Un
+        // grupo completo conserva su descarte ya calculado, no sus pesos brutos.
+        if(!(cat&&cat.slots>1)||!gh_hasPendingLeaf(node,base.notas)){
+          const id=prefijo+node.id;
+          if(typeof valor==='number')notas[id]=valor;
+          return {id,name:node.name,weight:node.weight,type:'leaf'};
+        }
+        return copiar(node);
+      })};
+    }
+    const propio=preparar(ramo,'propio:');
+    if(!propio.children.some(c=>c.weight>0))return null;
+    let estructura=propio;
     const link=ramo.aporta;
     if(link&&link.peso){
       const p=link.peso/100;
       const otro=ramoVinculado(ramo);
-      const externo=otro?estadoParaNotaNecesaria(otro):{conocido:0,pendiente:1};
-      const conocido=propio.conocido*(1-p)+externo.conocido*p;
-      const pendiente=propio.pendiente*(1-p)+externo.pendiente*p;
-      return pendiente>0?(objetivo-conocido)/pendiente:null;
+      const externo=otro?preparar(otro,'externo:'):{id:'externo',name:link.ramo,type:'leaf'};
+      estructura={...propio,children:[{...propio,id:'propio',weight:1-p},{...externo,id:'externo',weight:p}]};
     }
-    if(propio.pendiente<=0)return null;
-    return (objetivo-propio.conocido)/propio.pendiente;
+    // Las compuertas se siguen comunicando por gatesActivas; acá se obtiene la
+    // exigencia ponderada. Solo el solver decide cómo cambia el descarte al rendir.
+    return solveForTarget(estructura,notas,objetivo,{}, {precision:null,extrapolate:true}).requiredAverage;
   }
   return {hojasCategoria,ramoToStructure,gradesOf,avgPond,promedioCompletoSinDescarte,estadoEximicion,categoriaEximida,categoriasVigentes,estadoAusenciasJustificadas,avgDeGrupo,avgDeGrupoCalculado,calculoRamoConCompuertas,ramoCompletamenteEvaluado,estadoRecuperativo,resumenCategoriasCalculadas,ramoAvg,ramoVinculado,combinarConRamoVinculado,gatesActivas,estadoParaNotaNecesaria,notaNecesaria};
 }
