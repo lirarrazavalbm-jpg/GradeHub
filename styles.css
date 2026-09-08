@@ -1531,3 +1531,12 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .modal-sheet{border:1px solid var(--fg3);}
   .ramo-row,.insight-card,.stat-card,.eval-row,.eval-group,.cat-card{border-color:var(--fg3);}
 }
+
+/* Cargar un semestre anterior vive junto al historial porque es donde tiene
+   sentido buscarlo, y aparece aunque el historial esté vacío: quien llega en
+   cuarto semestre es justamente el que lo necesita. */
+.stats-hist-add{flex-shrink:0;padding:7px 12px;border:1px solid var(--border);border-radius:9px;
+  background:none;color:var(--primary);font:700 0.75rem 'Onest',sans-serif;cursor:pointer;
+  transition:border-color var(--motion-fast) var(--ease-standard),background var(--motion-fast) var(--ease-standard);}
+.stats-hist-add:hover{border-color:var(--primary);background:var(--primary-light);}
+.stats-hist-vacio{margin:0 20px 14px;font-size:0.78125rem;color:var(--fg3);line-height:1.5;}

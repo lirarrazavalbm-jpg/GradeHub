@@ -703,11 +703,20 @@ function renderStats(){
     </div>`;
   }
 
-  // Historial de semestres
-  if(S.historial && S.historial.length>0){
-    const validos=S.historial.filter(h=>h&&Array.isArray(h.ramos));
+  // Historial de semestres. El encabezado y el botón para cargar uno anterior van
+  // aunque el historial esté vacío: quien llega en cuarto semestre necesita
+  // justamente eso, y si solo apareciera con historial ya existente no lo vería
+  // nunca.
+  {
+    const validos=(S.historial||[]).filter(h=>h&&Array.isArray(h.ramos));
+    html+=`<div class="section-hd stats-history-heading" style="padding:0 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <span class="section-hd-title">Historial</span>
+      <button type="button" class="stats-hist-add" onclick="openSemestreAnteriorModal()">+ Semestre anterior</button>
+    </div>`;
+    if(!validos.length){
+      html+=`<p class="stats-hist-vacio">Si empezaste la carrera antes de usar GradeHub, agrega tus semestres anteriores con la nota final de cada ramo. Sirve para que tu promedio de carrera cuente todo lo que llevas.</p>`;
+    }
     if(validos.length>0){
-      html+=`<div class="section-hd stats-history-heading" style="padding:0 20px 8px;"><span class="section-hd-title">Historial</span></div>`;
       validos.forEach(h=>{
         const isOpen=openHist[h.id];
         const historialGpa=gpaHistorial(h);
