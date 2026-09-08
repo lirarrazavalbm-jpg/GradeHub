@@ -160,8 +160,11 @@ if (nombreMax !== 80) {
   console.error('NOMBRE_MAX debe ser 80 para admitir nombres académicos largos');
   process.exit(1);
 }
-if ((app.match(/maxlength="\$\{NOMBRE_MAX\}"/g) || []).length !== 10 || /maxlength="40"/.test(app)) {
-  console.error('los 10 campos de nombres deben usar NOMBRE_MAX, sin límites antiguos de 40');
+// Un mínimo y no una cifra exacta: lo que importa es que ningún campo de nombre
+// vuelva al límite viejo de 40, no cuántos campos existan. Con la cifra exacta,
+// agregar una pantalla con buscador rompía el test sin que nada estuviera mal.
+if ((app.match(/maxlength="\$\{NOMBRE_MAX\}"/g) || []).length < 10 || /maxlength="40"/.test(app)) {
+  console.error('los campos de nombres deben usar NOMBRE_MAX, sin límites antiguos de 40');
   process.exit(1);
 }
 if (!/class="course-picker-selected-name"/.test(app)) {

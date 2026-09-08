@@ -915,7 +915,14 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .settings-carrera-grid{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
 .settings-save{margin-top:20px;}
 .settings-data-actions{display:grid;gap:8px;margin-bottom:22px;}
-.settings-data-actions button{width:100%;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--muted);color:var(--fg);font-family:'Onest',sans-serif;font-size:0.875rem;font-weight:600;cursor:pointer;}
+/* `--border` sobre `--muted` deja el botón casi fundido con el fondo: se leía
+   como un recuadro informativo y no como algo que se puede tocar. Con el borde
+   marcado y una reacción al apuntar y al presionar, se comporta como el resto de
+   los botones de la app. */
+.settings-data-actions button{width:100%;padding:11px;border:1.5px solid var(--border2);border-radius:10px;background:var(--card);color:var(--fg);font-family:'Onest',sans-serif;font-size:0.875rem;font-weight:600;cursor:pointer;
+  transition:border-color var(--motion-fast) var(--ease-standard),background var(--motion-fast) var(--ease-standard);}
+.settings-data-actions button:hover{border-color:var(--primary);color:var(--primary);}
+.settings-data-actions button:active{background:var(--muted);}
 .settings-danger-zone{padding:16px;border:1px solid color-mix(in srgb,var(--red),transparent 68%);border-radius:14px;background:var(--red-bg);}
 .settings-danger-label{margin-bottom:10px;color:var(--red);font-size:0.65625rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}
 .settings-danger-btn{width:100%;padding:11px;border:1px solid color-mix(in srgb,var(--red),transparent 55%);border-radius:10px;background:transparent;color:var(--red);font-family:'Onest',sans-serif;font-size:0.875rem;font-weight:700;cursor:pointer;}
@@ -1531,3 +1538,12 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .modal-sheet{border:1px solid var(--fg3);}
   .ramo-row,.insight-card,.stat-card,.eval-row,.eval-group,.cat-card{border-color:var(--fg3);}
 }
+
+/* Cargar un semestre anterior vive junto al historial porque es donde tiene
+   sentido buscarlo, y aparece aunque el historial esté vacío: quien llega en
+   cuarto semestre es justamente el que lo necesita. */
+.stats-hist-add{flex-shrink:0;padding:7px 12px;border:1px solid var(--border);border-radius:9px;
+  background:none;color:var(--primary);font:700 0.75rem 'Onest',sans-serif;cursor:pointer;
+  transition:border-color var(--motion-fast) var(--ease-standard),background var(--motion-fast) var(--ease-standard);}
+.stats-hist-add:hover{border-color:var(--primary);background:var(--primary-light);}
+.stats-hist-vacio{margin:0 20px 14px;font-size:0.78125rem;color:var(--fg3);line-height:1.5;}
