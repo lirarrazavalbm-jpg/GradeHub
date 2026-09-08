@@ -33,9 +33,10 @@ function estadoPeriodoPauta(periodo,ahora){
   return fecha.getTime()<fin?'vigente':'vencido';
 }
 function definicionPreset(nombre,tenant,carrera){
-  if(tenant==='fen'){
-    const clave=claveCatalogo(nombre,Object.keys(PRESETS_FEN),'fen');
-    return clave?PRESETS_FEN[clave]:null;
+  if(tenant!=='uc'){
+    const presets=PRESETS_POR_TENANT[tenant];if(!presets)return null;
+    const clave=claveCatalogo(nombre,Object.keys(presets),tenant);
+    return clave?presets[clave]:null;
   }
   if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
   const clave=claveUc(nombre);
@@ -781,9 +782,10 @@ function initials(s){return s.split(' ').slice(0,2).map(w=>w[0]||'').join('').to
 function definicionPresetDelRamo(ramo){
   const origen=ramo&&ramo.origen;
   if(!origen||!origen.tenant)return null;
-  if(origen.tenant==='fen'){
-    const nombre=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(ramo.nombre));
-    return nombre?PRESETS_FEN[nombre]:null;
+  if(origen.tenant!=='uc'){
+    const presets=PRESETS_POR_TENANT[origen.tenant];if(!presets)return null;
+    const nombre=Object.keys(presets).find(n=>normName(n)===normName(ramo.nombre));
+    return nombre?presets[nombre]:null;
   }
   if(origen.tenant!=='uc'||!presetUcDisponible(ramo.nombre,origen.carrera))return null;
   const nombre=claveUc(ramo.nombre);
@@ -2369,7 +2371,7 @@ function catalogRamosUniversidad(tenant,carreraPropia){
 // Comercial es otro curso—, así que listarlos sin filtrar pondría una estrella
 // de "pauta oficial" sobre un ramo que después se agregaría vacío.
 function presetsFueraDeMalla(tenant,carrera){
-  const p=tenant==='fen'?PRESETS_FEN:(tenant==='uc'?PRESETS_UC:null);
+  const p=PRESETS_POR_TENANT[tenant];
   if(!p)return [];
   // findPresetName ya descarta los que solo traen reglas y no ponderaciones
   // (Cálculo II): si no hay pauta que ofrecer, no hay nada que mostrar acá.
@@ -2897,7 +2899,7 @@ function presetUcDisponible(nombre,carrera){
   return PRESETS_UC_COM.some(n=>normName(n)===normName(clave));
 }
 function findPresetName(nombre,tenant,carrera){
-  if(tenant==='fen')return claveCatalogo(nombre,Object.keys(PRESETS_FEN),'fen');
+  if(tenant!=='uc')return claveCatalogo(nombre,Object.keys(PRESETS_POR_TENANT[tenant]||{}),tenant);
   if(tenant!=='uc'||!MALLA_UC[carrera])return null;
   // La estrella y el selector prometen ponderaciones precargadas. Un programa
   // que solo trae reglas (como Cálculo II) no debe fingir que las tiene, así
