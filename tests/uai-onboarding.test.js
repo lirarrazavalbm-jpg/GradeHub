@@ -12,7 +12,14 @@ let ok=0,fail=0;const chk=(n,c)=>{if(c){ok++;console.log('  OK   '+n);}else{fail
 console.log('=== La UAI se puede elegir ===');
 chk('el tenant ya no está oculto', !ctx.T.uai.oculto);
 chk('tiene carreras declarables', (ctx.CD.uai||[]).length >= 20);
-chk('ninguna promete una malla que no existe', (ctx.CD.uai||[]).every(c=>!c.malla));
+// Cuando se abrió la UAI ninguna carrera tenía malla y esto exigía que ninguna
+// la declarara. Ya no: 20 la tienen. Lo que la promesa siempre quiso decir es
+// que si una carrera dice tener malla, esa malla exista — da lo mismo en qué
+// archivo viva.
+vm.runInContext(fs.readFileSync(raiz+'mallas-uai.js','utf8')+';globalThis.MU=MALLAS_UAI_EXTRA;',ctx);
+chk('ninguna promete una malla que no existe',
+  (ctx.CD.uai||[]).filter(c=>c.malla).every(c=>!!ctx.MU[c.malla]));
+chk('y ya hay mallas de verdad', (ctx.CD.uai||[]).filter(c=>c.malla).length >= 20);
 // Nombres exactos de la página oficial de mallas, no inventados ni normalizados.
 chk('están las que publica la UAI',
   ['Derecho','Psicología','Ingeniería Comercial','Ingeniería Civil en Bioingeniería']
