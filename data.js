@@ -167,7 +167,7 @@ const TENANTS={
   // oculto:true → no se ofrece al elegir universidad, pero sigue funcionando
   // completo (tema, carreras, presets) para quien ya lo tenga seleccionado.
   // Quitar la marca cuando se quiera lanzar.
-  uai:{name:'U. Adolfo Ibáñez', short:'UAI', mono:'UAI', sub:'Todas las carreras', oculto:true},
+  uai:{name:'U. Adolfo Ibáñez', short:'UAI', mono:'UAI', sub:'Todas las carreras'},
   // UAndes ya tiene carreras declarables, aunque todavía no una malla verificada.
   // Se ofrece igual: el onboarding deja armar el semestre con los ramos del
   // horario, sin inventar sugerencias ni ponderaciones.
@@ -355,6 +355,34 @@ const SURFACE_KEYS=['bg','bg2','card','border','border2','muted','fg','fg2','fg3
 // nombre inventado acá no falla, se queda en la base y después manda a
 // construir la malla equivocada.
 const CARRERAS_DECLARABLES={
+  // Las 21 carreras de pregrado que la UAI publica en su página de mallas
+  // (uai.cl/admision/mallas-curriculares-y-folletos). Ninguna trae `malla`
+  // todavía: los ramos por semestre se están transcribiendo desde esos PDF y
+  // entran después sin tocar esta lista. Declararse ya funciona: quien estudia
+  // acá elige su carrera y arma sus ramos, que es el camino del 95%.
+  uai:[
+    {n:'Ciencias del Comportamiento y Negocios'},
+    {n:'Arquitectura + Ing. Civil Industrial'},
+    {n:'Psicología'},
+    {n:'Comunicación Estratégica - Periodismo'},
+    {n:'Derecho'},
+    {n:'Doble Grado Derecho + Ingeniería Comercial'},
+    {n:'Doble Título Ingeniería Comercial + Sociología'},
+    {n:'Ingeniería Comercial'},
+    {n:'Bachillerato de Ingeniería Comercial'},
+    {n:'International Management'},
+    {n:'Ingeniería en Negocios y Tecnología'},
+    {n:'Ingeniería en Diseño'},
+    {n:'Ingeniería en Computer Science'},
+    {n:'Ingeniería Civil Industrial'},
+    {n:'Ingeniería Civil Informática'},
+    {n:'Ingeniería Civil en Bioingeniería'},
+    {n:'Ingeniería Civil (Obras Civiles)'},
+    {n:'Ingeniería Civil en Energía'},
+    {n:'Ingeniería Civil Mecánica'},
+    {n:'Ingeniería Civil en Minería'},
+    {n:'Bachillerato de Ingeniería Civil'}
+  ],
   fen:[
     {n:'Ingeniería Comercial',malla:'IC'},
     {n:'Ingeniería en Información y Control de Gestión',malla:'IICG'},

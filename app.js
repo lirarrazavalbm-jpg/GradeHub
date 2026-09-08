@@ -541,9 +541,21 @@ function mallaDeCarrera(tenant,carrera){
   if(!carrera)return null;
   const base=(mallaFor(tenant)||{})[carrera];
   if(base)return base;
-  if(tenant==='uc'&&typeof MALLAS_UC_EXTRA!=='undefined')return MALLAS_UC_EXTRA[carrera]||null;
+  const extra=mallasExtraDe(tenant);
+  return (extra&&extra[carrera])||null;
+}
+// Las mallas que viven en su propio archivo, por universidad. La UC ya tiene el
+// suyo; la UAI entra igual el día que se transcriban sus PDF, sin tocar esta
+// función ni el cargador.
+function mallasExtraDe(tenant){
+  if(tenant==='uc'&&typeof MALLAS_UC_EXTRA!=='undefined')return MALLAS_UC_EXTRA;
+  if(tenant==='uai'&&typeof MALLAS_UAI_EXTRA!=='undefined')return MALLAS_UAI_EXTRA;
   return null;
 }
+// Qué archivo trae las mallas de cada universidad. Sin entrada acá, el tenant
+// funciona igual: sin sugerencia de ramos y con el buscador, que es como
+// funcionan hoy la UAI y la UAndes.
+const ARCHIVO_MALLAS={uc:'mallas-uc.js',uai:'mallas-uai.js'};
 
 // Las 69 mallas UC que no son Ingeniería ni Comercial viven en `mallas-uc.js`,
 // 73 KB que solo le sirven a quien estudia esa carrera. Se traen cuando se
@@ -553,23 +565,26 @@ function mallaDeCarrera(tenant,carrera){
 // Si la descarga falla, la app se comporta como antes de que existieran: sin
 // sugerencia de ramos y con el buscador, que es exactamente el estado actual de
 // esas carreras. Un fallo acá no puede dejar a nadie peor que hoy.
-let _mallasExtra=null;
-function cargarMallasUC(){
-  if(_mallasExtra)return _mallasExtra;
-  _mallasExtra=new Promise(resolve=>{
-    if(typeof MALLAS_UC_EXTRA!=='undefined')return resolve(true);
+const _mallasPendientes={};
+function cargarMallasUC(tenant){
+  tenant=tenant||'uc';
+  const archivo=ARCHIVO_MALLAS[tenant];
+  if(!archivo)return Promise.resolve(false);
+  if(_mallasPendientes[tenant])return _mallasPendientes[tenant];
+  _mallasPendientes[tenant]=new Promise(resolve=>{
+    if(mallasExtraDe(tenant))return resolve(true);
     const s=document.createElement('script');
     // Hereda el ?v=<sha> del propio app.js: el deploy sella los assets del HTML y
     // este se pide desde JS, así que sin copiar ese query quedaría sin versionar
     // y el service worker podría servir una copia vieja tras un deploy.
     const propio=document.querySelector('script[src*="app.js"]');
     const qs=propio&&propio.src.includes('?')?propio.src.slice(propio.src.indexOf('?')):'';
-    s.src='mallas-uc.js'+qs;
+    s.src=archivo+qs;
     s.onload=()=>resolve(true);
-    s.onerror=()=>{_mallasExtra=null;resolve(false);};
+    s.onerror=()=>{_mallasPendientes[tenant]=null;resolve(false);};
     document.head.appendChild(s);
   });
-  return _mallasExtra;
+  return _mallasPendientes[tenant];
 }
 function selectTenant(t){
   selectedTenant=t;selectedCarrera=null;applyTheme();renderTenantPick();initCarreraGrid();checkOb();
@@ -1032,8 +1047,8 @@ function prepararObRamos(){
   const key=[selectedTenant,selectedCarrera,selectedSem].join(':');
   // Traer la malla antes de decidir qué sugerir. Si no llega, el paso 5 muestra
   // el buscador sin sugerencias, que es como funcionan hoy estas carreras.
-  if(selectedTenant==='uc'&&selectedCarrera&&!MALLA_UC[selectedCarrera]&&typeof MALLAS_UC_EXTRA==='undefined'){
-    cargarMallasUC().then(ok=>{if(ok){obRamosKey=null;prepararObRamos();}});
+  if(selectedCarrera&&ARCHIVO_MALLAS[selectedTenant]&&!(mallaFor(selectedTenant)||{})[selectedCarrera]&&!mallasExtraDe(selectedTenant)){
+    cargarMallasUC(selectedTenant).then(ok=>{if(ok){obRamosKey=null;prepararObRamos();}});
   }
   if(key===obRamosKey)return;
   obRamosKey=key;obManualOpen=false;
