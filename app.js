@@ -3578,6 +3578,12 @@ function openSettings(){
       <label class="modal-label">Carrera</label>
       <div class="modal-input" style="margin-bottom:10px;"><input type="text" id="s-carrera-buscar" placeholder="Busca tu carrera" autocomplete="off" oninput="filtrarCarrerasAjustes(this.value)"/></div>
       <div id="s-carrera-grid" class="settings-carrera-grid"></div>
+      <div style="height:1px;background:var(--border);margin:22px 0 16px;"></div>
+      <label class="modal-label">Semestres que ya cursaste</label>
+      <p class="settings-help" style="margin-top:0;">Si empezaste la carrera antes de usar GradeHub, agrégalos con la nota final de cada ramo para que tu promedio cuente todo lo que llevas.</p>
+      <div class="settings-data-actions" style="margin-bottom:0;">
+        <button type="button" onclick="closeModal();openSemestreAnteriorModal()">Agregar un semestre anterior</button>
+      </div>
       <label class="modal-label">Semestre de carrera</label>
       <div class="sem-grid" id="s-sem-grid"></div>
       ${guardarBtn()}`;

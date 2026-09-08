@@ -39,6 +39,18 @@ console.log('\n=== Se puede llegar a la pantalla ===');
 // —el que llega sin ninguno— no lo vería nunca.
 chk('el botón está en el historial y no depende de que ya haya semestres',
   /openSemestreAnteriorModal\(\)/.test(render) && /stats-hist-vacio/.test(render));
+// Y también en Ajustes, que es donde alguien va a buscar "cómo registro lo que ya
+// cursé" cuando no está mirando sus estadísticas.
+chk('y también se llega desde Ajustes', /openSemestreAnteriorModal\(\)/.test(app));
+
+console.log('\n=== Los botones de acción se ven clickeables ===');
+// `--border` sobre `--muted` los dejaba fundidos con el fondo: se leían como un
+// recuadro informativo. Es el borde más tenue de la paleta sobre el fondo casi
+// igual al de la tarjeta.
+const css=fs.readFileSync(raiz+'styles.css','utf8');
+const regla=(css.match(/\.settings-data-actions button\{[^}]*\}/)||[''])[0];
+chk('usan el borde marcado, no el tenue', /--border2/.test(regla) && !/1px solid var\(--border\)/.test(regla));
+chk('y reaccionan al apuntar', /\.settings-data-actions button:hover/.test(css));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);
