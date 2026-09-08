@@ -723,7 +723,7 @@ function renderStats(){
         const gpaColor=historialGpa!==null?getColor(historialGpa):'var(--fg3)';
         const ramosHistorial=h.ramos.filter(r=>r&&typeof r==='object');
         const ramosRows=ramosHistorial.map(r=>{
-          const avg=histRamoAvg(r);
+          const avg=histRamoAvg(r,h.ramos);
           const editado=typeof r.avgOverride==='number';
           return `<button class="hist-ramo-row" onclick="openEditHistRamoModal('${esc(h.id)}','${esc(r.id)}')" aria-label="Editar promedio de ${esc(r.nombre)}">
             <span class="hist-ramo-name">${esc(r.nombre)}${r.creditos?`<span class="hist-cr">${r.creditos} cr</span>`:''}${editado?'<span class="hist-edited" title="Corregido a mano">editado</span>':''}</span>
