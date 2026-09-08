@@ -29,7 +29,7 @@ function ordenarAgenda(pendientes,orden='recomendado'){
       return porFecha||b.score-a.score;
     }
     if(criterio==='peso'){
-      const porPeso=(b.cat.peso||0)-(a.cat.peso||0);
+      const porPeso=(pesoEventoAgenda(b)??-1)-(pesoEventoAgenda(a)??-1);
       return porPeso||a.fecha.localeCompare(b.fecha)||b.score-a.score;
     }
     // Es exactamente el comparador que usaba renderAgenda antes de ofrecer
@@ -73,8 +73,14 @@ function razonDestacadaAgenda(e){
   if(e.necesita!==null&&e.necesita>7.05)return 'Con lo pendiente ya no alcanza para aprobar el ramo.';
   if(e.necesita!==null&&e.necesita>5.0)return `Necesitas ${nf(e.necesita)} en lo pendiente para aprobar.`;
   if(e.avg!==null&&r2(e.avg)<4.0)return `Vas ${fmt(e.avg)} en el ramo: conviene prepararla con tiempo.`;
-  if((e.cat.peso||0)>=30)return `Define ${r2(e.cat.peso||0)}% del ramo.`;
+  const peso=pesoEventoAgenda(e);
+  if(peso!==null&&peso>=30)return `Define ${r2(peso)}% del ramo.`;
   return focoAgendaCopy(e);
+}
+
+function pesoEventoAgendaTexto(e){
+  const peso=pesoEventoAgenda(e);
+  return peso===null?`Peso variable · grupo ${r2(Number(e.cat.peso)||0)}%`:`${r2(peso)}%`;
 }
 
 function agendaDestacadaHTML(e,posicion){
@@ -84,10 +90,10 @@ function agendaDestacadaHTML(e,posicion){
     <span class="ag-priority-bar" aria-hidden="true"></span>
     <div class="ag-priority-top">
       <span class="ag-priority-rank ${e.nivel}">${posicion===0?'Tu foco ahora':'Siguiente'}</span>
-      <span class="ag-priority-weight">${r2(e.cat.peso||0)}%</span>
+      <span class="ag-priority-weight">${pesoEventoAgendaTexto(e)}</span>
     </div>
     <div class="ag-priority-date">${cuandoTexto(e.dias)} <span>· ${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span></div>
-    <div class="ag-priority-name">${esc(e.cat.nombre)}</div>
+    <div class="ag-priority-name">${esc(nombreEventoAgenda(e))}</div>
     <div class="ag-priority-course"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
     <div class="ag-priority-reason">${razonDestacadaAgenda(e)}</div>
   </button>`;
@@ -155,7 +161,7 @@ function detalleEvaluacionAgendaHTML(e,pendientes){
   const siguiente=siguienteEvaluacionAgenda(e,pendientes);
   const key=agendaEventoKey(e);
   const despues=siguiente?{
-    titulo:siguiente.cat.nombre,
+    titulo:nombreEventoAgenda(siguiente),
     texto:`${cuandoTexto(siguiente.dias)} · ${siguiente.ramo.nombre}`,
   }:{
     titulo:'Nada más agendado',
@@ -191,7 +197,7 @@ function agendaRendidaHTML(e){
   return `<button type="button" class="ag-row done">
     <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
     <div class="ag-row-main">
-      <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span><span class="ag-row-peso">${r2(e.cat.peso||0)}%</span></div>
+      <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span><span class="ag-row-peso">${pesoEventoAgendaTexto(e)}</span></div>
       <div class="ag-row-name">${esc(e.nota?e.nota.nombre:e.cat.nombre)}</div>
       <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
     </div>
@@ -275,7 +281,8 @@ function activarAccionesAgenda(body){
 function resumenSemanaAgenda(pendientes){
   const semana=pendientes.filter(e=>e.dias>=0&&e.dias<=7);
   if(!semana.length)return null;
-  return {cantidad:semana.length,peso:r2(semana.reduce((total,e)=>total+(e.cat.peso||0),0))};
+  const pesos=semana.map(pesoEventoAgenda);
+  return {cantidad:semana.length,peso:pesos.some(p=>p===null)?null:r2(pesos.reduce((total,p)=>total+p,0))};
 }
 
 function resumenSemanaHTML(pendientes){
@@ -283,7 +290,7 @@ function resumenSemanaHTML(pendientes){
   if(!resumen)return '';
   return `<div class="ag-list-hd ag-week-hd">
     <span class="section-hd-title">Próximos 7 días</span>
-    <span class="ag-count">${resumen.cantidad} eval. · ${resumen.peso}%</span>
+    <span class="ag-count">${resumen.cantidad} eval. · ${resumen.peso===null?'peso variable':resumen.peso+'%'}</span>
     ${agendaOrdenHTML(agendaOrdenActual)}
   </div>`;
 }

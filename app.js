@@ -5179,6 +5179,21 @@ function ramoProgress(r){
 }
 function ramoRecienCerrado(anterior,actual){return Number.isFinite(anterior)&&anterior<100&&actual===100;}
 
+function nombreEventoAgenda(e){return e.nota?e.nota.nombre:e.cat.nombre;}
+function pesoEventoAgenda(e){
+  const c=e.cat,peso=Number(c.peso)||0;
+  const fechadas=(c.notas||[]).filter(n=>n.fecha);
+  if(!e.nota&&!fechadas.length)return peso;
+  // El porcentaje individual no es fijo si se descarta una nota o no sabemos
+  // cuántas habrá. El peso del grupo no puede disfrazarse de peso de esa entrega.
+  if(c.dropLowest||!Number.isInteger(c.slots)||c.slots<1)return null;
+  const hojas=hojasCategoria(c),total=hojas.reduce((s,h)=>s+h.weight,0);
+  if(!total)return null;
+  const propias=new Set(fechadas.map(n=>n.id));
+  const seleccion=e.nota?hojas.filter(h=>h.id===e.nota.id):hojas.filter(h=>!propias.has(h.id));
+  return peso*seleccion.reduce((s,h)=>s+h.weight,0)/total;
+}
+
 function agendaEvents(){
   const out=[];
   S.ramos.forEach(r=>{
@@ -5699,7 +5714,7 @@ function estadoEventoAgenda(e,dias){
 
 function withPriority(e){
   const dias=diasHasta(e.fecha);
-  const peso=e.cat.peso||0;
+  const peso=pesoEventoAgenda(e)||0;
   const avg=ramoAvg(e.ramo);
   const necesita=notaNecesaria(e.ramo);
   const estadoAgenda=estadoEventoAgenda(e,dias);
@@ -5770,7 +5785,7 @@ function cuandoTexto(dias){
 
 function agendaItemHTML(e){
   const f=formatEventDate(e.fecha);
-  const peso=r2(e.cat.peso||0);
+  const peso=pesoEventoAgenda(e);
   // Aviso solo cuando aporta: ramo en riesgo o nota exigente en lo pendiente.
   // Se pinta una sola vez por ramo (ver renderAgenda) para no repetirlo.
   let alerta='';
@@ -5789,9 +5804,9 @@ function agendaItemHTML(e){
       <div class="ag-row-top">
         <span class="ag-row-when ${e.nivel}">${cuandoTexto(e.dias)}</span>
         <span class="ag-row-date">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span>
-        <span class="ag-row-peso ${peso>=30?'heavy':''}">${peso}%</span>
+        <span class="ag-row-peso ${peso!==null&&peso>=30?'heavy':''}">${pesoEventoAgendaTexto(e)}</span>
       </div>
-      <div class="ag-row-name">${esc(e.cat.nombre)}</div>
+      <div class="ag-row-name">${esc(nombreEventoAgenda(e))}</div>
       <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}${e.avg!==null?` · vas ${fmt(e.avg)}`:''}</div>
       ${alerta}
     </div>
