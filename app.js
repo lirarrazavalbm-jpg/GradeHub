@@ -3888,29 +3888,22 @@ async function enviarSugerencia(){
 // ─── HISTORIAL EDITABLE ──────────────────────────────────────────────────────
 // El promedio de un ramo archivado se puede corregir a mano (avgOverride) sin
 // tocar sus evaluaciones. Sirve cuando un profe cambia una nota después del cierre.
-function histRamoAvg(r){
+function histRamoAvg(r,ramos){
   if(r&&typeof r.avgOverride==='number')return r.avgOverride;
-  return ramoAvg(r);
+  return ramoAvg(r,undefined,ramos);
 }
 // Recalcula el promedio del semestre archivado respetando overrides y créditos
 function recomputeHistGpa(h){
-  const conNota=(h.ramos||[]).filter(r=>histRamoAvg(r)!==null);
-  if(conNota.length===0){h.gpa=null;return;}
-  const simple=()=>conNota.reduce((s,r)=>s+histRamoAvg(r),0)/conNota.length;
-  if(conNota.every(tieneCreditos)){
-    let num=0,den=0;
-    conNota.forEach(r=>{num+=histRamoAvg(r)*r.creditos;den+=r.creditos;});
-    h.gpa=den>0?num/den:simple();
-  }else{
-    h.gpa=simple();
-  }
+  // El vínculo y la exclusión del laboratorio pertenecen a este semestre,
+  // no a S.ramos. Se usa la misma cuenta que al archivar y al comparar.
+  h.gpa=gpa(h.ramos||[]);
 }
 
 function openEditHistRamoModal(histId,ramoId){
   const h=S.historial.find(x=>x.id===histId);if(!h)return;
   const r=(h.ramos||[]).find(x=>x.id===ramoId);if(!r)return;
-  const actual=histRamoAvg(r);
-  const calculado=ramoAvg(r);
+  const actual=histRamoAvg(r,h.ramos);
+  const calculado=ramoAvg({...r,avgOverride:undefined},undefined,h.ramos);
   const esOverride=typeof r.avgOverride==='number';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">${esc(r.nombre)}</div>
