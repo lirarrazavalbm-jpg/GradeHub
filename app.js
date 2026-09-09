@@ -2486,40 +2486,72 @@ function presetsFueraDeMalla(tenant,carrera){
 
 // B\u00fasqueda tolerante a tildes. Ordena: exacto > empieza con > contiene;
 // a igualdad, primero los del semestre actual del estudiante.
-function searchCatalog(q,tenant,carrera,semActual){
+//
+// El catálogo UC completo supera las 13 mil filas. Armarlo y volver a quitar
+// tildes de cada nombre en cada tecla consumía casi un cuadro en computador.
+// El índice conserva exactamente las mismas filas y el mismo ordenamiento; solo
+// memoriza el catálogo derivado y sus textos normalizados. Las referencias a
+// mallas/cursos diferidos son su versión: cuando aparece un archivo nuevo, la
+// siguiente búsqueda reconstruye el índice sola y no queda pegada al fallback.
+const _indicesBusquedaCatalogo=new Map();
+function fuentesDiferidasCatalogo(tenant){
+  return {
+    mallas:mallasExtraDe(tenant),
+    cursos:tenant==='uc'?cursosUcExtra():null,
+  };
+}
+function indiceBusquedaCatalogo(tenant,carrera){
+  const key=catalogKey(tenant,carrera),fuentes=fuentesDiferidasCatalogo(tenant);
+  const guardado=_indicesBusquedaCatalogo.get(key);
+  if(guardado&&guardado.mallas===fuentes.mallas&&guardado.cursos===fuentes.cursos)return guardado;
   const todos=catalogRamosUniversidad(tenant,carrera);
+  const indice={
+    mallas:fuentes.mallas,cursos:fuentes.cursos,todos,
+    filas:todos.map(r=>({ramo:r,nombre:normName(r.nombre),sigla:normName(r.sigla||'')})),
+    ordenes:new Map(),
+  };
+  _indicesBusquedaCatalogo.set(key,indice);
+  return indice;
+}
+function ordenBusquedaCatalogo(indice,semActual){
+  const sem=Number(semActual)||0;
+  if(indice.ordenes.has(sem))return indice.ordenes.get(sem);
+  const filas=indice.filas.slice().sort((a,b)=>{
+    const ra=a.ramo,rb=b.ramo;
+    if(ra.propio!==rb.propio)return ra.propio?-1:1;
+    if(ra.tienePreset!==rb.tienePreset)return ra.tienePreset?-1:1;
+    const da=Math.abs(ra.semestre-sem),db=Math.abs(rb.semestre-sem);
+    if(da!==db)return da-db;
+    return ra.nombre.localeCompare(rb.nombre);
+  });
+  indice.ordenes.set(sem,filas);
+  return filas;
+}
+function searchCatalog(q,tenant,carrera,semActual){
+  const indice=indiceBusquedaCatalogo(tenant,carrera),todos=indice.todos;
   const nq=normName(q);
+  // La consulta vacía se usa al abrir el selector. Aprovecha ese momento para
+  // dejar listo el desempate antes de que el estudiante empiece a escribir,
+  // sin cambiar el orden que históricamente devuelve el catálogo completo.
+  const filas=ordenBusquedaCatalogo(indice,semActual);
   if(!nq)return todos.slice();
-  const scored=[];
-  todos.forEach(r=>{
-    const n=normName(r.nombre),sigla=normName(r.sigla||'');
+  const grupos=[[],[],[],[]],tk=nq.split(/\s+/).filter(Boolean);
+  filas.forEach(f=>{
+    const r=f.ramo,n=f.nombre,sigla=f.sigla;
     let s=-1;
     if(n===nq||sigla===nq)s=0;
     else if(n.startsWith(nq)||sigla.startsWith(nq))s=1;
     else if(n.includes(nq)||sigla.includes(nq))s=2;
     else{
       // que "micro 1" encuentre "Microeconom\u00eda I"
-      const tk=nq.split(/\s+/).filter(Boolean);
       if(tk.length>1&&tk.every(t=>n.includes(t)))s=3;
     }
-    if(s>=0)scored.push({...r,_s:s});
+    if(s>=0)grupos[s].push({...r,_s:s});
   });
-  scored.sort((a,b)=>{
-    if(a._s!==b._s)return a._s-b._s;
-    // Los de tu propia malla primero: son los más probables. Los de otras
-    // carreras siguen apareciendo, solo más abajo.
-    if(a.propio!==b.propio)return a.propio?-1:1;
-    // Con pauta antes que sin ella. Al entrar los OFG y optativos al catálogo,
-    // buscar "Ecolog" devolvía primero "Cristianismo y Crisis Ecológica" —el
-    // alfabético desempataba— y dejaba abajo el único que trae ponderaciones
-    // oficiales. Entre dos que calzan igual, sirve más el que llega con su
-    // pauta puesta.
-    if(a.tienePreset!==b.tienePreset)return a.tienePreset?-1:1;
-    const da=Math.abs(a.semestre-(semActual||0)),db=Math.abs(b.semestre-(semActual||0));
-    if(da!==db)return da-db;
-    return a.nombre.localeCompare(b.nombre);
-  });
-  return scored;
+  // Las filas ya vienen en el mismo orden de desempate de antes. Separarlas
+  // por tipo de coincidencia conserva exacto > prefijo > contenido > tokens,
+  // sin ordenar miles de resultados de nuevo en cada tecla.
+  return grupos[0].concat(grupos[1],grupos[2],grupos[3]);
 }
 
 // Sello de procedencia para un ramo creado desde el catálogo. La clave queda
