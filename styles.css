@@ -24,7 +24,7 @@ button:active{transform:scale(.97);}
   --shadow-lg:0 8px 30px -8px rgba(7,23,27,.16);
   /* Un ritmo compartido evita que cada pantalla "invente" su propia
      transición. Corto a propósito: orienta la interacción, no la retrasa. */
-  --motion-press:120ms;--motion-fast:160ms;--motion-base:220ms;
+  --motion-press:120ms;--motion-fast:160ms;--motion-base:220ms;--motion-screen:320ms;
   --ease-out:cubic-bezier(.22,1,.36,1);--ease-standard:cubic-bezier(.2,.8,.2,1);
   /* Dos direcciones bastan para las superficies y los acentos decorativos.
      Los gradientes que expresan avance, cierre o una nota son funcionales y
@@ -121,12 +121,12 @@ body{font-family:'Onest',sans-serif;background:var(--bg);background-image:radial
 .ob-title,.topbar-title,.gpa-num,.ramo-hero-avg,.stat-val,.stat-big,.brand-word{font-family:'Onest',sans-serif;letter-spacing:-.02em;}
 .gpa-num,.ramo-hero-avg{font-feature-settings:'tnum' 1;}
 /* Fila de evaluación directa (presets): escribir solo la nota */
-.eval-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-left:3px solid transparent;border-radius:14px;padding:13px 15px;margin-bottom:8px;box-shadow:var(--shadow);transition:border-left-color .3s ease,box-shadow var(--motion-fast) ease;}
+.eval-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-left:3px solid transparent;border-radius:14px;padding:13px 15px;margin-bottom:8px;box-shadow:var(--shadow);transition:border-left-color var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
 .eval-row-info{flex:1;min-width:0;}
 .eval-row-name{font-size:0.9375rem;font-weight:600;color:var(--fg);}
 .eval-row-weight{font-size:0.75rem;color:var(--fg3);margin-top:2px;font-variant-numeric:tabular-nums;}
 .eval-row-weight b,.cat-peso-tag b{color:var(--secondary);font-weight:700;}
-.eval-row-input{width:66px;min-height:44px;padding:10px 6px;border:1.5px solid var(--border2);border-radius:11px;background:var(--bg2);font-family:'Onest',sans-serif;font-size:1.1875rem;font-weight:700;text-align:center;outline:none;transition:border var(--motion-fast),box-shadow var(--motion-fast),color .3s ease;}
+.eval-row-input{width:66px;min-height:44px;padding:10px 6px;border:1.5px solid var(--border2);border-radius:11px;background:var(--bg2);font-family:'Onest',sans-serif;font-size:1.1875rem;font-weight:700;text-align:center;outline:none;transition:border var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard);}
 .eval-row-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 85%);}
 .eval-row-input::placeholder{color:var(--fg3);font-weight:400;}
 /* Acciones del ramo: Simular (primario) y Nota mínima (secundario) */
@@ -134,7 +134,7 @@ body{font-family:'Onest',sans-serif;background:var(--bg);background-image:radial
 .ramo-action.primary{background:var(--primary);background:linear-gradient(var(--gradient-accent),var(--primary),color-mix(in srgb,var(--primary),#000 18%));color:var(--primary-fg);box-shadow:0 6px 16px -4px color-mix(in srgb,var(--primary),transparent 55%);}
 .ramo-action:active{transform:scale(.97);}
 /* Evaluación multi-nota (Laboratorio 1/2/3) — header + body colapsable */
-.eval-group{background:var(--card);border:1px solid var(--border);border-left:3px solid transparent;border-radius:14px;padding:13px 15px;margin-bottom:8px;box-shadow:var(--shadow);transition:border-left-color .3s ease;}
+.eval-group{background:var(--card);border:1px solid var(--border);border-left:3px solid transparent;border-radius:14px;padding:13px 15px;margin-bottom:8px;box-shadow:var(--shadow);transition:border-left-color var(--motion-fast) var(--ease-standard);}
 .eval-group-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;transition:background var(--motion-press);border-radius:8px;margin:-4px;padding:4px;}
 .eval-group-hd:active{background:var(--muted);}
 .eval-group-body{display:none;padding-top:8px;margin-top:6px;border-top:1px solid var(--border);}
@@ -347,7 +347,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 /* Ancho completo y se encoge con scaleX: animar `width` recalcula el layout en
    cada fotograma, y `transform` lo resuelve el compositor. El contenedor recorta
    con overflow:hidden, así que se ve igual. El avance lo pone obRender(). */
-.ob-progress-bar{height:100%;width:100%;transform:scaleX(.25);transform-origin:left;border-radius:3px;background-image:linear-gradient(90deg,var(--primary),var(--accent));transition:transform .35s var(--ease-out);}
+.ob-progress-bar{height:100%;width:100%;transform:scaleX(.25);transform-origin:left;border-radius:3px;background-image:linear-gradient(90deg,var(--primary),var(--accent));transition:transform var(--motion-base) var(--ease-out);}
 .ob-step{width:100%;max-width:640px;animation:obStepIn .32s var(--ease-out);}
 @keyframes obStepIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
 .ob-step-num{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--primary);margin-bottom:10px;}
@@ -374,7 +374,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .gpa-num{font-family:'Onest',sans-serif;font-size:6rem;font-weight:800;letter-spacing:-.055em;line-height:.9;font-variant-numeric:tabular-nums;
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
   display:inline-block;padding-right:.02em;cursor:pointer;user-select:none;-webkit-user-select:none;
-  transition:transform var(--motion-press) ease;}
+  transition:transform var(--motion-press) var(--ease-standard);}
 .gpa-num:active{transform:scale(.97);}
 .gpa-num.good,.gpa-num.warn,.gpa-num.bad{background-image:linear-gradient(160deg,color-mix(in srgb,var(--grade-color),#fff 10%),var(--grade-color) 72%,color-mix(in srgb,var(--grade-color),#000 8%));}
 .gpa-num.grade-urgent,.ramo-num.grade-urgent{background-image:linear-gradient(158deg,#ff8293 0%,#f31242 42%,#7a001b 100%);}
@@ -486,7 +486,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .section-hd-add{min-height:44px;margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border:0;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-family:'Onest',sans-serif;font-size:0.78125rem;font-weight:800;letter-spacing:-.01em;cursor:pointer;box-shadow:0 5px 14px -7px color-mix(in srgb,var(--primary),transparent 28%);transition:transform var(--motion-press) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
 .section-hd-add .ic{width:15px;height:15px;stroke-width:2.4;}
 @media(hover:hover) and (pointer:fine){.section-hd-add:hover{transform:translateY(-1px);box-shadow:0 8px 18px -8px color-mix(in srgb,var(--primary),transparent 18%);}}
-.ramo-row{position:relative;isolation:isolate;display:flex;align-items:center;gap:14px;margin:0 20px 10px;padding:18px 22px;background:linear-gradient(var(--gradient-surface),color-mix(in srgb,var(--ramo-tint,transparent),transparent 78%) 0%,color-mix(in srgb,var(--ramo-tint,transparent),transparent 92%) 40%,var(--card) 100%);border:1px solid color-mix(in srgb,var(--ramo-tint,var(--border)),transparent 72%);border-radius:16px;cursor:pointer;overflow:hidden;transition:transform var(--motion-fast) ease,border-color var(--motion-base) ease,box-shadow var(--motion-base) ease;
+.ramo-row{position:relative;isolation:isolate;display:flex;align-items:center;gap:14px;margin:0 20px 10px;padding:18px 22px;background:linear-gradient(var(--gradient-surface),color-mix(in srgb,var(--ramo-tint,transparent),transparent 78%) 0%,color-mix(in srgb,var(--ramo-tint,transparent),transparent 92%) 40%,var(--card) 100%);border:1px solid color-mix(in srgb,var(--ramo-tint,var(--border)),transparent 72%);border-radius:16px;cursor:pointer;overflow:hidden;transition:transform var(--motion-fast) var(--ease-standard),border-color var(--motion-base) var(--ease-standard),box-shadow var(--motion-base) var(--ease-standard);
   /* Banda lateral de color como box-shadow inset — respeta el border-radius sin
      glitches en hover (antes era un div absolute que se cortaba al scale). */
   box-shadow:inset 4px 0 0 0 var(--ramo-tint,var(--primary)), 0 1px 3px rgba(0,0,0,.05);}
@@ -520,7 +520,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 @keyframes ramo-row-close{from{opacity:.42;}to{opacity:1;}}
 .ramo-meta-text{white-space:nowrap;}
 .ramo-meta-text.is-complete{color:var(--fg2);font-weight:700;}
-.ramo-nota{font-family:'Onest',sans-serif;font-size:1.375rem;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;transition:color .3s ease;line-height:1;min-width:52px;text-align:right;}
+.ramo-nota{font-family:'Onest',sans-serif;font-size:1.375rem;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;transition:color var(--motion-fast) var(--ease-standard);line-height:1;min-width:52px;text-align:right;}
 .ramo-nota.good,.ramo-nota.warn,.ramo-nota.bad{color:var(--grade-color);}
 .ramo-nota.neutral{color:var(--fg3);opacity:.45;font-weight:500;font-size:1.25rem;}
 .ramo-row[data-reorderable="true"]{gap:10px;}
@@ -1004,7 +1004,9 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;bottom:0;
   display:flex!important;flex-direction:column;
   will-change:transform;animation:none;
-  transition:transform .35s var(--ease-out);
+  /* Este recorrido cruza una pantalla completa: es el único gesto que necesita
+     más que `--motion-base`, y queda nombrado para no volver a ser un .35s suelto. */
+  transition:transform var(--motion-screen) var(--ease-out);
 }
 .app.tab-mode.dragging #screen-stats,
 .app.tab-mode.dragging #screen-home,
@@ -1318,7 +1320,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   padding:11px 12px 11px 16px;border-radius:14px;
   background:var(--card);border:1px solid var(--border2);box-shadow:var(--shadow-lg);
   font-family:'Onest',sans-serif;font-size:0.8125rem;color:var(--fg);letter-spacing:-.005em;
-  transition:transform .3s var(--ease-out);}
+  transition:transform var(--motion-base) var(--ease-out);}
 .update-toast.show{transform:translateX(-50%) translateY(0);}
 .update-toast button{flex-shrink:0;padding:7px 13px;border:none;border-radius:9px;
   background:var(--primary);color:var(--primary-fg);cursor:pointer;

@@ -3,7 +3,7 @@
 // revisa acá y no a ojo.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const raiz = path.join(__dirname, '..');
-const css = fs.readFileSync(path.join(raiz, 'styles.css'), 'utf8');
+const css = fs.readFileSync(process.env.GRADEHUB_CSS || path.join(raiz, 'styles.css'), 'utf8');
 
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
@@ -101,6 +101,22 @@ const curvasSueltas = [...css.matchAll(/\b(transition|animation)\s*:\s*([^;{}]+)
   .flatMap(([, , v]) => v.match(/cubic-bezier\([^)]*\)/g) || []);
 chk(`ninguna curva copiada a mano (${curvasSueltas.length} encontradas)`, curvasSueltas.length === 0);
 if (curvasSueltas.length) [...new Set(curvasSueltas)].forEach(c => console.log('       ' + c));
+// `ease` es la curva que decide el navegador si no se declara otra. No tiene
+// nada malo visualmente, pero deja cada superficie fuera del ritmo común y no
+// se ajusta cuando cambian las curvas del sistema.
+const transiciones = [...css.matchAll(/\btransition\s*:\s*([^;{}]+)/g)].map(([, valor]) => valor);
+const conEasePorDefecto = transiciones.filter(valor => /(?:^|[\s,])ease(?:\s|,|$)/.test(valor));
+chk(`ninguna transición usa el ease por defecto (${conEasePorDefecto.length} encontradas)`, conEasePorDefecto.length === 0);
+if (conEasePorDefecto.length) conEasePorDefecto.forEach(t => console.log('       ' + t));
+// Las transiciones restantes solían mezclar .3s y .35s con el ritmo del
+// sistema. El autofill de Chrome queda fuera: sus 5000s evitan el amarillo y no
+// es una animación de interacción.
+const duracionesSinToken = transiciones.filter(valor => /(?:^|[\s,])\.3(?:5)?s(?:\s|,|$)/.test(valor));
+chk(`ninguna transición conserva .3s o .35s sueltos (${duracionesSinToken.length} encontradas)`, duracionesSinToken.length === 0);
+if (duracionesSinToken.length) duracionesSinToken.forEach(t => console.log('       ' + t));
+const tabSwipe = (css.match(/\.app\.tab-mode #screen-agenda\{([\s\S]*?)\n\}/) || [])[1] || '';
+chk('el desplazamiento de pantalla usa el token largo documentado',
+  /--motion-screen:320ms/.test(css) && /transition:transform var\(--motion-screen\) var\(--ease-out\)/.test(tabSwipe));
 
 console.log('\n=== El rebote al soltar tiene con qué volver ===');
 // `button:active{transform:scale(.97)}` sin transición en `button` hunde el
