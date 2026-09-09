@@ -311,7 +311,7 @@ function normalize(data) {
     // Solo se rellena si está vacío y si el ramo vino del catálogo: un crédito
     // escrito a mano por el estudiante manda sobre la tabla.
     if ((r.creditos === null || r.creditos === undefined) && r.origen && r.origen.tenant) {
-      const cr = creditosDe(r.nombre, r.origen.tenant, null);
+      const cr = creditosDe(r.nombre, r.origen.tenant, null, r.origen.ramoKey);
       if (typeof cr === 'number') r.creditos = cr;
     }
     completarFechasOficiales(r,{tenant:data.tenant,carrera:data.carrera});
@@ -586,6 +586,60 @@ function cargarMallasUC(tenant){
     document.head.appendChild(s);
   });
   return _mallasPendientes[tenant];
+}
+
+// El catálogo completo de la UC pesa mucho más que el arranque de la app y no
+// le sirve a otros tenants. Conservamos CURSOS_UC como catálogo mínimo y
+// sumamos el archivo diferido cuando llega: si la red falla, buscar sigue
+// funcionando exactamente con los datos que ya venían en data.js.
+function cursosUcExtra(){
+  return typeof CURSOS_UC_FULL!=='undefined'&&Array.isArray(CURSOS_UC_FULL)?CURSOS_UC_FULL:null;
+}
+function cursosUcDisponibles(){
+  const base=typeof CURSOS_UC!=='undefined'&&Array.isArray(CURSOS_UC)?CURSOS_UC:[];
+  const extra=cursosUcExtra();
+  // La versión completa va primero para que, al reemplazar la muestra, sus
+  // créditos y escuela enriquezcan las filas que también existen en el
+  // respaldo chico. Las siglas repetidas se filtran al armar el catálogo.
+  return extra?extra.concat(base):base;
+}
+let _cursosUcPendiente=null;
+function cargarCursosUC(){
+  if(_cursosUcPendiente)return _cursosUcPendiente;
+  if(cursosUcExtra())return (_cursosUcPendiente=Promise.resolve(true));
+  _cursosUcPendiente=new Promise(resolve=>{
+    const s=document.createElement('script');
+    // Igual que las mallas, hereda la versión sellada de app.js para que un
+    // HTML nuevo nunca se mezcle con una copia vieja del catálogo.
+    const propio=document.querySelector('script[src*="app.js"]');
+    const qs=propio&&propio.src.includes('?')?propio.src.slice(propio.src.indexOf('?')):'';
+    s.src='cursos-uc.js'+qs;
+    s.onload=()=>{
+      const ok=!!cursosUcExtra();
+      if(!ok)_cursosUcPendiente=null;
+      resolve(ok);
+    };
+    s.onerror=()=>{_cursosUcPendiente=null;resolve(false);};
+    document.head.appendChild(s);
+  });
+  return _cursosUcPendiente;
+}
+function escuelaCursoUc(indice){
+  if(typeof ESCUELAS_UC==='undefined'||!Array.isArray(ESCUELAS_UC))return null;
+  return Number.isInteger(indice)&&typeof ESCUELAS_UC[indice]==='string'?ESCUELAS_UC[indice]:null;
+}
+function cursoUcCompleto(nombre,sigla){
+  const extra=cursosUcExtra();
+  if(!extra)return null;
+  const ns=normName(sigla||''),nn=normName(nombre||'');
+  return extra.find(f=>{
+    if(!Array.isArray(f))return false;
+    return (ns&&normName(f[0]||'')===ns)||(!ns&&nn&&normName(f[1]||'')===nn);
+  })||null;
+}
+function repintarAlCargarCursosUC(tenant,repintar){
+  if(tenant!=='uc'||cursosUcExtra())return;
+  cargarCursosUC().then(ok=>{if(ok)repintar();});
 }
 function selectTenant(t){
   selectedTenant=t;selectedCarrera=null;applyTheme();renderTenantPick();initCarreraGrid();checkOb();
@@ -1057,7 +1111,12 @@ function prepararObRamos(){
   obRamos=obRamosActuales().map(nombre=>({nombre,manual:false}));
   renderObCoursePicker();
 }
-function obTieneRamo(nombre){return obRamos.some(r=>normName(r.nombre)===normName(nombre));}
+function obTieneRamo(nombre,sigla){
+  return obRamos.some(r=>{
+    if(sigla&&r.sigla)return normName(r.sigla)===normName(sigla);
+    return normName(r.nombre)===normName(nombre);
+  });
+}
 // encodeURIComponent deja el apóstrofo intacto. Como el valor entra en un
 // literal JS delimitado por comillas simples dentro del atributo, se codifica
 // también para que un nombre manual no pueda cerrar el handler.
@@ -1114,11 +1173,15 @@ function obElegirVariante(baseCod,nombreCod){
   }
   renderObCoursePicker();obRender();
 }
-function obAgregarCatalogo(nombre){
-  if(!obTieneRamo(nombre))obRamos.push({nombre,manual:false});
+function obAgregarCatalogo(nombre,sigla){
+  const fila=selectedTenant==='uc'?cursoUcCompleto(nombre,sigla):null;
+  if(!obTieneRamo(nombre,sigla))obRamos.push({nombre,manual:false,sigla:sigla||null,
+    creditos:fila&&typeof fila[2]==='number'?fila[2]:null});
   renderObCoursePicker();obRender();
 }
-function obAgregarCatalogoCodificado(nombre){obAgregarCatalogo(decodeURIComponent(nombre));}
+function obAgregarCatalogoCodificado(nombre,sigla){
+  obAgregarCatalogo(decodeURIComponent(nombre),sigla?decodeURIComponent(sigla):null);
+}
 function obToggleManual(){obManualOpen=!obManualOpen;obManualError='';renderObCoursePicker();}
 function obAgregarManual(){
   const input=document.getElementById('ob-manual-name');
@@ -1168,7 +1231,11 @@ function obCatalogMeta(r){
   const lugar=r.semestre>0?`${r.semestre}° semestre`
     :r.fuente==='catalogo-ingenieria'?'catálogo de Ingeniería UC'
       :r.fuente==='curso-uc'?'curso UC fuera de malla':'fuera de malla';
-  return `${r.sigla?esc(r.sigla)+' · ':''}${lugar}${r.tienePreset?' · con ponderaciones oficiales':''}`;
+  const detalles=[r.sigla?esc(r.sigla):'',lugar];
+  if(typeof r.creditos==='number')detalles.push(`${r.creditos} créditos`);
+  if(r.escuela)detalles.push(esc(r.escuela));
+  if(r.tienePreset)detalles.push('con ponderaciones oficiales');
+  return detalles.filter(Boolean).join(' · ');
 }
 function renderObCoursePicker(){
   const box=document.getElementById('ob-course-picker');if(!box)return;
@@ -1234,11 +1301,15 @@ function renderObCoursePicker(){
 function renderObCourseResults(q){
   const box=document.getElementById('ob-course-results');if(!box)return;
   const term=(q||'').trim();if(!term){box.innerHTML='';return;}
+  repintarAlCargarCursosUC(selectedTenant,()=>{
+    const input=document.getElementById('ob-course-search');
+    if(input&&input.value===q)renderObCourseResults(q);
+  });
   const res=searchCatalog(term,selectedTenant,selectedCarrera,selectedSem).slice(0,6);
   if(!res.length){box.innerHTML='<p class="course-picker-reassurance">No aparece en tu malla. Puedes agregarlo a mano.</p>';return;}
   box.innerHTML=res.map(r=>{
-    const tengo=obTieneRamo(r.nombre),otro=r.semestre>0&&r.semestre!==selectedSem;
-    return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${obCodificarNombre(r.nombre)}')"`}>
+    const tengo=obTieneRamo(r.nombre,r.sigla),otro=r.semestre>0&&r.semestre!==selectedSem;
+    return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${obCodificarNombre(r.nombre)}','${obCodificarNombre(r.sigla||'')}')"`}>
       <span class="course-picker-result-info"><span class="course-picker-result-name">${esc(r.nombre)}</span><span class="course-picker-result-meta">${obCatalogMeta(r)}</span></span>
       <span class="chevron-r">${tengo?'✓':'+'}</span>
     </button>${otro?'<p class="course-picker-reassurance">Que sea de otro semestre está bien.</p>':''}`;
@@ -1327,7 +1398,8 @@ function completeOnboarding(){
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
-    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(item.nombre),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+    const creditos=typeof item.creditos==='number'?item.creditos:creditosDe(item.nombre,selectedTenant,preset,item.sigla);
+    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(item.nombre,item.sigla),creditos,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   });
   S.onboardingDone=true;save();
   syncProfile();
@@ -2140,6 +2212,10 @@ function openAddRamoModal(){
 // del estudiante — nunca de otra casa de estudios.
 function renderCatalogResults(q){
   const box=document.getElementById('m-ramo-results');if(!box)return;
+  repintarAlCargarCursosUC(S.tenant,()=>{
+    const input=document.getElementById('m-ramo-search');
+    if(input&&input.value===q)renderCatalogResults(q);
+  });
   const yaTengo=new Set(S.ramos.map(r=>normName(r.nombre)));
   const res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre).slice(0,6);
   if(res.length===0){
@@ -2148,10 +2224,10 @@ function renderCatalogResults(q){
   }
   box.innerHTML=res.map(r=>{
     const tengo=yaTengo.has(normName(r.nombre));
-    return `<button class="cat-hit${tengo?' ya':''}" ${tengo?'disabled':`onclick="addFromCatalog('${esc(r.nombre).replace(/'/g,"\\'")}')"`}>
+    return `<button class="cat-hit${tengo?' ya':''}" ${tengo?'disabled':`onclick="addFromCatalogCodificado('${obCodificarNombre(r.nombre)}','${obCodificarNombre(r.sigla||'')}')"`}>
       <span class="cat-hit-info">
         <span class="cat-hit-name">${esc(r.nombre)}</span>
-        <span class="cat-hit-meta">${r.semestre}° semestre${r.tienePreset?' · con ponderaciones':''}</span>
+        <span class="cat-hit-meta">${obCatalogMeta(r)}</span>
       </span>
       ${tengo?'<span class="cat-hit-tag">ya lo tienes</span>'
              :(r.tienePreset?'<svg class="ic cat-hit-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z" fill="currentColor" stroke="none"/></svg>':'<span class="chevron-r">+</span>')}
@@ -2160,12 +2236,17 @@ function renderCatalogResults(q){
 }
 
 // Agrega directo desde el catálogo, con sello de procedencia y preset si existe
-function addFromCatalog(nombre){
+function addFromCatalogCodificado(nombre,sigla){
+  addFromCatalog(decodeURIComponent(nombre),sigla?decodeURIComponent(sigla):null);
+}
+function addFromCatalog(nombre,sigla){
   const presetName=findPresetName(nombre,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
+  const fila=S.tenant==='uc'?cursoUcCompleto(nombre,sigla):null;
+  const creditos=fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
   S.ramos.push({
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
-    creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(presetName||nombre),
+    creditos,origen:origenActual(presetName||nombre,sigla),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
   });
   save();track('add_ramo_catalogo',{preset:!!preset});
@@ -2243,12 +2324,18 @@ function claveCatalogo(nombre,claves,tenant){
 // un dato conocido y exacto; null es "no lo tenemos". Confundirlos es lo que
 // haría que un ramo sin dato se colara al promedio con peso cero.
 const CREDITOS_POR_TENANT={uc:CREDITOS_UC,fen:CREDITOS_FEN};
-function creditosDe(nombre,tenant,preset){
+function creditosDe(nombre,tenant,preset,sigla){
   if(preset&&typeof preset.creditos==='number')return preset.creditos;
   const tabla=CREDITOS_POR_TENANT[tenant];
-  if(!tabla)return null;
-  const clave=claveCatalogo(nombre,Object.keys(tabla),tenant);
-  return clave?tabla[clave][0]:null;
+  if(tabla){
+    const clave=claveCatalogo(nombre,Object.keys(tabla),tenant);
+    if(clave)return tabla[clave][0];
+  }
+  if(tenant==='uc'){
+    const fila=cursoUcCompleto(nombre,sigla);
+    if(fila&&typeof fila[2]==='number')return fila[2];
+  }
+  return null;
 }
 
 // La sigla de un ramo YA CARGADO, para mostrarla junto al nombre. Sale de la
@@ -2262,10 +2349,17 @@ function siglaDeRamo(r,tenant){
   // y vive en `selectedTenant`. Por eso se puede pasar explícita.
   tenant=tenant||(r.origen&&r.origen.tenant)||S.tenant;
   const tabla=CREDITOS_POR_TENANT[tenant];
-  if(!tabla)return null;
-  const clave=claveCatalogo(r.nombre,Object.keys(tabla),tenant);
-  const fila=clave?tabla[clave]:null;
-  return fila&&typeof fila[1]==='string'?fila[1]:null;
+  if(tabla){
+    const clave=claveCatalogo(r.nombre,Object.keys(tabla),tenant);
+    const fila=clave?tabla[clave]:null;
+    if(fila&&typeof fila[1]==='string')return fila[1];
+  }
+  const origenKey=r.origen&&r.origen.ramoKey;
+  // Los ramos UC antiguos sin sigla guardaron el nombre normalizado como
+  // ramoKey. Solo se muestra la clave si tiene forma de código oficial.
+  if(tenant==='uc'&&typeof origenKey==='string'&&/^[A-Z]{2,5}\d{3,4}[A-Z]?$/i.test(origenKey))return origenKey.toUpperCase();
+  const completa=tenant==='uc'?cursoUcCompleto(r.nombre,null):null;
+  return completa&&typeof completa[0]==='string'?completa[0]:null;
 }
 
 // Identificador oficial de un ramo UC. La carrera solo sirve para resolver un
@@ -2315,7 +2409,7 @@ function catalogRamos(tenant,carrera){
 function catalogRamosUniversidad(tenant,carreraPropia){
   const mallas=mallaFor(tenant)||{};
   const propios=new Set(catalogRamos(tenant,carreraPropia).map(r=>normName(r.nombre)));
-  const out=[],vistos=new Set();
+  const out=[],vistos=new Set(),siglasVistas=new Set();
   Object.keys(mallas).forEach(car=>{
     const porSem=mallas[car]||{};
     Object.keys(porSem).sort((a,b)=>Number(a)-Number(b)).forEach(sem=>{
@@ -2323,7 +2417,9 @@ function catalogRamosUniversidad(tenant,carreraPropia){
         const k=normName(nombre);
         if(vistos.has(k))return;
         vistos.add(k);
-        out.push({nombre,semestre:Number(sem),propio:propios.has(k),sigla:tenant==='uc'?siglaCatalogoUC(nombre):null,
+        const sigla=tenant==='uc'?siglaCatalogoUC(nombre):null;
+        if(sigla)siglasVistas.add(normName(sigla));
+        out.push({nombre,semestre:Number(sem),propio:propios.has(k),sigla,
                   tienePreset:!!findPresetName(nombre,tenant,carreraPropia)||!!findPresetName(nombre,tenant,car)});
       });
     });
@@ -2339,28 +2435,38 @@ function catalogRamosUniversidad(tenant,carreraPropia){
     const k=normName(nombre);
     if(vistos.has(k))return;
     vistos.add(k);
+    const sigla=tenant==='uc'?siglaCatalogoUC(nombre):null;
+    if(sigla)siglasVistas.add(normName(sigla));
     // semestre 0 = fuera de malla. No compite con los del semestre del
     // estudiante en el orden, porque no le corresponde a nadie en particular.
-    out.push({nombre,semestre:0,propio:false,sigla:tenant==='uc'?siglaCatalogoUC(nombre):null,tienePreset:true});
+    out.push({nombre,semestre:0,propio:false,sigla,tienePreset:true});
   });
   // Y los cursos que existen sin pertenecer a un semestre ni traer pauta: los
   // optativos y OFG. Entran por el mismo camino que los presets fuera de
   // malla, con `tienePreset:false` porque no hay ponderaciones que prometer.
   // Sin esto el estudiante tiene que escribir "biocel" a mano y la app lo
   // guarda como un ramo inventado por él, sin sigla y sin forma de agrupar.
-  if(tenant==='uc')CURSOS_UC.forEach(([sigla,nombre])=>{
-    const k=normName(nombre);
-    if(vistos.has(k))return;
+  if(tenant==='uc')cursosUcDisponibles().forEach(([sigla,nombre,creditos,indiceEscuela])=>{
+    if(typeof nombre!=='string'||!nombre.trim())return;
+    const k=normName(nombre),ks=normName(sigla||'');
+    // En el catálogo completo puede haber dos cursos con el mismo nombre y
+    // distinta sigla. La identidad oficial es la sigla; el nombre queda como
+    // fallback solo para las filas antiguas que no la traigan.
+    if((ks&&siglasVistas.has(ks))||(!ks&&vistos.has(k)))return;
     vistos.add(k);
-    out.push({nombre,semestre:0,propio:false,sigla,fuente:'curso-uc',tienePreset:false});
+    if(ks)siglasVistas.add(ks);
+    out.push({nombre,semestre:0,propio:false,sigla,creditos:typeof creditos==='number'?creditos:null,
+              escuela:escuelaCursoUc(indiceEscuela),fuente:'curso-uc',
+              tienePreset:!!findPresetName(nombre,tenant,carreraPropia)});
   });
   // CREDITOS_UC ya viene del catálogo oficial de los 34 majors. No inventa
   // una malla ni dice a qué semestre corresponde: solo evita que Ingeniería
   // UC termine artificialmente en 4° y deja buscar por la sigla del horario.
   if(tenant==='uc')Object.entries(CREDITOS_UC).forEach(([nombre,[,sigla]])=>{
-    const k=normName(nombre);
-    if(vistos.has(k))return;
+    const k=normName(nombre),ks=normName(sigla||'');
+    if((ks&&siglasVistas.has(ks))||(!ks&&vistos.has(k)))return;
     vistos.add(k);
+    if(ks)siglasVistas.add(ks);
     out.push({nombre,semestre:0,propio:false,sigla,fuente:'catalogo-ingenieria',tienePreset:false});
   });
   return out;
@@ -2418,16 +2524,19 @@ function searchCatalog(q,tenant,carrera,semActual){
 
 // Sello de procedencia para un ramo creado desde el catálogo. La clave queda
 // en el ramo, para que el servidor no tenga que duplicar las siglas de data.js.
-function ramoKey(nombre,tenant,carrera){
+function ramoKey(nombre,tenant,carrera,sigla){
   // Dos carreras que le dicen distinto al mismo ramo tienen que dar la misma
   // clave, o sus reportes no se juntan nunca y el consenso no llega a tres.
   nombre=sinonimoDe(nombre,tenant)||nombre;
   if(tenant!=='uc')return normName(nombre);
+  if(typeof sigla==='string'&&sigla.trim())return sigla.trim().toUpperCase();
   const directa=siglaUC(nombre,carrera);if(directa)return directa;
   const credito=Object.keys(CREDITOS_UC||{}).find(n=>normName(n)===normName(nombre));
-  return (credito&&CREDITOS_UC[credito]&&CREDITOS_UC[credito][1])||normName(nombre);
+  if(credito&&CREDITOS_UC[credito]&&CREDITOS_UC[credito][1])return CREDITOS_UC[credito][1];
+  const completa=cursoUcCompleto(nombre,null);
+  return (completa&&completa[0])||normName(nombre);
 }
-function origenActual(nombre){return {tenant:S.tenant,carrera:S.carrera,ramoKey:ramoKey(nombre,S.tenant,S.carrera)};}
+function origenActual(nombre,sigla){return {tenant:S.tenant,carrera:S.carrera,ramoKey:ramoKey(nombre,S.tenant,S.carrera,sigla)};}
 
 // La clave de consenso se fija al CREAR el ramo y se guarda para que sobreviva
 // a que el estudiante le cambie el nombre. Eso está bien y no se toca.
@@ -4134,20 +4243,25 @@ function renderBusquedaSemestreAnterior(q){
   const texto=String(q||'').trim();
   // Con una sola letra el catálogo devuelve medio semestre: no ayuda a nadie.
   if(texto.length<BUSQUEDA_MIN){box.innerHTML='';return;}
+  repintarAlCargarCursosUC(S.tenant,()=>{
+    const input=document.getElementById('m-hist-buscar');
+    if(input&&input.value===q)renderBusquedaSemestreAnterior(q);
+  });
   const res=searchCatalog(texto,S.tenant,S.carrera,8)
     .filter(c=>!histManual.ramos.some(r=>normName(r.nombre)===normName(c.nombre)));
   box.innerHTML=res.map(c=>`
-    <button type="button" class="course-picker-result" onclick="agregarRamoSemestreAnterior('${obCodificarNombre(c.nombre)}')">
+    <button type="button" class="course-picker-result" onclick="agregarRamoSemestreAnterior('${obCodificarNombre(c.nombre)}','${obCodificarNombre(c.sigla||'')}')">
       <span class="course-picker-result-name">${esc(c.nombre)}</span>
     </button>`).join('')
     // Un ramo de hace dos años puede no estar en el catálogo de hoy: se agrega igual.
     +`<button type="button" class="course-picker-manual" onclick="agregarRamoSemestreAnterior('${obCodificarNombre(texto)}')">Agregar «${esc(texto)}»</button>`;
 }
 
-function agregarRamoSemestreAnterior(cod){
+function agregarRamoSemestreAnterior(cod,siglaCod){
   const nombre=decodeURIComponent(cod).trim();
   if(!nombre||histManual.ramos.some(r=>normName(r.nombre)===normName(nombre)))return;
-  histManual.ramos.push({nombre,creditos:creditosDe(nombre,S.tenant,null),nota:''});
+  const sigla=siglaCod?decodeURIComponent(siglaCod):null;
+  histManual.ramos.push({nombre,creditos:creditosDe(nombre,S.tenant,null,sigla),nota:''});
   renderSemestreAnteriorModal();
 }
 function quitarRamoSemestreAnterior(i){histManual.ramos.splice(i,1);renderSemestreAnteriorModal();}
