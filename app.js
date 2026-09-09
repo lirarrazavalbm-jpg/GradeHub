@@ -3947,6 +3947,122 @@ function resetHistRamoAvg(histId,ramoId){
   showToast('Se restauró el promedio calculado');
 }
 
+// ─── QUÉ SEMESTRE FUE ────────────────────────────────────────────────────────
+// El nombre se escribía a mano y cada quien ponía lo que se le ocurriera
+// ("2024 1", "primero 2024", "2o sem"), sin forma de corregir una errata. Se
+// elige de una lista y sale siempre con la forma que ya usa el resto de la app.
+// El verano no es "1" ni "2": en la UC es la TAV, y en el resto se nombra sin
+// pedirle prestado el término a otra universidad.
+const PERIODOS_SEMESTRE=[
+  {id:'1',corto:'1°',nombre:'Primer semestre'},
+  {id:'2',corto:'2°',nombre:'Segundo semestre'},
+  {id:'v',corto:'',nombre:'Temporada de verano'}
+];
+function nombreVerano(){return S.tenant==='uc'?'TAV':'Verano';}
+function cortoPeriodo(p){return p.id==='v'?nombreVerano():p.corto;}
+
+function etiquetaSemestre(anio,periodo){
+  const a=Number(anio)||anioActualSemestre();
+  return periodo==='v'?`${nombreVerano()} ${a}`:`${a}-${periodo==='2'?2:1}`;
+}
+
+// Para volver a abrir el selector en lo que la persona ya había elegido. Un
+// semestre archivado trae `2025-1` de `semester()`; uno escrito a mano antes de
+// que existiera el selector puede traer cualquier cosa, y ahí se parte del año
+// en curso en vez de adivinar.
+function parseEtiquetaSemestre(label){
+  const t=String(label||'').trim();
+  let m=t.match(/^(\d{4})\s*-\s*([12])$/);
+  if(m)return{anio:Number(m[1]),periodo:m[2]};
+  m=t.match(/^(?:TAV|Verano)\s+(\d{4})$/i);
+  if(m)return{anio:Number(m[1]),periodo:'v'};
+  return null;
+}
+
+function anioActualSemestre(){
+  return Number(String(semester()).slice(0,4))||new Date().getFullYear();
+}
+
+function aniosSemestre(sel){
+  const hoy=anioActualSemestre();
+  const out=[];
+  for(let a=hoy;a>=hoy-9;a--)out.push(a);
+  if(sel&&out.indexOf(Number(sel))<0){out.push(Number(sel));out.sort((x,y)=>y-x);}
+  return out;
+}
+
+function selectorSemestreHTML(anio,periodo,onAnio,onPeriodo){
+  const a=Number(anio);
+  const anios=aniosSemestre(a).map(y=>`<option value="${y}"${y===a?' selected':''}>${y}</option>`).join('');
+  const pers=PERIODOS_SEMESTRE.map(pp=>`<button type="button" class="sem-btn${pp.id===periodo?' sel':''}" aria-pressed="${pp.id===periodo?'true':'false'}" title="${esc(pp.nombre)}" onclick="${onPeriodo}('${pp.id}')">${esc(cortoPeriodo(pp))}</button>`).join('');
+  return `<select class="feedback-select sem-picker-anio" aria-label="Año" onchange="${onAnio}(this.value)">${anios}</select>
+    <div class="sem-picker-per" role="group" aria-label="Período">${pers}</div>`;
+}
+
+// ─── RENOMBRAR O BORRAR UN SEMESTRE DEL HISTORIAL ────────────────────────────
+// Un semestre entra al historial por dos puertas —archivar el actual o cargar
+// uno anterior a mano— y hasta ahora no salía por ninguna. Quien se equivocaba
+// en el año al cargarlo quedaba con esa fila para siempre, contando en su
+// promedio de carrera, sin forma de corregirla ni de sacarla.
+
+let histRename={id:'',anio:0,periodo:'1'};
+
+function openRenombrarHistModal(histId){
+  const h=S.historial.find(x=>x.id===histId);if(!h)return;
+  const p=parseEtiquetaSemestre(h.label)||{anio:anioActualSemestre(),periodo:'1'};
+  histRename={id:histId,anio:p.anio,periodo:p.periodo};
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Qué semestre fue</div>
+    <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin-bottom:16px;">
+      Cambia solo cómo se llama en tu historial. Sus ramos y notas quedan igual.
+    </p>
+    <div class="sem-picker" id="m-hist-sem-ren">${selectorSemestreHTML(histRename.anio,histRename.periodo,'setAnioHistRename','setPeriodoHistRename')}</div>
+    <p class="sem-picker-preview" id="m-hist-preview">Quedará como <b>${esc(etiquetaSemestre(histRename.anio,histRename.periodo))}</b></p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmRenombrarHist('${esc(histId)}')">Guardar</button>
+    </div>`;
+  openModal();
+}
+
+function repintarSelectorHistRename(){
+  const box=document.getElementById('m-hist-sem-ren');
+  if(box)box.innerHTML=selectorSemestreHTML(histRename.anio,histRename.periodo,'setAnioHistRename','setPeriodoHistRename');
+  const pv=document.getElementById('m-hist-preview');
+  if(pv)pv.innerHTML=`Quedará como <b>${esc(etiquetaSemestre(histRename.anio,histRename.periodo))}</b>`;
+}
+function setAnioHistRename(v){histRename.anio=Number(v);repintarSelectorHistRename();}
+function setPeriodoHistRename(v){histRename.periodo=v;repintarSelectorHistRename();}
+
+function confirmRenombrarHist(histId){
+  const h=S.historial.find(x=>x.id===histId);if(!h)return;
+  const label=etiquetaSemestre(histRename.anio,histRename.periodo);
+  if(h.label===label){closeModal();return;}
+  h.label=label;
+  save();track('renombrar_historial');closeModal();renderHome();renderStats();
+  showToast(`Ahora se llama ${label}`);
+}
+
+function pedirBorrarHistorial(histId){
+  const h=S.historial.find(x=>x.id===histId);if(!h)return;
+  const n=(h.ramos||[]).length;
+  showConfirm(
+    `Eliminar ${h.label}`,
+    `Se borrarán ${n} ramo${n!==1?'s':''} y este semestre dejará de contar en tu promedio de carrera. No se puede deshacer.`,
+    ()=>borrarHistorial(histId)
+  );
+}
+
+function borrarHistorial(histId){
+  const i=S.historial.findIndex(x=>x.id===histId);
+  if(i<0)return;
+  const h=S.historial[i];
+  S.historial.splice(i,1);
+  save();track('borrar_historial',{manual:!!h.manual});
+  closeModal();renderHome();renderStats();
+  showToast(`${h.label} eliminado`);
+}
+
 // ─── SEMESTRES ANTERIORES, CARGADOS A MANO ───────────────────────────────────
 // Alguien que llega en cuarto semestre tiene tres años de notas que la app no
 // vio. Sin esto empieza con el promedio en blanco y GradeHub le sirve la mitad:
@@ -3958,10 +4074,11 @@ function resetHistRamoAvg(histId,ramoId){
 // guarda como `avgOverride`, que es el mismo mecanismo con el que ya se corrige
 // a mano el promedio de un ramo archivado.
 const BUSQUEDA_MIN=2;
-let histManual={label:'',ramos:[],paso:1};
+let histManual={label:'',anio:0,periodo:'1',ramos:[],paso:1};
 
 function openSemestreAnteriorModal(){
-  histManual={label:'',ramos:[],paso:1};
+  const anio=anioActualSemestre();
+  histManual={label:etiquetaSemestre(anio,'1'),anio,periodo:'1',ramos:[],paso:1};
   renderSemestreAnteriorModal();
   openModal();
 }
@@ -3988,10 +4105,8 @@ function pasoRamosSemestreAnterior(){
       despu\u00e9s pones la nota final de cada uno: no hace falta que te acuerdes de las
       evaluaciones.
     </p>
-    <label class="modal-label" for="m-hist-label">Qu\u00e9 semestre fue</label>
-    <div class="modal-input" style="margin-bottom:14px;">
-      <input type="text" id="m-hist-label" value="${esc(histManual.label)}" placeholder="Ej.: 2025-1" maxlength="20" autocomplete="off" oninput="histManual.label=this.value"/>
-    </div>
+    <label class="modal-label">Qu\u00e9 semestre fue</label>
+    <div class="sem-picker" id="m-hist-sem">${selectorSemestreHTML(histManual.anio,histManual.periodo,'setAnioSemestreAnterior','setPeriodoSemestreAnterior')}</div>
     <label class="modal-label" for="m-hist-buscar">Busca tus ramos</label>
     <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="m-hist-buscar" type="text" placeholder="Nombre o sigla" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     <div id="m-hist-resultados"></div>
@@ -4001,6 +4116,16 @@ function pasoRamosSemestreAnterior(){
       <button class="btn-confirm" ${histManual.ramos.length?'':'disabled'} onclick="pasarANotasSemestreAnterior()">Continuar</button>
     </div>`;
 }
+
+function repintarSelectorSemestreAnterior(){
+  histManual.label=etiquetaSemestre(histManual.anio,histManual.periodo);
+  // Se repinta solo el selector: volver a dibujar el paso entero borraría lo que
+  // la persona lleva escrito en el buscador de ramos.
+  const box=document.getElementById('m-hist-sem');
+  if(box)box.innerHTML=selectorSemestreHTML(histManual.anio,histManual.periodo,'setAnioSemestreAnterior','setPeriodoSemestreAnterior');
+}
+function setAnioSemestreAnterior(v){histManual.anio=Number(v);repintarSelectorSemestreAnterior();}
+function setPeriodoSemestreAnterior(v){histManual.periodo=v;repintarSelectorSemestreAnterior();}
 
 function renderBusquedaSemestreAnterior(q){
   const box=document.getElementById('m-hist-resultados');if(!box)return;
@@ -4084,7 +4209,7 @@ function textoAvisoSemestreAnterior(){
 function guardarSemestreAnterior(){
   const conNota=notasValidasSemestreAnterior();
   if(!conNota.length){showToast('Pon al menos una nota para guardar',true);return;}
-  const label=String(histManual.label||'').trim()||'Semestre anterior';
+  const label=etiquetaSemestre(histManual.anio,histManual.periodo);
   // Se guardan SOLO los ramos con nota: uno sin nota no aporta al promedio y
   // aparecería en el historial como si estuviera pendiente de algo.
   const ramos=conNota.map(r=>({

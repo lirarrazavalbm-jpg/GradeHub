@@ -736,13 +736,17 @@ function renderStats(){
             <div class="hist-header" role="button" tabindex="0" onclick="toggleHist('${h.id}')">
               <div style="flex:1;">
                 <div style="font-size:0.96875rem;font-weight:700;color:var(--fg);letter-spacing:-.01em;">${esc(h.label)}</div>
-                <div style="font-size:0.75rem;color:var(--fg3);margin-top:3px;">Sem. ${h.careerSemestre} · ${ramosHistorial.length} ramos</div>
+                <div style="font-size:0.75rem;color:var(--fg3);margin-top:3px;">${Number.isFinite(h.careerSemestre)?`Sem. ${h.careerSemestre} · `:''}${ramosHistorial.length} ramo${ramosHistorial.length!==1?'s':''}</div>
               </div>
               <span class="hist-gpa" style="color:${gpaColor}">${historialGpa!==null?nf(historialGpa):'—'}</span>
               <span style="color:var(--fg3);font-size:0.6875rem;">${isOpen?'▲':'▼'}</span>
             </div>
             <div class="hist-body${isOpen?' open':''}">
               ${ramosRows||'<p style="font-size:0.8125rem;color:var(--fg3);">Sin ramos</p>'}
+              <div class="hist-acciones">
+                <button type="button" class="hist-accion" onclick="openRenombrarHistModal('${esc(h.id)}')">Cambiar nombre</button>
+                <button type="button" class="hist-accion hist-accion-del" onclick="pedirBorrarHistorial('${esc(h.id)}')">Eliminar semestre</button>
+              </div>
             </div>
           </div>`;
       });
