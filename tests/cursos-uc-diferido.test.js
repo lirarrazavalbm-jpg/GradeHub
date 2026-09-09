@@ -72,8 +72,18 @@ function chk(nombre,cond){if(cond){ok++;console.log('  OK   '+nombre);}else{fail
   // —Dinámica de FIS y de ICE son las dos válidas en Ingeniería—, así que no
   // se colapsan: se distinguen con el código, igual que ya hace CREDITOS_UC.
   chk('ningún nombre queda repetido sin poder distinguirse',new Set(filas.map(f=>f[1])).size===filas.length);
-  const dinamicas=filas.filter(f=>/^Dinámica( \(|$)/.test(f[1]));
-  chk('las alternativas del mismo ramo llevan su código',dinamicas.length>1&&dinamicas.some(f=>f[1]==='Dinámica')&&dinamicas.some(f=>/^Dinámica \([A-Z]+\d+\)$/.test(f[1])));
+  const alternativas=filas.filter(f=>/ \([A-Z]+\d+[A-Z]?\)$/.test(f[1]));
+  chk('las alternativas del mismo ramo llevan su código',alternativas.length>500);
+  // Cada alternativa acompaña a un ramo base que también está: si la base
+  // faltara, el estudiante vería solo "(ACO2391)" colgando de la nada.
+  const nombres=new Set(filas.map(f=>f[1]));
+  chk('cada alternativa tiene su ramo base en la lista',
+    alternativas.every(f=>nombres.has(f[1].replace(/ \([A-Z]+\d+[A-Z]?\)$/,''))));
+  // Donde la app ya resolvió a mano entre dos siglas —el plan común de
+  // Ingeniería ofrece Dinámica de FIS o de ICE, y CREDITOS_UC ya lo dice— el
+  // catálogo no mete opciones nuevas: esa elección estaba curada y funcionaba.
+  chk('no agrega alternativas a un ramo que la app ya tenía resuelto',
+    filas.filter(f=>/^Dinámica( \(|$)/.test(f[1])).length===1);
   const deploy=fs.readFileSync(path.join(raiz,'.github/workflows/deploy.yml'),'utf8');
   chk('el deploy protege cursos-uc.js',/data\.js mallas-uc\.js mallas-uai\.js cursos-uc\.js engine\.js/.test(deploy));
 
