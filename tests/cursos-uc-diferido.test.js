@@ -62,11 +62,14 @@ function chk(nombre,cond){if(cond){ok++;console.log('  OK   '+nombre);}else{fail
   // regenera y salen unos cientos, algo se cortó en el camino.
   chk('trae el catálogo completo, no un pedazo',filas.length>9000);
   chk('cada curso es [sigla, nombre, créditos]',filas.every(f=>Array.isArray(f)&&f.length===3&&typeof f[0]==='string'&&typeof f[1]==='string'));
-  // Los créditos son número o no están. Nunca un valor plausible inventado:
-  // el catálogo oficial da distintos créditos para el mismo ramo según la
-  // escuela, y elegir uno al azar le descuadra el promedio de carrera a quien
-  // lo agregue.
+  // Cada fila lleva los créditos de su propia sigla. El catálogo oficial da
+  // valores distintos para el mismo nombre según la sigla —MOM400 son 6 y
+  // MOM401D son 50— y por eso las variantes no se colapsan: elegir un valor
+  // para representarlas a todas le descuadra el promedio de carrera a quien
+  // agregue ese ramo.
   chk('los créditos son un número o null, nunca un relleno',filas.every(f=>f[2]===null||(typeof f[2]==='number'&&f[2]>=0)));
+  const mom=filas.filter(f=>/^Práctica Clínica Medicina Interna( \(|$)/.test(f[1]));
+  chk('las variantes conservan cada una sus propios créditos',new Set(mom.map(f=>f[2])).size>1);
   chk('ninguna sigla se repite',new Set(filas.map(f=>f[0])).size===filas.length);
   // Dos siglas con el mismo nombre son dos ramos que el alumno puede elegir
   // —Dinámica de FIS y de ICE son las dos válidas en Ingeniería—, así que no
