@@ -4932,7 +4932,7 @@ function openCalculadoraModal(){
 }
 
 // ─── SIMULADOR DE ESCENARIOS ──────────────────────────────────────────────────
-let simState={}; // { catId: [ {id, valor} ] }  — notas hipotéticas, no se guardan
+let simState={}; // { catId: [ {id, valor, slot?} ] } — hipotéticas, no se guardan
 
 // ─── SIMULADOR GLOBAL DE SEMESTRE ────────────────────────────────────────────
 // Proyecta el promedio general moviendo la nota final de cada ramo con sliders.
@@ -5114,13 +5114,19 @@ function openSimuladorModal(){
 
 // Combina notas reales (con su peso) + hipotéticas (peso 1) de una categoría
 function simCombinadas(c){
-  return [...c.notas, ...((simState[c.id]||[]).map(s=>({valor:s.valor,peso:1})))];
+  return [...c.notas, ...((simState[c.id]||[]).map(s=>({
+    valor:s.valor,peso:1,
+    ...(Number.isInteger(s.slot)?{slot:s.slot}:{}),
+  })))];
 }
 function simCatAvg(c){return avgPond(simCombinadas(c));}
 // Proyección del simulador: mismo motor y mismas compuertas que el promedio real.
 // Mezcla notas reales + hipotéticas y delega en ramoAvg (gate-aware).
 function simProjectedAvg(r){
-  const merged={...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({id:n.id||('sim_'+c.id+'_'+i),nombre:n.nombre||'Nota',valor:n.valor,peso:n.peso||1}))}))};
+  const merged={...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({
+    id:n.id||('sim_'+c.id+'_'+i),nombre:n.nombre||'Nota',valor:n.valor,peso:n.peso||1,
+    ...(Number.isInteger(n.slot)?{slot:n.slot}:{}),
+  }))}))};
   return ramoAvg(merged);
 }
 
@@ -5158,7 +5164,7 @@ function renderSimulador(){
   document.getElementById('sim-cats').innerHTML=r.categorias.map(c=>{
     const catAvg=simCatAvg(c);
     const realChips=c.notas.map(n=>`<span class="sim-chip real">${esc(n.nombre)}: ${fmt(n.valor)}</span>`).join('');
-    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
+    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':''}${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
     return `
       <div class="sim-cat">
         <div class="sim-cat-head">
@@ -5178,8 +5184,20 @@ function simAddNota(catId){
   const inp=document.getElementById('sim-in-'+catId);if(!inp)return;
   const val=parseNota(inp.value);
   if(isNaN(val)){showToast('Ingresa una nota entre 1.0 y 7.0',true);return;}
+  const r=S.ramos.find(x=>x.id===currentRamoId);
+  const cat=r&&(r.categorias||[]).find(c=>c.id===catId);if(!cat)return;
   if(!simState[catId])simState[catId]=[];
-  simState[catId].push({id:uid(),valor:val});
+  const tieneCasillas=Number.isInteger(cat.slots)&&cat.slots>1;
+  let slot;
+  if(tieneCasillas){
+    const ocupadas=new Set([
+      ...(cat.notas||[]).filter(n=>Number.isInteger(n.slot)).map(n=>n.slot),
+      ...simState[catId].filter(n=>Number.isInteger(n.slot)).map(n=>n.slot),
+    ]);
+    slot=Array.from({length:cat.slots},(_,i)=>i).find(i=>!ocupadas.has(i));
+    if(slot===undefined){showToast(`Ya simulaste las ${cat.slots} casillas de ${cat.nombre}`,true);return;}
+  }
+  simState[catId].push({id:uid(),valor:val,...(slot===undefined?{}:{slot})});
   renderSimulador();
   setTimeout(()=>{const i=document.getElementById('sim-in-'+catId);if(i)i.focus();},30);
 }
@@ -5195,7 +5213,11 @@ function simCommit(){
   showConfirm('Guardar como notas reales',`Se agregarán ${total} nota${total!==1?'s':''} hipotética${total!==1?'s':''} como notas reales en este ramo.`,()=>{
     r.categorias.forEach(c=>{
       (simState[c.id]||[]).forEach(s=>{
-        c.notas.push({id:uid(),nombre:'Simulada '+(c.notas.length+1),valor:s.valor,peso:1});
+        const conCasilla=Number.isInteger(s.slot);
+        c.notas.push({
+          id:uid(),nombre:conCasilla?etiquetaCasilla(r,c,s.slot):'Simulada '+(c.notas.length+1),
+          valor:s.valor,peso:1,...(conCasilla?{slot:s.slot}:{}),
+        });
         openCats[c.id]=true;
       });
     });
