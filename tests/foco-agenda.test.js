@@ -160,7 +160,10 @@ chk('el selector ofrece Recomendado, Fecha y Peso',
 chk('el orden activo se expone a tecnologías de asistencia',
   /aria-pressed="true"/.test(controles) && /role="group"/.test(controles));
 // El control de orden dejó de tener franja propia: ahora viaja en la misma
-// línea del encabezado "Próximos 7 días". Las comprobaciones de antes fijaban
+// línea de un encabezado de sección. Estuvo en "Próximos 7 días" hasta que se
+// vio que ese encabezado es condicional y se llevaba el control consigo cuando
+// no había nada esa semana; vive en "Tus prioridades", que existe siempre que
+// haya algo por venir. Las comprobaciones de antes fijaban
 // la forma vieja —la etiqueta "Orden", el grid de tres columnas, la media query
 // que escondía la etiqueta en teléfono— y esa forma es justamente la que la
 // cola pedía cambiar por ocupar demasiado. Lo que se sigue protegiendo es la
@@ -175,7 +178,7 @@ const reglaCSSAgenda = selector => {
 const reglaOpciones = reglaCSSAgenda('.ag-order-options');
 const reglaOpcion = reglaCSSAgenda('.ag-order-option');
 const reglaActiva = reglaCSSAgenda('.ag-order-option.active');
-const reglaEncabezado = reglaCSSAgenda('.ag-week-hd .ag-order-options');
+const reglaEncabezado = reglaCSSAgenda('.ag-priority-heading .ag-order-options');
 
 chk('el control no ocupa una franja propia: va dentro del encabezado',
   !/\.ag-order\{/.test(cssAgenda) && !/class="ag-order"/.test(controles));
