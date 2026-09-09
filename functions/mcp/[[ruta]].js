@@ -16,6 +16,7 @@
 // verdad.
 
 import { HERRAMIENTAS, NOMBRES, validarPropuestaPauta } from './herramientas.js';
+import motorCompartido from '../../engine.js';
 
 const SUPABASE_URL = 'https://lsulsnswzesyekpsvlql.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
@@ -64,16 +65,72 @@ function comoMcp(h) {
 
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-// La propuesta solo puede caer sobre un ramo que ya está en el semestre. Así
-// nunca crea un ramo a espaldas de la persona ni queda una pauta huérfana que
-// la app no pueda revisar y aplicar con sus notas a la vista.
-function ramoParaPropuesta(estado, consulta) {
-  const ramos = Array.isArray(estado.ramos) ? estado.ramos : [];
+function copiarRecuperativo(regla) {
+  if (!regla || !Number.isFinite(regla.min) || !Number.isFinite(regla.max) || !Number.isFinite(regla.nota) || regla.min > regla.max) return null;
+  return { min: regla.min, max: regla.max, nota: regla.nota };
+}
+
+function buscarRamo(ramos, consulta) {
   const q = norm(consulta);
   if (!q) return null;
   return ramos.find(r => norm(r.nombre) === q)
     || ramos.find(r => norm(r.origen && r.origen.ramoKey) === q)
     || ramos.find(r => norm(r.nombre).includes(q));
+}
+
+// Cada llamada arma el adaptador con los ramos entregados por `agente_datos`.
+// No se guarda identidad ni estado académico en el isolate: otro request nunca
+// puede heredar la cuenta anterior. El catálogo no viaja al servidor, por eso
+// las reglas que el ramo persiste se usan tal cual y no se infieren por nombre.
+function calculoPara(ramos) {
+  return motorCompartido.gh_crearCalculoRamo({
+    normName: norm,
+    copiarRecuperativo,
+    definicionPresetDelRamo: ramo => ramo && ramo.eximicion ? { eximicion: ramo.eximicion } : null,
+    ramos: () => ramos,
+  });
+}
+
+function queNecesitoParaAprobar(ramos, args) {
+  const ramo = buscarRamo(ramos, args.ramo);
+  if (!ramo) return { error: 'No encontré ese ramo', ramos: ramos.map(r => r.nombre) };
+  const meta = args.meta == null ? 4 : Number(args.meta);
+  if (!Number.isFinite(meta) || meta < 1 || meta > 7) return { error: 'La meta debe ser una nota entre 1,0 y 7,0.' };
+
+  const calculo = calculoPara(ramos);
+  const promedioNecesario = calculo.notaNecesaria(ramo, meta);
+  const promedioActual = calculo.ramoAvg(ramo);
+  const compuertasIncumplidas = calculo.gatesActivas(ramo).map(g => ({
+    nombre: g.nombre,
+    actual: g.actual,
+    minimo: g.min,
+    tope: g.cap,
+  }));
+
+  let estado = 'alcanzable';
+  if (promedioNecesario === null) estado = promedioActual === null ? 'sin_notas' : (promedioActual >= meta ? 'meta_alcanzada' : 'sin_evaluaciones_pendientes');
+  else if (promedioNecesario > 7) estado = 'fuera_de_escala';
+  else if (promedioNecesario < 1) estado = 'con_cualquier_nota';
+
+  return {
+    ramo: ramo.nombre,
+    meta,
+    promedioActual,
+    promedioNecesario,
+    factibleEnEscala: promedioNecesario === null ? promedioActual !== null && promedioActual >= meta : promedioNecesario <= 7,
+    estado,
+    // No se esconden detrás del promedio: una compuerta puede impedir aprobar
+    // aunque la exigencia ponderada sí quepa dentro de la escala.
+    compuertasIncumplidas,
+  };
+}
+
+// La propuesta solo puede caer sobre un ramo que ya está en el semestre. Así
+// nunca crea un ramo a espaldas de la persona ni queda una pauta huérfana que
+// la app no pueda revisar y aplicar con sus notas a la vista.
+function ramoParaPropuesta(estado, consulta) {
+  const ramos = Array.isArray(estado.ramos) ? estado.ramos : [];
+  return buscarRamo(ramos, consulta);
 }
 
 function errorPropuesta(valor) {
@@ -110,16 +167,13 @@ async function guardarPropuestaPauta(token, estado, args) {
   }
 }
 
-// Da forma a cada herramienta sobre el estado. Solo lectura por ahora: las dos
-// que escriben —proponer_pauta y agregar_ramo— necesitan su propia RPC y la
-// pantalla donde el estudiante confirma, y van en el PR siguiente. Anunciar una
-// herramienta que todavía no responde sería peor que no tenerla, así que el
-// despacho devuelve `undefined` y el endpoint lo dice con todas sus letras.
+// Da forma a las herramientas que responden directamente desde el estado
+// autorizado. `proponer_pauta` se despacha aparte porque usa su propia RPC;
+// cualquier herramienta todavía pendiente devuelve `undefined` y el endpoint
+// lo dice con todas sus letras.
 function despachar(nombre, estado, args) {
   const ramos = Array.isArray(estado.ramos) ? estado.ramos : [];
-  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-  const buscar = q => ramos.find(r => norm(r.nombre) === norm(q))
-    || ramos.find(r => norm(r.nombre).includes(norm(q)));
+  const buscar = q => buscarRamo(ramos, q);
 
   if (nombre === 'listar_ramos') {
     return ramos.map(r => ({
@@ -153,6 +207,10 @@ function despachar(nombre, estado, args) {
       if (f && f >= hoy && f <= hasta) out.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: f, hora: c.hora || null, peso: c.peso });
     }));
     return out.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  if (nombre === 'que_necesito_para_aprobar') {
+    return queNecesitoParaAprobar(ramos, args);
   }
 
   return undefined;
