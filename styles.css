@@ -492,7 +492,9 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 /* Editorial: el riel mide avance; la línea de color solo identifica el ramo. */
 .ramo-row.has-progress.is-complete{background:transparent;box-shadow:none;}
 .ramo-row.just-completed .ramo-progress-fill{animation:ramo-row-close var(--motion-base) var(--ease-out);}
-.ramo-band{position:absolute;left:0;top:15px;bottom:19px;width:2px;border-radius:2px;background:var(--ramo-tint);transform-origin:center;transition:transform var(--motion-fast) var(--ease-out),filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
+/* La caja mide lo mismo que la fila: escala corta en reposo, alto completo al
+   apuntar. También calza cuando el nombre ocupa dos líneas, sin animar layout. */
+.ramo-band{position:absolute;left:0;top:0;bottom:0;width:2px;border-radius:2px;background:var(--ramo-tint);transform:scaleY(.6);transform-origin:center;transition:transform var(--motion-fast) var(--ease-out),filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
 .ramo-progress-track{position:absolute;left:12px;right:30px;bottom:8px;height:2px;background:var(--border);overflow:hidden;}
 .ramo-progress-fill{display:block;width:100%;height:100%;background:var(--fg3);transform:scaleX(var(--ramo-progress-scale,0));transform-origin:left;transition:transform var(--motion-base) var(--ease-out),opacity var(--motion-base) var(--ease-out);}
 .ramo-row.is-complete .ramo-progress-fill{background:var(--fg2);}
@@ -1370,7 +1372,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 @media(hover:hover) and (pointer:fine){
   .insight-card:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--insight-color,var(--primary)),transparent 45%);box-shadow:0 6px 18px -8px color-mix(in srgb,var(--insight-color,var(--primary)),transparent 60%);}
   .ramo-row:hover{transform:none;background:color-mix(in srgb,var(--fg) 4%,var(--bg2));box-shadow:none;}
-  .ramo-row:hover .ramo-band{transform:scaleX(1.65) scaleY(1.05);filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--ramo-tint) 35%,transparent);}
+  .ramo-row:hover .ramo-band{transform:scaleX(1.65) scaleY(1);filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--ramo-tint) 35%,transparent);}
   .stat-card:hover{transform:translateY(-1px);border-color:var(--border2);box-shadow:var(--shadow-lg);}
   .ag-item:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:var(--shadow);}
   .ag-row:hover{transform:translateY(-1px);border-color:var(--border2);box-shadow:var(--shadow);}
@@ -1381,7 +1383,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 }
 
 @media(hover:hover) and (pointer:fine){
-  .ramo-row:hover,.insight-card:hover,.stat-card:hover,.ag-row:hover,.eval-row:hover,
+  .insight-card:hover,.stat-card:hover,.ag-row:hover,.eval-row:hover,
   .eval-group:hover,.cat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
   .icon-btn:hover,.back-btn:hover,.avatar-btn:hover,.topbar-link:hover,.nav-item:hover,
   .course-picker-result:hover,.course-picker-manual:hover,.tenant-opt:hover,.s-tenant-btn:hover,
@@ -1603,7 +1605,7 @@ body{background-image:none;-webkit-font-smoothing:antialiased;}
 .ramo-drag-handle{margin:-8px -8px -8px -3px;color:var(--fg3);}
 .ramo-drag-handle .ic{width:15px;height:15px;}
 .ramo-row:focus-visible{background:color-mix(in srgb,var(--fg) 4%,var(--bg2));}
-.ramo-row:active .ramo-band,.ramo-row:focus-visible .ramo-band{transform:scaleX(1.65) scaleY(1.05);filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--ramo-tint) 35%,transparent);}
+.ramo-row:active .ramo-band,.ramo-row:focus-visible .ramo-band{transform:scaleX(1.65) scaleY(1);filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--ramo-tint) 35%,transparent);}
 .ramo-row:has(.ramo-name:focus-visible) .ramo-band{filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--ramo-tint) 35%,transparent);}
 .ramo-row:active{transform:none;}
 .sim-global-cta{background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--fg2);font-weight:500;}
@@ -1715,9 +1717,9 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 }
 @media(prefers-reduced-motion:reduce){
   .ramo-band{transition:filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
-  .ramo-row:active .ramo-band,.ramo-row:focus-visible .ramo-band{transform:none;}
+  .ramo-row:active .ramo-band,.ramo-row:focus-visible .ramo-band{transform:scaleY(.6);}
   @media(hover:hover) and (pointer:fine){
-    .ramo-row:hover .ramo-band{transform:none;}
+    .ramo-row:hover .ramo-band{transform:scaleY(.6);}
   }
   .ramo-progress-fill{transition:opacity var(--motion-base) var(--ease-out);}
 }

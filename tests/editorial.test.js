@@ -31,6 +31,17 @@ for(const [count,pct,grade] of [[0,0,null],[2,40,5.5],[5,100,3.6]]){
   if(pct===100)check('100% reprobado conserva la nota 3.6 y distingue cierre de aprobación',row.innerHTML.includes('3.6')&&row.classList.contains('is-complete')&&row.innerHTML.includes('100%'));
 }
 const css=read('styles.css');
+const band=(css.match(/^\.ramo-band\{([^}]*)\}/m)||[])[1]||'';
+const bandHover=(css.match(/\.ramo-row:hover \.ramo-band\{([^}]*)\}/)||[])[1]||'';
+check('la línea parte corta y al apuntar ocupa exactamente el alto de la fila',
+  /top:0;bottom:0/.test(band)&&/transform:scaleY\(\.6\)/.test(band)&&/transform:scaleX\(1\.65\) scaleY\(1\)/.test(bandHover));
+check('el hover no desplaza la fila ni su promedio por otra regla compartida',
+  [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([,selectors])=>selectors.split(',').some(s=>s.trim()==='.ramo-row:hover'))
+    .every(([,selectors,rule])=>!/transform\s*:\s*(?:translate|scale)/.test(rule)));
+const reduced=css.slice(css.lastIndexOf('@media(prefers-reduced-motion:reduce)'));
+check('con movimiento reducido la línea mantiene su largo y solo cambia brillo/halo',
+  /\.ramo-row:hover \.ramo-band\{transform:scaleY\(\.6\);\}/.test(reduced)&&
+  /\.ramo-band\{transition:filter[^}]*box-shadow[^}]*\}/.test(reduced));
 check('las notas conservan el color calculado, no reciben el color del ramo',/\.gpa-num:not\(\.empty\),\.ramo-num:not\(\.empty\)\{[^}]*color:var\(--grade-color\)/.test(css));
 check('no queda el llenado de Home que teñía toda la fila',!css.includes('--ramo-progress-end'));
 check('el oscuro neutro no es azulado',run('FONDOS.neutro.oscuro.bg')==='#080809');

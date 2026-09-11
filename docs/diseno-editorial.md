@@ -34,20 +34,27 @@ Base de comparación: `9bd605d`.
 | Comprobación | Resultado |
 |---|---|
 | `npm test` | 95 archivos de prueba, exit code 0 |
-| `tests/editorial.test.js` actual | 17 comprobaciones, exit code 0 |
-| Mismo test apuntando al árbol anterior | 13 fallan, 4 invariantes pasan; exit code 1 |
+| `tests/editorial.test.js` actual | 20 comprobaciones, exit code 0 |
+| Primera versión del test contra `9bd605d` | 13 fallan, 4 invariantes pasan; exit code 1 |
+| Ajuste del hover contra `1c4fd08` | Las 3 comprobaciones nuevas fallan; exit code 1 |
 | Inicio: 375, 768 y 1440 px, claro y oscuro | Sin desborde de documento ni contenedores |
 | Ficha, calculadora, Agenda/detalle, Stats y Ajustes: 375 px | Navegación y controles operativos, sin desborde |
 | Agenda, Stats y Ajustes: 1440 px, ambos modos | Sin desborde |
 | Primer uso, login, registro, onboarding, páginas públicas | Revisados sin datos reales ni llamadas a cuentas |
 | Riel al 0 / 40 / 100% | Ancho medido / ancho total: 0 / 0.40000004 / 1 |
 | Alineación flecha / nota | Diferencia entre centros verticales: 0 px |
-| Hover de línea de 2 px | `scaleX(1.65) scaleY(1.05)`, brillo 1.2 |
-| Movimiento reducido | Sin transformación; conserva brillo y halo |
+| Hover de línea de 2 px | De 60% al alto completo de la fila; `scaleX(1.65) scaleY(1)`, brillo 1.2 |
+| Movimiento reducido | Mantiene largo de reposo; conserva brillo y halo sin animar transformaciones |
 | Apertura con Enter e ingreso de nota en casilla | La ficha abre; el nuevo valor queda en su mismo `slot` |
 
 La revisión visual usa Chrome local en el puerto **8876**, service worker
 bloqueado y datos ficticios. No es una prueba en un teléfono físico.
+
+El ajuste de la línea al alto del fondo se midió con un nombre largo, en ambos
+modos: a 375 px pasa de 61.79 a 102.98 px (alto de fila 102.98); a 1440 px, de
+53.38 a 88.97 px (alto de fila 88.97). Los extremos coinciden con el fondo y el
+promedio conserva las mismas coordenadas al apuntar. Se quitó una regla
+compartida antigua que todavía levantaba la fila 2 px.
 
 El test nuevo permite `GRADEHUB_ROOT=/ruta/al/arbol-anterior` o
 `GRADEHUB_APP=/ruta/al/arbol-anterior/app.js`. Las comprobaciones numéricas que
