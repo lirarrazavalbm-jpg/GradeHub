@@ -657,8 +657,23 @@ const PRESETS_UC={
       ['Trabajo grupal',3.5],
       ['Examen final',30],
     ],
+    // La app puede comprobar la presentación y los mínimos de notas, pero no
+    // sabe cuántos Talleres faltó la persona ni cuántos controles habrá. Por
+    // eso llegar al 5,0 solo OFRECE la eximición: el estudiante confirma que
+    // ingresó todo y que cumple la asistencia antes de sacar el Examen.
+    eximicion:{
+      evaluacion:'Examen final',
+      segun:['Interrogaciones','Talleres','Trabajos prácticos','Trabajo grupal'],
+      min:5,
+      ignoraDescartes:true,
+      requiereConfirmacion:true,
+      ocultaEvaluacion:true,
+      minimos:[
+        {evaluacion:'Interrogaciones',min:4,cadaNota:true},
+        {evaluacion:'Talleres',min:4},
+      ],
+    },
     noCalcula:[
-      'Puedes eximirte del Examen si cumples simultáneamente las condiciones de notas y asistencia de Taller que define el programa; la app no registra la asistencia ni separa los controles formativos de Taller',
       'Con 100% de los controles de Taller puedes eliminar la peor nota, pero el programa no especifica cuántos controles habrá durante el semestre',
       'El Examen es reprobatorio bajo las condiciones de Interrogaciones y Talleres que define el programa, pero no publica la fórmula con que se transforma esa situación en la nota final',
     ],
