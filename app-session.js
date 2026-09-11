@@ -374,8 +374,10 @@ async function afterSignup(){
   setCacheOwner(currentUser?currentUser.id:null);
   if(S.onboardingDone && S.ramos.length){
     // El usuario ya tenía datos locales → migrarlos a la nube
-    await syncNow();await syncProfile();
-    showToast('✓ Cuenta creada — tus datos están en la nube');
+    const respaldado=await syncNow();await syncProfile();
+    showToast(respaldado
+      ? '✓ Cuenta creada — tus datos están en la nube'
+      : 'Tu cuenta se creó y tus notas siguen en este dispositivo, pero no pudimos respaldarlas. No cierres sesión.',!respaldado);
     enterApp();
   }else{
     enterOnboarding(); // usuario nuevo → completar onboarding
@@ -390,17 +392,32 @@ async function afterLogin(){
   // normalize() y enterApp() quedan fuera a propósito. Si una de ellas falla,
   // continuar con estado o DOM a medias sería peor que detenerse con un aviso.
   try{cloud=await loadFromCloud();}catch(e){ok=false;}
-  if(ok){
+  const mismaCache=getCacheOwner()===uid;
+  if(ok&&cloud!==null){
     // La nube puede contener ramos creados con versiones anteriores. Pásalos
     // siempre por normalize(): un ramo sin preset necesita categorias:[] para
     // que el editor de pauta pueda abrirse igual que uno con pauta oficial.
-    S=normalize(cloud?{...freshState(),...cloud}:freshState());
+    S=normalize({...freshState(),...cloud});
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+    setCacheOwner(uid);
+  }else if(ok&&mismaCache){
+    // `null` significa que la consulta no encontró una fila; NO demuestra que
+    // esta persona no tenga datos. Si la caché ya tiene el mismo dueño, es la
+    // única copia conocida: se conserva y se intenta crear el respaldo.
+    const respaldado=await syncNow();
+    showToast(respaldado
+      ? 'Recuperamos tu copia local y la respaldamos en la nube'
+      : 'Tus notas siguen en este dispositivo, pero no pudimos respaldarlas. No cierres sesión e inténtalo de nuevo con internet.',!respaldado);
+  }else if(ok){
+    // Cuenta realmente nueva, o caché de otra persona en un navegador
+    // compartido. Nunca se reutilizan datos cuyo dueño no coincide.
+    S=freshState();
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
     setCacheOwner(uid);
   }else{
     // Sin red: la caché local sirve, pero SOLO si es de este mismo usuario.
     // Si es de otro (navegador compartido), se descarta para no filtrar sus datos.
-    if(getCacheOwner()===uid){
+    if(mismaCache){
       showToast('Sin conexión · usando tu copia local');
     }else{
       S=freshState();
@@ -430,11 +447,19 @@ function syncToCloud(){
   _syncTimer=setTimeout(syncNow,800); // agrupa ediciones rápidas
 }
 async function syncNow(){
-  if(!supabaseClient||!currentUser)return;
+  if(!supabaseClient||!currentUser)return false;
   try{
-    await supabaseClient.from('user_ramos').upsert({user_id:currentUser.id,data:S},{onConflict:'user_id'});
+    const {error}=await supabaseClient.from('user_ramos').upsert({user_id:currentUser.id,data:S},{onConflict:'user_id'});
+    // Supabase normalmente resuelve la promesa y entrega el fallo acá; el
+    // catch por sí solo no lo ve. Marcar la caché como alineada en ese caso
+    // deja a la app creyendo que existe un respaldo que nunca se escribió.
+    if(error)throw error;
     setCacheOwner(currentUser.id); // la caché local quedó alineada con esta cuenta
-  }catch(e){/* sin conexión: localStorage ya guardó, se sube al próximo save */}
+    return true;
+  }catch(e){
+    console.warn('No se pudo respaldar la copia local:',(e&&e.code)||'error');
+    return false; // localStorage conserva la copia; se reintenta al próximo save
+  }
 }
 async function syncProfile(){
   if(!supabaseClient||!currentUser)return;
