@@ -42,7 +42,14 @@ chk('la sigla se deriva, no se asume guardada en el ramo',
   /function siglaParaCurso[\s\S]{0,200}siglaDeRamo\(r\)/.test(app));
 chk('y un ramo sin sigla se omite en vez de mandarse',
   /const sigla=siglaParaCurso\(r\);\s*\n\s*if\(!sigla\)continue;/.test(app));
-chk('y el servidor descarta la fila sin sigla', /sigla is null or tenant is null/.test(sql));
+chk('y el servidor descarta la fila sin sigla', /v_sigla is null or v_tenant is null/.test(sqlCodigo));
+// Las variables se llamaban `tenant` y `sigla`, igual que las columnas, y
+// PL/pgSQL no resuelve esa ambigüedad: la función abortaba entera y PostgREST
+// devolvía 400 sin dejar ver por qué. El prefijo v_ no es estilo, es lo que
+// hace que la función corra.
+const declaraciones=(sqlCodigo.match(/declare[\s\S]*?begin/g)||[]).join('\n');
+chk('ninguna variable se llama como una columna de la tabla',
+  !/^\s*(tenant|sigla|promedio|user_id|ramo_sigla|updated_at)\s+\w/m.test(declaraciones));
 
 console.log('\n=== Se manda el promedio que el estudiante ya ve ===');
 // Recalcularlo por otro camino es lo que hizo que el simulador mostrara 6,22
