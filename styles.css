@@ -1578,9 +1578,10 @@ body{background-image:none;-webkit-font-smoothing:antialiased;}
 .greet-hero{padding:28px 20px 27px;}
 .greet-line{font-size:1.75rem;font-weight:400;letter-spacing:-.04em;line-height:1.18;color:var(--fg2);}
 .greet-line .greet-name{display:block;font-weight:600;color:var(--fg);}
-.gpa-card{margin:0 20px;padding-bottom:24px;border-bottom:1px solid var(--border);}
+.gpa-card{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:24px;margin:0 20px;padding-bottom:24px;border-bottom:1px solid var(--border);}
 .gpa-label{font-size:.625rem;font-weight:600;letter-spacing:.11em;margin-bottom:10px;}
-.gpa-reading{display:flex;align-items:flex-start;flex-wrap:wrap;gap:14px 20px;}
+.gpa-label,.gpa-reading,#home-gpa-method,.gpa-tags,#gpa-empty-hint{grid-column:1 / -1;}
+.gpa-reading{display:flex;align-items:flex-start;flex-wrap:wrap;gap:14px 20px;grid-column:1;grid-row:2;}
 /* La nota conserva exactamente el color calculado; se quita el brillo, no el
    significado. También se hereda en el decimal para no dejarlo transparente. */
 .gpa-num:not(.empty),.ramo-num:not(.empty){background-image:none;-webkit-text-fill-color:var(--grade-color);color:var(--grade-color);filter:none;font-weight:500;letter-spacing:-.06em;}
@@ -1592,6 +1593,10 @@ body{background-image:none;-webkit-font-smoothing:antialiased;}
 .gpa-delta span{color:var(--fg3);font-weight:400;}
 .gpa-delta.up,.gpa-delta.down,.gpa-delta.flat{background:none;}
 .gpa-sub{font-size:.75rem;line-height:1.5;margin-top:9px;}
+#home-gpa-sub{grid-column:2;grid-row:2;align-self:center;justify-self:end;flex-direction:column;gap:3px;margin:0;text-align:right;color:var(--fg3);font-variant-numeric:tabular-nums;}
+#home-gpa-sub strong{color:var(--fg);font-size:1.25rem;font-weight:500;letter-spacing:-.035em;}
+#home-gpa-sub span{white-space:nowrap;}
+#home-gpa-method{margin-top:12px;}
 .gpa-tags{gap:12px;margin-top:12px;}
 .gpa-tag{padding:0;background:none;font-size:.6875rem;font-weight:400;}
 .section-hd{padding-top:20px;padding-bottom:9px;gap:8px;flex-wrap:wrap;}
