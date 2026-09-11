@@ -7,11 +7,12 @@
 //
 // FORMA: [sigla, nombre, créditos].
 //
-// CRÉDITOS EN null. El catálogo oficial da créditos distintos para el mismo
-// ramo según la escuela que lo dicte: "Internado de Medicina Interna" existe
-// con 6, 9, 18, 26, 34, 42 y 50. Cuando ninguna variante manda con claridad no
-// se elige una, va null. Un número plausible acá le descuadra el promedio de
-// carrera a quien agregue ese ramo, y se vería igual de oficial que los demás.
+// CRÉDITOS. Cada fila lleva los de SU sigla, tal como los da el catálogo
+// oficial. No se promedia ni se elige entre variantes: "Práctica Clínica
+// Medicina Interna" existe con 6 créditos en MOM400 y con 50 en MOM401D, y
+// están las dos, cada una con lo suyo. Elegir un valor para representarlas a
+// todas le descuadraría el promedio de carrera a quien agregue ese ramo, y se
+// vería igual de oficial que los demás.
 //
 // NOMBRES REPETIDOS. Dos siglas con el mismo nombre son dos ramos que el
 // estudiante puede elegir. No se colapsan: la alternativa lleva su código en la
