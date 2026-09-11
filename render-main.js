@@ -86,8 +86,13 @@ function renderHome(){
   }
   const cr=totalCreditos(S.ramos);
   const modo=gpaMode(S.ramos);
-  gpaSub.textContent=`${semester()} · ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`
+  const periodoActual=semester();
+  const detalleActual=`${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`
     +(modo==='creditos'?` · ${cr} créditos`:'');
+  // El costado derecho del promedio estaba vacío. Llevar aquí el contexto que
+  // ya aparecía debajo equilibra el bloque sin inventar otra estadística.
+  gpaSub.innerHTML=`<strong>${esc(periodoActual)}</strong><span>${detalleActual}</span>`;
+  gpaSub.style.display=S.ramos.length?'flex':'none';
   const detalleMetodo=descripcionMetodoGpa(S.ramos);
   if(detalleMetodo){
     gpaMethod.textContent=detalleMetodo.texto;

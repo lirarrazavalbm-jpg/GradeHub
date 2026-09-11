@@ -27,10 +27,16 @@ for(const [count,pct,grade] of [[0,0,null],[2,40,5.5],[5,100,3.6]]){
   check(`${pct}%: el riel representa exactamente el porcentaje calculado`,row.style['--ramo-progress-scale']===String(pct/100)&&row.innerHTML.includes('ramo-progress-fill'));
   check(`${pct}%: la nota y su acción comparten alineación, sin mezclarse con la identidad`,/class="ramo-grade-action"><div class="ramo-nota/.test(row.innerHTML)&&/class="ramo-band" aria-hidden="true"/.test(row.innerHTML));
   check(`${pct}%: el nombre es un botón nativo sin otro manejador de teclado`,/<button type="button" class="ramo-name">/.test(row.innerHTML));
+  const contexto=get('home-gpa-sub');
+  check(`${pct}%: el costado del promedio reutiliza el semestre y la carga actual`,
+    /<strong>[^<]+<\/strong><span>1 ramo/.test(contexto.innerHTML)&&contexto.style.display==='flex');
   check(`${pct}%: dibujar no mueve el promedio ni escribe datos`,avg===grade&&run('ramoAvg(S.ramos[0])')===avg&&run('JSON.stringify(S)')===before&&writes===beforeWrites);
   if(pct===100)check('100% reprobado conserva la nota 3.6 y distingue cierre de aprobación',row.innerHTML.includes('3.6')&&row.classList.contains('is-complete')&&row.innerHTML.includes('100%'));
 }
 const css=read('styles.css');
+check('el contexto ocupa la columna derecha sin empujar la nota',
+  /\.gpa-card\{[^}]*grid-template-columns:max-content minmax\(0,1fr\)/.test(css)&&
+  /#home-gpa-sub\{[^}]*grid-column:2;grid-row:2[^}]*text-align:right/.test(css));
 const band=(css.match(/^\.ramo-band\{([^}]*)\}/m)||[])[1]||'';
 const bandHover=(css.match(/\.ramo-row:hover \.ramo-band\{([^}]*)\}/)||[])[1]||'';
 check('la línea parte corta y al apuntar ocupa exactamente el alto de la fila',
