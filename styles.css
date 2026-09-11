@@ -1752,3 +1752,26 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
      tarjeta todavía en un ancho cómodo, y no en estirar el renglón. */
   #home-ramos{grid-template-columns:repeat(3,minmax(0,1fr));}
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   AGENDA EN PANTALLA ANCHA
+   Dos cosas quedaban angostas mientras el resto de la Agenda ya usaba todo
+   el ancho, y el contraste se leía como un error de maquetación.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(min-width:768px){
+  /* Las dos prioridades estaban topeadas en 620px: en un monitor quedaban
+     arrinconadas a la izquierda mientras "Después" cruzaba la pantalla.
+     Siguen una debajo de la otra —la primera manda, y ponerlas lado a lado
+     las haría gritar igual— pero ahora ocupan el ancho que hay. */
+  .ag-priority-stack{max-width:none;}
+
+  /* La barra de orden se estira de extremo a extremo del encabezado, pero sus
+     botones NO: con columnas de 1fr cada uno se iría a un tercio del monitor y
+     un control secundario terminaría más grande que las evaluaciones. Se
+     quedan del ancho de su texto y se reparten dentro de la barra. */
+  .ag-priority-heading .ag-order-options{
+    width:100%;
+    grid-template-columns:repeat(3,max-content);
+    justify-content:space-between;
+  }
+}
