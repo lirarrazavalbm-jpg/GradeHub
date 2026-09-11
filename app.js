@@ -533,11 +533,9 @@ function mallaFor(t){
 }
 
 // La malla de UNA carrera, mirando también las que se cargan aparte. Es distinta
-// de `mallaFor`, que alimenta el buscador: si las 69 mallas nuevas entraran al
-// catálogo de búsqueda, un estudiante de Ingeniería buscando "Ecolog" recibiría
-// "Ecología Veterinaria" antes que el ramo con pauta oficial que sí puede tomar.
-// El buscador se queda con las mallas validadas; estas solo SUGIEREN el semestre
-// de quien estudia esa carrera.
+// de `mallaFor`, que reúne las mallas base de una universidad: el buscador puede
+// sumar esta malla propia sin meter también las otras 19 de la UAI ni las otras
+// 68 de la UC. Así conserva el contexto del estudiante sin contaminar resultados.
 function mallaDeCarrera(tenant,carrera){
   if(!carrera)return null;
   const base=(mallaFor(tenant)||{})[carrera];
@@ -545,27 +543,24 @@ function mallaDeCarrera(tenant,carrera){
   const extra=mallasExtraDe(tenant);
   return (extra&&extra[carrera])||null;
 }
-// Las mallas que viven en su propio archivo, por universidad. La UC ya tiene el
-// suyo; la UAI entra igual el día que se transcriban sus PDF, sin tocar esta
-// función ni el cargador.
+// Las mallas que viven en su propio archivo, por universidad.
 function mallasExtraDe(tenant){
   if(tenant==='uc'&&typeof MALLAS_UC_EXTRA!=='undefined')return MALLAS_UC_EXTRA;
   if(tenant==='uai'&&typeof MALLAS_UAI_EXTRA!=='undefined')return MALLAS_UAI_EXTRA;
   return null;
 }
-// Qué archivo trae las mallas de cada universidad. Sin entrada acá, el tenant
-// funciona igual: sin sugerencia de ramos y con el buscador, que es como
-// funcionan hoy la UAI y la UAndes.
+// Qué archivo trae las mallas diferidas de cada universidad. Sin entrada acá,
+// el tenant funciona igual: sin sugerencia automática y agregando ramos a mano,
+// que es como funciona hoy la UAndes.
 const ARCHIVO_MALLAS={uc:'mallas-uc.js',uai:'mallas-uai.js'};
 
-// Las 69 mallas UC que no son Ingeniería ni Comercial viven en `mallas-uc.js`,
-// 73 KB que solo le sirven a quien estudia esa carrera. Se traen cuando se
-// necesitan y no en cada carga: meterlas en data.js habría cobrado ese peso a
-// todo el mundo, incluida la gente de FEN.
+// Las mallas extra de UC y UAI se traen cuando se necesitan y no en cada carga:
+// meterlas en data.js habría cobrado ese peso a todo el mundo, incluida la gente
+// de FEN. Del archivo completo solo entra al buscador la carrera propia.
 //
-// Si la descarga falla, la app se comporta como antes de que existieran: sin
-// sugerencia de ramos y con el buscador, que es exactamente el estado actual de
-// esas carreras. Un fallo acá no puede dejar a nadie peor que hoy.
+// Si la descarga falla, la app conserva los presets y catálogos que ya venían
+// disponibles y siempre deja agregar el ramo a mano. Un fallo acá no puede
+// romper el selector completo.
 const _mallasPendientes={};
 function cargarMallasUC(tenant){
   tenant=tenant||'uc';
@@ -640,6 +635,10 @@ function cursoUcCompleto(nombre,sigla){
 function repintarAlCargarCursosUC(tenant,repintar){
   if(tenant!=='uc'||cursosUcExtra())return;
   cargarCursosUC().then(ok=>{if(ok)repintar();});
+}
+function repintarAlCargarMallaPropia(tenant,carrera,repintar){
+  if(!carrera||!ARCHIVO_MALLAS[tenant]||(mallaFor(tenant)||{})[carrera]||mallasExtraDe(tenant))return;
+  cargarMallasUC(tenant).then(ok=>{if(ok)repintar();});
 }
 function selectTenant(t){
   selectedTenant=t;selectedCarrera=null;applyTheme();renderTenantPick();initCarreraGrid();checkOb();
@@ -1301,10 +1300,12 @@ function renderObCoursePicker(){
 function renderObCourseResults(q){
   const box=document.getElementById('ob-course-results');if(!box)return;
   const term=(q||'').trim();if(!term){box.innerHTML='';return;}
-  repintarAlCargarCursosUC(selectedTenant,()=>{
+  const repintar=()=>{
     const input=document.getElementById('ob-course-search');
     if(input&&input.value===q)renderObCourseResults(q);
-  });
+  };
+  repintarAlCargarMallaPropia(selectedTenant,selectedCarrera,repintar);
+  repintarAlCargarCursosUC(selectedTenant,repintar);
   const res=searchCatalog(term,selectedTenant,selectedCarrera,selectedSem).slice(0,6);
   if(!res.length){box.innerHTML='<p class="course-picker-reassurance">No aparece en tu malla. Puedes agregarlo a mano.</p>';return;}
   box.innerHTML=res.map(r=>{
@@ -2180,7 +2181,12 @@ function confirmAddMalla(){
 // después en la ficha del ramo — pedirlos acá era pedir una decisión en el
 // peor momento, cuando todavía no tiene el ramo.
 function openAddRamoModal(){
-  const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0;
+  // Una malla diferida todavía no está en `catalogRamos`, pero justamente se
+  // carga al abrir este camino. Ocultar los resultados hasta que exista haría
+  // imposible iniciar esa carga para toda la UAI.
+  const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0
+    ||presetsFueraDeMalla(S.tenant,S.carrera).length>0
+    ||S.tenant==='uc'||!!(S.carrera&&ARCHIVO_MALLAS[S.tenant]);
   const uni=(TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'';
   const buscaPorSigla=S.tenant==='uc';
   const etiquetaRamo=buscaPorSigla?'Nombre o sigla del ramo':'Nombre del ramo';
@@ -2212,10 +2218,12 @@ function openAddRamoModal(){
 // del estudiante — nunca de otra casa de estudios.
 function renderCatalogResults(q){
   const box=document.getElementById('m-ramo-results');if(!box)return;
-  repintarAlCargarCursosUC(S.tenant,()=>{
+  const repintar=()=>{
     const input=document.getElementById('m-ramo-search');
     if(input&&input.value===q)renderCatalogResults(q);
-  });
+  };
+  repintarAlCargarMallaPropia(S.tenant,S.carrera,repintar);
+  repintarAlCargarCursosUC(S.tenant,repintar);
   const yaTengo=new Set(S.ramos.map(r=>normName(r.nombre)));
   const res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre).slice(0,6);
   if(res.length===0){
@@ -2383,7 +2391,7 @@ function siglaCatalogoUC(nombre){
 }
 
 function catalogRamos(tenant,carrera){
-  const porCarrera=(mallaFor(tenant)||{})[carrera];
+  const porCarrera=mallaDeCarrera(tenant,carrera);
   if(!porCarrera)return [];
   const out=[],vistos=new Set();
   Object.keys(porCarrera).sort((a,b)=>Number(a)-Number(b)).forEach(sem=>{
@@ -2467,8 +2475,12 @@ function catalogRamosUniversidad(tenant,carreraPropia){
   const mallas=mallaFor(tenant)||{};
   const propios=new Set(catalogRamos(tenant,carreraPropia).map(r=>normName(r.nombre)));
   const out=[];
-  Object.keys(mallas).forEach(car=>{
-    const porSem=mallas[car]||{};
+  const mallasBuscables=Object.entries(mallas);
+  const propia=mallaDeCarrera(tenant,carreraPropia);
+  // Las mallas diferidas viven juntas en un archivo, pero eso no las convierte
+  // en un catálogo de toda la universidad: solo sumamos la carrera del alumno.
+  if(propia&&!Object.prototype.hasOwnProperty.call(mallas,carreraPropia))mallasBuscables.push([carreraPropia,propia]);
+  mallasBuscables.forEach(([car,porSem])=>{
     Object.keys(porSem).sort((a,b)=>Number(a)-Number(b)).forEach(sem=>{
       (porSem[sem]||[]).forEach(nombre=>{
         const k=normName(nombre);
@@ -4314,10 +4326,12 @@ function renderBusquedaSemestreAnterior(q){
   const texto=String(q||'').trim();
   // Con una sola letra el catálogo devuelve medio semestre: no ayuda a nadie.
   if(texto.length<BUSQUEDA_MIN){box.innerHTML='';return;}
-  repintarAlCargarCursosUC(S.tenant,()=>{
+  const repintar=()=>{
     const input=document.getElementById('m-hist-buscar');
     if(input&&input.value===q)renderBusquedaSemestreAnterior(q);
-  });
+  };
+  repintarAlCargarMallaPropia(S.tenant,S.carrera,repintar);
+  repintarAlCargarCursosUC(S.tenant,repintar);
   const res=searchCatalog(texto,S.tenant,S.carrera,8)
     .filter(c=>!histManual.ramos.some(r=>normName(r.nombre)===normName(c.nombre)));
   box.innerHTML=res.map(c=>`
