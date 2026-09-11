@@ -2887,6 +2887,62 @@ async function cargarConsenso(){
 }
 
 // \u00bfHay una versi\u00f3n con m\u00e1s respaldo que la que tiene este ramo?
+// --- COMO VAS RESPECTO DE QUIENES CURSAN TU MISMO RAMO ---
+// El promedio de cada ramo sube a `curso_notas` y vuelve convertido en una
+// posicion: "mejor que el 70%". Nunca baja una nota ajena al navegador: la
+// comparacion la hace el servidor y devuelve dos enteros.
+//
+// Solo participan los ramos CON SIGLA. Sin ella no hay forma de saber que la
+// "Dinamica" de uno es la misma que la del otro, y juntar dos ramos distintos
+// bajo el mismo nombre haria que la posicion no signifique nada.
+
+// Se manda el mismo numero que el estudiante ve en su pantalla, no uno
+// recalculado: `ramoAvg` es la unica formula de promedio que existe.
+async function subirNotasCurso(){
+  if(!supabaseClient||!currentUser)return;
+  for(const r of (S.ramos||[]).filter(x=>x&&x.sigla)){
+    const avg=ramoAvg(r,undefined,S.ramos);
+    try{
+      await supabaseClient.rpc('curso_nota_set',{
+        p_tenant:S.tenant,p_sigla:r.sigla,
+        // null saca el ramo del curso: sin notas no hay con que compararse, y
+        // dejarlo congelado en su ultima nota ensuciaria el agregado ajeno.
+        p_promedio:(avg===null||avg===undefined)?null:avg
+      });
+    }catch(e){/* que falle la comparacion no puede romper Estadisticas */}
+  }
+}
+
+let _posCursoCache=null;
+async function cargarPosicionesCurso(){
+  if(!supabaseClient||!currentUser)return null;
+  if(_posCursoCache)return _posCursoCache;
+  const out={};
+  for(const r of (S.ramos||[]).filter(x=>x&&x.sigla)){
+    try{
+      const {data,error}=await supabaseClient.rpc('curso_posicion',{p_tenant:S.tenant,p_sigla:r.sigla});
+      if(error)throw error;
+      const fila=Array.isArray(data)?data[0]:data;
+      // Sin fila = todavia no son cinco. No se distingue de "fallo la red" a
+      // proposito: en los dos casos no hay nada que mostrar.
+      if(fila&&typeof fila.mejor_que==='number')out[r.id]={total:fila.total,mejorQue:fila.mejor_que};
+    }catch(e){}
+  }
+  _posCursoCache=out;
+  return out;
+}
+function invalidarPosicionesCurso(){_posCursoCache=null;}
+
+// Apagar esto esconde la seccion para quien lo apaga. Su nota sigue contando en
+// el agregado del curso, que es anonimo y no muestra nombres: si cada uno
+// pudiera sacarse, el promedio dejaria de representar al curso y la comparacion
+// no valdria para nadie.
+function toggleVerCurso(ver){
+  S.ocultarCurso=!ver;
+  save();
+  renderStats();
+}
+
 async function consensoParaRamo(r){
   const cons=await cargarConsenso();
   if(!cons)return null;
@@ -3805,7 +3861,15 @@ function openSettings(){
       <label class="modal-label accent-picker-label">Color de acento</label>
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>
       <label class="modal-label accent-picker-label">Fondo</label>
-      <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
+      <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>
+      <label class="modal-label accent-picker-label">Comparación con tu curso</label>
+      <div class="settings-row-toggle">
+        <div>
+          <div class="settings-row-toggle-t">Ver cómo vas en tus ramos</div>
+          <p class="settings-help" style="margin:3px 0 0;">En Estadísticas, tu lugar entre quienes cursan lo mismo. Si prefieres no verlo, apágalo y la sección desaparece.</p>
+        </div>
+        <label class="toggle"><input type="checkbox" ${S.ocultarCurso?'':'checked'} onchange="toggleVerCurso(this.checked)" aria-label="Ver cómo vas en tus ramos"/><span class="toggle-slider"></span></label>
+      </div>`;
     if(section==='sugerencias'){
       const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a id="feedback-contact" href="${esc(correoSugerenciaHref())}" onclick="actualizarCorreoSugerencia()">gradehub.app@gmail.com</a></p>`;
       return currentUser?`

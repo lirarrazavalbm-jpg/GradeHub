@@ -579,6 +579,34 @@ function renderRamo(){
 }
 
 // Formato corto de fecha para chips: "15 mar"
+// Se pinta aparte porque depende de una respuesta del servidor. Mientras no
+// llega, la sección no existe: no se muestra un esqueleto ni un "cargando" para
+// algo que la mayoría de las veces no va a tener nada que decir.
+async function pintarPosicionesCurso(){
+  const box=document.getElementById('stats-curso');
+  if(!box)return;
+  await subirNotasCurso();
+  const pos=await cargarPosicionesCurso();
+  const filas=(S.ramos||[]).filter(r=>r&&r.sigla&&pos&&pos[r.id]);
+  if(!filas.length){
+    // Con menos de cinco no hay comparación posible, y es el caso normal al
+    // principio. Se dice por qué en vez de dejar un hueco.
+    box.innerHTML=`<p class="stats-curso-vacio">Cuando al menos cinco personas lleven uno de tus ramos, vas a ver acá cómo te va respecto del resto. Nadie ve tu nota ni tu nombre.</p>`;
+    return;
+  }
+  box.innerHTML=filas.map(r=>{
+    const p=pos[r.id];
+    // El total va al lado del porcentaje a propósito. Con cinco participantes
+    // "mejor que el 75%" solo puede ser 0, 25, 50, 75 o 100, y sin saber cuántos
+    // son suena mucho más fino de lo que es.
+    return `<div class="stats-curso-row">
+      <span class="stats-curso-color" style="background:${esc(r.color)}"></span>
+      <span class="stats-curso-main"><strong>${esc(r.nombre)}</strong><small>${p.total} llevan este ramo</small></span>
+      <span class="stats-curso-val">${p.mejorQue}%<small>por sobre</small></span>
+    </div>`;
+  }).join('');
+}
+
 function renderStats(){
   const body=document.getElementById('stats-body');const g=gpa(S.ramos);
   const heroTitle=document.getElementById('stats-hero-title');
@@ -622,7 +650,6 @@ function renderStats(){
     const avanceTail=Math.min(14,100-avance.pct);
     const falta=loQueFaltaPorRamo(S.ramos);
     const necesidadPorRamo=new Map(falta.map(x=>[x.ramo.id,x]));
-    const mapa=S.ramos.map(r=>({ramo:r,avg:ramoAvg(r),progreso:ramoProgress(r),necesidad:necesidadPorRamo.get(r.id)||null}));
     const filaNecesidad=x=>{
       const imposible=x.necesita>7.05;
       const valor=imposible?'—':fmt(Math.max(1,x.necesita));
@@ -639,18 +666,6 @@ function renderStats(){
           <div class="ag-row-sub">${sub}</div>
         </div>
         <div class="stats-priority-value"><span style="color:${color};">${valor}</span><small>${imposible?'sin salida':'necesitas'}</small></div>
-      </button>`;
-    };
-    const filaMapa=x=>{
-      const {ramo,avg,progreso,necesidad}=x;
-      const cerrado=progreso.pct===100;
-      const imposible=necesidad&&necesidad.necesita>7.05;
-      const estado=avg===null?'Aún sin notas':imposible?'Ya no alcanza solo con lo pendiente':cerrado?'Todo evaluado':necesidad?`Necesitas ${fmt(Math.max(1,necesidad.necesita))} en lo que queda`:`Vas ${fmt(avg)} en lo evaluado`;
-      return `<button class="stats-ramo-row" onclick="openRamo('${esc(ramo.id)}')">
-        <span class="stats-ramo-color" style="background:${esc(ramo.color)}"></span>
-        <span class="stats-ramo-main"><strong>${esc(ramo.nombre)}</strong><small>${estado}</small></span>
-        <span class="stats-ramo-progress">${cerrado?'100%':`${progreso.pct}%`}<small>evaluado</small></span>
-        <span class="stats-ramo-avg" style="color:${avg===null?'var(--fg3)':getColor(avg)}">${avg===null?'—':fmt(avg)}</span>
       </button>`;
     };
     html+=`
@@ -677,11 +692,18 @@ function renderStats(){
           ${falta.slice(0,3).map(filaNecesidad).join('')}
         </div>`;
       }
-      out+=`
-      <div class="section-hd" style="padding:20px 20px 8px;">
-        <span class="section-hd-title">Mapa de tus ramos</span>
-      </div>
-      <div class="stats-ramo-list">${mapa.map(filaMapa).join('')}</div>`;
+
+      // Cómo va respecto de quienes cursan lo mismo. La sección se pinta vacía
+      // y se rellena cuando el servidor responde: bloquear Estadísticas hasta
+      // que vuelva una comparación dejaría la pantalla en blanco por algo
+      // secundario.
+      if(!S.ocultarCurso){
+        out+=`
+        <div class="section-hd" style="padding:20px 20px 8px;">
+          <span class="section-hd-title">Cómo vas en tus ramos</span>
+        </div>
+        <div id="stats-curso" class="stats-curso"></div>`;
+      }
       if(proy){
         out+=`
         <div class="section-hd" style="padding:20px 20px 8px;">
@@ -753,4 +775,7 @@ function renderStats(){
   }
 
   body.innerHTML=html;
+  // El HTML ya está en pantalla; la comparación se rellena cuando el servidor
+  // conteste. Sin await: Estadísticas no espera por una sección secundaria.
+  if(!S.ocultarCurso)pintarPosicionesCurso();
 }

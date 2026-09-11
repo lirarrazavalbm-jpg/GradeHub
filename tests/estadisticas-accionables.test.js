@@ -18,21 +18,27 @@ chk('la situación parte por el avance y deja el promedio general en Inicio',
   /stats-situation-card[^>]*aria-label="\$\{avance\.pct\}% de las evaluaciones evaluado"/.test(stats)&&
   /stats-situation-top[\s\S]{0,500}<div class="stat-label">Avance del semestre<\/div>[\s\S]{0,300}\$\{avance\.pct\}%/.test(stats)&&
   !/stats-situation-top[\s\S]{0,700}Promedio actual/.test(stats));
-chk('la prioridad usa la misma cuenta de nota necesaria y aparece antes del mapa',
+chk('la prioridad usa la misma cuenta de nota necesaria',
   stats.includes('const falta=loQueFaltaPorRamo(S.ramos);')&&stats.includes('Qué mirar primero')&&
-  stats.indexOf('Qué mirar primero')<stats.indexOf('Mapa de tus ramos')&&/falta\.slice\(0,3\)/.test(stats));
-chk('cada ramo conserva promedio, avance y estado entendible',
-  stats.includes('stats-ramo-row')&&stats.includes('Aún sin notas')&&stats.includes('Todo evaluado')&&stats.includes('en lo que queda'));
+  /falta\.slice\(0,3\)/.test(stats));
+// El "Mapa de tus ramos" listaba los ramos otra vez, con su color, su avance y
+// su promedio: lo mismo que "Mis ramos" en Inicio, en la pantalla de al lado.
+// Se retiró para dejarle el espacio a algo que Inicio no puede mostrar.
+//
+// Lo que sí era propio del mapa —el estado por ramo, "Necesitas 5,2 en lo que
+// queda"— se conserva en "Qué mirar primero", que lo muestra para los tres que
+// más exigen. Para el resto deja de estar a la vista en Estadísticas; se ve
+// entrando al ramo.
+chk('el mapa ya no duplica la lista de ramos de Inicio',
+  !stats.includes('Mapa de tus ramos')&&!stats.includes('stats-ramo-row'));
+chk('y el estado por ramo sigue disponible en las prioridades',
+  stats.includes('stats-priority-row')&&stats.includes('en lo pendiente'));
 chk('se elimina el resumen genérico de cuatro tarjetas',
   !stats.includes('<span class="section-hd-title">Resumen</span>')&&!stats.includes('<div class="stats-grid">'));
 
-console.log('\n=== El mapa sigue siendo legible en teléfono ===');
-chk('las filas permiten truncar nombres largos y alinean números',
-  /\.stats-ramo-main\{[^}]*min-width:0/.test(css)&&/\.stats-ramo-main strong\{[^}]*text-overflow:ellipsis/.test(css)&&
-  /\.stats-ramo-avg\{[^}]*font-variant-numeric:tabular-nums/.test(css));
-chk('la versión angosta simplifica el mapa sin ocultar promedio ni estado',
-  css.includes('@media(max-width:380px){.stats-ramo-row{gap:9px;padding-right:11px;}.stats-ramo-progress{display:none;}')&&
-  !/\.stats-ramo-avg\{display:none/.test(css));
+console.log('\n=== Las prioridades siguen siendo legibles en teléfono ===');
+chk('las filas truncan nombres largos y alinean los números',
+  /\.ag-row-name\{[^}]*text-overflow:ellipsis/.test(css)||/\.ag-row-main\{[^}]*min-width:0/.test(css));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);

@@ -1785,3 +1785,27 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
     margin-left:auto;
   }
 }
+
+/* ── Cómo vas en tus ramos ───────────────────────────────────────────────── */
+.stats-curso{padding:0 20px;margin-bottom:16px;}
+.stats-curso-vacio{margin:0;font-size:0.78125rem;color:var(--fg3);line-height:1.5;}
+.stats-curso-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);}
+.stats-curso-row:last-child{border-bottom:none;}
+.stats-curso-color{width:3px;height:26px;border-radius:2px;flex-shrink:0;}
+.stats-curso-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.stats-curso-main strong{font-size:0.875rem;font-weight:650;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.stats-curso-main small{font-size:0.71875rem;color:var(--fg3);}
+/* El número NO usa el color del semáforo: no es una nota, es una posición, y
+   teñir un 30% de rojo diría que vas mal cuando puede ser un curso exigente. */
+.stats-curso-val{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:1.0625rem;font-weight:750;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.stats-curso-val small{font-size:0.59375rem;font-weight:700;letter-spacing:.035em;text-transform:uppercase;color:var(--fg3);}
+.settings-row-toggle{display:flex;align-items:flex-start;gap:14px;justify-content:space-between;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card);margin-bottom:17px;}
+.settings-row-toggle-t{font-size:0.84375rem;font-weight:650;color:var(--fg);}
+.settings-row-toggle .toggle{flex-shrink:0;margin-top:2px;}
+
+/* La marca del metodo usado la vez anterior. Es una pista, no una recomendacion:
+   no compite con el boton ni sugiere que ese camino sea el correcto, solo evita
+   el "contrasena incorrecta" de quien en realidad habia entrado con Google. */
+.auth-ultimo{display:flex;align-items:center;justify-content:center;gap:5px;margin:0 0 6px;
+  color:var(--fg3);font-size:0.6875rem;font-weight:650;letter-spacing:.01em;}
+.auth-ultimo::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--primary);flex-shrink:0;}
