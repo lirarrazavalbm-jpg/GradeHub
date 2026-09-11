@@ -2580,6 +2580,12 @@ function indiceBusquedaCatalogo(tenant,carrera){
   _indicesBusquedaCatalogo.set(key,indice);
   return indice;
 }
+// "Álgebra (MAT1289)": el mismo nombre que otro ramo, con su código al lado para
+// poder distinguirlos. Se reconoce por la forma y no por una marca en el dato
+// porque la etiqueta se arma al generar el catálogo, no en la app.
+const SIGLA_EN_ETIQUETA=/ \([A-Z]{2,4}\d{3,4}[A-Z]?\)$/;
+// La misma forma sobre el nombre ya normalizado, que viene en minúsculas.
+const SIGLA_NORMALIZADA=/ \([a-z]{2,4}\d{3,4}[a-z]?\)$/;
 function ordenBusquedaCatalogo(indice,semActual){
   const sem=Number(semActual)||0;
   if(indice.ordenes.has(sem))return indice.ordenes.get(sem);
@@ -2613,12 +2619,40 @@ function searchCatalog(q,tenant,carrera,semActual){
       // que "micro 1" encuentre "Microeconom\u00eda I"
       if(tk.length>1&&tk.every(t=>n.includes(t)))s=3;
     }
-    if(s>=0)grupos[s].push({...r,_s:s});
+    // `n` ya viene normalizado por el índice: se conserva en la fila para que el
+    // reordenamiento de abajo no tenga que volver a normalizar cada ramo.
+    if(s>=0)grupos[s].push({...r,_s:s,_n:n});
   });
   // Las filas ya vienen en el mismo orden de desempate de antes. Separarlas
   // por tipo de coincidencia conserva exacto > prefijo > contenido > tokens,
   // sin ordenar miles de resultados de nuevo en cada tecla.
-  return grupos[0].concat(grupos[1],grupos[2],grupos[3]);
+  const porCoincidencia=grupos[0].concat(grupos[1],grupos[2],grupos[3]);
+
+  // Pero la calidad de la coincidencia no puede mandar sobre de quién es el
+  // ramo. Buscando "algebra", un estudiante de Ingeniería recibía primero el
+  // "Álgebra" de otra carrera —coincidencia exacta— y su propia "Álgebra
+  // Lineal" quedaba segunda, detrás de siete filas que no puede cursar. El
+  // ramo de tu malla es literalmente el que vas a tomar: va primero aunque
+  // otro calce mejor con lo que escribiste.
+  //
+  // Y al final van las desambiguaciones —"Álgebra (MAT1289)"—, que existen
+  // para distinguir dos ramos con el mismo nombre y son las filas menos
+  // informativas de la lista: con once seguidas tapan a "Álgebra Abstracta" o
+  // "Álgebra Conmutativa", que sí se distinguen por su nombre.
+  // Con una excepción que importa: si la desambiguación pertenece a un ramo que
+  // SÍ está en tu malla, no es ruido, es tu otra opción. El plan común de
+  // Ingeniería admite "Dinámica" de FIS o de ICE y el estudiante cursa la que le
+  // tocó en su horario; mandar "Dinámica (ICE1514)" al fondo la vuelve
+  // inencontrable justo para quien la necesita.
+  const nombresPropios=new Set();
+  porCoincidencia.forEach(r=>{if(r.propio)nombresPropios.add(r._n);});
+  const propios=[],normales=[],variantes=[];
+  porCoincidencia.forEach(r=>{
+    if(r.propio){propios.push(r);return;}
+    if(!SIGLA_EN_ETIQUETA.test(r.nombre)){normales.push(r);return;}
+    (nombresPropios.has(r._n.replace(SIGLA_NORMALIZADA,''))?propios:variantes).push(r);
+  });
+  return propios.concat(normales,variantes);
 }
 
 // Sello de procedencia para un ramo creado desde el catálogo. La clave queda
