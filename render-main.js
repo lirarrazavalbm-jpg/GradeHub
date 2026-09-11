@@ -622,7 +622,6 @@ function renderStats(){
     const avanceTail=Math.min(14,100-avance.pct);
     const falta=loQueFaltaPorRamo(S.ramos);
     const necesidadPorRamo=new Map(falta.map(x=>[x.ramo.id,x]));
-    const mapa=S.ramos.map(r=>({ramo:r,avg:ramoAvg(r),progreso:ramoProgress(r),necesidad:necesidadPorRamo.get(r.id)||null}));
     const filaNecesidad=x=>{
       const imposible=x.necesita>7.05;
       const valor=imposible?'—':fmt(Math.max(1,x.necesita));
@@ -639,18 +638,6 @@ function renderStats(){
           <div class="ag-row-sub">${sub}</div>
         </div>
         <div class="stats-priority-value"><span style="color:${color};">${valor}</span><small>${imposible?'sin salida':'necesitas'}</small></div>
-      </button>`;
-    };
-    const filaMapa=x=>{
-      const {ramo,avg,progreso,necesidad}=x;
-      const cerrado=progreso.pct===100;
-      const imposible=necesidad&&necesidad.necesita>7.05;
-      const estado=avg===null?'Aún sin notas':imposible?'Ya no alcanza solo con lo pendiente':cerrado?'Todo evaluado':necesidad?`Necesitas ${fmt(Math.max(1,necesidad.necesita))} en lo que queda`:`Vas ${fmt(avg)} en lo evaluado`;
-      return `<button class="stats-ramo-row" onclick="openRamo('${esc(ramo.id)}')">
-        <span class="stats-ramo-color" style="background:${esc(ramo.color)}"></span>
-        <span class="stats-ramo-main"><strong>${esc(ramo.nombre)}</strong><small>${estado}</small></span>
-        <span class="stats-ramo-progress">${cerrado?'100%':`${progreso.pct}%`}<small>evaluado</small></span>
-        <span class="stats-ramo-avg" style="color:${avg===null?'var(--fg3)':getColor(avg)}">${avg===null?'—':fmt(avg)}</span>
       </button>`;
     };
     html+=`
@@ -677,11 +664,7 @@ function renderStats(){
           ${falta.slice(0,3).map(filaNecesidad).join('')}
         </div>`;
       }
-      out+=`
-      <div class="section-hd" style="padding:20px 20px 8px;">
-        <span class="section-hd-title">Mapa de tus ramos</span>
-      </div>
-      <div class="stats-ramo-list">${mapa.map(filaMapa).join('')}</div>`;
+
       if(proy){
         out+=`
         <div class="section-hd" style="padding:20px 20px 8px;">
