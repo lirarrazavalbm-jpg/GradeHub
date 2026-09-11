@@ -579,6 +579,34 @@ function renderRamo(){
 }
 
 // Formato corto de fecha para chips: "15 mar"
+// Se pinta aparte porque depende de una respuesta del servidor. Mientras no
+// llega, la sección no existe: no se muestra un esqueleto ni un "cargando" para
+// algo que la mayoría de las veces no va a tener nada que decir.
+async function pintarPosicionesCurso(){
+  const box=document.getElementById('stats-curso');
+  if(!box)return;
+  await subirNotasCurso();
+  const pos=await cargarPosicionesCurso();
+  const filas=(S.ramos||[]).filter(r=>r&&r.sigla&&pos&&pos[r.id]);
+  if(!filas.length){
+    // Con menos de cinco no hay comparación posible, y es el caso normal al
+    // principio. Se dice por qué en vez de dejar un hueco.
+    box.innerHTML=`<p class="stats-curso-vacio">Cuando al menos cinco personas lleven uno de tus ramos, vas a ver acá cómo te va respecto del resto. Nadie ve tu nota ni tu nombre.</p>`;
+    return;
+  }
+  box.innerHTML=filas.map(r=>{
+    const p=pos[r.id];
+    // El total va al lado del porcentaje a propósito. Con cinco participantes
+    // "mejor que el 75%" solo puede ser 0, 25, 50, 75 o 100, y sin saber cuántos
+    // son suena mucho más fino de lo que es.
+    return `<div class="stats-curso-row">
+      <span class="stats-curso-color" style="background:${esc(r.color)}"></span>
+      <span class="stats-curso-main"><strong>${esc(r.nombre)}</strong><small>${p.total} llevan este ramo</small></span>
+      <span class="stats-curso-val">${p.mejorQue}%<small>por sobre</small></span>
+    </div>`;
+  }).join('');
+}
+
 function renderStats(){
   const body=document.getElementById('stats-body');const g=gpa(S.ramos);
   const heroTitle=document.getElementById('stats-hero-title');
@@ -665,6 +693,17 @@ function renderStats(){
         </div>`;
       }
 
+      // Cómo va respecto de quienes cursan lo mismo. La sección se pinta vacía
+      // y se rellena cuando el servidor responde: bloquear Estadísticas hasta
+      // que vuelva una comparación dejaría la pantalla en blanco por algo
+      // secundario.
+      if(!S.ocultarCurso){
+        out+=`
+        <div class="section-hd" style="padding:20px 20px 8px;">
+          <span class="section-hd-title">Cómo vas en tus ramos</span>
+        </div>
+        <div id="stats-curso" class="stats-curso"></div>`;
+      }
       if(proy){
         out+=`
         <div class="section-hd" style="padding:20px 20px 8px;">
@@ -736,4 +775,7 @@ function renderStats(){
   }
 
   body.innerHTML=html;
+  // El HTML ya está en pantalla; la comparación se rellena cuando el servidor
+  // conteste. Sin await: Estadísticas no espera por una sección secundaria.
+  if(!S.ocultarCurso)pintarPosicionesCurso();
 }
