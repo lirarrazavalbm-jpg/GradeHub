@@ -81,6 +81,7 @@ function showAuthScreen(){
   ['home','stats','agenda','ramo','onboard','reset','app-error'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
   document.getElementById('bottom-nav').style.display='none';
   document.getElementById('screen-auth').classList.add('active');
+  marcarUltimoLogin();
 }
 // Una sesión válida que falla al dibujarse no es un error de login. Esta
 // pantalla conserva esa distinción: no expone el stack, no cierra la sesión y
@@ -245,12 +246,48 @@ async function submitAuth(){
     }else{
       const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:p});
       if(error)throw error;
+      recordarMetodoLogin('correo');
       currentUser=data.user;await afterLogin();
     }
   }catch(e){
     authError(traduceAuthError(e));
     btn.disabled=false;btn.textContent=orig;
   }
+}
+
+// --- ULTIMO METODO USADO PARA ENTRAR ---
+// Volver despues de un mes y no acordarse de si se entro con Google o con
+// correo termina en un "contrasena incorrecta" que no es tal: la cuenta existe,
+// pero se creo por el otro camino.
+//
+// Se guarda SOLO cual de los dos, nunca el correo: esta pantalla se ve en
+// computadores compartidos y de un correo a la vista se deduce quien lo usa.
+// Va en su propia clave y no en el estado de la app, porque tiene que seguir
+// disponible despues de cerrar sesion, que es justo cuando hace falta.
+var CLAVE_ULTIMO_LOGIN='gradehub_ultimo_login';
+function recordarMetodoLogin(metodo){
+  try{localStorage.setItem(CLAVE_ULTIMO_LOGIN,metodo);}catch(e){/* modo privado */}
+}
+function ultimoMetodoLogin(){
+  try{return localStorage.getItem(CLAVE_ULTIMO_LOGIN);}catch(e){return null;}
+}
+// La marca se pinta al mostrar la pantalla de auth. Si no hay nada guardado
+// -primera vez, o navegador que no deja guardar- simplemente no aparece.
+function marcarUltimoLogin(){
+  const metodo=ultimoMetodoLogin();
+  document.querySelectorAll('.auth-ultimo').forEach(function(e){e.remove();});
+  if(!metodo)return;
+  // La marca va ENCIMA del metodo, no dentro. Metida en el boton de Google
+  // quedaba gris sobre gris —ilegible— y ademas le partia el texto en dos
+  // lineas. Arriba se lee en los dos casos y no toca el boton.
+  const destino=metodo==='google'
+    ? document.getElementById('btn-google')
+    : document.querySelector('#screen-auth .ob-card');
+  if(!destino||!destino.parentNode)return;
+  const marca=document.createElement('div');
+  marca.className='auth-ultimo';
+  marca.textContent='Lo usaste la última vez';
+  destino.parentNode.insertBefore(marca,destino);
 }
 
 // Login con Google vía Supabase OAuth. Redirige fuera; al volver, boot() detecta
@@ -267,6 +304,9 @@ async function signInWithProvider(provider){
       options:{redirectTo:location.origin+location.pathname}
     });
     if(error)throw error;
+    // Se anota ANTES de irse a Google: desde acá la pagina se descarga y no hay
+    // vuelta a este codigo si el login sale bien.
+    recordarMetodoLogin(provider);
   }catch(e){
     authError(traduceAuthError(e));
     if(btn){btn.disabled=false;btn.style.opacity='';btn.innerHTML=orig;}
