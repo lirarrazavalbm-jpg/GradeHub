@@ -2948,19 +2948,37 @@ async function cargarConsenso(){
 
 // Se manda el mismo numero que el estudiante ve en su pantalla, no uno
 // recalculado: `ramoAvg` es la unica formula de promedio que existe.
+// Un ramo NO guarda su sigla como propiedad: la app la deriva del nombre con
+// `siglaDeRamo`. Esto se escribio filtrando por `r.sigla`, que es undefined en
+// todos, asi que la lista quedaba vacia y no se subio nunca nada. La tabla
+// estaba en cero y la seccion no aparecia jamas.
+function siglaParaCurso(r){
+  const s=(r&&r.sigla)||siglaDeRamo(r);
+  return typeof s==='string'&&s.trim()?s.trim():null;
+}
 async function subirNotasCurso(){
   if(!supabaseClient||!currentUser)return;
-  for(const r of (S.ramos||[]).filter(x=>x&&x.sigla)){
+  let fallos=0;
+  for(const r of (S.ramos||[])){
+    const sigla=siglaParaCurso(r);
+    if(!sigla)continue;
     const avg=ramoAvg(r,undefined,S.ramos);
     try{
-      await supabaseClient.rpc('curso_nota_set',{
-        p_tenant:S.tenant,p_sigla:r.sigla,
+      const {error}=await supabaseClient.rpc('curso_nota_set',{
+        p_tenant:S.tenant,p_sigla:sigla,
         // null saca el ramo del curso: sin notas no hay con que compararse, y
         // dejarlo congelado en su ultima nota ensuciaria el agregado ajeno.
         p_promedio:(avg===null||avg===undefined)?null:avg
       });
-    }catch(e){/* que falle la comparacion no puede romper Estadisticas */}
+      // El cliente de Supabase DEVUELVE el error, no lo lanza: sin esta linea
+      // el catch no se activa nunca y un rechazo se pierde entero. Es el mismo
+      // agujero que tenia `syncNow` y que hizo invisible la perdida de notas.
+      if(error)throw error;
+    }catch(e){fallos++;}
   }
+  // Que falle no puede romper Estadisticas, pero tampoco puede desaparecer: un
+  // catch mudo aca fue la razon de que esto llevara dias sin funcionar.
+  if(fallos)console.warn('No se pudieron subir '+fallos+' promedios al curso');
 }
 
 let _posCursoCache=null;
@@ -2968,9 +2986,11 @@ async function cargarPosicionesCurso(){
   if(!supabaseClient||!currentUser)return null;
   if(_posCursoCache)return _posCursoCache;
   const out={};
-  for(const r of (S.ramos||[]).filter(x=>x&&x.sigla)){
+  for(const r of (S.ramos||[])){
+    const sigla=siglaParaCurso(r);
+    if(!sigla)continue;
     try{
-      const {data,error}=await supabaseClient.rpc('curso_posicion',{p_tenant:S.tenant,p_sigla:r.sigla});
+      const {data,error}=await supabaseClient.rpc('curso_posicion',{p_tenant:S.tenant,p_sigla:sigla});
       if(error)throw error;
       const fila=Array.isArray(data)?data[0]:data;
       // Sin fila = todavia no son cinco. No se distingue de "fallo la red" a
