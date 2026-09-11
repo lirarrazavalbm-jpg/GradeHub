@@ -1710,7 +1710,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
   .greet-hero{padding-top:34px;}
 }
 @media(min-width:1024px){
-  .app{max-width:960px;border:0;}
+  .app{border:0;}
   .bottom-nav{background:var(--bg);}
   .nav-item.active{background:var(--muted);color:var(--fg);}
   .modal-sheet{border:1px solid var(--border);border-radius:14px;}
@@ -1728,4 +1728,50 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
   .ramo-progress-fill{background:var(--fg);}
   .ramo-row{outline:1px solid var(--border2);}
   .modal-sheet,.ag-row,.ag-priority-card,.eval-row,.eval-group,.cat-card,.stat-card{border-color:var(--fg3);}
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ANCHO EN PANTALLA GRANDE
+   El ancho crece con COLUMNAS, no con renglones más largos: una línea de
+   texto que cruza un monitor entero se lee peor, y esa es la razón por la
+   que el contenedor tiene tope. Pero el tope no puede comerse la pantalla:
+   en un monitor de 1680px la app quedaba en 960px y dejaba 720 en blanco.
+   Va al final del archivo a propósito. Esta escala ya existía y un bloque
+   agregado más abajo la anuló sin querer, porque a igual especificidad gana
+   el último. Dejándola acá, cualquier regla nueva que la pise se nota.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(min-width:1024px){
+  .app{max-width:min(1040px,100%);}
+}
+@media(min-width:1280px){
+  .app{max-width:min(1200px,100%);}
+}
+@media(min-width:1440px){
+  .app{max-width:min(1360px,100%);}
+  /* El espacio que sobra se gasta en una tercera columna de ramos, con cada
+     tarjeta todavía en un ancho cómodo, y no en estirar el renglón. */
+  #home-ramos{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   AGENDA EN PANTALLA ANCHA
+   Dos cosas quedaban angostas mientras el resto de la Agenda ya usaba todo
+   el ancho, y el contraste se leía como un error de maquetación.
+   ══════════════════════════════════════════════════════════════════════ */
+@media(min-width:768px){
+  /* Las dos prioridades estaban topeadas en 620px: en un monitor quedaban
+     arrinconadas a la izquierda mientras "Después" cruzaba la pantalla.
+     Siguen una debajo de la otra —la primera manda, y ponerlas lado a lado
+     las haría gritar igual— pero ahora ocupan el ancho que hay. */
+  .ag-priority-stack{max-width:none;}
+
+  /* La barra de orden se estira de extremo a extremo del encabezado, pero sus
+     botones NO: con columnas de 1fr cada uno se iría a un tercio del monitor y
+     un control secundario terminaría más grande que las evaluaciones. Se
+     quedan del ancho de su texto y se reparten dentro de la barra. */
+  .ag-priority-heading .ag-order-options{
+    width:100%;
+    grid-template-columns:repeat(3,max-content);
+    justify-content:space-between;
+  }
 }
