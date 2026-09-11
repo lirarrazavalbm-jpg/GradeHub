@@ -696,7 +696,11 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
    El gradiente se desvanece en el borde para que un avance bajo no parezca un
    bloque y uno al 99% se vea casi completo. */
 .stats-progress-card{position:relative;isolation:isolate;overflow:hidden;}
-.stats-progress-card::before{content:'';position:absolute;z-index:0;inset:0;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--primary),transparent 90%) 0%,color-mix(in srgb,var(--accent),transparent 76%) var(--stats-progress),transparent var(--stats-progress-end));pointer-events:none;}
+/* El tramo recorrido lleva color parejo y se apaga al llegar al porcentaje. La
+   versión anterior ponía el punto MÁS brillante justo en el avance y caía a cero
+   enseguida: en una tarjeta angosta se leía como un barrido, pero al ensancharse
+   a 1200px quedaba una mancha en medio con vacío a los dos lados. */
+.stats-progress-card::before{content:'';position:absolute;z-index:0;inset:0;border-radius:inherit;background:linear-gradient(90deg,color-mix(in srgb,var(--primary),transparent 84%) 0%,color-mix(in srgb,var(--accent),transparent 80%) calc(var(--stats-progress) - 6%),color-mix(in srgb,var(--accent),transparent 88%) var(--stats-progress),transparent var(--stats-progress-end));pointer-events:none;}
 .stats-progress-card>*{position:relative;z-index:1;}
 /* Igual que el ramo: completar evaluaciones cierra el período, no lo aprueba. */
 .stats-progress-card.is-complete{background:linear-gradient(125deg,color-mix(in srgb,var(--primary),var(--card) 89%),color-mix(in srgb,var(--accent),var(--card) 82%));border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 86%),var(--shadow);}
@@ -1596,6 +1600,9 @@ body{background-image:none;-webkit-font-smoothing:antialiased;}
 .gpa-delta span{color:var(--fg3);font-weight:400;}
 .gpa-delta.up,.gpa-delta.down,.gpa-delta.flat{background:none;}
 .gpa-sub{font-size:.75rem;line-height:1.5;margin-top:9px;}
+/* El semestre se queda al extremo derecho, acompañando el final de la línea que
+   cierra la tarjeta. Antes se quedaba a media pantalla porque la tarjeta estaba
+   topeada en 680px; al soltar ese tope, el dato sigue la línea hasta el borde. */
 #home-gpa-sub{grid-column:2;grid-row:2;align-self:center;justify-self:end;flex-direction:column;gap:3px;margin:0;text-align:right;color:var(--fg3);font-variant-numeric:tabular-nums;}
 #home-gpa-sub strong{color:var(--fg);font-size:1.25rem;font-weight:500;letter-spacing:-.035em;}
 #home-gpa-sub span{white-space:nowrap;}
@@ -1714,7 +1721,10 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 }
 @media(min-width:768px){
   #home-ramos{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 24px;}
-  .gpa-card{max-width:680px;}
+  /* Sin tope de ancho: el borde inferior de esta tarjeta es la línea que separa
+     el promedio de los ramos, y con 680px se cortaba a media pantalla mientras
+     el resto de la página llegaba al borde. La lectura no se estira porque el
+     contenido vive en dos columnas ajustadas al texto, no en un renglón largo. */
   .greet-hero{padding-top:34px;}
 }
 @media(min-width:1024px){
@@ -1797,7 +1807,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 /* ── Cómo vas en tus ramos ───────────────────────────────────────────────── */
 .stats-curso{padding:0 20px;margin-bottom:16px;}
 .stats-curso-vacio{margin:0;font-size:0.78125rem;color:var(--fg3);line-height:1.5;}
-.stats-curso-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);}
+.stats-curso-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);transition:background var(--motion-fast) var(--ease-out);}
 .stats-curso-row:last-child{border-bottom:none;}
 .stats-curso-color{width:3px;height:26px;border-radius:2px;flex-shrink:0;}
 .stats-curso-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
@@ -1817,3 +1827,40 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .auth-ultimo{display:flex;align-items:center;justify-content:center;gap:5px;margin:0 0 6px;
   color:var(--fg3);font-size:0.6875rem;font-weight:650;letter-spacing:.01em;}
 .auth-ultimo::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--primary);flex-shrink:0;}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LA BANDA DEL RAMO REACCIONA IGUAL EN TODAS PARTES
+   En Inicio, pasar el mouse sobre un ramo ensancha su banda de color y la
+   enciende. Es el gesto que le da identidad a la fila —el color del ramo
+   respondiendo— y estaba solo ahí: en la Agenda y en la comparación las
+   barras eran del mismo color pero no se movían, así que la misma idea se
+   sentía viva en una pantalla y muerta en la de al lado.
+   ══════════════════════════════════════════════════════════════════════ */
+.ag-priority-bar,.ag-row-bar,.stats-curso-color{
+  transition:transform var(--motion-fast) var(--ease-out),
+             filter var(--motion-fast) var(--ease-out),
+             box-shadow var(--motion-fast) var(--ease-out);
+}
+/* Las barras verticales crecen a lo ancho, igual que la de Inicio. Se declara
+   el origen para que engorden hacia afuera y no desplacen el texto. */
+.ag-row-bar,.stats-curso-color{transform-origin:left center;}
+.ag-priority-bar{transform-origin:left center;}
+
+@media(hover:hover) and (pointer:fine){
+  .ag-row:hover .ag-row-bar,
+  .ag-priority-card:hover .ag-priority-bar,
+  .stats-curso-row:hover .stats-curso-color{
+    transform:scaleX(1.65);
+    filter:brightness(1.2);
+    box-shadow:0 0 6px color-mix(in srgb,currentColor 35%,transparent);
+  }
+}
+/* Quien pidió menos movimiento recibe el cambio de color, no el crecimiento: la
+   fila sigue respondiendo, sin animación de tamaño. Va anidado dentro de
+   `hover:hover` a propósito — un `:hover` con transform fuera de esa guarda se
+   dispara en pantallas táctiles y deja el efecto pegado tras el toque. */
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){
+  .ag-row:hover .ag-row-bar,
+  .ag-priority-card:hover .ag-priority-bar,
+  .stats-curso-row:hover .stats-curso-color{transform:none;box-shadow:none;}
+}
