@@ -116,7 +116,7 @@ function renderHome(){
       const kind=abs<0.05?'flat':diff>0?'up':'down';
       const arrow=kind==='up'?'↑':kind==='down'?'↓':'·';
       deltaEl.className='gpa-delta '+kind;
-      deltaEl.innerHTML=`${arrow} ${nf(abs,2)}`;
+      deltaEl.innerHTML=`<strong>${arrow} ${nf(abs,2)}</strong><span>vs. ${esc(last.label||'semestre anterior')}</span>`;
       deltaEl.title=`vs ${last.label||'semestre anterior'}`;
       deltaEl.style.display='inline-flex';
     }else{
@@ -215,13 +215,11 @@ function renderHome(){
     const sig=siglaDeRamo(r);
     const div=document.createElement('div');div.className='ramo-row';div.dataset.ramoId=r.id;div.onclick=()=>openRamo(r.id);
     div.dataset.progress=String(prog.pct);
+    div.style.setProperty('--ramo-progress-scale',String(prog.pct/100));
     if(nn>0){
-      const tail=Math.min(14,100-prog.pct);
       div.classList.add('has-progress');
       if(completo)div.classList.add('is-complete');
       if(recienCerrado)div.classList.add('just-completed');
-      div.style.setProperty('--ramo-progress',`${prog.pct}%`);
-      div.style.setProperty('--ramo-progress-end',`${Math.min(100,prog.pct+tail)}%`);
     }
     if(S.sortMode==='manual')div.dataset.reorderable='true';
     div.style.setProperty('--ramo-tint',r.color);
@@ -231,9 +229,10 @@ function renderHome(){
         </button>`
       : '<span class="chevron-r">›</span>';
     div.innerHTML=`
-      <div class="ramo-band" style="background:${esc(r.color)}"></div>
-      <div class="ramo-info"><div class="ramo-name">${esc(r.nombre)}</div><div class="ramo-meta">${sig?`<span class="ramo-sigla">${esc(sig)}</span>`:''}${metaHtml}</div></div>
-      <div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div>${control}`;
+      <div class="ramo-band" aria-hidden="true" style="background:${esc(r.color)}"></div>
+      <div class="ramo-info"><button type="button" class="ramo-name">${esc(r.nombre)}</button><div class="ramo-meta">${sig?`<span class="ramo-sigla">${esc(sig)}</span>`:''}${metaHtml}</div></div>
+      <div class="ramo-grade-action"><div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div>${control}</div>
+      ${nc>0?'<span class="ramo-progress-track" aria-hidden="true"><span class="ramo-progress-fill"></span></span>':''}`;
     c.appendChild(div);
   });
   if(S.sortMode==='manual')activarReordenRamos(c);
