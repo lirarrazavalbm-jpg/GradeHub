@@ -20,6 +20,10 @@
 -- Física y "Dinámica" de Ingeniería son ramos distintos y no deben mezclarse.
 -- Por eso solo participan los ramos que traen sigla del catálogo.
 --
+-- LAS VARIABLES SE LLAMAN v_* A PROPÓSITO. La primera versión las llamó `tenant`
+-- y `sigla`, igual que las columnas, y PL/pgSQL no resuelve esa ambigüedad: la
+-- función abortaba entera y PostgREST devolvía 400 sin que se viera por qué.
+--
 -- EL MÍNIMO DE CINCO NO ES DECORATIVO. Con dos personas, el agregado deja de
 -- ser anónimo: si conoces al otro, le despejas la nota. Con cinco hay margen.
 -- La función devuelve `null` bajo ese piso, y no dice cuántos faltan para
@@ -58,20 +62,20 @@ set search_path = public
 as $$
 declare
   uid uuid := auth.uid();
-  sigla text := nullif(upper(trim(p_sigla)), '');
-  tenant text := nullif(lower(trim(p_tenant)), '');
+  v_sigla text := nullif(upper(trim(p_sigla)), '');
+  v_tenant text := nullif(lower(trim(p_tenant)), '');
 begin
   if uid is null then
     raise exception 'hay que haber iniciado sesión';
   end if;
-  if sigla is null or tenant is null then
+  if v_sigla is null or v_tenant is null then
     return;   -- un ramo sin sigla no participa: no se puede saber cuál es
   end if;
   if p_promedio is null then
     -- El ramo se borró o se quedó sin notas: sale del curso en vez de
     -- quedarse congelado en su última nota.
     delete from public.curso_notas
-      where user_id = uid and tenant = curso_nota_set.tenant and ramo_sigla = curso_nota_set.sigla;
+      where user_id = uid and tenant = v_tenant and ramo_sigla = v_sigla;
     return;
   end if;
   if p_promedio < 1.0 or p_promedio > 7.0 then
@@ -79,7 +83,7 @@ begin
   end if;
 
   insert into public.curso_notas (user_id, tenant, ramo_sigla, promedio, updated_at)
-  values (uid, tenant, sigla, round(p_promedio, 2), now())
+  values (uid, v_tenant, v_sigla, round(p_promedio, 2), now())
   on conflict (user_id, tenant, ramo_sigla)
     do update set promedio = excluded.promedio, updated_at = now();
 end;
@@ -101,24 +105,24 @@ set search_path = public
 as $$
 declare
   uid uuid := auth.uid();
-  sigla text := nullif(upper(trim(p_sigla)), '');
-  tenant text := nullif(lower(trim(p_tenant)), '');
+  v_sigla text := nullif(upper(trim(p_sigla)), '');
+  v_tenant text := nullif(lower(trim(p_tenant)), '');
   mi numeric;
   n integer;
   debajo integer;
 begin
-  if uid is null or sigla is null or tenant is null then
+  if uid is null or v_sigla is null or v_tenant is null then
     return;
   end if;
 
   select promedio into mi from public.curso_notas
-    where user_id = uid and tenant = curso_posicion.tenant and ramo_sigla = curso_posicion.sigla;
+    where user_id = uid and tenant = v_tenant and ramo_sigla = v_sigla;
   if mi is null then
     return;   -- no participa de este ramo: no hay con qué ubicarlo
   end if;
 
   select count(*) into n from public.curso_notas
-    where tenant = curso_posicion.tenant and ramo_sigla = curso_posicion.sigla;
+    where tenant = v_tenant and ramo_sigla = v_sigla;
 
   -- Cinco contándose a sí mismo: cuatro compañeros no alcanzan para que el
   -- agregado sea anónimo.
@@ -127,7 +131,7 @@ begin
   end if;
 
   select count(*) into debajo from public.curso_notas
-    where tenant = curso_posicion.tenant and ramo_sigla = curso_posicion.sigla
+    where tenant = v_tenant and ramo_sigla = v_sigla
       and promedio < mi;
 
   total := n;
