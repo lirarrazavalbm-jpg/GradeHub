@@ -1896,7 +1896,10 @@ function confirmDeleteCat(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const cat=r.categorias.find(c=>c.id===catId);if(!cat)return;
   showConfirm(`Eliminar "${cat.nombre}"`,`Se eliminarán todas las notas de esta evaluación.`,()=>{
-    r.categorias=r.categorias.filter(c=>c.id!==catId);save();renderRamo();
+    const totalAntes=r.categorias.reduce((s,c)=>s+(Number(c.peso)||0),0);
+    r.categorias=r.categorias.filter(c=>c.id!==catId);
+    repartirPesoRestante(r.categorias,totalAntes);
+    save();renderRamo();
   });
 }
 function deleteNota(catId,notaId){
@@ -3177,6 +3180,21 @@ function estadoPauta(categorias){
   const diferencia=Math.round((100-total)*10)/10;
   return {total,diferencia,lista:Math.abs(diferencia)<0.05};
 }
+// Si una pauta completa pierde una evaluación, las que quedan conservan su
+// proporción y vuelven a representar el 100% del ramo. Se guarda la fracción
+// completa (por ejemplo 100/3), aunque el editor muestre solo dos decimales:
+// redondear cada fila por separado dejaría una pauta de 99,99%.
+//
+// Una pauta que ya estaba incompleta no se toca. Completarla automáticamente
+// inventaría porcentajes que el estudiante todavía no ha sacado del programa.
+function repartirPesoRestante(categorias,totalAntes){
+  if(Math.abs((Number(totalAntes)||0)-100)>=0.05)return false;
+  const totalRestante=(categorias||[]).reduce((s,c)=>s+(Number(c.peso)||0),0);
+  if(totalRestante<=0)return false;
+  const factor=100/totalRestante;
+  categorias.forEach(c=>{c.peso=(Number(c.peso)||0)*factor;});
+  return true;
+}
 
 // Un ramo del catálogo sin preset no es un ramo "vacío" del estudiante: la
 // app sí sabe qué curso es, pero todavía no tiene su programa transcrito. Esta
@@ -3524,7 +3542,7 @@ function renderPautaManualModal(){
     return `
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 52px 30px;gap:6px;align-items:center;margin:8px 0;">
       <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="${NOMBRE_MAX}" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" ${errorEnFila&&pautaDraftErrorTarget==='nombre'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
-      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" ${errorEnFila&&pautaDraftErrorTarget==='peso'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span>${usarResto}</div>
+      <div style="position:relative;"><input type="text" inputmode="decimal" id="m-pauta-peso-${i}" value="${fila.peso?r2(fila.peso):''}" placeholder="0" maxlength="6" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" ${errorEnFila&&pautaDraftErrorTarget==='peso'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span>${usarResto}</div>
       <label title="Son varias notas que se promedian" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:40px;cursor:pointer;font-size:0.5625rem;color:var(--fg3);font-weight:700;line-height:1;">
         <input type="checkbox" ${fila.varias?'checked':''} onchange="actualizarPautaVarias(${i},this.checked)" aria-label="${esc(fila.nombre||'Evaluación')}: son varias notas que se promedian" style="width:17px;height:17px;accent-color:var(--primary);"/><span style="margin-top:2px;">VARIAS</span>
       </label>
@@ -3588,8 +3606,10 @@ function usarRestoPauta(i){
 function actualizarPautaPeso(i,valor){
   limpiarErrorPauta();
   if(!pautaDraft[i])return;
-  const limpio=String(valor||'').replace(/[^0-9]/g,'');
-  const peso=Math.min(100,parseInt(limpio,10)||0);
+  const crudo=String(valor||'').replace(',','.').replace(/[^0-9.]/g,'');
+  const partes=crudo.split('.');
+  const limpio=partes[0]+(partes.length>1?'.'+partes.slice(1).join('').slice(0,2):'');
+  const peso=Math.min(100,Number(limpio)||0);
   pautaDraft[i].peso=peso;
   const input=document.getElementById('m-pauta-peso-'+i);if(input&&input.value!==limpio)input.value=limpio;
   const total=document.getElementById('m-pauta-total');if(total)total.textContent=pautaResumen();
@@ -3605,7 +3625,10 @@ function quitarPautaFila(i){
   showConfirm(nombre?`¿Quitar "${nombre}"?`:'¿Quitar esta evaluación?',
     'Se quitará de esta pauta. Puedes volver a agregarla antes de guardar.',()=>{
       limpiarErrorPauta();
-      pautaDraft.splice(i,1);if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
+      const totalAntes=pautaDraft.reduce((s,f)=>s+(Number(f.peso)||0),0);
+      pautaDraft.splice(i,1);
+      repartirPesoRestante(pautaDraft,totalAntes);
+      if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
     },{label:'Quitar evaluación',focusCancel:true});
   return true;
 }
