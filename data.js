@@ -592,6 +592,31 @@ const PORTAL=[
 const PRESETS_UC={
   'Cálculo I':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
   'Álgebra Lineal':[['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],['Laboratorio',10,{slots:3}],['Examen',30]],
+  // Ingeniería Comercial · 1er semestre. Ponderaciones del programa oficial de
+  // cada ramo, publicadas en catalogo.uc.cl (visor de programas por sigla).
+  //
+  // El programa da los PORCENTAJES pero no dice CUÁNTAS evaluaciones son de cada
+  // tipo: dice "Pruebas: 45%", no "3 pruebas de 15%". Por eso las que vienen en
+  // plural entran como lista abierta y el estudiante agrega las que le tomen.
+  // Poner "3 pruebas" sería inventar un número que la fuente no da, y encima
+  // llevaría la estrella de "oficial" al lado.
+  'Introducción a la Microeconomía':[   // EAE1110
+    ['Guías semanales',20,{lista:true}],
+    ['Pruebas',45,{lista:true}],
+    ['Examen',35],
+  ],
+  'Contabilidad':[                      // EAA1210
+    ['Controles',30,{lista:true}],
+    ['Pruebas',40,{lista:true}],
+    ['Examen',30],
+  ],
+  'Comportamiento Organizacional':[     // EAA1110
+    ['Pruebas',50,{lista:true}],
+    // El programa lo nombra en singular —"Trabajo en grupo y presentacion oral
+    // en clases"— así que entra como una nota y no como lista.
+    ['Trabajo en grupo y presentación oral',20],
+    ['Examen final escrito',30],
+  ],
   // Ingeniería Comercial · 2° semestre. Transcripción de la pauta 2026-2
   // confirmada por Lucas el 17-08-2026. La regla de aprobación de Álgebra
   // aparece cortada en la fuente, así que no se modela ni se muestra.
@@ -903,6 +928,9 @@ const PRESETS_UC={
 // la pauta de otra facultad a un curso homónimo.
 const PRESETS_UC_COM=[
   'Cálculo I',
+  'Introducción a la Microeconomía',
+  'Contabilidad',
+  'Comportamiento Organizacional',
   'Introducción al Álgebra Lineal',
   'Cálculo II',
   'Introducción a la Macroeconomía',

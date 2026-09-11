@@ -34,6 +34,23 @@ chk('un estudiante de Comercial recibe sus ponderaciones',
 chk('y el de Ingeniería sigue recibiéndolas',
   !!run("findPresetName('Cálculo I','uc','ING-PC')"));
 
+console.log('\n=== El primer semestre completo trae sus ponderaciones ===');
+// Salen del programa oficial de cada ramo en catalogo.uc.cl. Una pauta que no
+// suma 100 le miente al cálculo del promedio, así que se comprueba.
+['Cálculo I','Introducción a la Microeconomía','Contabilidad','Comportamiento Organizacional'].forEach(n=>{
+  const def=JSON.parse(run(`JSON.stringify(definicionPreset(${JSON.stringify(n)},'uc','COM'))`));
+  const evals=Array.isArray(def)?def:(def&&def.evals)||[];
+  const suma=evals.reduce((a,e)=>a+e[1],0);
+  chk(`${n} suma ${suma}%`, Math.abs(suma-100)<0.01);
+});
+// El programa dice "Pruebas: 45%", no "3 pruebas de 15%". Fijar una cantidad
+// sería inventar un dato y encima mostrarlo con la estrella de "oficial".
+const micro=JSON.parse(run("JSON.stringify(definicionPreset('Introducción a la Microeconomía','uc','COM'))"));
+chk('lo que el programa nombra en plural queda de cantidad abierta',
+  micro.some(e=>e[0]==='Pruebas'&&e[2]&&e[2].lista===true));
+chk('y ninguna categoría inventa cuántas evaluaciones son',
+  micro.every(e=>!e[2]||!Number.isInteger(e[2].slots)));
+
 console.log('\n=== Pero la lista de Comercial sigue siendo explícita ===');
 // Lo que se corrige es un ramo mal excluido, no la regla. Un ramo que en
 // Comercial lleva OTRA sigla es otro curso aunque se llame igual, y heredar
