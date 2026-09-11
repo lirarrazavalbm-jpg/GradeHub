@@ -72,8 +72,13 @@ chk('pero un rechazo del servidor no se pierde en silencio',
   /if\(error\)throw error;/.test(app) && /No se pudieron subir/.test(app));
 
 console.log('\n=== Quien no quiera verla, no la ve ===');
-chk('el interruptor esconde la sección', /if\(!S\.ocultarCurso\)/.test(render));
-chk('y existe en Ajustes', /toggleVerCurso/.test(app));
+// El interruptor pasó de Ajustes al editor de secciones de Estadísticas, que es
+// la pantalla que configura. Esconder esta sección es lo mismo que esconder
+// cualquier otra y no merece un lugar aparte.
+chk('la sección se puede esconder como cualquier otra',
+  /\{id:'curso',\s*titulo:'Cómo vas en tus ramos'\}/.test(app) && /function toggleSeccionStats/.test(app));
+chk('y escondida no se consulta al servidor',
+  /if\(!seccionOculta\('curso'\)\)pintarPosicionesCurso\(\)/.test(render));
 // El total va al lado del porcentaje: con cinco participantes "75%" solo puede
 // ser 0, 25, 50, 75 o 100, y sin saber cuántos son suena más fino de lo que es.
 chk('el porcentaje nunca va solo, siempre con cuántos son',

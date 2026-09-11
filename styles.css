@@ -1817,9 +1817,6 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    teñir un 30% de rojo diría que vas mal cuando puede ser un curso exigente. */
 .stats-curso-val{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:1.0625rem;font-weight:750;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
 .stats-curso-val small{font-size:0.59375rem;font-weight:700;letter-spacing:.035em;text-transform:uppercase;color:var(--fg3);}
-.settings-row-toggle{display:flex;align-items:flex-start;gap:14px;justify-content:space-between;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card);margin-bottom:17px;}
-.settings-row-toggle-t{font-size:0.84375rem;font-weight:650;color:var(--fg);}
-.settings-row-toggle .toggle{flex-shrink:0;margin-top:2px;}
 
 /* La marca del metodo usado la vez anterior. Es una pista, no una recomendacion:
    no compite con el boton ni sugiere que ese camino sea el correcto, solo evita
@@ -1864,3 +1861,19 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
   .ag-priority-card:hover .ag-priority-bar,
   .stats-curso-row:hover .stats-curso-color{transform:none;box-shadow:none;}
 }
+
+/* ── Editar las secciones de Estadísticas ────────────────────────────────── */
+.sec-lista{display:flex;flex-direction:column;gap:2px;margin-bottom:18px;}
+.sec-row{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border);}
+.sec-row:last-child{border-bottom:none;}
+/* Una sección escondida se sigue leyendo, pero apagada: hay que poder
+   reconocerla para volver a encenderla. */
+.sec-row.oculta .sec-nombre{color:var(--fg3);}
+.sec-nombre{flex:1;min-width:0;font-size:0.875rem;font-weight:600;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sec-mover{display:flex;flex-direction:column;gap:1px;flex-shrink:0;}
+.sec-mover button{display:flex;align-items:center;justify-content:center;width:30px;height:22px;padding:0;border:0;border-radius:6px;background:none;color:var(--fg2);cursor:pointer;transition:background var(--motion-fast),color var(--motion-fast);}
+.sec-mover button:hover:not(:disabled){background:var(--muted);color:var(--fg);}
+/* Deshabilitado y no escondido: el primero de la lista no puede subir, y
+   quitar el botón haría saltar la fila entera al reordenar. */
+.sec-mover button:disabled{opacity:.25;cursor:default;}
+.sec-mover .ic{width:15px;height:15px;}
