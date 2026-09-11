@@ -1754,6 +1754,19 @@ function corregirRecuperativo(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r||!r.recuperativoRendido)return;
   r.recuperativoRendido=null;save();renderRamo();
 }
+function confirmarEximicionActual(){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  const estado=estadoEximicion(r);
+  if(!estado||!estado.puedeConfirmar){showToast('La eximición todavía no se puede confirmar',true);return;}
+  showConfirm('¿Confirmar tu eximición?',
+    `Tu nota de presentación es ${nf(estado.promedio)}. Confirma que ya ingresaste todas tus notas previas al examen y que cumples la asistencia de Taller exigida por tu sección. El examen dejará de aparecer y tu presentación quedará como nota final.`,()=>{
+      r.eximicionConfirmada=true;save();track('confirmar_eximicion');renderRamo();
+    },{label:'Confirmar eximición',danger:false});
+}
+function corregirEximicionActual(){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r||r.eximicionConfirmada!==true)return;
+  delete r.eximicionConfirmada;save();renderRamo();
+}
 function declararAusenciaJustificada(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const regla=r.reglasAusenciaJustificada;

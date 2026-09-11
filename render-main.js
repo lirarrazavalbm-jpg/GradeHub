@@ -252,6 +252,7 @@ function renderRamo(){
   const avg=ramoAvg(r);
   const calculo=calculoRamoConCompuertas(r);
   const recuperativo=estadoRecuperativo(r,calculo);
+  const eximicion=estadoEximicion(r);
   const descartes=calculo.res.drops||[];
   const avgEl=document.getElementById('ramo-hero-avg');
   if(avg!==null){
@@ -263,10 +264,11 @@ function renderRamo(){
     avgEl.textContent='Sin notas';avgEl.className='ramo-num empty';
   }
   const tp=r.categorias.reduce((a,c)=>a+c.peso,0);
+  const categoriasVisibles=r.categorias.filter(c=>!(eximicion&&eximicion.activa&&eximicion.regla.ocultaEvaluacion===true&&eximicion.examenId===c.id));
   const crTxt=r.creditos?` · ${r.creditos} créditos`:'';
-  document.getElementById('ramo-hero-sub').textContent=r.categorias.length===0
+  document.getElementById('ramo-hero-sub').textContent=categoriasVisibles.length===0
     ?('Agrega evaluaciones para comenzar'+crTxt)
-    :`${r.categorias.length} ${r.categorias.length===1?'evaluación':'evaluaciones'} · ${r2(tp)}% ponderado${crTxt}`;
+    :`${categoriasVisibles.length} ${categoriasVisibles.length===1?'evaluación':'evaluaciones'} · ${r2(tp)}% ponderado${crTxt}`;
   const periodoEl=document.getElementById('pauta-periodo');
   if(periodoEl){
     const info=infoPeriodoPauta(r);
@@ -284,7 +286,6 @@ function renderRamo(){
   const chipEl=document.getElementById('ramo-min-chip');
   if(r.categorias.length>0){
     const categoriasActivas=resumenCategoriasCalculadas(r,calculo);
-    const eximicion=estadoEximicion(r);
     const totalPeso=categoriasActivas.reduce((a,c)=>a+c.peso,0);
     let pesoConNotas=0,sumaPonderada=0;
     categoriasActivas.forEach(c=>{if(c.valor!==null&&c.valor!==undefined){pesoConNotas+=c.peso;sumaPonderada+=c.valor*c.peso;}});
@@ -295,7 +296,7 @@ function renderRamo(){
     if(eximicion&&eximicion.activa){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip';
-      chipEl.textContent='Exento/a del Examen · puedes registrar una nota si lo rendiste';
+      chipEl.textContent=`Te eximiste del ${eximicion.regla.evaluacion}`;
     } else if(gateHit){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip bad';
@@ -383,6 +384,34 @@ function renderRamo(){
       <div class="reglas-cuerpo${abierto?' open':''}">${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>
     </div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
+
+  // Biocel exige asistencia de Taller, un dato que la app no tiene. Llegar al
+  // promedio solo habilita esta confirmación: nunca afirma la eximición sola.
+  const ew=document.getElementById('eximicion-warning');
+  if(ew&&eximicion&&eximicion.regla.requiereConfirmacion===true){
+    let texto='',accion='';
+    if(eximicion.puedeConfirmar){
+      texto=`<b>Por tus notas, puedes eximirte del ${esc(eximicion.regla.evaluacion)}.</b><br>Confirma que ingresaste todas tus notas previas al examen y que cumples la asistencia de Taller exigida por tu sección.`;
+      accion='<button type="button" onclick="confirmarEximicionActual()">Confirmar eximición</button>';
+    }else if(eximicion.activa){
+      texto=`<b>Te eximiste del ${esc(eximicion.regla.evaluacion)}.</b><br>Ya no aparece entre tus evaluaciones pendientes y tu nota de presentación queda como nota final.`;
+      accion='<button type="button" onclick="corregirEximicionActual()">Corregir confirmación</button>';
+    }else if(eximicion.confirmada){
+      const causa=eximicion.razon==='incompleto'
+        ? 'Todavía faltan notas previas al examen.'
+        : eximicion.razon==='minimo_categoria'
+          ? `Ya no se cumple el mínimo de ${nf(eximicion.minimoFallido.min)} en ${esc(eximicion.minimoFallido.evaluacion)}.`
+          : eximicion.razon==='examen_rendido'
+            ? `El ${esc(eximicion.regla.evaluacion)} tiene una nota ingresada y vuelve a formar parte del cálculo.`
+            : `Tu nota de presentación quedó bajo ${nf(eximicion.regla.min)}.`;
+      texto=`<b>Tu confirmación se conserva, pero ya no se aplica.</b><br>${causa} Si vuelves a cumplir las condiciones, la eximición se activa sola.`;
+      accion='<button type="button" onclick="corregirEximicionActual()">Corregir confirmación</button>';
+    }
+    if(texto){
+      ew.style.display='flex';ew.className='weight-setup-nudge eximicion-note';
+      ew.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${texto}<div style="margin-top:8px;">${accion}</div></div>`;
+    }else{ew.style.display='none';ew.innerHTML='';}
+  }else if(ew){ew.style.display='none';ew.innerHTML='';}
 
   const aw=document.getElementById('ausencias-justificadas-warning');
   const ausencias=calculo.ausencias;
@@ -482,6 +511,9 @@ function renderRamo(){
     const notas=Array.isArray(cat.notas)?cat.notas:[];
     const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaHoraCorta(cat.fecha,cat.hora))}</span>`:'';
     const exenta=categoriaEximida(r,cat);
+    // La categoría sigue guardada intacta. Solo se oculta mientras la
+    // confirmación esté activa, para que corregirla la haga reaparecer.
+    if(exenta&&eximicion&&eximicion.regla.ocultaEvaluacion===true)return;
     // Sección de preset: fila directa, solo escribir la nota (estilo simulador)
     if(cat.directNota){
       // Preset con varios espacios (ej: Laboratorio = 3 notas que se promedian) — COLAPSABLE
