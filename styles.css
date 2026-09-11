@@ -1740,14 +1740,15 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    agregado más abajo la anuló sin querer, porque a igual especificidad gana
    el último. Dejándola acá, cualquier regla nueva que la pise se nota.
    ══════════════════════════════════════════════════════════════════════ */
+/* Un solo criterio de ancho desde el escritorio: casi toda la pantalla, con un
+   respiro a los lados, y un tope en píxeles que solo entra a jugar en monitores
+   enormes —ahí sí hay que frenar antes de que un renglón cruce medio metro de
+   vidrio—. Con topes fijos por breakpoint el margen saltaba de 0 a 80px según
+   el tamaño de la ventana, y al redimensionar se veía como un tirón. */
 @media(min-width:1024px){
-  .app{max-width:min(1040px,100%);}
-}
-@media(min-width:1280px){
-  .app{max-width:min(1200px,100%);}
+  .app{max-width:min(1800px,97%);}
 }
 @media(min-width:1440px){
-  .app{max-width:min(1360px,100%);}
   /* El espacio que sobra se gasta en una tercera columna de ramos, con cada
      tarjeta todavía en un ancho cómodo, y no en estirar el renglón. */
   #home-ramos{grid-template-columns:repeat(3,minmax(0,1fr));}
@@ -1759,19 +1760,28 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    el ancho, y el contraste se leía como un error de maquetación.
    ══════════════════════════════════════════════════════════════════════ */
 @media(min-width:768px){
+  /* La barra de avance de cada ramo va anclada al fondo de su tarjeta
+     (`.ramo-progress-track`, position:absolute con bottom). En una grilla las
+     celdas de una fila se estiran a la altura de la más alta, así que bastaba
+     con que un ramo tuviera el nombre en dos líneas —"Principios Ecológicos y
+     Medio Ambiente"— para que las barras de sus vecinas se fueran al fondo y
+     quedaran flotando lejos del texto: el hueco pasaba de 14px a 39px.
+     Sin estirar, cada tarjeta mide lo que necesita y su barra queda donde debe. */
+  #home-ramos{align-items:start;}
+
   /* Las dos prioridades estaban topeadas en 620px: en un monitor quedaban
      arrinconadas a la izquierda mientras "Después" cruzaba la pantalla.
      Siguen una debajo de la otra —la primera manda, y ponerlas lado a lado
      las haría gritar igual— pero ahora ocupan el ancho que hay. */
   .ag-priority-stack{max-width:none;}
 
-  /* La barra de orden se estira de extremo a extremo del encabezado, pero sus
-     botones NO: con columnas de 1fr cada uno se iría a un tercio del monitor y
-     un control secundario terminaría más grande que las evaluaciones. Se
-     quedan del ancho de su texto y se reparten dentro de la barra. */
+  /* Estirada de extremo a extremo, la barra dejaba de leerse como un selector
+     y parecía el encabezado de una tabla: "Recomendado" en un borde, "Peso" en
+     el otro y un campo gris en medio. Vuelve a ser un control compacto y se va
+     a la derecha, después del contenido, que es el orden en que importa. */
   .ag-priority-heading .ag-order-options{
-    width:100%;
-    grid-template-columns:repeat(3,max-content);
-    justify-content:space-between;
+    width:auto;
+    grid-template-columns:repeat(3,1fr);
+    margin-left:auto;
   }
 }
