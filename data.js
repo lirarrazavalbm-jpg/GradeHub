@@ -902,14 +902,23 @@ const PRESETS_UC={
 // solo para estos ramos confirmados: compartir todo por nombre podría aplicar
 // la pauta de otra facultad a un curso homónimo.
 const PRESETS_UC_COM=[
+  'Cálculo I',
   'Introducción al Álgebra Lineal',
   'Cálculo II',
   'Introducción a la Macroeconomía',
   'Probabilidad y Estadística',
   'Filosofía: ¿para qué?',
 ];
-// IMPORTANTE: los prospectos verificados son del plan común de INGENIERÍA.
-// "Cálculo I" de Comercial es OTRO curso (otra facultad/programa): no hereda estos pesos.
+// CÁLCULO I ES EL MISMO RAMO EN LAS DOS CARRERAS. Acá decía lo contrario —que el
+// de Comercial era otro curso de otra facultad y no heredaba estos pesos— y el
+// catálogo oficial de la UC dice que no: MAT1610 es UNA sola sigla, aparece en
+// la malla de Ingeniería Plan Común y en la de Comercial, con los mismos 10
+// créditos. No hay dos Cálculo I. Confirmado además por un estudiante de
+// Comercial que lo cursa.
+//
+// La distinción sí vale para el resto: los prospectos verificados son del plan
+// común de INGENIERÍA, y un ramo que en Comercial lleva otra sigla es otro curso
+// aunque se llame igual. Por eso esta lista es explícita y no "todo lo de UC".
 
 // ─── CRÉDITOS SCT DE INGENIERÍA UC ───────────────────────────────────────────
 // nombre del ramo → [créditos, sigla]
