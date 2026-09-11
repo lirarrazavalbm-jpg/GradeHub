@@ -5218,12 +5218,25 @@ function simGlobalClear(ramoId){
 }
 
 // Promedio proyectado: usa la nota hipotética si existe, si no la real del ramo
+// El promedio proyectado se le pide a `gpa`, la MISMA función que calcula el
+// número que el estudiante ve en su pantalla. Acá se calculaba aparte, con una
+// suma dividida por la cantidad de ramos, y eso lo dejaba diciendo otra cosa:
+// abrir el simulador y no tocar nada mostraba 6,22 cuando la app decía 6,03.
+//
+// No era un redondeo. `gpa` hace tres cosas que la cuenta a mano no hacía:
+// pondera por créditos cuando todos los ramos los tienen —un laboratorio de 0
+// créditos no mueve el promedio real, pero en un promedio simple pesa igual que
+// un ramo de 10—, filtra con `ramosDelPromedio` los que no corresponde contar
+// por separado, y le pasa el semestre entero a `ramoAvg` para resolver los
+// ramos vinculados.
+//
+// Duplicar ese cálculo era la causa: dos fórmulas para el mismo número siempre
+// terminan separándose. Las notas simuladas entran como `avgOverride`, que es
+// el mecanismo que `ramoAvg` ya respeta, y el resto lo resuelve `gpa`.
 function simGlobalAvg(){
-  const vals=S.ramos.map(r=>{
-    if(simGlobalState[r.id]!==undefined)return simGlobalState[r.id];
-    return ramoAvg(r);
-  }).filter(v=>v!==null&&v!==undefined);
-  return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+  const proyectado=S.ramos.map(r=>
+    simGlobalState[r.id]!==undefined?{...r,avgOverride:simGlobalState[r.id]}:r);
+  return gpa(proyectado);
 }
 
 function renderSimGlobal(){renderSimGlobalHero();renderSimGlobalList();}
