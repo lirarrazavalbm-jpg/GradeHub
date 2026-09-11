@@ -288,19 +288,18 @@ const ACENTOS={
 
 // Fondos y acentos son dos decisiones independientes. Cada fondo declara sus
 // superficies y texto en ambos modos: elegir Papel en claro no puede arrastrar
-// los textos de Pizarra oscuro, ni viceversa. Neutro conserva exactamente la
-// apariencia histórica para las cuentas que todavía no eligieron uno.
+// los textos de Pizarra oscuro, ni viceversa. Neutro es la base Editorial:
+// blanco y negro sin tinte. Cambia su presentación, no la preferencia guardada.
 const FONDOS={
   neutro:{
     nombre:'Neutro',
     claro:{
-      bg:'#f2f7f8',bg2:'#ffffff',card:'#ffffff',border:'#deebee',border2:'#bccdd2',muted:'#eaf2f4',
-      fg:'#07171b',fg2:'#40565b',fg3:'#5f7479',
+      bg:'#ffffff',bg2:'#ffffff',card:'#ffffff',border:'#e7e7e9',border2:'#b8b8be',muted:'#f2f2f4',
+      fg:'#19191c',fg2:'#54545b',fg3:'#6c6c74',
     },
     oscuro:{
-      // bg conserva el fondo de og.png y la apariencia histórica por defecto.
-      bg:'#05070a',bg2:'#0a0f13',card:'#111820',border:'#20303a',border2:'#324755',muted:'#151d26',
-      fg:'#eef4f6',fg2:'#99aab2',fg3:'#71858f',
+      bg:'#080809',bg2:'#080809',card:'#111113',border:'#27272c',border2:'#55555e',muted:'#1b1b1f',
+      fg:'#f1f1f3',fg2:'#b4b4bd',fg3:'#92929c',
     },
   },
   pizarra:{

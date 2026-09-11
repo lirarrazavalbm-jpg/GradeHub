@@ -120,9 +120,13 @@ comunica como cierre y nunca como aprobación o celebración verde.
 gana contra una clase sola aunque aparezca antes; un padding especializado usa
 `input.clase` o `.contenedor input`, no `!important`.
 
-**La identidad tipográfica es Onest variable 400–800.** No vive solo en
-`styles.css`: revisa también los estilos inline de `app.js` y las páginas 404,
-preguntas y privacidad. Las notas y columnas numéricas conservan `tabular-nums`.
+**La dirección visual es Editorial, con tipografía del sistema (`--font-ui`).**
+No se descargan fuentes. Revisa también los estilos inline de `app.js` y las
+páginas 404, preguntas, términos y privacidad. Las notas y columnas numéricas
+conservan `tabular-nums`. El color del ramo vive en su línea lateral, no tiñe
+su nota; el avance de Inicio es un riel neutro con `scaleX`, no un fondo relleno.
+Las superficies de Neutro son blancas/casi negras; Papel y Pizarra siguen siendo
+preferencias válidas. No cambies el semáforo para armonizar la interfaz.
 
 **`gradehub_v1` es la clave de localStorage.** No se renombra sin migración.
 

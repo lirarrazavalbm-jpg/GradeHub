@@ -2803,7 +2803,7 @@ function openReportModal(ramoId,conservarBorrador=false){
     <div class="rep-row">
       <div class="rep-name"><input type="text" id="m-rep-nombre-${i}" value="${esc(e.nombre)}" placeholder="Ej: Prueba ${i+1}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-label="Nombre de la evaluaci\u00f3n ${i+1}" oninput="actualizarReporteNombre(${i},this)" style="width:100%;min-height:44px;padding:9px 10px;border:1.5px solid var(--border2);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;font-weight:600;"/>${e.slots?` <span class="rep-tag">${e.slots} notas</span>`:''}${e.min?` <span class="rep-tag">m\u00edn ${nf(e.min)}</span>`:''}</div>
       <span class="rep-peso-field"><input class="rep-peso-input" type="text" inputmode="decimal" id="m-rep-peso-${i}" name="ponderacion-${i}" value="${r2(e.peso)}" maxlength="5" autocomplete="off" aria-describedby="m-rep-balance" oninput="actualizarReportePeso(${i},this)" onblur="normalizarReportePeso(${i},this)"/><span class="rep-peso-suffix" aria-hidden="true">%</span></span>
-      <button type="button" onclick="quitarReporteFila(${i})" aria-label="Quitar ${esc(e.nombre||'evaluaci\u00f3n')} del reporte" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem 'Onest',sans-serif;cursor:pointer;">Quitar</button>
+      <button type="button" onclick="quitarReporteFila(${i})" aria-label="Quitar ${esc(e.nombre||'evaluaci\u00f3n')} del reporte" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem var(--font-ui);cursor:pointer;">Quitar</button>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Reportar pauta</div>
@@ -2813,7 +2813,7 @@ function openReportModal(ramoId,conservarBorrador=false){
     </p>
     <div class="rep-box">
       ${filas}
-      <button type="button" onclick="agregarReporteFila()" style="width:100%;margin:8px 0 4px;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 0.8125rem 'Onest',sans-serif;cursor:pointer;">+ Agregar evaluaci\u00f3n</button>
+      <button type="button" onclick="agregarReporteFila()" style="width:100%;margin:8px 0 4px;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 0.8125rem var(--font-ui);cursor:pointer;">+ Agregar evaluaci\u00f3n</button>
       <div class="rep-total ${estado.lista?'ok':'warn'}" id="m-rep-total" role="status" aria-live="polite" tabindex="-1">
         <span>Suma</span><span id="m-rep-suma">${r2(estado.total)}%</span>
       </div>
@@ -3450,20 +3450,20 @@ function renderPautaManualModal(){
   const disponibles=plantillasPauta(S.tenant);
   const plantillas=(puedeUsarPlantillaPauta()&&disponibles.length)?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
     <div style="font-size:0.8125rem;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Onest',sans-serif;cursor:pointer;">${p.label}</button>`).join('')}</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px var(--font-ui);cursor:pointer;">${p.label}</button>`).join('')}</div>
     <div style="font-size:0.75rem;color:var(--fg2);line-height:1.4;margin-top:8px;">Los pesos quedan en 0%. Confírmalos con el programa del curso.</div>
   </div>`:'';
   const duplicar=fuentes.length?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);">
     <div style="font-size:0.8125rem;font-weight:700;color:var(--fg);margin-bottom:4px;">¿Ya la tienes armada en otro ramo?</div>
     <div style="font-size:0.75rem;color:var(--fg2);line-height:1.4;margin-bottom:8px;">Copia evaluaciones y porcentajes. Tus notas y fechas no se copian.</div>
-    <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px 'Onest',sans-serif;cursor:pointer;">Usar pauta</button></div>
+    <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px var(--font-ui);cursor:pointer;">Usar pauta</button></div>
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>{
     // El editor nunca decide un porcentaje. Solo calcula el resto y se lo
     // ofrece a la fila vacía que la persona eligió explícitamente.
     const resto=restoParaPautaFila(i);
     const errorEnFila=pautaDraftErrorIndex===i;
-    const usarResto=fila.peso===0?`<button type="button" onclick="usarRestoPauta(${i})" style="margin-top:4px;padding:0;border:0;background:none;color:var(--primary);font:700 10px 'Onest',sans-serif;cursor:pointer;white-space:nowrap;">${resto>0?`Usar ${r2(resto)}%`:'Usar el resto'}</button>`:'';
+    const usarResto=fila.peso===0?`<button type="button" onclick="usarRestoPauta(${i})" style="margin-top:4px;padding:0;border:0;background:none;color:var(--primary);font:700 10px var(--font-ui);cursor:pointer;white-space:nowrap;">${resto>0?`Usar ${r2(resto)}%`:'Usar el resto'}</button>`:'';
     const cantidad=fila.varias?`<div style="grid-column:1 / -1;display:flex;align-items:center;gap:7px;padding:7px 9px;margin-top:-2px;border-radius:9px;background:var(--muted);font-size:0.75rem;color:var(--fg2);"><span style="flex:1;min-width:0;">Se promedian varias notas</span><label style="display:flex;align-items:center;gap:4px;white-space:nowrap;">Esperas <input type="text" inputmode="numeric" id="m-pauta-cantidad-${i}" value="${fila.cantidad||''}" placeholder="—" maxlength="3" oninput="actualizarPautaCantidad(${i},this.value)" aria-label="Cantidad esperada de notas para ${esc(fila.nombre||'evaluación')}" style="width:32px;padding:5px 4px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit;text-align:center;"/> notas</label></div>`:'';
     return `
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 52px 30px;gap:6px;align-items:center;margin:8px 0;">
@@ -3488,7 +3488,7 @@ function renderPautaManualModal(){
       <span>Evaluación</span><span>Peso</span><span title="Son varias notas que se promedian" style="text-align:center;">Notas</span><span></span>
     </div>
     <div>${filas}</div>
-    <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Onest',sans-serif;cursor:pointer;">+ Otra evaluación</button>
+    <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px var(--font-ui);cursor:pointer;">+ Otra evaluación</button>
     <div class="modal-btns" style="margin-top:14px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="guardarPautaManual()">Guardar</button>
@@ -4290,7 +4290,7 @@ function pasoRamosSemestreAnterior(){
   const filas=histManual.ramos.map((r,i)=>`
     <div class="rep-row">
       <div class="rep-name">${esc(r.nombre)}${r.creditos?` <span class="rep-tag">${r.creditos} cr</span>`:''}</div>
-      <button type="button" onclick="quitarRamoSemestreAnterior(${i})" aria-label="Quitar ${esc(r.nombre)}" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem 'Onest',sans-serif;cursor:pointer;">Quitar</button>
+      <button type="button" onclick="quitarRamoSemestreAnterior(${i})" aria-label="Quitar ${esc(r.nombre)}" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem var(--font-ui);cursor:pointer;">Quitar</button>
     </div>`).join('');
   return `
     <div class="modal-title">Agregar un semestre anterior</div>
@@ -4479,7 +4479,7 @@ function abrirImportar(){
       <button class="btn-confirm" onclick="confirmarImportar()">Importar</button>
     </div>
     ${hayRespaldoPreImport()?`<p style="text-align:center;margin:14px 0 0;font-size:0.78125rem;">
-      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:'Onest',sans-serif;font-size:0.78125rem;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
+      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:var(--font-ui);font-size:0.78125rem;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
   openModal();
   setTimeout(()=>document.getElementById('import-text').focus(),100);
 }
