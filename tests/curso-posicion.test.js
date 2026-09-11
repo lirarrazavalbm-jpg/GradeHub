@@ -35,8 +35,13 @@ chk('y no se filtra cuántos faltan para llegar',
 console.log('\n=== Solo participan los ramos con sigla ===');
 // Sin sigla no hay forma de saber que la "Dinámica" de uno es la del otro:
 // juntar dos ramos distintos haría que la posición no signifique nada.
-chk('el cliente filtra por sigla antes de mandar nada',
-  /subirNotasCurso[\s\S]{0,400}filter\(x=>x&&x\.sigla\)/.test(app));
+// Un ramo NO guarda su sigla como propiedad: la app la deriva del nombre. La
+// primera versión filtraba por `r.sigla`, que es undefined en todos, así que no
+// subía nada y la sección no aparecía nunca.
+chk('la sigla se deriva, no se asume guardada en el ramo',
+  /function siglaParaCurso[\s\S]{0,200}siglaDeRamo\(r\)/.test(app));
+chk('y un ramo sin sigla se omite en vez de mandarse',
+  /const sigla=siglaParaCurso\(r\);\s*\n\s*if\(!sigla\)continue;/.test(app));
 chk('y el servidor descarta la fila sin sigla', /sigla is null or tenant is null/.test(sql));
 
 console.log('\n=== Se manda el promedio que el estudiante ya ve ===');
@@ -53,6 +58,11 @@ chk('la comparación se pinta aparte y no bloquea el render',
   /body\.innerHTML=html;[\s\S]{0,300}pintarPosicionesCurso\(\)/.test(render) &&
   !/await pintarPosicionesCurso/.test(render));
 chk('si la consulta falla, la pantalla sigue de pie', /catch\(e\)\{\}/.test(app));
+// Un catch mudo fue lo que hizo que esto llevara días sin funcionar sin que
+// nadie se enterara. El cliente de Supabase DEVUELVE el error en vez de
+// lanzarlo, así que sin este `throw` el catch no se activa jamás.
+chk('pero un rechazo del servidor no se pierde en silencio',
+  /if\(error\)throw error;/.test(app) && /No se pudieron subir/.test(app));
 
 console.log('\n=== Quien no quiera verla, no la ve ===');
 chk('el interruptor esconde la sección', /if\(!S\.ocultarCurso\)/.test(render));
