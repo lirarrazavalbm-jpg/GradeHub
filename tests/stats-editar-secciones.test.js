@@ -58,5 +58,17 @@ chk('el botón Editar está en la barra de Estadísticas',
 chk('y el interruptor suelto de Ajustes ya no existe',
   !/toggleVerCurso/.test(app) && !/ocultarCurso/.test(app));
 
+console.log('\n=== Los títulos explican qué entrega cada sección ===');
+chk('el avance se nombra en el encabezado de la sección',
+  /piezas\.ritmo=`[\s\S]*?section-hd-title">Avance del semestre<\/span>/.test(render));
+chk('la tarjeta no repite el título de avance',
+  !/class="stat-label">Avance del semestre<\/div>/.test(render));
+chk('las prioridades se presentan como una ayuda para hoy',
+  /piezas\.prioridades=`[\s\S]*?section-hd-title">Tus prioridades hoy<\/span>/.test(render));
+chk('la comparación dice explícitamente que es respecto a los demás',
+  /piezas\.curso=`[\s\S]*?section-hd-title">Cómo vas respecto a los demás<\/span>/.test(render));
+chk('el rango conserva su título',
+  /piezas\.rango=`[\s\S]*?section-hd-title">Rango del semestre<\/span>/.test(render));
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);

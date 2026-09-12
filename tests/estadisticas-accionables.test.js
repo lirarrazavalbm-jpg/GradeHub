@@ -16,17 +16,18 @@ chk('el estado temprano reconoce el semestre sin notas y lo que ya está configu
   stats.includes('Tu semestre todavía está empezando.')&&stats.includes('evaluaciones configuradas'));
 chk('la situación parte por el avance y deja el promedio general en Inicio',
   /stats-situation-card[^>]*aria-label="\$\{avance\.pct\}% de las evaluaciones evaluado"/.test(stats)&&
-  /stats-situation-top[\s\S]{0,500}<div class="stat-label">Avance del semestre<\/div>[\s\S]{0,300}\$\{avance\.pct\}%/.test(stats)&&
+  /section-hd-title">Avance del semestre<\/span>[\s\S]{0,500}stats-situation-top[\s\S]{0,300}\$\{avance\.pct\}%/.test(stats)&&
+  !/class="stat-label">Avance del semestre<\/div>/.test(stats)&&
   !/stats-situation-top[\s\S]{0,700}Promedio actual/.test(stats));
 chk('la prioridad usa la misma cuenta de nota necesaria',
-  stats.includes('const falta=loQueFaltaPorRamo(S.ramos);')&&stats.includes('Qué mirar primero')&&
+  stats.includes('const falta=loQueFaltaPorRamo(S.ramos);')&&stats.includes('Tus prioridades hoy')&&
   /falta\.slice\(0,3\)/.test(stats));
 // El "Mapa de tus ramos" listaba los ramos otra vez, con su color, su avance y
 // su promedio: lo mismo que "Mis ramos" en Inicio, en la pantalla de al lado.
 // Se retiró para dejarle el espacio a algo que Inicio no puede mostrar.
 //
 // Lo que sí era propio del mapa —el estado por ramo, "Necesitas 5,2 en lo que
-// queda"— se conserva en "Qué mirar primero", que lo muestra para los tres que
+// queda"— se conserva en "Tus prioridades hoy", que lo muestra para los tres que
 // más exigen. Para el resto deja de estar a la vista en Estadísticas; se ve
 // entrando al ramo.
 chk('el mapa ya no duplica la lista de ramos de Inicio',

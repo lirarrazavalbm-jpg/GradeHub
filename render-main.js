@@ -711,11 +711,11 @@ function renderStats(){
     };
     piezas.ritmo=`
     <div class="section-hd" style="padding:6px 20px 8px;">
-      <span class="section-hd-title">Ritmo del semestre</span>
+      <span class="section-hd-title">Avance del semestre</span>
     </div>
     <div class="stat-card stats-progress-card${avance.pct===100?' is-complete':''} stats-situation-card" role="progressbar" aria-label="${avance.pct}% de las evaluaciones evaluado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance.pct}" style="--stats-progress:${avance.pct}%;--stats-progress-end:${Math.min(100,avance.pct+avanceTail)}%;margin:0 20px 16px;">
       <div class="stats-situation-top">
-        <div><div class="stat-label">Avance del semestre</div><div class="stat-val stats-situation-value">${avance.pct}%</div><div class="stat-sub">del peso evaluable ya tiene nota</div></div>
+        <div><div class="stat-val stats-situation-value">${avance.pct}%</div><div class="stat-sub">del peso evaluable ya tiene nota</div></div>
         <div class="stats-situation-progress"><span>${totalNotas}</span><small>nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}</small></div>
       </div>
       <div class="stats-situation-reading">${lectura}</div>
@@ -726,7 +726,7 @@ function renderStats(){
       if(falta.length){
         piezas.prioridades=`
         <div class="section-hd" style="padding:0 20px 8px;">
-          <span class="section-hd-title">Qué mirar primero</span>
+          <span class="section-hd-title">Tus prioridades hoy</span>
         </div>
         <div style="padding:0 20px;">
           <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:0 0 10px;">Los ramos que más nota te exigen en lo pendiente. Tócalos para revisar su pauta.</p>
@@ -740,7 +740,7 @@ function renderStats(){
       // secundario.
       piezas.curso=`
         <div class="section-hd" style="padding:20px 20px 8px;">
-          <span class="section-hd-title">Cómo vas en tus ramos</span>
+          <span class="section-hd-title">Cómo vas respecto a los demás</span>
         </div>
         <div id="stats-curso" class="stats-curso"></div>`;
       if(proy){
