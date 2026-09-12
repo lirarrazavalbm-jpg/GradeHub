@@ -26,7 +26,19 @@ chk('la interfaz copia solo las columnas permitidas de la RPC',/agentesConectado
 chk('desconectar pide confirmación y revoca solo el id elegido',/function confirmarRevocarAgente/.test(app)&&/showConfirm\(`¿Desconectar/.test(app)&&llamaRpc('revocar_agente',',\\{p_id:id\\}'));
 
 console.log('\n=== Los permisos se entienden antes de conectar ===');
-chk('explica lo que el agente puede hacer y el límite de las notas',/puede ver tus ramos, notas y fechas; agregar ramos y proponer pautas/i.test(app)&&/No puede escribir tus notas\./.test(app));
+// Se comprueban los CONCEPTOS y no la frase: el texto se reescribió al ordenar
+// la pantalla y una comprobación literal convierte cualquier mejora de copy en
+// un test rojo. Lo que no puede desaparecer es qué ve, qué puede hacer y el
+// límite de las notas — eso es lo que la persona necesita leer antes de
+// conectar algo a sus datos.
+const explica=/<div class="agent-explainer">[\s\S]*?<\/div>/.exec(app);
+chk('la pantalla explica qué puede hacer el agente',!!explica);
+if(explica){
+  const t=explica[0];
+  chk('dice que ve ramos, notas y fechas',/ramos/i.test(t)&&/notas/i.test(t)&&/fechas/i.test(t));
+  chk('dice que puede agregar un ramo y proponer una pauta',/agregar un ramo/i.test(t)&&/pauta/i.test(t));
+  chk('y dice el límite: no escribe notas',/no puede escribir tus notas/i.test(t));
+}
 chk('el código y las fichas siguen legibles en pantalla angosta',/\.agent-code-value\{[^}]*font-variant-numeric:tabular-nums/.test(css)&&/\.agent-link-heading b\{[^}]*text-overflow:ellipsis/.test(css));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
