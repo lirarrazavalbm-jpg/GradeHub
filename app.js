@@ -5115,12 +5115,15 @@ function proyeccionSemestre(ramos){
 
 // Qué necesita cada ramo en lo que le queda, ordenado por dificultad. Lo que
 // pide 6,8 va primero: es donde hay que decidir hoy, no al final del semestre.
+// Un ramo sin ninguna nota devuelve el 4,0 genérico de la escala, pero eso no
+// describe la situación de esa persona y puede llenar los tres cupos dejando
+// fuera un ramo que sí tiene una exigencia calculada desde sus resultados.
 function loQueFaltaPorRamo(ramos){
   return (ramos||[]).map(r=>{
     const avg=ramoAvg(r);
     const necesita=notaNecesaria(r);
     return {ramo:r,avg,necesita,abierto:!!reglaDescarteConCantidadAbierta(r)};
-  }).filter(x=>x.necesita!==null)
+  }).filter(x=>x.avg!==null&&x.necesita!==null)
     .sort((a,b)=>b.necesita-a.necesita);
 }
 

@@ -73,5 +73,23 @@ chk('y el número es lo que hay que sacar en lo que queda',
 const sinPauta = normalize({ ramos: [ramo('Vacio', [])] }).ramos;
 chk('un ramo sin pauta no aparece en la lista', loQueFaltaPorRamo(sinPauta).length === 0);
 
+console.log('\n=== Una prioridad necesita información real del estudiante ===');
+// Principios ya tiene una prueba: con 5,0 en el 25% necesita 3,67 en el resto.
+// Tres ramos sin ninguna nota devuelven el 4,0 genérico y hoy ocupan los tres
+// cupos de la pantalla, escondiendo el único cálculo que sí describe cómo va.
+const conRamosSinEmpezar = normalize({ ramos: [
+  ramo('Principios Ecológicos', [cat('p1', 25, 5.0), cat('p2', 40, null), cat('p3', 35, null)]),
+  ramo('Sin empezar A', [cat('a', 100, null)]),
+  ramo('Sin empezar B', [cat('b', 100, null)]),
+  ramo('Sin empezar C', [cat('c', 100, null)]),
+] }).ramos;
+const prioridadesConDatos = loQueFaltaPorRamo(conRamosSinEmpezar);
+chk('Principios no queda tapado por tres ramos sin notas',
+  prioridadesConDatos[0]?.ramo.nombre === 'Principios Ecológicos');
+chk('el cálculo mostrado se apoya en una nota real',
+  prioridadesConDatos.every(x => x.avg !== null));
+chk('con 5,0 en el primer 25% pide 3,67 en lo pendiente',
+  cerca(prioridadesConDatos[0]?.necesita, 3.67));
+
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
