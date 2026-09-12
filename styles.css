@@ -1969,3 +1969,10 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .prop-nota-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .prop-nota-row label{font-size:0.8125rem;color:var(--fg2);}
 .prop-nota-fuente{margin-bottom:4px;font-size:0.75rem;line-height:1.4;color:var(--fg3);}
+
+/* Cada casilla de un grupo abre su propio detalle: hasta ahora solo aceptaba el
+   número, y la fecha existía únicamente para el grupo entero. */
+.eval-sub-open{display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:1;min-width:0;padding:4px 0;border:0;background:transparent;text-align:left;cursor:pointer;font-family:inherit;}
+.eval-sub-open:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:8px;}
+.eval-sub-fecha{font-size:0.6875rem;color:var(--fg3);}
+.eval-sub-fecha.vacia{color:var(--border2);}

@@ -1871,10 +1871,20 @@ function setSlotNota(catId,slot,raw){
   const cat=r.categorias.find(c=>c.id===catId);if(!cat)return;
   const promedioAntes=ramoAvg(r);const gpaAntes=gpa(S.ramos);
   const txt=String(raw||'').trim();
-  cat.notas=cat.notas.filter(n=>n.slot!==slot);
-  if(txt!==''){
-    const val=parseNota(txt);
-    if(!isNaN(val))cat.notas.push({id:uid(),nombre:etiquetaCasilla(r,cat,slot),valor:val,peso:1,slot});
+  // La casilla se EDITA, no se rehace. Antes se borraba y se volvía a crear, y
+  // con eso se perdía todo lo que no fuera el número: la fecha de esa casilla,
+  // su hora y el nombre que le hubieran puesto. Escribir la nota del Control 2
+  // borraba que era el 18 de octubre.
+  const existente=cat.notas.find(n=>n.slot===slot);
+  const val=txt===''?NaN:parseNota(txt);
+  if(txt!==''&&!isNaN(val)){
+    if(existente)existente.valor=val;
+    else cat.notas.push({id:uid(),nombre:etiquetaCasilla(r,cat,slot),valor:val,peso:1,slot});
+  }else if(existente){
+    // Vaciar la nota no borra la casilla si tiene fecha: queda pendiente, que
+    // es lo que dice "esto se rinde ese día y todavía no tengo la nota".
+    if(existente.fecha)existente.valor=null;
+    else cat.notas=cat.notas.filter(n=>n.slot!==slot);
   }
   save();track('set_nota_slot');renderRamo();
   const notaValida=txt!==''&&!isNaN(parseNota(txt));
@@ -4036,6 +4046,7 @@ let propuestasPautaAgente=[],propuestasPautaCargando=false;
 // Las propuestas de notas van en su propio arreglo: el modal de pautas lista
 // evaluaciones con pesos y mostrarlas ahí las leería como una pauta.
 let propuestasNotasAgente=[];
+let propuestasFechasAgente=[];
 let _agenteCodigoTimer=null;
 
 function fechaAgente(valor,vacio){
@@ -4236,6 +4247,128 @@ async function revocarAgente(id){
 // Lo que llega de la base se sanea igual que la pauta: viene de un agente, o
 // sea de texto que alguien más escribió. Una nota fuera de escala o una casilla
 // absurda se descartan acá y no llegan a ofrecerse.
+// Mismo saneo que las notas: llega de un agente, o sea de texto que escribió
+// otro. Una fecha con formato raro o de otro año se descarta acá.
+const FECHA_PROP_RE=/^\d{4}-\d{2}-\d{2}$/;
+function propuestaFechasLimpia(valor){
+  if(!valor||typeof valor!=='object')return null;
+  const id=String(valor.id||'');
+  const ramo=String(valor.ramo||'').trim();
+  const ramoKey=String(valor.ramo_key||'').trim();
+  const fuente=String(valor.fuente||'').trim();
+  if(!/^[0-9a-f-]{36}$/i.test(id)||!ramo||!ramoKey||!fuente||!Array.isArray(valor.evaluaciones))return null;
+  const anio=new Date().getFullYear();
+  const vistas=new Set();
+  const fechas=[];
+  for(const fila of valor.evaluaciones){
+    const evaluacion=String(fila&&fila.evaluacion||'').trim();
+    const fecha=String(fila&&fila.fecha||'').trim();
+    const hora=fila&&fila.hora?String(fila.hora).trim():null;
+    const casilla=fila&&fila.casilla==null?null:Number(fila.casilla);
+    const clave=normName(evaluacion)+'#'+(casilla==null?'':casilla);
+    if(!evaluacion||!FECHA_PROP_RE.test(fecha)||vistas.has(clave))return null;
+    const y=Number(fecha.slice(0,4));
+    if(y<anio-1||y>anio+1)return null;
+    if(hora&&!HORA_RE.test(hora))return null;
+    if(casilla!==null&&(!Number.isInteger(casilla)||casilla<1||casilla>100))return null;
+    vistas.add(clave);fechas.push({evaluacion,fecha,hora:hora||null,casilla});
+  }
+  if(!fechas.length||fechas.length>60)return null;
+  return {id,ramo,ramoKey,fuente,fechas,createdAt:valor.created_at||null};
+}
+function propuestasFechasDeRamo(ramo){
+  if(!ramo)return [];
+  const clave=ramo.origen&&ramo.origen.ramoKey;
+  return propuestasFechasAgente.filter(p=>
+    (clave&&p.ramoKey===clave)||normName(p.ramo)===normName(ramo.nombre));
+}
+// Escribe una fecha propuesta. Con casilla va a esa casilla del grupo —y la
+// crea pendiente si no existía, que es el caso normal: la fecha se sabe antes
+// que la nota—; sin casilla va a la categoría, que es la fecha del grupo.
+function escribirFechaPropuesta(ramo,cat,prop){
+  if(!cat)return false;
+  if(prop.casilla){
+    const slots=Number.isInteger(cat.slots)&&cat.slots>1?cat.slots:1;
+    if(prop.casilla>slots)return false;
+    cat.notas=Array.isArray(cat.notas)?cat.notas:[];
+    let n=cat.notas.find(x=>x.slot===prop.casilla);
+    if(!n){
+      n={id:uid(),nombre:etiquetaCasilla(ramo,cat,prop.casilla),valor:null,peso:1,slot:prop.casilla};
+      cat.notas.push(n);
+    }
+    marcarFechaUsuario(n,prop.fecha,prop.hora||'');
+    return true;
+  }
+  marcarFechaUsuario(cat,prop.fecha,prop.hora||'');
+  return true;
+}
+async function aplicarPropuestaFechas(id,valores){
+  const propuesta=propuestasFechasAgente.find(p=>p.id===id);
+  if(!propuesta)return;
+  const ramo=S.ramos.find(r=>propuestasFechasDeRamo(r).some(p=>p.id===id));
+  if(!ramo){showToast('Ese ramo ya no está en tu semestre',true);return;}
+  const aplicar=(valores&&valores.length?valores:propuesta.fechas);
+  try{
+    await resolverPropuestaPauta(id,'aplicada');
+    propuestasFechasAgente=propuestasFechasAgente.filter(p=>p.id!==id);
+    let puestas=0;
+    aplicar.forEach(f=>{
+      const cat=(ramo.categorias||[]).find(c=>normName(c.nombre)===normName(f.evaluacion));
+      if(escribirFechaPropuesta(ramo,cat,f))puestas++;
+    });
+    save();
+    track('fechas_agente_confirmadas',{fechas:puestas,editadas:!!(valores&&valores.length)});
+    closeModal();
+    if(currentRamoId===ramo.id)renderRamo();else renderHome();
+    if(typeof renderAgenda==='function')renderAgenda();
+    showToast(puestas===aplicar.length?`${puestas} fecha${puestas!==1?'s':''} guardada${puestas!==1?'s':''}`
+      :`Guardamos ${puestas} de ${aplicar.length}: el resto no calzó con las evaluaciones del ramo`,puestas!==aplicar.length);
+  }catch(e){showToast('No pudimos guardar estas fechas. Intenta de nuevo.',true);}
+}
+function abrirEditarPropuestaFechas(id){
+  const propuesta=propuestasFechasAgente.find(p=>p.id===id);
+  if(!propuesta)return;
+  const filas=propuesta.fechas.map((f,i)=>`
+    <div class="prop-nota-row">
+      <label for="prop-fecha-${i}">${esc(f.evaluacion)}${f.casilla?` · casilla ${f.casilla}`:''}</label>
+      <input type="date" id="prop-fecha-${i}" value="${esc(f.fecha)}"/>
+    </div>`).join('');
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Revisar las fechas propuestas</div>
+    <p class="settings-help" style="margin-top:0;">Cambia lo que no calce y guarda. Nada se aplica hasta que aprietes Guardar.</p>
+    <div class="prop-nota-lista">${filas}</div>
+    <div class="prop-nota-fuente">Según el agente: ${esc(propuesta.fuente)}</div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="guardarPropuestaFechasEditada('${esc(id)}')">Guardar</button>
+    </div>`;
+  openModal();
+}
+function guardarPropuestaFechasEditada(id){
+  const propuesta=propuestasFechasAgente.find(p=>p.id===id);
+  if(!propuesta)return;
+  const valores=[];
+  for(let i=0;i<propuesta.fechas.length;i++){
+    const campo=document.getElementById('prop-fecha-'+i);
+    const v=(campo&&campo.value||'').trim();
+    // Vaciar una fila la omite. No se aplica la fecha propuesta "por si acaso":
+    // borrarla es lo que la persona quiso decir.
+    if(!FECHA_PROP_RE.test(v))continue;
+    valores.push({...propuesta.fechas[i],fecha:v});
+  }
+  if(!valores.length){showToast('No quedó ninguna fecha para guardar',true);return;}
+  aplicarPropuestaFechas(id,valores);
+}
+function confirmarDescartarPropuestaFechas(id){
+  const propuesta=propuestasFechasAgente.find(p=>p.id===id);if(!propuesta)return;
+  showConfirm('¿Rechazar estas fechas?','Se descarta la propuesta. Tu agenda no cambia.',async()=>{
+    try{
+      await resolverPropuestaPauta(id,'descartada');
+      propuestasFechasAgente=propuestasFechasAgente.filter(p=>p.id!==id);
+      closeModal();renderRamo();showToast('Propuesta rechazada');
+    }catch(e){showToast('No pudimos rechazar esta propuesta. Intenta de nuevo.',true);}
+  },{label:'Rechazar',danger:true,focusCancel:true});
+}
 function propuestaNotasLimpia(valor){
   if(!valor||typeof valor!=='object')return null;
   const id=String(valor.id||'');
@@ -4397,6 +4530,7 @@ async function cargarPropuestasPautaAgente(opts){
     const filas=Array.isArray(data)?data:[];
     propuestasPautaAgente=filas.filter(f=>(f&&f.tipo||'pauta')==='pauta').map(propuestaPautaLimpia).filter(Boolean);
     propuestasNotasAgente=filas.filter(f=>f&&f.tipo==='notas').map(propuestaNotasLimpia).filter(Boolean);
+    propuestasFechasAgente=filas.filter(f=>f&&f.tipo==='fechas').map(propuestaFechasLimpia).filter(Boolean);
     if(opts.mostrar&&propuestasPautaAgente.length)abrirPropuestasPautaAgente();
     else if(opts.mostrar&&opts.avisar)showToast('No tienes pautas pendientes');
     return propuestasPautaAgente;
@@ -5828,6 +5962,22 @@ function confirmEditCat(catId){
 
 // ─── EDITAR NOTA ─────────────────────────────────────────────────────────────
 let editNotaError='';
+// Abre el editor de UNA casilla de un grupo. La casilla vacía no existe en el
+// estado —el motor la deriva a partir de `slots`—, así que para poder ponerle
+// fecha hay que crearla pendiente. Sin valor no afecta ningún promedio: el
+// motor solo mira las notas que tienen número.
+function abrirCasilla(catId,slot){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  const cat=r.categorias.find(c=>c.id===catId);if(!cat)return;
+  cat.notas=Array.isArray(cat.notas)?cat.notas:[];
+  let n=cat.notas.find(x=>x.slot===slot);
+  if(!n){
+    n={id:uid(),nombre:etiquetaCasilla(r,cat,slot),valor:null,peso:1,slot};
+    cat.notas.push(n);
+    save();
+  }
+  openEditNotaModal(catId,n.id);
+}
 function openEditNotaModal(catId,notaId){
   editNotaError='';
   const r=S.ramos.find(x=>x.id===currentRamoId);
