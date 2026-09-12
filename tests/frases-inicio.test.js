@@ -15,6 +15,20 @@ if(block){
   const ctx={};
   vm.runInNewContext(`${block}\nglobalThis.frases=FRASES_INICIO;`,ctx);
   check('hay variedad sin convertir el saludo en una cita larga',ctx.frases.length>=5&&new Set(ctx.frases).size===ctx.frases.length&&ctx.frases.every(x=>x.length<=42));
+  const elegidas=[
+    'Una nota a la vez',
+    'Veamos cómo va el semestre',
+    'Mantengamos las notas al día',
+    'Así va tu semestre',
+    'Revisemos qué viene',
+    'Sigamos con lo que toca',
+    'Todo listo para seguir',
+    'Un paso a la vez',
+    'Veamos qué sigue',
+    'Veamos dónde estamos',
+  ];
+  check('usa las diez frases elegidas con Lucas',
+    ctx.frases.length===elegidas.length&&ctx.frases.every((x,i)=>x===elegidas[i]));
   const manana=new Date(2026,8,11,8,0),noche=new Date(2026,8,11,23,30),otroDia=new Date(2026,8,12,8,0);
   check('la frase no cambia al volver a dibujar durante el mismo día',ctx.fraseInicio(manana)===ctx.fraseInicio(noche));
   check('la selección puede avanzar al día siguiente',ctx.fraseInicio(manana)!==ctx.fraseInicio(otroDia));

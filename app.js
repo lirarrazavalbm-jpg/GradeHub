@@ -971,13 +971,16 @@ function semester(){
 // al agregar notas y una frase que cambia en ese momento se siente aleatoria.
 // Ninguna presupone que al estudiante le está yendo bien; acompaña sin mentirle.
 const FRASES_INICIO=[
-  'Un ramo a la vez',
-  'Cada avance cuenta',
-  'Hoy también suma',
-  'Paso a paso se aclara el semestre',
-  'Saber dónde estás también es avanzar',
-  'Mira el panorama y elige tu próximo paso',
-  'Sigamos ordenando el semestre'
+  'Una nota a la vez',
+  'Veamos cómo va el semestre',
+  'Mantengamos las notas al día',
+  'Así va tu semestre',
+  'Revisemos qué viene',
+  'Sigamos con lo que toca',
+  'Todo listo para seguir',
+  'Un paso a la vez',
+  'Veamos qué sigue',
+  'Veamos dónde estamos'
 ];
 function fraseInicio(fecha=new Date()){
   const dia=Math.floor(Date.UTC(fecha.getFullYear(),fecha.getMonth(),fecha.getDate())/86400000);
