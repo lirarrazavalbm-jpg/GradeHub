@@ -82,7 +82,7 @@ jobs:
           for f in index.html 404.html preguntas.html privacidad.html \
                    data.js mallas-uc.js mallas-uai.js cursos-uc.js engine.js app.js app-session.js render-main.js render-agenda.js styles.css sw.js \
                    manifest.json _headers robots.txt sitemap.xml \
-                   icon.svg icon-192.png icon-512.png og.png \
+                   icon.svg icon-192.png icon-512.png og-v2.png \
                    'functions/cal/[token].js'; do
             [ -e "dist/$f" ] || { echo "FALTA en dist: $f — no se publica nada"; exit 1; }
           done
