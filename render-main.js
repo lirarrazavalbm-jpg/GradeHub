@@ -10,7 +10,7 @@ function renderHome(){
   const tagsEl=document.getElementById('gpa-tags');
   const deltaEl=document.getElementById('gpa-delta');
   const first=(S.userName||'').split(' ')[0]||'';
-  document.getElementById('home-greeting').innerHTML=`${greeting()}${first?', <span class="greet-name">'+esc(first)+'</span>':''}`;
+  document.getElementById('home-greeting').innerHTML=`${fraseInicio()}${first?', <span class="greet-name">'+esc(first)+'</span>':''}`;
   refreshAvatar();
   // Glifo de la universidad junto al wordmark
   const bg=document.getElementById('brand-glyph');
