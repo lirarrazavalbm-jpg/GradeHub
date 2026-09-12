@@ -8,7 +8,7 @@
 // otra y no merecía un lugar aparte.
 const fs=require('fs'),vm=require('vm'),path=require('path');
 const raiz=path.join(__dirname,'..');
-const app=fs.readFileSync(path.join(raiz,'app.js'),'utf8');
+const app=fs.readFileSync(process.env.GRADEHUB_APP||path.join(raiz,'app.js'),'utf8');
 const render=fs.readFileSync(path.join(raiz,'render-main.js'),'utf8');
 const html=fs.readFileSync(path.join(raiz,'index.html'),'utf8');
 let ok=0,fail=0;const chk=(n,c)=>{if(c){ok++;console.log('  OK   '+n);}else{fail++;console.log('  FAIL '+n);}};
@@ -69,6 +69,36 @@ chk('la comparación dice explícitamente que es respecto a los demás',
   /piezas\.curso=`[\s\S]*?section-hd-title">Cómo vas respecto a los demás<\/span>/.test(render));
 chk('el rango conserva su título',
   /piezas\.rango=`[\s\S]*?section-hd-title">Rango del semestre<\/span>/.test(render));
+
+console.log('\n=== El arrastre del modal respeta el interruptor ===');
+// La parte visible es un span dentro de label; el input ocupa 0x0. Capturar
+// ese pointerdown redirige el click al sheet y el checkbox nunca cambia.
+// Se prueba el handler real instalado al abrir el modal, no una copia.
+let capturas=0;
+const classes={add(){},remove(){}};
+const sheet={scrollTop:0,classList:classes,setPointerCapture(){capturas++;}};
+const contenido={querySelector(){return null;}};
+const modalCtx={
+  document:{activeElement:null,getElementById:id=>id==='modal'?{classList:classes}:contenido,querySelector:()=>sheet},
+  cancelAnimationFrame(){},_sheetRaf:null,_quienAbrioModal:null,
+  etiquetarCamposDelModal(){},performance:{now:()=>0},
+};
+vm.createContext(modalCtx);
+vm.runInContext(app.match(/\nfunction openModal\([\s\S]*?\n\}/)[0],modalCtx);
+modalCtx.openModal();
+const target=tags=>({closest:selector=>tags.find(tag=>selector.split(',').includes(tag))||null});
+const down=tags=>sheet.onpointerdown({pointerType:'mouse',button:0,clientY:100,pointerId:1,target:target(tags)});
+down(['span','label','div']);
+chk('clic sobre el riel del switch no captura el puntero',capturas===0);
+capturas=0;
+down(['label','div']);
+chk('clic sobre la etiqueta tampoco empieza a arrastrar',capturas===0);
+capturas=0;
+down(['input','label','div']);
+down(['svg','button','div']);
+chk('el campo y los botones conservan su propia acción',capturas===0);
+down(['div']);
+chk('el espacio libre del modal sigue permitiendo arrastrar',capturas===1);
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);
