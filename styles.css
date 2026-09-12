@@ -1921,3 +1921,12 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    quitar el botón haría saltar la fila entera al reordenar. */
 .sec-mover button:disabled{opacity:.25;cursor:default;}
 .sec-mover .ic{width:15px;height:15px;}
+
+/* Las instrucciones que el estudiante le pasa a su agente. El bloque es
+   seleccionable a mano a propósito: el botón Copiar necesita permiso de
+   portapapeles y no siempre lo hay. */
+.agent-steps{margin-top:10px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);overflow:hidden;}
+.agent-steps-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);}
+.agent-steps-head b{font-size:0.8125rem;font-weight:700;color:var(--fg);}
+.agent-steps-head .agent-refresh{margin:0;}
+.agent-steps-pre{margin:0;padding:12px;max-height:230px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.6875rem;line-height:1.55;color:var(--fg2);white-space:pre;-webkit-user-select:all;user-select:all;}

@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gradehub",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "python3 -m http.server ${PORT:-8000} --bind 127.0.0.1"],
+      "port": 8000,
+      "autoPort": true
+    }
+  ]
+}

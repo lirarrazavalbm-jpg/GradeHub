@@ -229,6 +229,16 @@ export async function onRequestPost({ request, params }) {
 
   const { id = null, method, params: args = {} } = peticion || {};
 
+  // Una notificación es una petición SIN `id`, y el protocolo prohíbe
+  // contestarla: corresponde un 202 vacío. Importa porque `notifications/
+  // initialized` es lo PRIMERO que manda un cliente después de conectar, y
+  // antes caía en "Método no soportado" —un objeto de error con id null—, que
+  // es justo lo que un cliente estricto trata como servidor roto. El handshake
+  // se cortaba ahí, con las seis herramientas funcionando perfectamente.
+  if (!peticion || !('id' in peticion) || peticion.id === undefined) {
+    return new Response(null, { status: 202, headers: { 'Cache-Control': 'no-store' } });
+  }
+
   if (method === 'initialize') {
     return respuesta(id, {
       protocolVersion: PROTOCOLO,
@@ -283,8 +293,16 @@ export async function onRequestPost({ request, params }) {
 }
 
 // Un GET sirve para comprobar que la vinculación quedó viva sin ejecutar nada.
-export async function onRequestGet({ params }) {
+export async function onRequestGet({ params, request }) {
   const token = String((params.ruta && params.ruta[0]) || '');
   if (!tokenValido(token)) return json({ error: 'Not found' }, 404);
+  // Un cliente que abre el canal de eventos pide text/event-stream. No lo
+  // servimos —acá todo va en la respuesta del POST— y decirlo con un 405 es
+  // distinto de devolverle un 200 con un JSON que no esperaba: lo segundo lo
+  // deja esperando un flujo que nunca llega.
+  const acepta = String((request && request.headers && request.headers.get('accept')) || '');
+  if (acepta.includes('text/event-stream')) {
+    return json({ error: 'Este servidor responde en el POST; no abre un canal de eventos.' }, 405);
+  }
   return json({ servidor: 'GradeHub', protocolo: PROTOCOLO, herramientas: NOMBRES });
 }
