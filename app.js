@@ -2044,7 +2044,10 @@ function cambioDePauta(r){
   // Una evaluación que desaparece se llevaba las notas que el estudiante había
   // escrito ahí. Ya no: se conservan aparte. Igual hay que decírselo, porque su
   // ficha va a quedar con una evaluación en 0% que la pauta oficial no tiene.
-  const notasFueraDePauta=cambios.filter(c=>c.tipo==='se-va')
+  const nombresReconocidos=new Set((p.categorias||[]).flatMap(c=>[
+    c.nombre,...(c.nombresAnteriores||[]).map(x=>typeof x==='string'?x:x.nombre),
+  ]).map(normName));
+  const notasFueraDePauta=cambios.filter(c=>c.tipo==='se-va'&&!nombresReconocidos.has(normName(c.nombre)))
     .some(c=>((r.categorias.find(x=>x.nombre===c.nombre)||{}).notas||[])
       .some(n=>typeof n.valor==='number'));
   return {preset:p,cambios,notasFueraDePauta};
@@ -2109,9 +2112,22 @@ function fusionarPauta(r,nuevas){
   const viejas=new Map([...(r.categorias||[]).filter(c=>c.fueraDePauta),...catsDePauta(r.categorias)]
     .map(c=>[normName(c.nombre),c]));
   r.categorias=nuevas.map(c=>{
-    const k=normName(c.nombre),vieja=viejas.get(k);
-    viejas.delete(k);
-    return {...c,notas:(vieja&&vieja.notas)||[]};   // `c` no trae fueraDePauta: revivir la limpia
+    const fuentes=[{nombre:c.nombre},...(c.nombresAnteriores||[]).map(x=>
+      typeof x==='string'?{nombre:x}:x)];
+    const usadas=new Set(),idsNotas=new Set(),notas=[];
+    fuentes.forEach(f=>{
+      const k=normName(f.nombre),vieja=viejas.get(k);
+      if(!vieja||usadas.has(k))return;
+      usadas.add(k);viejas.delete(k);
+      (vieja.notas||[]).forEach(n=>{
+        if(n&&n.id&&idsNotas.has(n.id))return;
+        const copia={...n};
+        if(c.slots>1&&Number.isInteger(f.slot)&&!Number.isInteger(copia.slot))copia.slot=f.slot;
+        if(copia.id)idsNotas.add(copia.id);
+        notas.push(copia);
+      });
+    });
+    return {...c,notas};   // `c` no trae fueraDePauta: revivir la limpia
   });
   // Lo que la pauta nueva ya no tiene NO se borra. La pauta es nuestra; la nota
   // es del estudiante, y la escribió porque rindió esa evaluación. Se queda en
@@ -2126,7 +2142,8 @@ function fusionarPauta(r,nuevas){
   // existe la conservamos como inactiva, igual que una fecha quitada a mano.
   r.ausenciasJustificadas=(r.ausenciasJustificadas||[]).map(id=>{
     const nombre=nombresAusencia.get(id);
-    const nueva=(r.categorias||[]).find(c=>normName(c.nombre)===nombre);
+    const nueva=(r.categorias||[]).find(c=>[c.nombre,...(c.nombresAnteriores||[]).map(x=>typeof x==='string'?x:x.nombre)]
+      .some(n=>normName(n)===nombre));
     return nueva?nueva.id:id;
   });
 }
@@ -2159,6 +2176,11 @@ function presetRamo(nombre,tenant,carrera,ahora){
     if(extra&&extra.slots)cat.slots=extra.slots;
     if(extra&&typeof extra.slotLabel==='string')cat.slotLabel=extra.slotLabel;
     if(extra&&Number.isInteger(extra.slotStart))cat.slotStart=extra.slotStart;
+    // Una corrección de nombres no puede soltar las notas que alguien ya
+    // escribió con la versión anterior. También puede reunir categorías
+    // antiguas en casillas concretas si el dato nuevo aclara que eran un grupo.
+    if(extra&&Array.isArray(extra.nombresAnteriores))cat.nombresAnteriores=extra.nombresAnteriores.map(x=>
+      typeof x==='string'?x:{nombre:x.nombre,slot:x.slot});
     if(extra&&extra.lista)cat.directNota=false;
     if(extra&&extra.dropLowest)cat.dropLowest=extra.dropLowest;
     // Una pauta de 2026-2 puede seguir siendo buena para sus porcentajes en
