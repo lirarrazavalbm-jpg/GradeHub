@@ -4020,23 +4020,18 @@ function instruccionesAgente(codigo){
   return [
     'Conéctate por MCP a GradeHub, mi app de notas.',
     '',
-    '1. Canjea este código de un solo uso por tu token. Vence en 5 minutos:',
+    '1. Canjea este código por tu token. Vence en 5 minutos y sirve una vez:',
     '',
     "curl -s -X POST '"+SUPABASE_URL+"/rest/v1/rpc/canjear_codigo_agente' \\",
     "  -H 'apikey: "+SUPABASE_ANON_KEY+"' \\",
     "  -H 'content-type: application/json' \\",
     '  -d \'{"p_codigo":"'+codigo+'","p_agente":"Mi agente"}\'',
     '',
-    'Devuelve un token de 64 caracteres. Cambia "Mi agente" por tu nombre: es el',
-    'que voy a ver en la lista de agentes conectados para poder desconectarte.',
-    '',
     '2. Agrega el servidor MCP en '+MCP_URL_BASE+'<token>',
     '   En Claude Code: claude mcp add --transport http gradehub '+MCP_URL_BASE+'<token>',
     '',
-    '3. Quedas con seis herramientas: listar_ramos, ver_ramo,',
-    '   evaluaciones_proximas, que_necesito_para_aprobar, agregar_ramo y',
-    '   proponer_pauta. No puedes escribir mis notas, y una pauta que propongas',
-    '   queda pendiente hasta que yo la confirme en la app.',
+    'Podrás ver mis ramos y mis notas, agregar un ramo y proponerme una pauta.',
+    'No puedes escribir mis notas ni borrar nada.',
   ].join('\n');
 }
 async function copiarInstruccionesAgente(){
@@ -4429,21 +4424,43 @@ function openSettings(){
       <label class="modal-label accent-picker-label">Fondo</label>
       <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>
       <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
+    // La pantalla se ordenó el 2026-09-12, después de que cada arreglo le
+    // sumara un bloque encima: quedaban dos formas de conectar compitiendo con
+    // el mismo peso, un muro de instrucciones siempre a la vista y la bandeja
+    // de propuestas antes de lo único que se viene a hacer acá.
+    //
+    // Ahora hay UN camino a la vista —la URL, que es la que sirve para ChatGPT,
+    // Claude y Gemini— y el del código queda guardado detrás de un
+    // desplegable, porque solo aplica a quien corre comandos. Los detalles
+    // largos de cada uno viven dentro de su propio paso, no sueltos.
     if(section==='agentes')return currentUser?`
-      <div class="agent-explainer"><b>Un agente puede ver tus ramos, notas y fechas; agregar ramos y proponer pautas.</b><span>No puede escribir tus notas.</span></div>
-      <div class="agent-proposal-entry"><div><b>Pautas por revisar</b><span>Las propuestas no cambian nada hasta que las confirmes.</span></div><button type="button" class="agent-refresh" onclick="cargarPropuestasPautaAgente({mostrar:true,avisar:true})">Ver propuestas</button></div>
-      <label class="modal-label">Conectar ChatGPT, Claude o Gemini</label>
-      <p class="settings-help" style="margin-top:0;">Crea una URL y pégala en tu agente como conector. Dura 90 días y la puedes desconectar cuando quieras.</p>
-      <div class="modal-input" style="margin-bottom:8px;"><input type="text" id="s-agent-url-nombre" placeholder="¿Cuál es? Ej: ChatGPT" maxlength="60" autocomplete="off"/></div>
+      <div class="agent-explainer">
+        <b>Qué puede hacer un agente conectado</b>
+        <span>Ver tus ramos, notas, ponderaciones y fechas. Agregar un ramo. Proponerte una pauta, que no se aplica hasta que la confirmes.</span>
+        <span class="agent-explainer-no">No puede escribir tus notas ni borrar nada.</span>
+      </div>
+
+      <label class="modal-label">1. Ponle un nombre</label>
+      <p class="settings-help" style="margin-top:0;">Es el que vas a ver en la lista para reconocerlo y desconectarlo.</p>
+      <div class="modal-input" style="margin-bottom:12px;"><input type="text" id="s-agent-url-nombre" placeholder="Ej: ChatGPT" maxlength="60" autocomplete="off"/></div>
+
+      <label class="modal-label">2. Crea la URL y pégala en tu agente</label>
+      <p class="settings-help" style="margin-top:0;">En ChatGPT, Claude o Gemini se agrega como conector. Dura 90 días.</p>
       <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-url-create" onclick="crearUrlAgente()">Crear URL de conexión</button>
       <div id="s-agent-url" class="agent-url-wrap" aria-live="polite"></div>
-      <label class="modal-label">O con un código, si tu agente corre comandos</label>
-      <p class="settings-help" style="margin-top:0;">Para Claude Code y similares: el código se canjea y el token no queda a la vista. Dura 5 minutos y solo sirve una vez.</p>
-      <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-code-create" onclick="crearCodigoAgente()">Generar código</button>
-      <div id="s-agent-code" class="agent-code-box" aria-live="polite"></div>
+
+      <details class="agent-alt">
+        <summary>Mi agente corre comandos (Claude Code, Codex)</summary>
+        <p class="settings-help" style="margin-top:0;">Ahí conviene un código: lo canjea el agente y el token no queda a la vista de nadie. Dura 5 minutos y sirve una sola vez.</p>
+        <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-code-create" onclick="crearCodigoAgente()">Generar código</button>
+        <div id="s-agent-code" class="agent-code-box" aria-live="polite"></div>
+      </details>
+
       <div class="agent-list-heading"><label class="modal-label">Agentes conectados</label><span>Los puedes desconectar cuando quieras.</span></div>
       <button type="button" class="agent-refresh" onclick="cargarAgentesConectados()">Actualizar lista</button>
-      <div id="s-agent-list" class="agent-list" aria-live="polite"></div>`
+      <div id="s-agent-list" class="agent-list" aria-live="polite"></div>
+
+      <div class="agent-proposal-entry"><div><b>Pautas por revisar</b><span>Si un agente te propuso una pauta, la revisas acá. Nada cambia hasta que la confirmes.</span></div><button type="button" class="agent-refresh" onclick="cargarPropuestasPautaAgente({mostrar:true,avisar:true})">Ver propuestas</button></div>`
       :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>La conexión queda atada a tu cuenta para que puedas ver y desconectar tus agentes.</p></div>`;
     if(section==='sugerencias'){
       const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a id="feedback-contact" href="${esc(correoSugerenciaHref())}" onclick="actualizarCorreoSugerencia()">gradehub.app@gmail.com</a></p>`;

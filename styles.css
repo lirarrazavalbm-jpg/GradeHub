@@ -1937,3 +1937,16 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .agent-url-box{margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);}
 .agent-url-warn{margin-bottom:9px;font-size:0.75rem;line-height:1.45;color:var(--fg2);}
 .agent-url-value{display:block;margin-bottom:10px;padding:9px 10px;border:1px solid var(--border);border-radius:9px;background:var(--card);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.6875rem;line-height:1.5;color:var(--fg);word-break:break-all;-webkit-user-select:all;user-select:all;}
+
+/* La pantalla de agentes, ordenada en pasos. El camino del código queda
+   guardado en un desplegable: solo aplica a quien corre comandos, y a la vista
+   competía con el único que sirve para ChatGPT, Claude y Gemini. */
+.agent-explainer-no{color:var(--fg3);}
+.agent-alt{margin:14px 0 4px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);}
+.agent-alt>summary{padding:11px 13px;font-size:0.8125rem;font-weight:700;color:var(--fg);cursor:pointer;list-style:none;}
+.agent-alt>summary::-webkit-details-marker{display:none;}
+.agent-alt>summary::after{content:'+';float:right;font-weight:800;color:var(--fg3);}
+.agent-alt[open]>summary::after{content:'–';}
+.agent-alt>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:12px;}
+.agent-alt>*:not(summary){margin-left:13px;margin-right:13px;}
+.agent-alt>*:last-child{margin-bottom:13px;}
