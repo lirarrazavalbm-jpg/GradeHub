@@ -293,7 +293,8 @@ function renderRamo(){
   const propEl=document.getElementById('notas-propuestas');
   if(propEl){
     const pendientes=typeof propuestasNotasDeRamo==='function'?propuestasNotasDeRamo(r):[];
-    if(!pendientes.length){propEl.style.display='none';propEl.innerHTML='';}
+    const pendientesFechas=typeof propuestasFechasDeRamo==='function'?propuestasFechasDeRamo(r):[];
+    if(!pendientes.length&&!pendientesFechas.length){propEl.style.display='none';propEl.innerHTML='';}
     else{
       propEl.style.display='block';
       propEl.innerHTML=pendientes.map(p=>{
@@ -314,6 +315,29 @@ function renderRamo(){
             <button type="button" class="ramo-action primary" onclick="aplicarPropuestaNotas('${esc(p.id)}')">Aceptar</button>
             <button type="button" class="ramo-action" onclick="abrirEditarPropuestaNotas('${esc(p.id)}')">Editar</button>
             <button type="button" class="ramo-action" onclick="confirmarDescartarPropuestaNotas('${esc(p.id)}')">Rechazar</button>
+          </div>
+        </div>`;
+      }).join('')+pendientesFechas.map(p=>{
+        const filas=p.fechas.map(f=>{
+          const cat=(r.categorias||[]).find(c=>normName(c.nombre)===normName(f.evaluacion));
+          const actual=f.casilla
+            ? (cat&&(cat.notas||[]).find(x=>x.slot===f.casilla)||null)
+            : cat;
+          // La fecha que ya está, si la hay. Mover una prueba que ya estaba
+          // agendada es otra decisión que ponerle fecha a una que no tenía.
+          const antes=actual&&actual.fecha?formatEventDate({fecha:actual.fecha,hora:actual.hora||null}):'';
+          const nueva=formatEventDate({fecha:f.fecha,hora:f.hora||null});
+          return `<div class="prop-fila"><span class="prop-eval">${esc(f.evaluacion)}${f.casilla?` · casilla ${f.casilla}`:''}</span>`+
+            `<span class="prop-valor">${antes?`<s>${esc(antes)}</s> → `:''}${esc(nueva)}</span></div>`;
+        }).join('');
+        return `<div class="prop-notas-card">
+          <div class="prop-notas-head"><b>Un agente propone ${p.fechas.length} fecha${p.fechas.length!==1?'s':''}</b><span>Nada se aplicó todavía.</span></div>
+          <div class="prop-notas-lista">${filas}</div>
+          <div class="prop-notas-fuente">Según el agente: ${esc(p.fuente)}</div>
+          <div class="prop-notas-btns">
+            <button type="button" class="ramo-action primary" onclick="aplicarPropuestaFechas('${esc(p.id)}')">Aceptar</button>
+            <button type="button" class="ramo-action" onclick="abrirEditarPropuestaFechas('${esc(p.id)}')">Editar</button>
+            <button type="button" class="ramo-action" onclick="confirmarDescartarPropuestaFechas('${esc(p.id)}')">Rechazar</button>
           </div>
         </div>`;
       }).join('');
@@ -567,15 +591,26 @@ function renderRamo(){
         for(let i=0;i<cat.slots;i++){
           const nota=notas.find(n=>n.slot===i);const v=(nota&&nota.valor!=null)?nota.valor:null;
           const etiqueta=etiquetaCasilla(r,cat,i);
+          // La fecha de la casilla, cuando la tiene. El botón abre el editor de
+          // ESA casilla: hasta ahora el grupo solo dejaba escribir el número, y
+          // la fecha solo existía para el grupo entero —"Controles" el mismo
+          // día—, que no es como se rinden.
+          const fSub=nota&&nota.fecha?formatEventDate({fecha:nota.fecha,hora:nota.hora||null}):'';
           rows+=`<div class="eval-sub">
-            <span class="eval-sub-name">${esc(etiqueta)}</span>
+            <button type="button" class="eval-sub-open" onclick="event.stopPropagation();abrirCasilla('${cat.id}',${i})" title="Fecha y detalle de ${esc(etiqueta)}" aria-label="Fecha y detalle de ${esc(etiqueta)}">
+              <span class="eval-sub-name">${esc(etiqueta)}</span>
+              ${fSub?`<span class="eval-sub-fecha">${esc(fSub)}</span>`:'<span class="eval-sub-fecha vacia">sin fecha</span>'}
+            </button>
             <input class="eval-row-input sm" inputmode="decimal" maxlength="3" placeholder="—" value="${v!=null?fmt(v):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(etiqueta)}"/>
           </div>`;
         }
         // Casillas con nota, no notas: un duplicado de la misma casilla no es
         // una evaluación más. normalize ya los limpia, pero el contador no
         // puede depender de que eso haya corrido.
-        const notasCount=new Set(notas.filter(n=>Number.isInteger(n.slot)).map(n=>n.slot)).size
+        // Cuenta casillas CON NOTA. Antes contaba casillas registradas, y una
+        // casilla creada solo para ponerle fecha —sin nota todavía— se sumaba
+        // al "2/3 ingresadas" sin que hubiera ninguna nota nueva.
+        const notasCount=new Set(notas.filter(n=>Number.isInteger(n.slot)&&n.valor!=null).map(n=>n.slot)).size
           || notas.filter(n=>n&&n.valor!=null).length;
         wrap.innerHTML=`
           <div class="eval-group-hd" role="button" tabindex="0" aria-expanded="${isOpen?'true':'false'}" onclick="toggleCat('${cat.id}')">

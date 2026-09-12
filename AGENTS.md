@@ -701,6 +701,22 @@ mismo dato de uso, no una implementación:
   mirar primero cuánta gente entra desde el computador: si la app se usa casi
   toda en el teléfono, la franja rinde poco y gasta confianza igual.
 
+**Cada evaluación de un grupo puede tener su propia fecha.** Hecho el
+2026-09-12. El modelo y la Agenda ya lo soportaban —`agendaEvents` lo dice y lo
+comenta— pero no había cómo ponerla: una casilla solo aceptaba el número, y la
+fecha existía únicamente para el grupo entero. "Controles" tenía una sola fecha
+para los tres.
+
+Al hacerlo apareció una pérdida silenciosa que ya estaba: `setSlotNota` borraba
+la nota de la casilla y la volvía a crear en cada cambio, así que escribir la
+nota del Control 2 borraba que era el 18 de octubre. Nada fallaba; la
+evaluación simplemente desaparecía de la Agenda. Ahora la casilla se edita en
+vez de rehacerse, y vaciar la nota la deja pendiente si tiene fecha.
+
+Ojo con el contador del grupo: cuenta casillas CON NOTA, no casillas
+registradas. Una casilla creada solo para fecharla no puede sumar al "2/3
+ingresadas".
+
 **Un agente propone notas; no las escribe.** Pedido por Lucas el 2026-09-12 y
 hecho: `proponer_notas` deja una propuesta pendiente y la ficha del ramo la
 muestra con Aceptar, Editar y Rechazar, con la nota anterior tachada al lado de
