@@ -310,10 +310,7 @@ function normalize(data) {
     //
     // Solo se rellena si está vacío y si el ramo vino del catálogo: un crédito
     // escrito a mano por el estudiante manda sobre la tabla.
-    if ((r.creditos === null || r.creditos === undefined) && r.origen && r.origen.tenant) {
-      const cr = creditosDe(r.nombre, r.origen.tenant, null, r.origen.ramoKey);
-      if (typeof cr === 'number') r.creditos = cr;
-    }
+    sellarDatosCatalogo(r, r.origen && r.origen.tenant);
     completarFechasOficiales(r,{tenant:data.tenant,carrera:data.carrera});
   });
   data.onboardingDone = Boolean(data.onboardingDone);
@@ -685,6 +682,11 @@ try{const k='__fen_test__';localStorage.setItem(k,'1');localStorage.removeItem(k
 catch(e){_storageOK=false;}
 
 function save(){
+  // Se sella acá y no solo al cargar: un ramo agregado en esta sesión, o uno
+  // cuya sigla recién se pudo resolver porque el catálogo terminó de bajarse al
+  // buscar, quedan con el dato guardado en el momento en que se supo, sin
+  // esperar a la próxima visita.
+  (S.ramos||[]).forEach(r=>sellarDatosCatalogo(r));
   if(_storageOK){
     try{
       localStorage.setItem(STORAGE_KEY,JSON.stringify(S));
@@ -2404,6 +2406,34 @@ function siglaDePreset(nombre){
   const clave=claveCatalogo(nombre,Object.keys(PRESETS_UC),'uc');
   const def=clave?PRESETS_UC[clave]:null;
   return def&&typeof def.sigla==='string'&&def.sigla?def.sigla:null;
+}
+// La sigla y los créditos dejan de vivir SOLO en las tablas del navegador y se
+// guardan en el ramo. Dos motivos, los dos vistos en producción:
+//
+// - El catálogo completo de la UC se baja aparte, solo al buscar un ramo. En la
+//   pantalla de inicio no está, así que la sigla salía vacía aunque la
+//   supiéramos, y los créditos con ella. Guardarla la vuelve independiente de
+//   qué archivos alcanzó a cargar esta visita.
+// - El servidor MCP no tiene `data.js`. Con la sigla solo en las tablas, la app
+//   mostraba "BIO143M" y el agente decía `sigla: null` para el mismo ramo.
+//
+// Solo sella ramos que vinieron del catálogo. Un ramo escrito a mano no recibe
+// nada: si alguien tecleó "Dinámica", afirmar que es FIS1514 y no ICE1514 es
+// justo el tipo de dato que no se inventa. Es la misma regla que ya regía para
+// los créditos y que `creditos-pendientes.test.js` exige.
+function sellarDatosCatalogo(r,tenant){
+  if(!r||!r.origen||!r.origen.tenant)return false;
+  const t=tenant||r.origen.tenant;
+  let cambio=false;
+  if(!r.sigla){
+    const s=siglaDeRamo(r,t);
+    if(s){r.sigla=s;cambio=true;}
+  }
+  if(r.creditos===null||r.creditos===undefined){
+    const cr=creditosDe(r.nombre,t,null,r.origen.ramoKey);
+    if(typeof cr==='number'){r.creditos=cr;cambio=true;}
+  }
+  return cambio;
 }
 function siglaDeRamo(r,tenant){
   if(!r||!r.nombre)return null;
