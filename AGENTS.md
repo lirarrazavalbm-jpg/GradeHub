@@ -701,6 +701,52 @@ mismo dato de uso, no una implementación:
   mirar primero cuánta gente entra desde el computador: si la app se usa casi
   toda en el teléfono, la franja rinde poco y gasta confianza igual.
 
+### Reportes de usuarios todavía abiertos
+
+Revisados el 2026-09-12 contra la tabla de sugerencias. Se dejan solo los que
+NO están resueltos; los que sí (apagar secciones de Estadísticas, borrar y
+renombrar un semestre del historial, las dos Dinámicas, "sigue a tu teléfono"
+en iPad, los fondos pizarra y neutro) ya salieron y no vuelven a la cola.
+
+**1. Las evaluaciones de una categoría con varias notas desaparecen.** Lo más
+grave de la lista: TRES reportes, dos usuarios distintos más Lucas, entre el
+2026-08-29 y el 08-30. "Cuando agrego controles y le pongo que son varias notas
+dentro de esa categoría, no me aparece después y deja de funcionar. Si saco que
+son varias notas, vuelven a aparecer todos." Otro lo describe desde la otra
+punta: "al poner que una nota depende de varias evaluaciones que se promedian
+como que desaparecen, ya no puedo verlas ni poner mis notas". Y el tercero lo
+encontró armando Dinámica ICE a mano. Uno dice que empezó "luego de la última
+actualización", así que hay una regresión con fecha. Primero reproducirlo: son
+tres descripciones que pueden ser el mismo camino o dos.
+
+**2. No hay dónde cambiar la clave estando dentro de la app.** El mecanismo ya
+existe entero —`submitNewPassword` en `app-session.js`— pero solo se alcanza
+por el correo de recuperación, en `screen-reset`. Falta la puerta en Ajustes,
+no la función.
+
+**3. Sección del ramo, opcional.** Pedida por Lucas el 2026-09-12 junto con una
+idea para llenarla: el horario de BuscaCursos trae `SIGLA-SECCIÓN` de todos los
+ramos, y el estudiante lo tiene a mano. Validar cada sigla contra
+`cursos-uc.js` hace el reconocimiento robusto: lo que no sea una sigla real se
+descarta solo. De las 6 siglas de un horario de prueba, 5 estaban en el
+catálogo. La sección también le daría sentido a la comparación por curso
+—compararse con su sección y no con el ramo entero—, que hoy agrupa por sigla.
+
+**4. "Controles 1, Controles 2".** Si la categoría se llama en plural, las
+evaluaciones heredan el plural y quedan con un nombre que no se dice así. Hay
+que derivar el singular o dejar que el nombre de la evaluación se separe del de
+la categoría.
+
+**5. "No me muestra cómo voy comparado al resto del curso."** Reportado el
+2026-09-12. Puede ser el mínimo de 5 participantes funcionando como se diseñó
+—y entonces el problema es que en la práctica casi nadie llega a verlo— o puede
+ser que no esté subiendo la nota. Antes de tocar nada, mirar `curso_notas` y
+contar cuántas filas hay por sigla.
+
+**6. "Está mal la sigla del teológico."** De otro usuario, el 2026-09-11.
+Probablemente es lo que arregla el PR de la sigla de los presets, donde la
+sigla salía vacía. Pero el reporte dice "mal", no "falta": hay que confirmarlo
+con esa persona después del deploy en vez de darlo por cerrado.
 **Muchos ramos se quedan sin créditos aunque el catálogo SÍ los tenga.**
 Reportado por Lucas el 2026-09-12. Su ejemplo: "Principios Ecológicos y Medio
 Ambiente" aparece sin créditos en la app, y en `cursos-uc.js` está la fila
