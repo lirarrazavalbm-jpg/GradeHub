@@ -3998,6 +3998,10 @@ document.addEventListener('keydown',e=>{
 // llave de acceso todavía a la vista.
 const AGENTE_CODIGO_MS=5*60*1000;
 let agenteCodigoActual='',agenteCodigoVence=0,agentesConectados=[],agentesCargando=false,agentesError='';
+// La URL vive SOLO en memoria y solo mientras la pantalla está abierta: es una
+// llave de lectura, y guardarla en el dispositivo la volvería permanente sin
+// que nadie lo haya pedido.
+let agenteUrlActual='';
 let propuestasPautaAgente=[],propuestasPautaCargando=false;
 let _agenteCodigoTimer=null;
 
@@ -4114,6 +4118,53 @@ async function rpcAgente(nombre,args){
   }
   return r;
 }
+// Para ChatGPT, Claude y Gemini "normales": no pueden canjear un código porque
+// no corren comandos, y aceptan un conector remoto como UNA URL pegada en su
+// configuración. Sin mostrar el token no hay forma de conectarlos, así que acá
+// se muestra, con lo que eso significa dicho en la misma pantalla.
+async function crearUrlAgente(){
+  if(!currentUser||!supabaseClient){showToast('Inicia sesión para conectar un agente',true);return;}
+  const btn=document.getElementById('s-agent-url-create');
+  if(btn){btn.disabled=true;btn.textContent='Creando…';}
+  try{
+    const nombre=(document.getElementById('s-agent-url-nombre')||{}).value||'';
+    const {data,error}=await rpcAgente('crear_vinculo_agente',{p_agente:nombre});
+    if(error)throw error;
+    const fila=Array.isArray(data)?data[0]:data;
+    const token=fila&&fila.token;
+    if(typeof token!=='string'||!/^[0-9a-f]{64}$/.test(token))throw new Error('token inválido');
+    agenteUrlActual=MCP_URL_BASE+token;
+    pintarUrlAgente();
+    cargarAgentesConectados();
+  }catch(e){
+    const motivo=(e&&(e.message||e.msg))||'';
+    showToast(sesionCaducada(e)
+      ? 'Tu sesión expiró. Vuelve a entrar y créala otra vez.'
+      : ('No pudimos crear la URL'+(motivo?': '+motivo:'. Intenta de nuevo.')),true);
+    console.warn('crear_vinculo_agente falló:',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=agenteUrlActual?'Crear otra URL':'Crear URL de conexión';}
+  }
+}
+function pintarUrlAgente(){
+  const raiz=document.getElementById('s-agent-url');
+  if(!raiz)return;
+  if(!agenteUrlActual){raiz.innerHTML='';return;}
+  raiz.innerHTML=`<div class="agent-url-box">
+    <div class="agent-url-warn">Esta URL es como una contraseña: quien la tenga puede ver tus ramos y tus notas. Pégala solo en tu agente. No se vuelve a mostrar.</div>
+    <code class="agent-url-value">${esc(agenteUrlActual)}</code>
+    <button type="button" class="agent-refresh" onclick="copiarUrlAgente()">Copiar URL</button>
+  </div>`;
+}
+async function copiarUrlAgente(){
+  if(!agenteUrlActual)return;
+  try{await navigator.clipboard.writeText(agenteUrlActual);showToast('URL copiada');}
+  catch(e){showToast('Cópiala del cuadro de arriba',true);}
+}
+// Se olvida al salir de la pantalla. Volver a entrar no la muestra de nuevo:
+// para eso se crea otra, que además queda registrada aparte y se puede
+// desconectar sola.
+function olvidarUrlAgente(){agenteUrlActual='';}
 async function crearCodigoAgente(){
   if(!currentUser||!supabaseClient){showToast('Inicia sesión para conectar un agente',true);return;}
   const btn=document.getElementById('s-agent-code-create');
@@ -4381,8 +4432,13 @@ function openSettings(){
     if(section==='agentes')return currentUser?`
       <div class="agent-explainer"><b>Un agente puede ver tus ramos, notas y fechas; agregar ramos y proponer pautas.</b><span>No puede escribir tus notas.</span></div>
       <div class="agent-proposal-entry"><div><b>Pautas por revisar</b><span>Las propuestas no cambian nada hasta que las confirmes.</span></div><button type="button" class="agent-refresh" onclick="cargarPropuestasPautaAgente({mostrar:true,avisar:true})">Ver propuestas</button></div>
-      <label class="modal-label">Conectar mi agente</label>
-      <p class="settings-help" style="margin-top:0;">Genera un código de 6 caracteres y úsalo en tu agente. Dura 5 minutos y solo sirve una vez.</p>
+      <label class="modal-label">Conectar ChatGPT, Claude o Gemini</label>
+      <p class="settings-help" style="margin-top:0;">Crea una URL y pégala en tu agente como conector. Dura 90 días y la puedes desconectar cuando quieras.</p>
+      <div class="modal-input" style="margin-bottom:8px;"><input type="text" id="s-agent-url-nombre" placeholder="¿Cuál es? Ej: ChatGPT" maxlength="60" autocomplete="off"/></div>
+      <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-url-create" onclick="crearUrlAgente()">Crear URL de conexión</button>
+      <div id="s-agent-url" class="agent-url-wrap" aria-live="polite"></div>
+      <label class="modal-label">O con un código, si tu agente corre comandos</label>
+      <p class="settings-help" style="margin-top:0;">Para Claude Code y similares: el código se canjea y el token no queda a la vista. Dura 5 minutos y solo sirve una vez.</p>
       <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-code-create" onclick="crearCodigoAgente()">Generar código</button>
       <div id="s-agent-code" class="agent-code-box" aria-live="polite"></div>
       <div class="agent-list-heading"><label class="modal-label">Agentes conectados</label><span>Los puedes desconectar cuando quieras.</span></div>
@@ -4443,7 +4499,10 @@ function openSettings(){
     if(activeSection==='academico'){renderSettingsSemGrid();renderSettingsTenantGrid();renderSettingsCarreraGrid();}
     if(activeSection==='apariencia'){renderModoGrid();renderAcentoGrid();renderFondoGrid();}
     if(activeSection==='calendario'&&currentUser)pintarFeedCalendario();
-    if(activeSection==='agentes'&&currentUser){pintarCodigoAgente();cargarAgentesConectados();}
+    // Al SALIR de la pantalla la URL se olvida: es una llave y no tiene por qué
+    // seguir viva en memoria mientras alguien anda en Apariencia.
+    if(activeSection!=='agentes')olvidarUrlAgente();
+    if(activeSection==='agentes'&&currentUser){pintarCodigoAgente();pintarUrlAgente();cargarAgentesConectados();}
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
       if(inp){

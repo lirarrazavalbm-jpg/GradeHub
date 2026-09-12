@@ -21,7 +21,13 @@ import motorCompartido from '../../engine.js';
 const SUPABASE_URL = 'https://lsulsnswzesyekpsvlql.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
 
-const PROTOCOLO = '2024-11-05';
+// Las versiones que este servidor sabe hablar, de la más nueva a la más vieja.
+// Importa para los conectores de ChatGPT, Claude y Gemini: piden una versión de
+// 2025 y, si el servidor contesta otra, algunos cortan ahí. Las tres se
+// sostienen con lo que hay acá —el POST responde JSON, que Streamable HTTP
+// permite— y ninguna obliga a SSE ni a sesiones, que son opcionales.
+const PROTOCOLOS = ['2025-06-18', '2025-03-26', '2024-11-05'];
+const PROTOCOLO = PROTOCOLOS[PROTOCOLOS.length - 1];
 
 // Formato fijo: descarta basura antes de tocar la base.
 const tokenValido = t => /^[0-9a-f]{64}$/.test(t);
@@ -240,8 +246,12 @@ export async function onRequestPost({ request, params }) {
   }
 
   if (method === 'initialize') {
+    // Se devuelve la que pidió el cliente cuando la sabemos hablar, y la más
+    // vieja cuando no: es lo que dice el protocolo y lo que evita que un
+    // conector nuevo se vaya sin explicar por qué.
+    const pedida = String(args.protocolVersion || '');
     return respuesta(id, {
-      protocolVersion: PROTOCOLO,
+      protocolVersion: PROTOCOLOS.includes(pedida) ? pedida : PROTOCOLO,
       capabilities: { tools: {} },
       serverInfo: { name: 'GradeHub', version: '1' },
     });
