@@ -48,6 +48,19 @@ const reduced=css.slice(css.lastIndexOf('@media(prefers-reduced-motion:reduce)')
 check('con movimiento reducido la línea mantiene su largo y solo cambia brillo/halo',
   /\.ramo-row:hover \.ramo-band\{transform:scaleY\(\.6\);\}/.test(reduced)&&
   /\.ramo-band\{transition:filter[^}]*box-shadow[^}]*\}/.test(reduced));
+const peerBands=[...css.matchAll(/\.ag-priority-bar,\.ag-row-bar,\.stats-curso-color\{([^}]*)\}/g)].map(m=>m[1]).find(x=>/transform:scaleY/.test(x))||'';
+const peerBandHover=[...css.matchAll(/\.ag-row:hover \.ag-row-bar,[\s\S]*?\.stats-curso-row:hover \.stats-curso-color\{([^}]*)\}/g)].map(m=>m[1]).find(x=>/scaleX/.test(x))||'';
+check('las bandas equivalentes parten cortas y recorren el mismo gesto que Inicio',
+  /transform:scaleY\(\.6\)/.test(peerBands)&&
+  /transform-origin:center/.test(peerBands)&&
+  /transform:scaleX\(1\.65\) scaleY\(1\)/.test(peerBandHover));
+check('cada banda ilumina su propio color y no el color heredado del texto',
+  /var\(--band-color\)/.test(peerBandHover)&&!peerBandHover.includes('currentColor')&&
+  !/class="(?:ag-row-bar|stats-curso-color)" style="background:/.test(source)&&
+  (source.match(/style="--band-color:/g)||[]).length>=5);
+check('las otras bandas conservan el brillo, pero no crecen con movimiento reducido',
+  /\.ag-row:hover \.ag-row-bar,[\s\S]*?\.stats-curso-row:hover \.stats-curso-color\{transform:scaleY\(\.6\);\}/.test(reduced)&&
+  /\.ag-priority-bar,\.ag-row-bar,\.stats-curso-color\{transition:filter[^}]*box-shadow[^}]*\}/.test(reduced));
 check('las notas conservan el color calculado, no reciben el color del ramo',/\.gpa-num:not\(\.empty\),\.ramo-num:not\(\.empty\)\{[^}]*color:var\(--grade-color\)/.test(css));
 check('no queda el llenado de Home que teñía toda la fila',!css.includes('--ramo-progress-end'));
 check('el oscuro neutro no es azulado',run('FONDOS.neutro.oscuro.bg')==='#080809');

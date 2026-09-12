@@ -637,7 +637,7 @@ async function pintarPosicionesCurso(){
     // "mejor que el 75%" solo puede ser 0, 25, 50, 75 o 100, y sin saber cuántos
     // son suena mucho más fino de lo que es.
     return `<div class="stats-curso-row">
-      <span class="stats-curso-color" style="background:${esc(r.color)}"></span>
+      <span class="stats-curso-color" style="--band-color:${esc(r.color)}"></span>
       <span class="stats-curso-main"><strong>${esc(r.nombre)}</strong><small>${p.total} llevan este ramo</small></span>
       <span class="stats-curso-val">${p.mejorQue}%<small>por sobre</small></span>
     </div>`;
@@ -701,7 +701,7 @@ function renderStats(){
           ? `Vas ${fmt(x.avg)} · puede bajar según cuántas notas te tomen`
           : `Vas ${fmt(x.avg)} en lo evaluado`;
       return `<button class="ag-row stats-priority-row" onclick="openRamo('${esc(x.ramo.id)}')">
-        <span class="ag-row-bar" style="background:${esc(x.ramo.color)}"></span>
+        <span class="ag-row-bar" style="--band-color:${esc(x.ramo.color)}"></span>
         <div class="ag-row-main">
           <div class="ag-row-name">${esc(x.ramo.nombre)}</div>
           <div class="ag-row-sub">${sub}</div>

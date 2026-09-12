@@ -1736,8 +1736,16 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 @media(prefers-reduced-motion:reduce){
   .ramo-band{transition:filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
   .ramo-row:active .ramo-band,.ramo-row:focus-visible .ramo-band{transform:scaleY(.6);}
+  .ag-priority-bar,.ag-row-bar,.stats-curso-color{transition:filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
+  .ag-row:active .ag-row-bar,.ag-row:focus-visible .ag-row-bar,
+  .ag-priority-card:active .ag-priority-bar,.ag-priority-card:focus-visible .ag-priority-bar,
+  .ag-waiting-row:focus-within .ag-row-bar{transform:scaleY(.6);}
   @media(hover:hover) and (pointer:fine){
     .ramo-row:hover .ramo-band{transform:scaleY(.6);}
+    .ag-row:hover .ag-row-bar,
+    .ag-priority-card:hover .ag-priority-bar,
+    .ag-waiting-row:hover .ag-row-bar,
+    .stats-curso-row:hover .stats-curso-color{transform:scaleY(.6);}
   }
   .ramo-progress-fill{transition:opacity var(--motion-base) var(--ease-out);}
 }
@@ -1834,32 +1842,31 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    sentía viva en una pantalla y muerta en la de al lado.
    ══════════════════════════════════════════════════════════════════════ */
 .ag-priority-bar,.ag-row-bar,.stats-curso-color{
+  transform:scaleY(.6);
+  transform-origin:center;
   transition:transform var(--motion-fast) var(--ease-out),
              filter var(--motion-fast) var(--ease-out),
              box-shadow var(--motion-fast) var(--ease-out);
 }
-/* Las barras verticales crecen a lo ancho, igual que la de Inicio. Se declara
-   el origen para que engorden hacia afuera y no desplacen el texto. */
-.ag-row-bar,.stats-curso-color{transform-origin:left center;}
-.ag-priority-bar{transform-origin:left center;}
+.ag-priority-bar{--band-color:var(--ag-course);}
+.ag-row-bar,.stats-curso-color{background:var(--band-color,var(--primary));}
 
 @media(hover:hover) and (pointer:fine){
   .ag-row:hover .ag-row-bar,
   .ag-priority-card:hover .ag-priority-bar,
+  .ag-waiting-row:hover .ag-row-bar,
   .stats-curso-row:hover .stats-curso-color{
-    transform:scaleX(1.65);
+    transform:scaleX(1.65) scaleY(1);
     filter:brightness(1.2);
-    box-shadow:0 0 6px color-mix(in srgb,currentColor 35%,transparent);
+    box-shadow:0 0 6px color-mix(in srgb,var(--band-color) 35%,transparent);
   }
 }
-/* Quien pidió menos movimiento recibe el cambio de color, no el crecimiento: la
-   fila sigue respondiendo, sin animación de tamaño. Va anidado dentro de
-   `hover:hover` a propósito — un `:hover` con transform fuera de esa guarda se
-   dispara en pantallas táctiles y deja el efecto pegado tras el toque. */
-@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){
-  .ag-row:hover .ag-row-bar,
-  .ag-priority-card:hover .ag-priority-bar,
-  .stats-curso-row:hover .stats-curso-color{transform:none;box-shadow:none;}
+.ag-row:active .ag-row-bar,.ag-row:focus-visible .ag-row-bar,
+.ag-priority-card:active .ag-priority-bar,.ag-priority-card:focus-visible .ag-priority-bar,
+.ag-waiting-row:focus-within .ag-row-bar{
+  transform:scaleX(1.65) scaleY(1);
+  filter:brightness(1.2);
+  box-shadow:0 0 6px color-mix(in srgb,var(--band-color) 35%,transparent);
 }
 
 /* ── Editar las secciones de Estadísticas ────────────────────────────────── */

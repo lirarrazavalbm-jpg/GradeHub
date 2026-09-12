@@ -6366,7 +6366,7 @@ function agendaItemHTML(e){
     alerta=`<div class="ag-alert bad"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Ya no alcanza para aprobar este ramo</div>`;
   }
   return `<button class="ag-row ${e.nivel}" onclick="openRamo('${esc(e.ramo.id)}')">
-    <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
+    <span class="ag-row-bar" style="--band-color:${esc(e.ramo.color)}"></span>
     <div class="ag-row-main">
       <div class="ag-row-top">
         <span class="ag-row-when ${e.nivel}">${cuandoTexto(e.dias)}</span>
