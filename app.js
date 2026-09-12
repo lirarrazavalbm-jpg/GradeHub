@@ -3984,6 +3984,47 @@ function fechaAgente(valor,vacio){
   if(!fecha||isNaN(fecha.getTime()))return vacio;
   return new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(fecha);
 }
+// El texto que el estudiante le pega a su agente. Existe porque el paso del
+// medio no lo puede hacer él: un cliente MCP solo acepta una URL, y la URL
+// lleva el token, que a propósito no se muestra en pantalla. Quien canjea el
+// código es el agente. Sin estas instrucciones la pantalla decía "úsalo en tu
+// agente" y ahí terminaba, o sea pedía adivinar un curl, una llave y una ruta.
+const MCP_URL_BASE='https://gradehub.cl/mcp/';
+function instruccionesAgente(codigo){
+  return [
+    'Conéctate por MCP a GradeHub, mi app de notas.',
+    '',
+    '1. Canjea este código de un solo uso por tu token. Vence en 5 minutos:',
+    '',
+    "curl -s -X POST '"+SUPABASE_URL+"/rest/v1/rpc/canjear_codigo_agente' \\",
+    "  -H 'apikey: "+SUPABASE_ANON_KEY+"' \\",
+    "  -H 'content-type: application/json' \\",
+    '  -d \'{"p_codigo":"'+codigo+'","p_agente":"Mi agente"}\'',
+    '',
+    'Devuelve un token de 64 caracteres. Cambia "Mi agente" por tu nombre: es el',
+    'que voy a ver en la lista de agentes conectados para poder desconectarte.',
+    '',
+    '2. Agrega el servidor MCP en '+MCP_URL_BASE+'<token>',
+    '   En Claude Code: claude mcp add --transport http gradehub '+MCP_URL_BASE+'<token>',
+    '',
+    '3. Quedas con seis herramientas: listar_ramos, ver_ramo,',
+    '   evaluaciones_proximas, que_necesito_para_aprobar, agregar_ramo y',
+    '   proponer_pauta. No puedes escribir mis notas, y una pauta que propongas',
+    '   queda pendiente hasta que yo la confirme en la app.',
+  ].join('\n');
+}
+async function copiarInstruccionesAgente(){
+  if(!agenteCodigoActual){showToast('Genera un código primero',true);return;}
+  const texto=instruccionesAgente(agenteCodigoActual);
+  try{
+    await navigator.clipboard.writeText(texto);
+    showToast('Instrucciones copiadas');
+  }catch(e){
+    // Sin permiso de portapapeles el texto ya está a la vista en la pantalla,
+    // así que no hay nada que recuperar: solo hay que decir dónde mirar.
+    showToast('Cópialas del cuadro de abajo',true);
+  }
+}
 function detenerCodigoAgente(){if(_agenteCodigoTimer){clearInterval(_agenteCodigoTimer);_agenteCodigoTimer=null;}}
 function pintarCodigoAgente(){
   const raiz=document.getElementById('s-agent-code');
@@ -3997,7 +4038,11 @@ function pintarCodigoAgente(){
     return;
   }
   const total=Math.ceil(quedan/1000),min=Math.floor(total/60),seg=String(total%60).padStart(2,'0');
-  raiz.innerHTML=`<div class="agent-code-live" role="status"><span class="agent-code-value">${esc(agenteCodigoActual)}</span><span>Vence en ${min}:${seg}</span></div>`;
+  raiz.innerHTML=`<div class="agent-code-live" role="status"><span class="agent-code-value">${esc(agenteCodigoActual)}</span><span>Vence en ${min}:${seg}</span></div>
+    <div class="agent-steps">
+      <div class="agent-steps-head"><b>Pásale esto a tu agente</b><button type="button" class="agent-refresh" onclick="copiarInstruccionesAgente()">Copiar</button></div>
+      <pre class="agent-steps-pre">${esc(instruccionesAgente(agenteCodigoActual))}</pre>
+    </div>`;
   const btn=document.getElementById('s-agent-code-create');if(btn){btn.disabled=false;btn.textContent='Generar otro código';}
   if(!_agenteCodigoTimer)_agenteCodigoTimer=setInterval(pintarCodigoAgente,1000);
 }
