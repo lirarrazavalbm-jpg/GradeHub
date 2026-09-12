@@ -18,7 +18,7 @@ export const HERRAMIENTAS = [
   {
     nombre: 'listar_ramos',
     tipo: 'lectura',
-    resumen: 'Los ramos del semestre con su promedio actual, cuánto llevan evaluado y si están en riesgo.',
+    resumen: 'Los ramos del semestre con su sigla, promedio actual, cuánto llevan evaluado (en %) y si están en riesgo. La sigla viene null cuando no la tenemos guardada.',
   },
   {
     nombre: 'ver_ramo',

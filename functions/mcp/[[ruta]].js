@@ -177,16 +177,62 @@ async function guardarPropuestaPauta(token, estado, args) {
 // autorizado. `proponer_pauta` se despacha aparte porque usa su propia RPC;
 // cualquier herramienta todavía pendiente devuelve `undefined` y el endpoint
 // lo dice con todas sus letras.
+// La sigla NO está guardada en el ramo: la app la deriva de sus tablas de
+// catálogo, que no viven acá. Lo único disponible del lado del servidor es la
+// clave de origen, y solo sirve cuando tiene forma de código oficial —los ramos
+// UC antiguos guardaron ahí el nombre normalizado—. Se devuelve null cuando no
+// se puede saber, que es distinto de inventarla: mismo criterio que usa
+// `siglaDeRamo` en app.js para ese caso.
+const FORMA_SIGLA = /^[A-Z]{2,5}\d{3,4}[A-Z]?$/i;
+function siglaDeRamo(r) {
+  if (r && typeof r.sigla === 'string' && FORMA_SIGLA.test(r.sigla)) return r.sigla.toUpperCase();
+  const clave = r && r.origen && r.origen.ramoKey;
+  return typeof clave === 'string' && FORMA_SIGLA.test(clave) ? clave.toUpperCase() : null;
+}
+
+// Los umbrales son los de app.js: bajo 5,0 es riesgo, y sobre 7,05 de exigencia
+// ya no alcanza. Si acá dijeran otra cosa, la app y el agente contestarían
+// distinto sobre el mismo ramo.
+function riesgoDeRamo(promedio, necesario) {
+  if (promedio === null) return 'sin_notas';
+  if (necesario !== null && necesario > 7.05) return 'ya_no_alcanza';
+  if (Math.round(promedio * 100) / 100 < 5) return 'en_riesgo';
+  return 'bien';
+}
+
 function despachar(nombre, estado, args) {
   const ramos = Array.isArray(estado.ramos) ? estado.ramos : [];
   const buscar = q => buscarRamo(ramos, q);
 
   if (nombre === 'listar_ramos') {
-    return ramos.map(r => ({
-      nombre: r.nombre,
-      creditos: r.creditos ?? null,
-      evaluaciones: (r.categorias || []).length,
-    }));
+    // Prometía "promedio actual, cuánto llevan evaluado y si están en riesgo" y
+    // devolvía el nombre, los créditos y un conteo. Un agente que lee la
+    // descripción pide esto y recibe otra cosa, así que se arregla la
+    // implementación y no la promesa: son los tres datos que hacen útil la
+    // herramienta, y el motor ya los calcula.
+    //
+    // `cantidadEvaluaciones` en vez de `evaluaciones`: la clave `evaluaciones`
+    // en `ver_ramo` es el ARRAY de evaluaciones, y tenerla acá como número
+    // hacía que la misma palabra significara dos cosas distintas.
+    const calculo = calculoPara(ramos);
+    return ramos.map(r => {
+      const promedio = calculo.ramoAvg(r);
+      const necesario = calculo.notaNecesaria(r);
+      const avance = calculo.estadoParaNotaNecesaria(r);
+      return {
+        nombre: r.nombre,
+        sigla: siglaDeRamo(r),
+        creditos: r.creditos ?? null,
+        promedio,
+        // Fracción del peso del ramo que ya tiene nota, en porcentaje entero.
+        avanceEvaluado: avance && avance.total > 0 ? Math.round((1 - avance.pendiente) * 100) : 0,
+        cantidadEvaluaciones: (r.categorias || []).length,
+        // Los mismos umbrales que usa la app para su tarjeta de riesgo (5,0 de
+        // promedio y 7,05 de exigencia). Tenerlos escritos de nuevo con otros
+        // números diría que un ramo está en riesgo en la app y bien acá.
+        riesgo: riesgoDeRamo(promedio, necesario),
+      };
+    });
   }
 
   if (nombre === 'ver_ramo') {
@@ -294,8 +340,15 @@ export async function onRequestPost({ request, params }) {
     const datos = despachar(nombre, estado, argumentos);
     if (datos === undefined) return error(id, -32601, `Herramienta aún no disponible: ${nombre}`);
 
+    // Un ramo que no existe o una meta fuera de escala salían dentro de un
+    // resultado EXITOSO, con una clave `error` adentro. Un agente no tiene cómo
+    // distinguir eso de un dato, así que lo leía como respuesta válida. MCP
+    // tiene `isError` justamente para esto, y el texto sigue viajando —incluye
+    // la lista de ramos que sí existen, que es lo que deja reintentar bien.
+    const esFallo = !!(datos && typeof datos === 'object' && !Array.isArray(datos) && datos.error);
     return respuesta(id, {
       content: [{ type: 'text', text: JSON.stringify(datos) }],
+      ...(esFallo ? { isError: true } : {}),
     });
   }
 

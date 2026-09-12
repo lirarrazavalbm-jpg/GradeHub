@@ -80,7 +80,10 @@ language plpgsql security definer set search_path = public as $$
 declare v_user uuid; v_token text;
 begin
   delete from public.agent_link_codes where expires_at < now();
-  select user_id into v_user from public.agent_link_codes where codigo = upper(p_codigo);
+  -- El `and expires_at > now()` no es redundante con el delete de arriba: es lo
+  -- que hace que el vencimiento se cumpla aunque ese delete no haya corrido.
+  select user_id into v_user from public.agent_link_codes
+   where codigo = upper(p_codigo) and expires_at > now();
   if v_user is null then raise exception 'código inválido o vencido'; end if;
   delete from public.agent_link_codes where codigo = upper(p_codigo);
   -- 64 hex, mismo formato que valida el endpoint, con dos uuid. Por lo mismo
