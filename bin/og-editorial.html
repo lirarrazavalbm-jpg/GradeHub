@@ -36,7 +36,10 @@ Este HTML es fuente de diseño offline; bin/ ya está excluido de dist/.
     }
     * { box-sizing:border-box; }
     html,body { margin:0; width:1200px; height:630px; overflow:hidden; }
-    body { background:var(--bg); color:var(--fg); font-family:var(--font-ui); }
+    body {
+      background:radial-gradient(ellipse 650px 520px at 100% 0%,color-mix(in srgb,var(--primary) 15%,transparent),transparent 82%),var(--bg);
+      color:var(--fg); font-family:var(--font-ui);
+    }
     .sheet { width:100%; height:100%; padding:54px 72px 44px; display:flex; flex-direction:column; }
     .masthead { display:flex; align-items:center; justify-content:space-between; }
     .brand { display:flex; align-items:center; gap:16px; }
@@ -46,6 +49,7 @@ Este HTML es fuente de diseño offline; bin/ ya está excluido de dist/.
     .story { flex:1; display:grid; grid-template-columns:580px 1fr; gap:48px; align-items:center; padding-bottom:5px; }
     h1 { margin:0; font-size:112px; line-height:1.02; font-weight:700; letter-spacing:-6px; }
     h1 span { display:block; }
+    h1 em { font-style:normal; color:var(--primary); }
     .description { margin:8px 0 0; font-size:35px; line-height:1.3; font-weight:400; letter-spacing:-.8px; color:var(--fg2); }
     .footer { border-top:1px solid color-mix(in srgb,var(--fg3) 24%,var(--bg)); padding-top:27px; display:flex; align-items:center; }
     .claim { margin:0; color:var(--fg3); font-size:25px; line-height:1.3; font-weight:450; letter-spacing:-.25px; }
@@ -59,10 +63,10 @@ Este HTML es fuente de diseño offline; bin/ ya está excluido de dist/.
       <span class="domain">gradehub.cl</span>
     </header>
     <section class="story">
-      <h1><span>Mejor que</span><span>un Excel.</span></h1>
+      <h1><span>Mejor que</span><span>un <em>Excel.</em></span></h1>
       <p class="description">Toma el control de tu semestre con todas tus notas en un solo lugar.</p>
     </section>
-    <footer class="footer"><p class="claim">Agenda · Estadísticas · <strong>100% gratis</strong></p></footer>
+    <footer class="footer"><p class="claim">Agenda - Estadísticas - Notas - <strong>Todo 100% gratis</strong></p></footer>
   </main>
 </body>
 </html>
