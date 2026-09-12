@@ -225,7 +225,7 @@ const SEMAFORO={
   },
 };
 
-// La identidad es la de og.png, la tarjeta social del producto, con sus colores
+// La identidad es la de og-v2.png, la tarjeta social del producto, con sus colores
 // exactos: el turquesa del kicker GRADEHUB (#2dd4bf) y el de la palabra "Excel"
 // (#56e2e8), sobre el fondo casi negro de la misma tarjeta (#05070a).
 //
