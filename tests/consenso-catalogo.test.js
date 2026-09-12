@@ -126,7 +126,7 @@ chk('el consenso pide solo la universidad al backend',
 chk('la función no filtra por carrera ni semestre',
   !/p_carrera|semestre/i.test(consenso));
 chk('el consenso cuenta personas distintas y exige tres',
-  /count\(distinct cr\.user_id\)/.test(consenso) && />= 3/.test(consenso));
+  /count\(distinct (?:cr\.)?user_id\)/.test(consenso) && />= 3/.test(consenso));
 chk('la función no expone usuario ni comentario',
   /returns table \(\s*ramo text,\s*ramo_key text,\s*estructura jsonb,\s*huella text,\s*respaldos integer\s*\)/.test(consenso) &&
   !/cr\.nota|cr\.user_id\s+as/.test(consenso));
