@@ -701,6 +701,25 @@ mismo dato de uso, no una implementación:
   mirar primero cuánta gente entra desde el computador: si la app se usa casi
   toda en el teléfono, la franja rinde poco y gasta confianza igual.
 
+**Un agente propone notas; no las escribe.** Pedido por Lucas el 2026-09-12 y
+hecho: `proponer_notas` deja una propuesta pendiente y la ficha del ramo la
+muestra con Aceptar, Editar y Rechazar, con la nota anterior tachada al lado de
+la nueva cuando hay una.
+
+Esto NO relaja la regla de que un agente no escribe notas: es su forma. La regla
+nunca fue "el agente no nombra notas" sino "la nota que queda guardada la acepta
+el estudiante". Lo que sigue prohibido, y lo vigila
+`tests/agente-permisos.test.js`, es que una herramienta de tipo `escritura`
+reciba una nota como argumento — ahí sí entraría sola. El test también exige lo
+contrario: toda herramienta que reciba notas tiene que ser de tipo `propuesta`,
+así que cambiarle el tipo a `proponer_notas` revienta en vez de pasar callado.
+
+Dos decisiones que conviene no deshacer sin pensarlas. La propuesta se marca
+resuelta en el servidor ANTES de tocar el ramo, para que una red caída no deje
+una propuesta aplicable dos veces. Y editar aplica lo editado: un campo que
+quedó vacío se OMITE en vez de guardarse como 1,0, porque vaciarlo es lo que la
+persona quiso decir.
+
 ### Reportes de usuarios todavía abiertos
 
 Revisados el 2026-09-12 contra la tabla de sugerencias. Se dejan solo los que

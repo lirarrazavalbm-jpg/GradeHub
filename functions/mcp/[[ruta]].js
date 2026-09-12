@@ -15,7 +15,7 @@
 // pueda pegar en el lugar equivocado, y desconectar desde Ajustes lo corta de
 // verdad.
 
-import { HERRAMIENTAS, NOMBRES, validarPropuestaPauta } from './herramientas.js';
+import { HERRAMIENTAS, NOMBRES, validarPropuestaPauta, validarPropuestaNotas } from './herramientas.js';
 import motorCompartido from '../../engine.js';
 
 const SUPABASE_URL = 'https://lsulsnswzesyekpsvlql.supabase.co';
@@ -148,6 +148,42 @@ function errorPropuesta(valor) {
   return mensaje.startsWith('Propuesta inválida:') || mensaje.startsWith('No se encontró') || mensaje.startsWith('La conexión')
     ? mensaje
     : 'No se pudo guardar la propuesta.';
+}
+
+async function guardarPropuestaNotas(token, estado, args) {
+  const ramo = ramoParaPropuesta(estado, args.ramo);
+  if (!ramo) return { error: 'No se encontró ese ramo en el semestre. Pídele a la persona que lo agregue primero.' };
+  const invalida = validarPropuestaNotas(args);
+  if (invalida) return { error: invalida };
+  // Se avisa cuando una evaluación propuesta no existe en el ramo, en vez de
+  // guardarla y que aparezca como una fila que no calza con nada. El agente
+  // puede corregir el nombre y reintentar; la lista de las que sí hay es lo que
+  // se lo permite.
+  const declaradas = (ramo.categorias || []).map(c => String(c.nombre || ''));
+  const sinCalce = args.notas
+    .map(n => String(n.evaluacion || '').trim())
+    .filter(nombre => !declaradas.some(d => norm(d) === norm(nombre)));
+  if (sinCalce.length) {
+    return { error: `No encontré estas evaluaciones en ${ramo.nombre}: ${sinCalce.join(', ')}. Las que tiene son: ${declaradas.join(', ')}.` };
+  }
+  const clave = String((ramo.origen && ramo.origen.ramoKey) || norm(ramo.nombre));
+  try {
+    const r = await rpc('proponer_notas_agente', {
+      p_token: token,
+      p_ramo: String(ramo.nombre || '').trim(),
+      p_ramo_key: clave,
+      p_notas: args.notas,
+      p_fuente: String(args.fuente || '').trim(),
+    });
+    if (!r.ok) return { error: errorPropuesta(await r.json().catch(() => null)) };
+    const data = await r.json();
+    return {
+      id: data, ramo: ramo.nombre, notas: args.notas.length,
+      mensaje: 'Notas propuestas. NO están guardadas: la persona las acepta, edita o rechaza en la ficha del ramo.',
+    };
+  } catch {
+    return { error: 'No se pudo conectar con GradeHub para guardar la propuesta.' };
+  }
 }
 
 async function guardarPropuestaPauta(token, estado, args) {
@@ -331,6 +367,12 @@ export async function onRequestPost({ request, params }) {
     if (!estado) return error(id, -32001, 'Esta conexión ya no es válida. Vuelve a vincular desde Ajustes.');
 
     const argumentos = args.arguments || {};
+    if (nombre === 'proponer_notas') {
+      const propuesta = await guardarPropuestaNotas(token, estado, argumentos);
+      if (propuesta.error) return error(id, -32602, propuesta.error);
+      return respuesta(id, { content: [{ type: 'text', text: JSON.stringify(propuesta) }] });
+    }
+
     if (nombre === 'proponer_pauta') {
       const propuesta = await guardarPropuestaPauta(token, estado, argumentos);
       if (propuesta.error) return error(id, -32602, propuesta.error);

@@ -1950,3 +1950,22 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .agent-alt>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:12px;}
 .agent-alt>*:not(summary){margin-left:13px;margin-right:13px;}
 .agent-alt>*:last-child{margin-bottom:13px;}
+
+/* Notas que un agente propuso, dentro de la ficha del ramo. La nota anterior se
+   muestra tachada al lado de la nueva: pisar un 6,2 con un 4,0 es una decisión
+   distinta de llenar una casilla vacía. */
+.prop-notas-card{margin-bottom:12px;padding:13px;border:1px solid var(--border);border-radius:14px;background:var(--bg2);}
+.prop-notas-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
+.prop-notas-head b{font-size:0.875rem;font-weight:700;color:var(--fg);}
+.prop-notas-head span{font-size:0.75rem;color:var(--fg3);}
+.prop-notas-lista{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+.prop-fila{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:0.8125rem;}
+.prop-eval{color:var(--fg2);}
+.prop-valor{font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums;}
+.prop-valor s{color:var(--fg3);font-weight:500;}
+.prop-notas-fuente{margin-bottom:11px;font-size:0.75rem;line-height:1.4;color:var(--fg3);}
+.prop-notas-btns{display:flex;flex-wrap:wrap;gap:8px;}
+.prop-nota-lista{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+.prop-nota-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.prop-nota-row label{font-size:0.8125rem;color:var(--fg2);}
+.prop-nota-fuente{margin-bottom:4px;font-size:0.75rem;line-height:1.4;color:var(--fg3);}

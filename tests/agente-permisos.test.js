@@ -22,18 +22,35 @@ const sql = leer('supabase/agente_mcp.sql');
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
 
-console.log('=== Ninguna herramienta toca notas ===');
+console.log('=== Ninguna herramienta ESCRIBE notas ===');
 // Buscar la palabra "nota" en el resumen no sirve: `agregar_ramo` dice "Sin
 // notas" justamente para aclarar que no las toca. Lo que se comprueba es la
-// forma — que ninguna herramienta capaz de escribir reciba una nota como
-// argumento — y el verbo, que es donde se declararía la capacidad.
+// forma —qué argumentos recibe una herramienta capaz de escribir— y el verbo,
+// que es donde se declararía la capacidad.
+//
+// `proponer_notas` recibe notas a propósito y no viola la regla: su tipo es
+// 'propuesta', o sea que deja una fila pendiente y no toca el ramo. La regla
+// nunca fue "el agente no nombra notas" sino "la nota que queda guardada la
+// acepta el estudiante". Lo que sigue prohibido, y es lo que este test cuida,
+// es que una herramienta de ESCRITURA reciba una nota: ahí sí entraría sola.
 const recibeNota = HERRAMIENTAS.filter(h =>
-  h.tipo !== 'lectura' && Object.keys(h.args || {}).some(a => /^(nota|notas|valor|calificacion)$/i.test(a)));
-chk('ninguna herramienta que escriba recibe una nota como argumento', recibeNota.length === 0);
+  h.tipo === 'escritura' && Object.keys(h.args || {}).some(a => /^(nota|notas|valor|calificacion)$/i.test(a)));
+chk('ninguna herramienta de escritura recibe una nota como argumento', recibeNota.length === 0);
 if (recibeNota.length) recibeNota.forEach(h => console.log('       → ' + h.nombre));
 const declaraEscribirNotas = HERRAMIENTAS.filter(h =>
-  h.tipo !== 'lectura' && /(agrega|guarda|escribe|registra|pone|ingresa)[^.]{0,30}\bnotas?\b/i.test(h.resumen));
-chk('ninguna declara que agrega o guarda notas', declaraEscribirNotas.length === 0);
+  h.tipo === 'escritura' && /(agrega|guarda|escribe|registra|pone|ingresa)[^.]{0,30}\bnotas?\b/i.test(h.resumen));
+chk('ninguna de escritura declara que agrega o guarda notas', declaraEscribirNotas.length === 0);
+
+// Y la otra mitad de la regla: una herramienta que recibe notas TIENE que ser
+// una propuesta. Sin esto, cambiarle el tipo a 'escritura' a proponer_notas
+// pasaría sin que nada se queje.
+const conNotas = HERRAMIENTAS.filter(h => Object.keys(h.args || {}).some(a => /^(nota|notas|valor|calificacion)$/i.test(a)));
+chk('toda herramienta que recibe notas es del tipo propuesta',
+  conNotas.length > 0 && conNotas.every(h => h.tipo === 'propuesta'));
+// Y tiene que decirle al agente que no las está guardando, porque es lo único
+// que lo frena de prometerle al estudiante que ya quedaron.
+chk('y su resumen dice que no las guarda',
+  conNotas.every(h => /no las guarda|queda[n]? pendiente|acepta|confirm/i.test(h.resumen)));
 if (declaraEscribirNotas.length) declaraEscribirNotas.forEach(h => console.log('       → ' + h.nombre));
 chk('la lista de lo prohibido nombra las notas', PROHIBIDO.some(p => /notas/i.test(p)));
 chk('y nombra el borrado de la cuenta', PROHIBIDO.some(p => /borrar la cuenta/i.test(p)));

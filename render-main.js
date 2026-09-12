@@ -287,6 +287,39 @@ function renderRamo(){
     }
   }
 
+  // Notas que un agente propuso para ESTE ramo. Van acá y no en una bandeja
+  // aparte porque la decisión se toma mirando el ramo: qué evaluación es, qué
+  // nota tiene ahora y de dónde dice el agente que salió la nueva.
+  const propEl=document.getElementById('notas-propuestas');
+  if(propEl){
+    const pendientes=typeof propuestasNotasDeRamo==='function'?propuestasNotasDeRamo(r):[];
+    if(!pendientes.length){propEl.style.display='none';propEl.innerHTML='';}
+    else{
+      propEl.style.display='block';
+      propEl.innerHTML=pendientes.map(p=>{
+        const filas=p.notas.map(n=>{
+          const cat=(r.categorias||[]).find(c=>normName(c.nombre)===normName(n.evaluacion));
+          const actual=cat?(cat.notas||[]).find(x=>typeof x.valor==='number'&&(n.casilla?x.slot===n.casilla:true)):null;
+          // Se muestra la nota que ya está, si la hay: aceptar una propuesta
+          // que PISA un 6,2 con un 4,0 es una decisión distinta de anotar una
+          // casilla vacía, y no se puede tomar sin ver las dos.
+          return `<div class="prop-fila"><span class="prop-eval">${esc(n.evaluacion)}${n.casilla?` · casilla ${n.casilla}`:''}</span>`+
+            `<span class="prop-valor">${actual?`<s>${nf(actual.valor)}</s> → `:''}${nf(n.valor)}</span></div>`;
+        }).join('');
+        return `<div class="prop-notas-card">
+          <div class="prop-notas-head"><b>Un agente propone ${p.notas.length} nota${p.notas.length!==1?'s':''}</b><span>Nada se aplicó todavía.</span></div>
+          <div class="prop-notas-lista">${filas}</div>
+          <div class="prop-notas-fuente">Según el agente: ${esc(p.fuente)}</div>
+          <div class="prop-notas-btns">
+            <button type="button" class="ramo-action primary" onclick="aplicarPropuestaNotas('${esc(p.id)}')">Aceptar</button>
+            <button type="button" class="ramo-action" onclick="abrirEditarPropuestaNotas('${esc(p.id)}')">Editar</button>
+            <button type="button" class="ramo-action" onclick="confirmarDescartarPropuestaNotas('${esc(p.id)}')">Rechazar</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
   // Chip nota mínima para el 4.0
   const chipEl=document.getElementById('ramo-min-chip');
   if(r.categorias.length>0){

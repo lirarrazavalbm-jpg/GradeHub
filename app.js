@@ -4033,6 +4033,9 @@ let agenteCodigoActual='',agenteCodigoVence=0,agentesConectados=[],agentesCargan
 // que nadie lo haya pedido.
 let agenteUrlActual='';
 let propuestasPautaAgente=[],propuestasPautaCargando=false;
+// Las propuestas de notas van en su propio arreglo: el modal de pautas lista
+// evaluaciones con pesos y mostrarlas ahí las leería como una pauta.
+let propuestasNotasAgente=[];
 let _agenteCodigoTimer=null;
 
 function fechaAgente(valor,vacio){
@@ -4230,6 +4233,131 @@ async function revocarAgente(id){
 // Las propuestas no viven en S: son mensajes pendientes del agente, no una
 // parte de la pauta que alguien ya eligió. Guardarlas junto al semestre haría
 // que una copia vieja las reviviera después de descartarlas en otro dispositivo.
+// Lo que llega de la base se sanea igual que la pauta: viene de un agente, o
+// sea de texto que alguien más escribió. Una nota fuera de escala o una casilla
+// absurda se descartan acá y no llegan a ofrecerse.
+function propuestaNotasLimpia(valor){
+  if(!valor||typeof valor!=='object')return null;
+  const id=String(valor.id||'');
+  const ramo=String(valor.ramo||'').trim();
+  const ramoKey=String(valor.ramo_key||'').trim();
+  const fuente=String(valor.fuente||'').trim();
+  if(!/^[0-9a-f-]{36}$/i.test(id)||!ramo||!ramoKey||!fuente||!Array.isArray(valor.evaluaciones))return null;
+  const vistas=new Set();
+  const notas=[];
+  for(const fila of valor.evaluaciones){
+    const evaluacion=String(fila&&fila.evaluacion||'').trim();
+    const v=Number(fila&&fila.valor);
+    const casilla=fila&&fila.casilla==null?null:Number(fila.casilla);
+    const clave=normName(evaluacion)+'#'+(casilla==null?'':casilla);
+    if(!evaluacion||!Number.isFinite(v)||v<1||v>7||vistas.has(clave))return null;
+    if(casilla!==null&&(!Number.isInteger(casilla)||casilla<1||casilla>100))return null;
+    vistas.add(clave);notas.push({evaluacion,valor:Math.round(v*10)/10,casilla});
+  }
+  if(!notas.length||notas.length>60)return null;
+  return {id,ramo,ramoKey,fuente,notas,createdAt:valor.created_at||null};
+}
+function propuestasNotasDeRamo(ramo){
+  if(!ramo)return [];
+  const clave=ramo.origen&&ramo.origen.ramoKey;
+  return propuestasNotasAgente.filter(p=>
+    (clave&&p.ramoKey===clave)||normName(p.ramo)===normName(ramo.nombre));
+}
+// Escribe una nota propuesta en su categoría. Devuelve false si no calza, para
+// no dar por aplicada una propuesta que en realidad no entró.
+function escribirNotaPropuesta(cat,propuesta){
+  if(!cat)return false;
+  cat.notas=Array.isArray(cat.notas)?cat.notas:[];
+  const slots=Number.isInteger(cat.slots)&&cat.slots>1?cat.slots:1;
+  let destino=null;
+  if(propuesta.casilla&&slots>1){
+    if(propuesta.casilla>slots)return false;
+    destino=cat.notas.find(n=>n.slot===propuesta.casilla);
+    if(!destino){
+      destino={id:uid(),nombre:cat.nombre+' '+propuesta.casilla,valor:null,peso:1,slot:propuesta.casilla};
+      cat.notas.push(destino);
+    }
+  }else{
+    destino=cat.notas.find(n=>n.valor===null||n.valor===undefined)||cat.notas[0];
+    if(!destino){
+      destino={id:uid(),nombre:cat.nombre,valor:null,peso:1};
+      cat.notas.push(destino);
+    }
+  }
+  destino.valor=propuesta.valor;
+  return true;
+}
+// `valores` permite aplicar lo editado en vez de lo propuesto: es el mismo
+// camino, con otros números. Lo que no cambia es que la propuesta se marca
+// resuelta ANTES de tocar el ramo, para que una red caída no deje una propuesta
+// que se pueda aplicar dos veces.
+async function aplicarPropuestaNotas(id,valores){
+  const propuesta=propuestasNotasAgente.find(p=>p.id===id);
+  if(!propuesta)return;
+  const ramo=S.ramos.find(r=>propuestasNotasDeRamo(r).some(p=>p.id===id));
+  if(!ramo){showToast('Ese ramo ya no está en tu semestre',true);return;}
+  const aplicar=(valores&&valores.length?valores:propuesta.notas);
+  try{
+    await resolverPropuestaPauta(id,'aplicada');
+    propuestasNotasAgente=propuestasNotasAgente.filter(p=>p.id!==id);
+    let puestas=0;
+    aplicar.forEach(n=>{
+      const cat=(ramo.categorias||[]).find(c=>normName(c.nombre)===normName(n.evaluacion));
+      if(escribirNotaPropuesta(cat,n))puestas++;
+    });
+    save();
+    track('notas_agente_confirmadas',{notas:puestas,editadas:!!(valores&&valores.length)});
+    closeModal();
+    if(currentRamoId===ramo.id)renderRamo();else renderHome();
+    if(typeof renderAgenda==='function')renderAgenda();
+    showToast(puestas===aplicar.length?`${puestas} nota${puestas!==1?'s':''} guardada${puestas!==1?'s':''}`
+      :`Guardamos ${puestas} de ${aplicar.length}: el resto no calzó con las evaluaciones del ramo`,puestas!==aplicar.length);
+  }catch(e){showToast('No pudimos guardar estas notas. Intenta de nuevo.',true);}
+}
+function abrirEditarPropuestaNotas(id){
+  const propuesta=propuestasNotasAgente.find(p=>p.id===id);
+  if(!propuesta)return;
+  const filas=propuesta.notas.map((n,i)=>`
+    <div class="prop-nota-row">
+      <label for="prop-nota-${i}">${esc(n.evaluacion)}${n.casilla?` · casilla ${n.casilla}`:''}</label>
+      <input type="text" id="prop-nota-${i}" class="eval-row-input" inputmode="decimal" value="${esc(String(n.valor).replace('.',','))}" maxlength="4"/>
+    </div>`).join('');
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Revisar las notas propuestas</div>
+    <p class="settings-help" style="margin-top:0;">Cambia lo que no calce y guarda. Nada se aplica hasta que aprietes Guardar.</p>
+    <div class="prop-nota-lista">${filas}</div>
+    <div class="prop-nota-fuente">Según el agente: ${esc(propuesta.fuente)}</div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="guardarPropuestaNotasEditada('${esc(id)}')">Guardar</button>
+    </div>`;
+  openModal();
+}
+function guardarPropuestaNotasEditada(id){
+  const propuesta=propuestasNotasAgente.find(p=>p.id===id);
+  if(!propuesta)return;
+  const valores=[];
+  for(let i=0;i<propuesta.notas.length;i++){
+    const campo=document.getElementById('prop-nota-'+i);
+    const v=parseNota(campo?campo.value:'');
+    // Una casilla que quedó vacía o con algo que no es nota se omite, no se
+    // guarda como 1,0 ni se inventa: omitir es lo que la persona quiso decir.
+    if(isNaN(v)||v<1||v>7)continue;
+    valores.push({...propuesta.notas[i],valor:Math.round(v*10)/10});
+  }
+  if(!valores.length){showToast('No quedó ninguna nota válida para guardar',true);return;}
+  aplicarPropuestaNotas(id,valores);
+}
+function confirmarDescartarPropuestaNotas(id){
+  const propuesta=propuestasNotasAgente.find(p=>p.id===id);if(!propuesta)return;
+  showConfirm('¿Rechazar estas notas?','Se descarta la propuesta. Tus notas no cambian.',async()=>{
+    try{
+      await resolverPropuestaPauta(id,'descartada');
+      propuestasNotasAgente=propuestasNotasAgente.filter(p=>p.id!==id);
+      closeModal();renderRamo();showToast('Propuesta rechazada');
+    }catch(e){showToast('No pudimos rechazar esta propuesta. Intenta de nuevo.',true);}
+  },{label:'Rechazar',danger:true,focusCancel:true});
+}
 function propuestaPautaLimpia(valor){
   if(!valor||typeof valor!=='object')return null;
   const id=String(valor.id||'');
@@ -4264,7 +4392,11 @@ async function cargarPropuestasPautaAgente(opts){
   try{
     const {data,error}=await supabaseClient.rpc('listar_propuestas_pauta_agente');
     if(error)throw error;
-    propuestasPautaAgente=(Array.isArray(data)?data:[]).map(propuestaPautaLimpia).filter(Boolean);
+    // `tipo` nace con default 'pauta' en la base, así que una propuesta vieja
+    // sin la columna se sigue leyendo como lo que es.
+    const filas=Array.isArray(data)?data:[];
+    propuestasPautaAgente=filas.filter(f=>(f&&f.tipo||'pauta')==='pauta').map(propuestaPautaLimpia).filter(Boolean);
+    propuestasNotasAgente=filas.filter(f=>f&&f.tipo==='notas').map(propuestaNotasLimpia).filter(Boolean);
     if(opts.mostrar&&propuestasPautaAgente.length)abrirPropuestasPautaAgente();
     else if(opts.mostrar&&opts.avisar)showToast('No tienes pautas pendientes');
     return propuestasPautaAgente;
