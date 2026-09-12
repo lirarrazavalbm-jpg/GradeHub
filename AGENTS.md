@@ -701,6 +701,33 @@ mismo dato de uso, no una implementación:
   mirar primero cuánta gente entra desde el computador: si la app se usa casi
   toda en el teléfono, la franja rinde poco y gasta confianza igual.
 
+**Muchos ramos se quedan sin créditos aunque el catálogo SÍ los tenga.**
+Reportado por Lucas el 2026-09-12. Su ejemplo: "Principios Ecológicos y Medio
+Ambiente" aparece sin créditos en la app, y en `cursos-uc.js` está la fila
+`["BIO143M","Principios Ecológicos y Medio Ambiente",10]`. O sea el dato lo
+tenemos y no llega. Y dice que no es un ramo suelto: "muchos no más no tienen
+créditos".
+
+No está medido cuántos son. Lo primero es contarlos —recorrer las mallas y ver
+a cuántos `creditosDe` les devuelve null— porque eso separa "faltan tres" de
+"falta el mecanismo".
+
+Dos pistas para quien lo tome, ninguna comprobada todavía:
+
+- `cursos-uc.js` es de CARGA DIFERIDA (`cargarCursosUC()`, ~660 KB que solo se
+  bajan al buscar un ramo). `creditosDe` cae al catálogo completo con
+  `cursoUcCompleto`, pero si el ramo se crea o se normaliza ANTES de que el
+  archivo esté cargado, `CURSOS_UC_FULL` no existe y devuelve null. Nadie
+  reintenta después.
+- `CREDITOS_POR_TENANT` solo tiene `uc` y `fen` (app.js), y el respaldo del
+  catálogo completo corre solo `if(tenant==='uc')`. Para UAI y UAndes no hay
+  ninguna fuente de créditos: ahí el null es esperado, no un bug.
+
+Por qué importa y no es cosmético: el promedio general se pondera por créditos
+SOLO si todos los ramos con nota los tienen. Un ramo sin créditos arrastra a
+toda la cuenta a promedio simple —otro número— sin que falle nada ni aparezca
+ningún error. Es justo lo que ya documenta `tests/creditos-pendientes.test.js`.
+
 ### Las reglas que el motor todavía no calcula
 
 `drop_lowest` fue la primera de `noCalcula` que pasó a calcularse. La segunda
