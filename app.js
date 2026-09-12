@@ -4085,7 +4085,7 @@ async function cargarAgentesConectados(){
   if(!currentUser||!supabaseClient)return;
   agentesCargando=true;agentesError='';pintarAgentesConectados();
   try{
-    const {data,error}=await supabaseClient.rpc('listar_agentes');
+    const {data,error}=await rpcAgente('listar_agentes');
     if(error)throw error;
     // Copiar solo las cinco columnas declaradas por la RPC: aunque el servidor
     // cambie su respuesta, la interfaz jamás debe terminar mostrando un token.
@@ -4097,18 +4097,42 @@ async function cargarAgentesConectados(){
     agentesError='No pudimos cargar tus agentes conectados. Intenta de nuevo en un momento.';
   }finally{agentesCargando=false;pintarAgentesConectados();}
 }
+// Las RPC del agente exigen sesión: resuelven todo con auth.uid(). Una app que
+// queda abierta días llega con el JWT vencido, y entonces la base contesta "sin
+// sesión" —que es correcto y parece un error nuestro—. Antes de dar por perdida
+// la acción se refresca una vez y se reintenta: si la sesión todavía sirve, la
+// persona no se enteró de nada.
+function sesionCaducada(error){
+  const m=(error&&(error.message||error.msg))||'';
+  return /sin sesi[oó]n|jwt|token/i.test(m);
+}
+async function rpcAgente(nombre,args){
+  let r=await supabaseClient.rpc(nombre,args);
+  if(r&&r.error&&sesionCaducada(r.error)){
+    try{await supabaseClient.auth.refreshSession();}catch(e){}
+    r=await supabaseClient.rpc(nombre,args);
+  }
+  return r;
+}
 async function crearCodigoAgente(){
   if(!currentUser||!supabaseClient){showToast('Inicia sesión para conectar un agente',true);return;}
   const btn=document.getElementById('s-agent-code-create');
   if(btn){btn.disabled=true;btn.textContent='Generando…';}
   try{
-    const {data,error}=await supabaseClient.rpc('crear_codigo_agente');
+    const {data,error}=await rpcAgente('crear_codigo_agente');
     if(error)throw error;
     if(typeof data!=='string'||!/^[-A-Z2-9]{6}$/i.test(data))throw new Error('código inválido');
     agenteCodigoActual=data.toUpperCase();agenteCodigoVence=Date.now()+AGENTE_CODIGO_MS;
     pintarCodigoAgente();
   }catch(e){
-    showToast('No pudimos generar el código. Intenta de nuevo.',true);
+    // El motivo se dice. "Intenta de nuevo" sobre un error que se repite
+    // siempre manda a repetir lo que ya falló, y deja sin saber si el problema
+    // es la sesión, la red o nosotros. Pasó con esta misma pantalla.
+    const motivo=(e&&(e.message||e.msg))||'';
+    showToast(sesionCaducada(e)
+      ? 'Tu sesión expiró. Vuelve a entrar y genera el código otra vez.'
+      : ('No pudimos generar el código'+(motivo?': '+motivo:'. Intenta de nuevo.')),true);
+    console.warn('crear_codigo_agente falló:',e);
     if(btn){btn.disabled=false;btn.textContent='Generar código';}
   }
 }
@@ -4120,7 +4144,7 @@ function confirmarRevocarAgente(id){
 async function revocarAgente(id){
   if(!currentUser||!supabaseClient)return;
   try{
-    const {error}=await supabaseClient.rpc('revocar_agente',{p_id:id});
+    const {error}=await rpcAgente('revocar_agente',{p_id:id});
     if(error)throw error;
     agentesConectados=agentesConectados.filter(a=>a.id!==id);
     pintarAgentesConectados();showToast('Agente desconectado');
