@@ -967,14 +967,24 @@ function semester(){
   if(m<=6)return`${y}-1`;
   return`${y}-2`;
 }
-// Tramos según uso chileno: la tarde se estira hasta las 20:00, y de madrugada
-// sigue siendo "buenas noches" (no "buenos días" a las 3 AM).
-function greeting(){
-  const h=new Date().getHours();
-  if(h<6)return 'Buenas noches';
-  if(h<12)return 'Buenos días';
-  if(h<20)return 'Buenas tardes';
-  return 'Buenas noches';
+// Una frase por día, no una distinta en cada render: Inicio se vuelve a dibujar
+// al agregar notas y una frase que cambia en ese momento se siente aleatoria.
+// Ninguna presupone que al estudiante le está yendo bien; acompaña sin mentirle.
+const FRASES_INICIO=[
+  'Una nota a la vez',
+  'Veamos cómo va el semestre',
+  'Mantengamos las notas al día',
+  'Así va tu semestre',
+  'Revisemos qué viene',
+  'Sigamos con lo que toca',
+  'Todo listo para seguir',
+  'Un paso a la vez',
+  'Veamos qué sigue',
+  'Veamos dónde estamos'
+];
+function fraseInicio(fecha=new Date()){
+  const dia=Math.floor(Date.UTC(fecha.getFullYear(),fecha.getMonth(),fecha.getDate())/86400000);
+  return FRASES_INICIO[((dia%FRASES_INICIO.length)+FRASES_INICIO.length)%FRASES_INICIO.length];
 }
 
 // ─── SUPABASE / AUTH ───────────────────────────────────────────────────────────
