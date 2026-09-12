@@ -1930,3 +1930,10 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .agent-steps-head b{font-size:0.8125rem;font-weight:700;color:var(--fg);}
 .agent-steps-head .agent-refresh{margin:0;}
 .agent-steps-pre{margin:0;padding:12px;max-height:230px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.6875rem;line-height:1.55;color:var(--fg2);white-space:pre;-webkit-user-select:all;user-select:all;}
+
+/* La URL de conexión del agente. El aviso va DENTRO del cuadro y antes del
+   valor: si se lee después de copiar, ya no sirve de nada. */
+.agent-url-wrap:empty{display:none;}
+.agent-url-box{margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);}
+.agent-url-warn{margin-bottom:9px;font-size:0.75rem;line-height:1.45;color:var(--fg2);}
+.agent-url-value{display:block;margin-bottom:10px;padding:9px 10px;border:1px solid var(--border);border-radius:9px;background:var(--card);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.6875rem;line-height:1.5;color:var(--fg);word-break:break-all;-webkit-user-select:all;user-select:all;}
