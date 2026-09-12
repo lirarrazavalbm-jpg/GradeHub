@@ -71,8 +71,8 @@ pautaUC('Introducción a la Programación','Interrogación 1:15|Interrogación 2
 pautaUC('Principios Ecológicos y Medio Ambiente','Prueba 1:25|Prueba 2:40|Prueba 3:35');
 pautaUC('Biología de la Célula','Interrogaciones:45.5|Talleres:14|Trabajos prácticos:7|Trabajo grupal:3.5|Examen final:30');
 pautaUC('Introducción al Álgebra Lineal','Interrogación 1:20|Interrogación 2:25|Interrogación 3:25|Examen:30');
-pautaUC('Introducción a la Macroeconomía','C1:16|P1:22|P2:22|PP:10|Examen:30');
-pautaUC('Probabilidad y Estadística','C1:8|P1:20|C2:8|P2:20|C3:8|Examen:30|Control sorpresa 1:2|Control sorpresa 2:2|Control sorpresa 3:2');
+pautaUC('Introducción a la Macroeconomía','Control 1:16|Prueba 1:22|Prueba 2:22|Parte del profesor:10|Examen:30');
+pautaUC('Probabilidad y Estadística','Control 1:10|Control 2:10|Control 3:10|Prueba 1:20|Prueba 2:20|Controles sorpresa:5|Examen:25');
 // Dinámica y su laboratorio son dos cursos con dos actas. Las evaluaciones de
 // acá son la NFC del programa y suman 100 entre ellas: el 30% del laboratorio
 // NO está en esta lista, entra por `aporta`. La equivalencia con la fórmula

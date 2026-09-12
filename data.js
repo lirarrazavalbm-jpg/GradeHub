@@ -598,12 +598,27 @@ const PRESETS_UC={
   'Introducción al Álgebra Lineal':[
     ['Interrogación 1',20],['Interrogación 2',25],['Interrogación 3',25],['Examen',30],
   ],
+  // Distribución y nombres confirmados por Lucas el 12-09-2026 a partir de
+  // información entregada por un estudiante que está cursando estos ramos.
   'Introducción a la Macroeconomía':[
-    ['C1',16],['P1',22],['P2',22],['PP',10],['Examen',30],
+    ['Control 1',16,{nombresAnteriores:['C1']}],
+    ['Prueba 1',22,{nombresAnteriores:['P1']}],
+    ['Prueba 2',22,{nombresAnteriores:['P2']}],
+    ['Parte del profesor',10,{nombresAnteriores:['PP']}],
+    ['Examen',30],
   ],
   'Probabilidad y Estadística':[
-    ['C1',8],['P1',20],['C2',8],['P2',20],['C3',8],['Examen',30],
-    ['Control sorpresa 1',2],['Control sorpresa 2',2],['Control sorpresa 3',2],
+    ['Control 1',10,{nombresAnteriores:['C1']}],
+    ['Control 2',10,{nombresAnteriores:['C2']}],
+    ['Control 3',10,{nombresAnteriores:['C3']}],
+    ['Prueba 1',20,{nombresAnteriores:['P1']}],
+    ['Prueba 2',20,{nombresAnteriores:['P2']}],
+    ['Controles sorpresa',5,{slots:3,slotLabel:'Control sorpresa',nombresAnteriores:[
+      {nombre:'Control sorpresa 1',slot:0},
+      {nombre:'Control sorpresa 2',slot:1},
+      {nombre:'Control sorpresa 3',slot:2},
+    ]}],
+    ['Examen',25],
   ],
   'Química para Ingeniería':[['Pruebas',44.1],['Ev. de Taller',4.9],['Examen',21],['Informes',18],['Controles',12]],
   'Filosofía: ¿para qué?':[['Prueba 1',30],['Ejercicio de análisis',20],['Prueba 2',30],['Podcast',20,{min:4.0,cap:3.9}]],

@@ -177,7 +177,7 @@ console.log('\n=== Ingeniería Comercial UC · segundo semestre ===');
 [
   ['Introducción al Álgebra Lineal',4],
   ['Introducción a la Macroeconomía',5],
-  ['Probabilidad y Estadística',9],
+  ['Probabilidad y Estadística',7],
   ['Cálculo II',5],
 ].forEach(([nombre,cantidad])=>{
   const ramo=presetRamo(nombre,'uc','COM');
