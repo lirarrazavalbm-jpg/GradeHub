@@ -4943,8 +4943,9 @@ function openModal(){
   let startY=0,curY=0,startT=0,dragging=false,historia=[];
   sheet.onpointerdown=e=>{
     if(e.pointerType==='mouse'&&e.button!==0)return;
-    // Sobre un control el gesto es del control, no del sheet.
-    if(e.target.closest('input,textarea,select,button,a,[contenteditable]'))return;
+    // La etiqueta también activa su campo: el riel visible de un switch vive
+    // dentro de un label. Capturar ahí el puntero le roba el clic al checkbox.
+    if(e.target.closest('input,textarea,select,button,a,label,[contenteditable]'))return;
     cancelAnimationFrame(_sheetRaf);ov.classList.remove('settling');
     startY=e.clientY;curY=startY;startT=Date.now();dragging=sheet.scrollTop<=0;
     historia=[{y:e.clientY,t:performance.now()}];
