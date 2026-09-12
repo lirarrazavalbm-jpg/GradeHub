@@ -1,0 +1,68 @@
+<!doctype html>
+<!--
+GradeHub · tarjeta social editorial. Fuente de ../og-v2.png.
+Composición: marca como cabecera, titular y bajada en dos columnas,
+claim subordinado en el pie. Sin notas ficticias ni colores del semáforo.
+Los tokens vienen del tema oscuro de styles.css. El ícono es el original.
+BlinkMacSystemFont primero: -apple-system sola puede caer en serif en headless.
+
+Desde la raíz del repo, en macOS (Chrome y sips):
+  OG_TMP=$(mktemp -d /tmp/gradehub-og.XXXXXX)
+  /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+    --headless=new --disable-gpu --hide-scrollbars --allow-file-access-from-files \
+    --user-data-dir="$OG_TMP/profile" --force-device-scale-factor=2 \
+    --window-size=1200,630 --screenshot="$OG_TMP/og-2x.png" \
+    "file://$PWD/bin/og-editorial.html"
+  sips -z 630 1200 "$OG_TMP/og-2x.png" --out og-v2.png
+
+Esperado: 1200 × 630, PNG de menos de 200 000 bytes.
+Este HTML es fuente de diseño offline; bin/ ya está excluido de dist/.
+-->
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1200">
+  <title>GradeHub · Mejor que un Excel.</title>
+  <style>
+    :root {
+      --bg:#080809;
+      --card:#111113;
+      --primary:#2dd4bf;
+      --accent:#56e2e8;
+      --fg:#f1f1f3;
+      --fg2:#b4b4bd;
+      --fg3:#92929c;
+      --font-ui:BlinkMacSystemFont,-apple-system,'Segoe UI',sans-serif;
+    }
+    * { box-sizing:border-box; }
+    html,body { margin:0; width:1200px; height:630px; overflow:hidden; }
+    body { background:var(--bg); color:var(--fg); font-family:var(--font-ui); }
+    .sheet { width:100%; height:100%; padding:54px 72px 44px; display:flex; flex-direction:column; }
+    .masthead { display:flex; align-items:center; justify-content:space-between; }
+    .brand { display:flex; align-items:center; gap:16px; }
+    .brand img { display:block; width:56px; height:56px; border-radius:14px; }
+    .brand-name { font-size:32px; font-weight:650; letter-spacing:-1.1px; }
+    .domain { font-size:22px; color:var(--fg3); letter-spacing:-.3px; }
+    .story { flex:1; display:grid; grid-template-columns:580px 1fr; gap:48px; align-items:center; padding-bottom:5px; }
+    h1 { margin:0; font-size:112px; line-height:1.02; font-weight:700; letter-spacing:-6px; }
+    h1 span { display:block; }
+    .description { margin:8px 0 0; font-size:35px; line-height:1.3; font-weight:400; letter-spacing:-.8px; color:var(--fg2); }
+    .footer { border-top:1px solid color-mix(in srgb,var(--fg3) 24%,var(--bg)); padding-top:27px; display:flex; align-items:center; }
+    .claim { margin:0; color:var(--fg3); font-size:25px; line-height:1.3; font-weight:450; letter-spacing:-.25px; }
+    .claim strong { font-weight:500; color:var(--primary); }
+  </style>
+</head>
+<body>
+  <main class="sheet">
+    <header class="masthead">
+      <div class="brand"><img src="../icon-512.png" alt=""><span class="brand-name">GradeHub</span></div>
+      <span class="domain">gradehub.cl</span>
+    </header>
+    <section class="story">
+      <h1><span>Mejor que</span><span>un Excel.</span></h1>
+      <p class="description">Toma el control de tu semestre con todas tus notas en un solo lugar.</p>
+    </section>
+    <footer class="footer"><p class="claim">Agenda · Estadísticas · <strong>100% gratis</strong></p></footer>
+  </main>
+</body>
+</html>
