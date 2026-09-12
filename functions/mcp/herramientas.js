@@ -4,11 +4,17 @@
 // escaparse por descuido, así que se declara como dato y se comprueba con un
 // test, en vez de quedar repartido en los `if` de cada handler.
 //
-// LA REGLA QUE MANDA: un agente NO escribe notas. Puede verlas todas, pero la
-// nota la teclea el estudiante. No es prudencia — es lo que sostiene el
-// producto: si una nota puede entrar sin que él la haya puesto, su promedio
-// deja de ser suyo y ya no hay cómo notar que está mal. Una pauta equivocada se
-// ve de un vistazo contra el programa; una nota equivocada, no.
+// LA REGLA QUE MANDA: un agente NO escribe notas. Puede verlas todas y puede
+// PROPONER una, pero la que queda guardada la acepta el estudiante, con el
+// valor y la evaluación a la vista. No es prudencia — es lo que sostiene el
+// producto: si una nota puede entrar sin que él la haya visto, su promedio deja
+// de ser suyo y ya no hay cómo notar que está mal. Una pauta equivocada se ve
+// de un vistazo contra el programa; una nota equivocada, no.
+//
+// Por eso `proponer_notas` no es una excepción a la regla sino su forma: la
+// propuesta nace 'pendiente', no toca el ramo al llegar, y la app la muestra
+// completa con aceptar, editar y rechazar. Lo que no existe es un camino que
+// escriba una nota sin ese paso.
 //
 // Lo destructivo tampoco: borrar cuenta, ramos, pautas o notas. Un agente que
 // se equivoca al leer un PDF cuesta una corrección; uno que borra, cuesta el
@@ -73,6 +79,34 @@ export const HERRAMIENTAS = [
     },
   },
   {
+    nombre: 'proponer_notas',
+    tipo: 'propuesta',
+    // Igual que proponer_pauta: deja la propuesta esperando. La diferencia con
+    // escribir la nota es la confirmación, así que la confirmación es el
+    // producto: la app muestra qué evaluación, qué valor y de dónde salió.
+    resumen: 'Propone notas para las evaluaciones de un ramo (por ejemplo, leídas de un correo o de una foto de la pauta). No las guarda: quedan pendientes y el estudiante las acepta, edita o rechaza en la app.',
+    args: {
+      ramo: 'nombre o sigla de un ramo que la persona ya tenga agregado',
+      notas: {
+        type: 'array',
+        description: 'Notas propuestas, una por evaluación.',
+        minItems: 1,
+        maxItems: 60,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['evaluacion', 'valor'],
+          properties: {
+            evaluacion: { type: 'string', description: 'Nombre de la evaluación tal como está en el ramo' },
+            valor: { type: 'number', description: 'Nota entre 1,0 y 7,0' },
+            casilla: { type: 'integer', minimum: 1, maximum: 100, description: 'Cuál de las notas de esa evaluación, si tiene varias' },
+          },
+        },
+      },
+      fuente: 'De dónde salió la nota: el correo, la publicación del curso, la foto',
+    },
+  },
+  {
     nombre: 'agregar_ramo',
     tipo: 'escritura',
     resumen: 'Agrega un ramo al semestre. Sin notas: solo el ramo y, si se sabe, su pauta.',
@@ -83,7 +117,9 @@ export const HERRAMIENTAS = [
 // Lo que un agente no puede hacer, escrito para que el test lo pueda comprobar
 // y para que quien agregue una herramienta nueva se tope con la lista.
 export const PROHIBIDO = [
-  'escribir, editar o borrar notas',
+  // Proponerlas sí. Lo que no existe es un camino que las guarde sin que la
+  // persona las haya visto y aceptado en la app.
+  'escribir, editar o borrar notas sin que la persona lo confirme',
   'borrar la cuenta',
   'borrar ramos, pautas o evaluaciones',
   'cambiar el correo o la contraseña',
@@ -98,6 +134,31 @@ const normalizarNombre = texto => String(texto || '').toLowerCase().normalize('N
 // Esta comprobación da al agente una respuesta útil antes de llamar a
 // Supabase. La RPC repite todas estas reglas: el agente puede saltarse este
 // archivo, pero no puede saltarse la frontera del servidor.
+// Las notas se validan acá y no en la base: los rangos y los nombres son del
+// dominio, y un error tiene que volver como mensaje MCP que el agente pueda
+// leer y corregir, no como una excepción de Postgres.
+export function validarPropuestaNotas(args) {
+  const fuente = String(args && args.fuente || '').trim();
+  const notas = args && args.notas;
+  if (!fuente) return 'Propuesta inválida: di de dónde salió la nota (el correo, la publicación del curso, la foto).';
+  if (!Array.isArray(notas) || notas.length < 1 || notas.length > 60) return 'Propuesta inválida: entrega entre 1 y 60 notas.';
+  const vistas = new Set();
+  for (const n of notas) {
+    const evaluacion = String(n && n.evaluacion || '').trim();
+    const valor = Number(n && n.valor);
+    const casilla = n && n.casilla;
+    if (!evaluacion) return 'Propuesta inválida: cada nota necesita el nombre de su evaluación.';
+    // La escala chilena es 1,0 a 7,0. Un 0 o un 8 no es una nota baja o alta:
+    // es un dato mal leído, y aceptarlo lo mete en el promedio de alguien.
+    if (!Number.isFinite(valor) || valor < 1 || valor > 7) return `Propuesta inválida: "${evaluacion}" tiene una nota fuera de la escala 1,0 a 7,0.`;
+    if (casilla != null && (!Number.isInteger(casilla) || casilla < 1 || casilla > 100)) return 'Propuesta inválida: la casilla debe ser un entero entre 1 y 100.';
+    const clave = normalizarNombre(evaluacion) + '#' + (casilla == null ? '' : casilla);
+    if (vistas.has(clave)) return `Propuesta inválida: hay dos notas para "${evaluacion}" en la misma casilla.`;
+    vistas.add(clave);
+  }
+  return null;
+}
+
 export function validarPropuestaPauta(args) {
   const fuente = String(args && args.fuente || '').trim();
   const evaluaciones = args && args.evaluaciones;
