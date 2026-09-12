@@ -622,6 +622,7 @@ const PRESETS_UC={
     // Ninguna de las dos es algo que el estudiante pueda usar a su favor.
   },
   'Principios Ecológicos y Medio Ambiente':{
+    sigla:'BIO143M',
     // El calendario 2026-2 la nombra "Biología"; sus I1, I2 e I3 calzan con
     // las tres Pruebas del programa. Se conserva el nombre oficial del curso.
     // Lucas confirmó el 2026-08-24 que son el mismo ramo: no es una inferencia
@@ -648,6 +649,7 @@ const PRESETS_UC={
   // las Interrogaciones: asociar una fecha única a una categoría agrupada sería
   // presentar como cierta una división que el documento no declara.
   'Biología de la Célula':{
+    sigla:'BIO141C',
     periodo:'2026-2',
     creditos:10,
     evals:[
@@ -685,6 +687,7 @@ const PRESETS_UC={
   // archivo se titula 2024: sus porcentajes sirven como estructura, pero esas
   // fechas no son una pauta vigente y no se cargan en Agenda.
   'Fundamentos Básicos de Cultura Sorda y Lengua de Señas Chilena':{
+    sigla:'FON104',
     creditos:10,
     evals:[
       ['Deletreo manual',10],
@@ -762,6 +765,7 @@ const PRESETS_UC={
   // programa no declara. Por la misma razón, las fechas preliminares de los
   // informes no se fuerzan como fechas de tres evaluaciones independientes.
   'Econometría Aplicada':{
+    sigla:'ICS2563',
     periodo:'2026-2',
     creditos:10,
     evals:[
@@ -837,6 +841,7 @@ const PRESETS_UC={
   // que L es su promedio simple: separarlos en cuatro filas de 20% conserva la
   // fórmula exacta y permite llevar las fechas publicadas a Agenda.
   'Programación como Herramienta para la Ingeniería':{
+    sigla:'IIC2115',
     periodo:'2026-2',
     creditos:10,
     evals:[
@@ -902,6 +907,7 @@ const PRESETS_UC={
     ],
   },
   'Revelación y Fe':{
+    sigla:'TTF012',
     periodo:'2026-2',
     evals:[['Evaluación 1',20,{fecha:'2026-09-07'}],['Evaluación 2',20,{fecha:'2026-10-14'}],['Evaluación 3',30,{fecha:'2026-11-16'}],['Examen final',30]],
     noCalcula:[
