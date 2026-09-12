@@ -59,7 +59,16 @@ begin
   if auth.uid() is null then raise exception 'sin sesión'; end if;
   delete from public.agent_link_codes where user_id = auth.uid();
   -- Seis caracteres sin 0/O ni 1/I: se dicta en voz alta y se copia a mano.
-  v_codigo := upper(translate(substr(encode(gen_random_bytes(8),'base64'),1,6),'01OIl/+','23579XY'));
+  -- Seis letras sin las que se confunden al dictar (nada de I, O, L ni S).
+  --
+  -- Sale de gen_random_uuid() y NO de gen_random_bytes(): lo segundo es de
+  -- pgcrypto, que no vive en el search_path de esta función, así que el insert
+  -- reventaba con "function gen_random_bytes(integer) does not exist" y la app
+  -- solo alcanzaba a decir "no pudimos generar el código". gen_random_uuid es
+  -- de Postgres, ya es el default de la columna `id` de esta misma tabla y es
+  -- como calendar_feed.sql genera su token desde que existe.
+  v_codigo := translate(substr(replace(gen_random_uuid()::text,'-',''),1,6),
+                        '0123456789abcdef','ABCDEFGHJKMNPRTW');
   insert into public.agent_link_codes(codigo, user_id) values (v_codigo, auth.uid());
   return v_codigo;
 end $$;
@@ -74,7 +83,10 @@ begin
   select user_id into v_user from public.agent_link_codes where codigo = upper(p_codigo);
   if v_user is null then raise exception 'código inválido o vencido'; end if;
   delete from public.agent_link_codes where codigo = upper(p_codigo);
-  v_token := encode(gen_random_bytes(32),'hex');
+  -- 64 hex, mismo formato que valida el endpoint, con dos uuid. Por lo mismo
+  -- que el código de arriba: pgcrypto no se alcanza desde acá.
+  v_token := replace(gen_random_uuid()::text,'-','') ||
+             replace(gen_random_uuid()::text,'-','');
   insert into public.agent_links(user_id, token, agente) values (v_user, v_token, left(coalesce(p_agente,'Agente'),60));
   return v_token;
 end $$;
