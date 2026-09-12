@@ -701,6 +701,45 @@ mismo dato de uso, no una implementación:
   mirar primero cuánta gente entra desde el computador: si la app se usa casi
   toda en el teléfono, la franja rinde poco y gasta confianza igual.
 
+**Tres cosas pedidas por Lucas el 2026-09-12 para la pantalla de Ajustes y la
+conexión de agentes.** Ninguna está hecha; se anotan con lo que ya se sabe para
+que quien las tome no vuelva a levantarlo.
+
+**1. Sacar el camino del código (Claude Code y Codex).** Hoy la sección de
+agentes ofrece dos formas de conectar: la URL —que sirve para ChatGPT, Claude y
+Gemini, o sea para casi todos— y un código de un solo uso escondido detrás del
+desplegable "Mi agente corre comandos". Ese segundo camino se elimina.
+
+Lo que toca: el `<details class="agent-alt">` de la sección, `crearCodigoAgente`,
+`pintarCodigoAgente`, `instruccionesAgente`, `copiarInstruccionesAgente` y el
+temporizador de los cinco minutos. Del lado de la base, `crear_codigo_agente` y
+`canjear_codigo_agente` quedan sin usar; borrarlas es una migración aparte y no
+urge, pero hay que decidirlo en vez de dejarlas ahí sin que nadie sepa por qué.
+Ojo con los tests que las cubren: `agentes-conectados.test.js` y
+`agente-conectar.test.js` comprueban justo ese flujo, así que hay que sacarles
+esas comprobaciones —no debilitarlas— y dejar las de la URL.
+
+**2. Ordenar Ajustes y poner un buscador arriba.** Hoy son siete secciones
+declaradas en `sections` (app.js), agrupadas en Tu cuenta, Estudio,
+Preferencias, Ayuda y Datos. El buscador tiene que filtrar por el título y por
+la bajada de cada una; con siete entradas el valor real está en encontrar una
+opción concreta —"cambiar mi carrera", "borrar mi cuenta"— sin saber en qué
+grupo vive, así que conviene indexar también las opciones de adentro y no solo
+los títulos de sección.
+
+**3. Explicar de verdad cómo conectar un agente, empezando por un prompt.** Hoy
+la pantalla entrega la URL y poco más, y eso deja al estudiante adivinando dónde
+se pega en SU app. La idea de Lucas, que es mejor que una lista de pasos
+nuestra: ofrecer primero un texto para copiar y pegarle a su propio agente, del
+tipo "esta es la URL de mi app de notas, explícame paso a paso cómo agregarte
+como conector" — el agente sabe dónde está su propia configuración y nosotros no
+tenemos que mantener instrucciones de tres productos que cambian solos.
+
+Cuidado con una cosa al escribirlo: ese texto lleva la URL, o sea el token. Si
+se copia desde una pantalla, va a terminar pegado en conversaciones que quedan
+guardadas. Vale la pena decirlo ahí mismo, igual que el aviso que ya está sobre
+la URL.
+
 **Un agente propone notas; no las escribe.** Pedido por Lucas el 2026-09-12 y
 hecho: `proponer_notas` deja una propuesta pendiente y la ficha del ramo la
 muestra con Aceptar, Editar y Rechazar, con la nota anterior tachada al lado de
