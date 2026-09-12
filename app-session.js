@@ -436,7 +436,13 @@ async function afterLogin(){
   // Es una bandeja de revisión, no una sincronización del semestre: se lee
   // aparte y nunca bloquea entrar. Si llega una propuesta, se muestra completa
   // para que la persona la aplique o descarte en vez de mover su promedio sola.
-  if(S.onboardingDone) cargarPropuestasPautaAgente({mostrar:true}).catch(()=>{});
+  // La bandeja de propuestas es opcional y vive en app.js. El guardia no es
+  // ceremonia: un ReferenceError acá revienta afterLogin() entero —o sea el
+  // login y la sincronización— por una pantalla accesoria. El .catch cubre la
+  // promesa rechazada, no la función que no existe.
+  if(S.onboardingDone&&typeof cargarPropuestasPautaAgente==='function'){
+    cargarPropuestasPautaAgente({mostrar:true}).catch(()=>{});
+  }
 }
 
 async function loadFromCloud(){

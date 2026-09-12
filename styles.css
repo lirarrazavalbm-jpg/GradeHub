@@ -947,7 +947,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .agent-list-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:7px;}
 .agent-list-heading .modal-label{margin:0;}
 .agent-list-heading span{color:var(--fg3);font-size:.65625rem;line-height:1.3;text-align:right;}
-.agent-refresh{margin:-2px 0 8px;padding:0;border:0;background:transparent;color:var(--primary);font-family:'Onest',sans-serif;font-size:.71875rem;font-weight:700;cursor:pointer;}
+.agent-refresh{margin:-2px 0 8px;padding:0;border:0;background:transparent;color:var(--primary);font-family:var(--font-ui);font-size:.71875rem;font-weight:700;cursor:pointer;}
 .agent-list{display:grid;gap:8px;}
 .agent-list-empty{padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--muted);color:var(--fg3);font-size:.75rem;line-height:1.45;}
 .agent-retry{margin-left:4px;padding:0;border:0;background:transparent;color:var(--primary);font:inherit;font-weight:700;cursor:pointer;}
@@ -956,7 +956,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .agent-link-heading>div{min-width:0;display:flex;flex-direction:column;gap:3px;}
 .agent-link-heading b{overflow:hidden;color:var(--fg);font-size:.875rem;line-height:1.2;text-overflow:ellipsis;white-space:nowrap;}
 .agent-link-heading span{color:var(--fg3);font-size:.6875rem;line-height:1.35;}
-.agent-revoke{flex-shrink:0;min-height:36px;padding:7px 9px;border:1px solid color-mix(in srgb,var(--red),transparent 62%);border-radius:8px;background:transparent;color:var(--red);font-family:'Onest',sans-serif;font-size:.6875rem;font-weight:700;cursor:pointer;}
+.agent-revoke{flex-shrink:0;min-height:36px;padding:7px 9px;border:1px solid color-mix(in srgb,var(--red),transparent 62%);border-radius:8px;background:transparent;color:var(--red);font-family:var(--font-ui);font-size:.6875rem;font-weight:700;cursor:pointer;}
 .agent-link-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:13px 0 0;padding-top:10px;border-top:1px solid var(--border);}
 .agent-link-meta div{min-width:0;}
 .agent-link-meta dt{margin-bottom:3px;color:var(--fg3);font-size:.59375rem;font-weight:800;letter-spacing:.055em;text-transform:uppercase;}
