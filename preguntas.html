@@ -7,35 +7,33 @@
 <meta name="description" content="Qué es GradeHub, si es gratis, quién puede ver tus notas, para qué universidades sirve y de dónde salen las ponderaciones de cada ramo."/>
 <meta name="robots" content="index,follow"/>
 <link rel="icon" href="/icon.svg" type="image/svg+xml"/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400..800&display=swap" rel="stylesheet"/>
 <style>
   :root{
-    --bg:#05070a; --card:#111620; --border:#1d2534;
-    --fg:#eef3f8; --fg2:#aebbcc; --fg3:#7d8ca1; --primary:#2dd4bf; --accent:#56e2e8;
+    --font-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --bg:#080809; --card:#111113; --border:#27272c;
+    --fg:#f1f1f3; --fg2:#b4b4bd; --fg3:#92929c; --primary:#2dd4bf; --accent:#56e2e8;
   }
   @media (prefers-color-scheme: light){
-    :root{ --bg:#f7f9fc; --card:#ffffff; --border:#dfe6ef; --fg:#0f172a; --fg2:#41506a; --fg3:#67788f; }
+    :root{ --bg:#ffffff; --card:#fafafa; --border:#e7e7e9; --fg:#19191c; --fg2:#54545b; --fg3:#6c6c74; }
   }
   *{box-sizing:border-box;}
   body{
     margin:0; background:var(--bg); color:var(--fg);
-    font-family:Onest,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    font-size:15px; line-height:1.65;
+    font-family:var(--font-ui);
+    font-size:16px; line-height:1.65;
     padding:32px 20px 72px;
   }
   .wrap{max-width:680px; margin:0 auto;}
-  a{color:var(--primary);}
+  a{color:var(--fg);text-underline-offset:3px;}
   .volver{
     display:inline-flex; align-items:center; gap:6px;
     font-size:13px; color:var(--fg2); text-decoration:none; margin-bottom:28px;
   }
   .volver:hover{color:var(--primary);}
-  h1{font-family:Onest,sans-serif; font-size:30px; line-height:1.2; margin:0 0 6px;}
+  h1{font-family:var(--font-ui); font-size:30px; line-height:1.2; margin:0 0 6px;}
   .sub{color:var(--fg3); font-size:13px; margin:0 0 32px;}
   h2{
-    font-family:Onest,sans-serif; font-size:19px; margin:36px 0 10px;
+    font-family:var(--font-ui); font-size:19px; margin:36px 0 10px;
     padding-top:22px; border-top:1px solid var(--border);
   }
   h2:first-of-type{border-top:0; padding-top:0;}
@@ -51,7 +49,7 @@
   .caja p:last-child{margin-bottom:0;}
   .cta{
     display:inline-block; margin-top:8px; padding:11px 20px; border-radius:11px;
-    background:var(--primary); color:#fff; text-decoration:none; font-weight:600; font-size:14.5px;
+    background:var(--fg); color:var(--bg); text-decoration:none; font-weight:600; font-size:14.5px;
   }
   footer{margin-top:44px; padding-top:20px; border-top:1px solid var(--border); color:var(--fg3); font-size:13px;}
 </style>

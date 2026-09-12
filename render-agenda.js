@@ -50,9 +50,16 @@ function cambiarOrdenAgenda(orden){
 
 // Ordenar es un control secundario: se decide una vez y después se mira la
 // lista. Tenía una franja propia con su etiqueta, así que competía de igual a
-// igual con las evaluaciones. Ahora viaja en la misma línea del encabezado de
-// sección, que es donde se espera un control de vista, y devuelve esa franja
-// entera al contenido.
+// igual con las evaluaciones; ahora viaja en la línea del encabezado, que es
+// donde se espera un control de vista.
+//
+// Va en "Tus prioridades" y no en "Próximos 7 días" porque ese encabezado es
+// condicional: sin nada esta semana se devuelve vacío y se llevaba el control
+// con él. Quien tenía su próxima prueba en dos semanas se quedaba sin poder
+// ordenar una lista de dieciséis evaluaciones, sin ningún error a la vista.
+// "Tus prioridades" existe siempre que haya algo por venir, que es exactamente
+// cuando ordenar significa algo. Además el orden elegido decide cuáles son las
+// dos destacadas, así que el control queda al lado de lo que cambia.
 function agendaOrdenHTML(activo=agendaOrdenActual){
   const opciones=[['recomendado','Recomendado'],['fecha','Fecha'],['peso','Peso']];
   return `<div class="ag-order-options" role="group" aria-label="Ordenar evaluaciones pendientes">
@@ -291,7 +298,6 @@ function resumenSemanaHTML(pendientes){
   return `<div class="ag-list-hd ag-week-hd">
     <span class="section-hd-title">Próximos 7 días</span>
     <span class="ag-count">${resumen.cantidad} eval. · ${resumen.peso===null?'peso variable':resumen.peso+'%'}</span>
-    ${agendaOrdenHTML(agendaOrdenActual)}
   </div>`;
 }
 
@@ -443,7 +449,7 @@ function renderAgenda(){
     const destacadas=destacadasAgenda(porVenir,agendaOrdenActual);
     const restantes=ordenadas.slice(destacadas.length);
     html+=resumenSemanaHTML(porVenir);
-    html+=`<div class="ag-priority-heading"><span class="section-hd-title">Tus prioridades</span><span class="ag-count">${destacadas.length}</span></div>`;
+    html+=`<div class="ag-priority-heading"><span class="section-hd-title">Tus prioridades</span><span class="ag-count">${destacadas.length}</span>${agendaOrdenHTML(agendaOrdenActual)}</div>`;
     // Las dos iban lado a lado, en mitades iguales. En 375px esa mitad no
     // alcanzaba para el contenido: "Métodos Matemáti", "es lo que más te
     // convie…". Y sobre todo, dos cosas del mismo tamaño no son una jerarquía:

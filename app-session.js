@@ -81,6 +81,7 @@ function showAuthScreen(){
   ['home','stats','agenda','ramo','onboard','reset','app-error'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
   document.getElementById('bottom-nav').style.display='none';
   document.getElementById('screen-auth').classList.add('active');
+  marcarUltimoLogin();
 }
 // Una sesión válida que falla al dibujarse no es un error de login. Esta
 // pantalla conserva esa distinción: no expone el stack, no cierra la sesión y
@@ -245,12 +246,48 @@ async function submitAuth(){
     }else{
       const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:p});
       if(error)throw error;
+      recordarMetodoLogin('correo');
       currentUser=data.user;await afterLogin();
     }
   }catch(e){
     authError(traduceAuthError(e));
     btn.disabled=false;btn.textContent=orig;
   }
+}
+
+// --- ULTIMO METODO USADO PARA ENTRAR ---
+// Volver despues de un mes y no acordarse de si se entro con Google o con
+// correo termina en un "contrasena incorrecta" que no es tal: la cuenta existe,
+// pero se creo por el otro camino.
+//
+// Se guarda SOLO cual de los dos, nunca el correo: esta pantalla se ve en
+// computadores compartidos y de un correo a la vista se deduce quien lo usa.
+// Va en su propia clave y no en el estado de la app, porque tiene que seguir
+// disponible despues de cerrar sesion, que es justo cuando hace falta.
+var CLAVE_ULTIMO_LOGIN='gradehub_ultimo_login';
+function recordarMetodoLogin(metodo){
+  try{localStorage.setItem(CLAVE_ULTIMO_LOGIN,metodo);}catch(e){/* modo privado */}
+}
+function ultimoMetodoLogin(){
+  try{return localStorage.getItem(CLAVE_ULTIMO_LOGIN);}catch(e){return null;}
+}
+// La marca se pinta al mostrar la pantalla de auth. Si no hay nada guardado
+// -primera vez, o navegador que no deja guardar- simplemente no aparece.
+function marcarUltimoLogin(){
+  const metodo=ultimoMetodoLogin();
+  document.querySelectorAll('.auth-ultimo').forEach(function(e){e.remove();});
+  if(!metodo)return;
+  // La marca va ENCIMA del metodo, no dentro. Metida en el boton de Google
+  // quedaba gris sobre gris —ilegible— y ademas le partia el texto en dos
+  // lineas. Arriba se lee en los dos casos y no toca el boton.
+  const destino=metodo==='google'
+    ? document.getElementById('btn-google')
+    : document.querySelector('#screen-auth .ob-card');
+  if(!destino||!destino.parentNode)return;
+  const marca=document.createElement('div');
+  marca.className='auth-ultimo';
+  marca.textContent='Lo usaste la última vez';
+  destino.parentNode.insertBefore(marca,destino);
 }
 
 // Login con Google vía Supabase OAuth. Redirige fuera; al volver, boot() detecta
@@ -267,6 +304,9 @@ async function signInWithProvider(provider){
       options:{redirectTo:location.origin+location.pathname}
     });
     if(error)throw error;
+    // Se anota ANTES de irse a Google: desde acá la pagina se descarga y no hay
+    // vuelta a este codigo si el login sale bien.
+    recordarMetodoLogin(provider);
   }catch(e){
     authError(traduceAuthError(e));
     if(btn){btn.disabled=false;btn.style.opacity='';btn.innerHTML=orig;}
@@ -334,8 +374,10 @@ async function afterSignup(){
   setCacheOwner(currentUser?currentUser.id:null);
   if(S.onboardingDone && S.ramos.length){
     // El usuario ya tenía datos locales → migrarlos a la nube
-    await syncNow();await syncProfile();
-    showToast('✓ Cuenta creada — tus datos están en la nube');
+    const respaldado=await syncNow();await syncProfile();
+    showToast(respaldado
+      ? '✓ Cuenta creada — tus datos están en la nube'
+      : 'Tu cuenta se creó y tus notas siguen en este dispositivo, pero no pudimos respaldarlas. No cierres sesión.',!respaldado);
     enterApp();
   }else{
     enterOnboarding(); // usuario nuevo → completar onboarding
@@ -350,17 +392,32 @@ async function afterLogin(){
   // normalize() y enterApp() quedan fuera a propósito. Si una de ellas falla,
   // continuar con estado o DOM a medias sería peor que detenerse con un aviso.
   try{cloud=await loadFromCloud();}catch(e){ok=false;}
-  if(ok){
+  const mismaCache=getCacheOwner()===uid;
+  if(ok&&cloud!==null){
     // La nube puede contener ramos creados con versiones anteriores. Pásalos
     // siempre por normalize(): un ramo sin preset necesita categorias:[] para
     // que el editor de pauta pueda abrirse igual que uno con pauta oficial.
-    S=normalize(cloud?{...freshState(),...cloud}:freshState());
+    S=normalize({...freshState(),...cloud});
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+    setCacheOwner(uid);
+  }else if(ok&&mismaCache){
+    // `null` significa que la consulta no encontró una fila; NO demuestra que
+    // esta persona no tenga datos. Si la caché ya tiene el mismo dueño, es la
+    // única copia conocida: se conserva y se intenta crear el respaldo.
+    const respaldado=await syncNow();
+    showToast(respaldado
+      ? 'Recuperamos tu copia local y la respaldamos en la nube'
+      : 'Tus notas siguen en este dispositivo, pero no pudimos respaldarlas. No cierres sesión e inténtalo de nuevo con internet.',!respaldado);
+  }else if(ok){
+    // Cuenta realmente nueva, o caché de otra persona en un navegador
+    // compartido. Nunca se reutilizan datos cuyo dueño no coincide.
+    S=freshState();
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
     setCacheOwner(uid);
   }else{
     // Sin red: la caché local sirve, pero SOLO si es de este mismo usuario.
     // Si es de otro (navegador compartido), se descarta para no filtrar sus datos.
-    if(getCacheOwner()===uid){
+    if(mismaCache){
       showToast('Sin conexión · usando tu copia local');
     }else{
       S=freshState();
@@ -394,11 +451,19 @@ function syncToCloud(){
   _syncTimer=setTimeout(syncNow,800); // agrupa ediciones rápidas
 }
 async function syncNow(){
-  if(!supabaseClient||!currentUser)return;
+  if(!supabaseClient||!currentUser)return false;
   try{
-    await supabaseClient.from('user_ramos').upsert({user_id:currentUser.id,data:S},{onConflict:'user_id'});
+    const {error}=await supabaseClient.from('user_ramos').upsert({user_id:currentUser.id,data:S},{onConflict:'user_id'});
+    // Supabase normalmente resuelve la promesa y entrega el fallo acá; el
+    // catch por sí solo no lo ve. Marcar la caché como alineada en ese caso
+    // deja a la app creyendo que existe un respaldo que nunca se escribió.
+    if(error)throw error;
     setCacheOwner(currentUser.id); // la caché local quedó alineada con esta cuenta
-  }catch(e){/* sin conexión: localStorage ya guardó, se sube al próximo save */}
+    return true;
+  }catch(e){
+    console.warn('No se pudo respaldar la copia local:',(e&&e.code)||'error');
+    return false; // localStorage conserva la copia; se reintenta al próximo save
+  }
 }
 async function syncProfile(){
   if(!supabaseClient||!currentUser)return;

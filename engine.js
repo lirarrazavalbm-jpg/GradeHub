@@ -206,15 +206,19 @@ function gh_crearCalculoRamo(deps){
   }
   function gradesOf(r){const g={};(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{if(n.valor!==null&&n.valor!==undefined)g[n.id]=n.valor;}));return g;}
   function avgPond(notas){let tv=0,tp=0;notas.forEach(n=>{if(n.valor!==null){tv+=n.valor*(n.peso||1);tp+=(n.peso||1);}});return tp>0?tv/tp:null;}
+  function notasVigentesSinDescarte(cat){
+    const notas=(cat&&cat.notas||[]).filter(n=>typeof n.valor==='number');
+    if(!(Number.isInteger(cat&&cat.slots)&&cat.slots>1))return notas;
+    const porCasilla=new Map();
+    notas.forEach(n=>{if(Number.isInteger(n.slot))porCasilla.set(n.slot,n);});
+    return porCasilla.size?[...porCasilla.values()]:notas;
+  }
   function promedioCompletoSinDescarte(cat){
     const objetivo=Number.isInteger(cat&&cat.slots)&&cat.slots>1?cat.slots:1;
     const notas=(cat&&cat.notas||[]).filter(n=>typeof n.valor==='number');
-    const porCasilla=new Map();
-    notas.forEach(n=>{if(Number.isInteger(n.slot))porCasilla.set(n.slot,n);});
-    const vigentes=objetivo>1
-      ? (porCasilla.size?[...porCasilla.values()]:notas)
-      : notas;
-    const rendidas=objetivo>1&&porCasilla.size?porCasilla.size:notas.length;
+    const vigentes=notasVigentesSinDescarte(cat);
+    const conCasilla=objetivo>1&&vigentes.some(n=>Number.isInteger(n.slot));
+    const rendidas=conCasilla?vigentes.length:notas.length;
     if(rendidas<objetivo)return null;
     return avgPond(vigentes);
   }
@@ -225,14 +229,32 @@ function gh_crearCalculoRamo(deps){
     const categorias=ramo.categorias||[];
     const examen=categorias.find(c=>normName(c.nombre)===normName(regla.evaluacion));
     if(!examen)return null;
-    if(avgPond(examen.notas)!==null)return {activa:false,pendiente:false,examenId:examen.id,razon:'examen_rendido'};
+    const confirmada=ramo.eximicionConfirmada===true;
+    const base={activa:false,pendiente:false,examenId:examen.id,regla,confirmada};
+    if(avgPond(examen.notas)!==null)return {...base,razon:'examen_rendido'};
     const fuentes=regla.segun.map(nombre=>categorias.find(c=>normName(c.nombre)===normName(nombre))).filter(Boolean);
     if(fuentes.length!==regla.segun.length)return null;
     const promedios=fuentes.map(promedioCompletoSinDescarte);
-    if(promedios.some(p=>p===null))return {activa:false,pendiente:true,examenId:examen.id};
+    if(promedios.some(p=>p===null))return {...base,pendiente:true,razon:'incompleto'};
     const pesoTotal=fuentes.reduce((s,c)=>s+(Number(c.peso)||0),0);
     const promedio=pesoTotal>0?fuentes.reduce((s,c,i)=>s+promedios[i]*(Number(c.peso)||0),0)/pesoTotal:null;
-    return {activa:promedio!==null&&promedio>=regla.min,pendiente:false,examenId:examen.id,promedio,regla};
+    const minimoFallido=(Array.isArray(regla.minimos)?regla.minimos:[]).find(condicion=>{
+      const cat=categorias.find(c=>normName(c.nombre)===normName(condicion.evaluacion));
+      if(!cat||!Number.isFinite(condicion.min))return true;
+      if(condicion.cadaNota===true){
+        const notas=notasVigentesSinDescarte(cat);
+        return !notas.length||notas.some(n=>n.valor<condicion.min);
+      }
+      const valor=promedioCompletoSinDescarte(cat);
+      return valor===null||valor<condicion.min;
+    });
+    if(minimoFallido)return {...base,promedio,razon:'minimo_categoria',minimoFallido};
+    const elegible=promedio!==null&&promedio>=regla.min;
+    const requiereConfirmacion=regla.requiereConfirmacion===true;
+    const activa=elegible&&(!requiereConfirmacion||confirmada);
+    return {...base,activa,elegible,promedio,
+      puedeConfirmar:elegible&&requiereConfirmacion&&!confirmada,
+      razon:!elegible?'promedio':activa?'cumple':'falta_confirmacion'};
   }
   function categoriaEximida(ramo,cat){const estado=estadoEximicion(ramo);return !!(estado&&estado.activa&&estado.examenId===cat.id);}
   function categoriasVigentes(ramo){return (ramo&&ramo.categorias||[]).filter(c=>!categoriaEximida(ramo,c));}

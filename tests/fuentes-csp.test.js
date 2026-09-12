@@ -45,23 +45,19 @@ const ramaFuentes = sw.slice(sw.indexOf('fonts.googleapis.com'), sw.indexOf('Res
 chk('la rama de fuentes captura el fallo de red', /\.catch\(/.test(ramaFuentes));
 chk('y devuelve una Response, no undefined', /new Response\(/.test(ramaFuentes));
 
-console.log('\n=== Una sola familia con carácter, sin perder los números ===');
-const paginas = ['index.html', 'preguntas.html', 'privacidad.html', '404.html'];
+console.log('\n=== Editorial usa la fuente del sistema sin descargas ===');
+const paginas = ['index.html', 'preguntas.html', 'privacidad.html', 'terminos.html', '404.html'];
 paginas.forEach(archivo => {
   const html = fs.readFileSync(raiz + archivo, 'utf8');
-  chk(`${archivo} carga Onest variable de 400 a 800`,
-    /family=Onest:wght@400\.\.800&display=swap/.test(html));
-  chk(`${archivo} ya no descarga Inter ni Sora`,
-    !/family=(?:Inter|Sora)|family=[^"']*(?:Inter|Sora)/.test(html));
-  chk(`${archivo} prepara la conexión a las dos rutas de Google Fonts`,
-    /rel="preconnect" href="https:\/\/fonts\.googleapis\.com"/.test(html) &&
-    /rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin/.test(html));
+  chk(`${archivo} no descarga fuentes ni abre conexiones innecesarias`,
+    !/<link[^>]*(?:fonts\.googleapis\.com|fonts\.gstatic\.com)/.test(html));
 });
-chk('styles.css usa Onest y no deja una segunda identidad escondida',
-  /font-family:[^;}]*Onest/.test(css) && !/font-family:[^;}]*(?:Inter|Sora)/.test(css));
+chk('styles.css declara la pila del sistema y no deja una segunda identidad escondida',
+  /--font-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif/.test(css) &&
+  !/font(?:-family)?:[^;}]*(?:Onest|Inter|Sora)/.test(css));
 chk('los estilos que app.js genera en runtime usan la misma familia',
-  /font(?:-family)?:[^;"}]*['"]Onest/.test(app) &&
-  !/font(?:-family)?:[^;"}]*(?:Inter|Sora)/.test(app));
+  /font(?:-family)?:[^;"}]*var\(--font-ui\)/.test(app) &&
+  !/font(?:-family)?:[^;"}]*(?:Onest|Inter|Sora)/.test(app));
 ['gpa-num', 'ramo-num', 'ramo-nota', 'ag-day', 'ag-priority-weight', 'ag-row-peso'].forEach(clase => {
   chk(`${clase} conserva cifras tabulares`,
     new RegExp(`\\.${clase}\\{[^}]*font-variant-numeric:tabular-nums`).test(css));

@@ -35,9 +35,6 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
 
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400..800&display=swap" rel="stylesheet"/>
 
 <!-- Datos estructurados para Google -->
 <script type="application/ld+json">
@@ -222,7 +219,7 @@
 <div id="screen-home" class="screen">
   <div class="topbar">
     <span class="brand-lockup">
-      <span class="brand-word" style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--fg);">GradeHub</span>
+      <span class="brand-word">GradeHub</span>
       <span class="brand-glyph-slot" id="brand-glyph" title=""></span>
     </span>
     <button class="avatar-btn" id="user-avatar" onclick="toggleUserMenu(event)" aria-label="Menú de usuario" aria-haspopup="menu" aria-expanded="false">?</button>
@@ -231,7 +228,7 @@
     <div class="greet-hero"><div class="greet-line" id="home-greeting">Hola</div></div>
     <div class="gpa-card">
       <div class="gpa-label">Promedio general</div>
-      <div style="display:flex;align-items:flex-end;gap:0;">
+      <div class="gpa-reading">
         <div class="gpa-num" id="home-gpa">·</div>
         <span id="gpa-delta" class="gpa-delta" style="display:none;"></span>
       </div>
@@ -246,7 +243,6 @@
         </div>
       </div>
     </div>
-    <div id="home-insights" style="margin:6px 20px 4px;display:none;"></div>
     <div class="section-hd" id="ramos-hd" style="display:none;">
       <span class="section-hd-title">Mis ramos</span>
       <button class="section-hd-add" onclick="openAddRamoModal()" aria-label="Agregar ramo">
@@ -259,6 +255,7 @@
       </button>
     </div>
     <div id="home-ramos"></div>
+    <div id="home-insights" style="margin:20px 20px 4px;display:none;"></div>
     <button class="sim-global-cta" id="sim-global-btn" onclick="openSimGlobalModal()" style="display:none;">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>
       Simular el semestre completo
@@ -295,6 +292,7 @@
     <div id="pauta-cambio" style="display:none;"></div>
     <div id="consenso-disponible" style="display:none;"></div>
     <div id="no-calcula-warning" style="display:none;"></div>
+    <div id="eximicion-warning" style="display:none;"></div>
     <div id="ausencias-justificadas-warning" style="display:none;"></div>
     <div id="recuperativo-warning" style="display:none;"></div>
     <div id="cat-list"></div>
@@ -308,7 +306,7 @@
 
 <!-- STATS -->
 <div id="screen-stats" class="screen">
-  <div class="topbar"><span class="brand-word" style="flex:1;font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--fg);">Estadísticas</span></div>
+  <div class="topbar"><span class="brand-word" style="flex:1;font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--fg);">Estadísticas</span><button class="topbar-link" type="button" onclick="openEditarSeccionesModal()">Editar</button></div>
   <div class="scroll">
     <div class="greet-hero"><div class="greet-line" id="stats-hero-title">Este semestre</div></div>
     <div id="stats-body" style="padding:0 0 12px;"></div>

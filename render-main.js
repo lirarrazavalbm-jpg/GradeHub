@@ -10,7 +10,7 @@ function renderHome(){
   const tagsEl=document.getElementById('gpa-tags');
   const deltaEl=document.getElementById('gpa-delta');
   const first=(S.userName||'').split(' ')[0]||'';
-  document.getElementById('home-greeting').innerHTML=`${greeting()}${first?', <span class="greet-name">'+esc(first)+'</span>':''}`;
+  document.getElementById('home-greeting').innerHTML=`${fraseInicio()}${first?', <span class="greet-name">'+esc(first)+'</span>':''}`;
   refreshAvatar();
   // Glifo de la universidad junto al wordmark
   const bg=document.getElementById('brand-glyph');
@@ -86,8 +86,13 @@ function renderHome(){
   }
   const cr=totalCreditos(S.ramos);
   const modo=gpaMode(S.ramos);
-  gpaSub.textContent=`${semester()} · ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`
+  const periodoActual=semester();
+  const detalleActual=`${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'}`
     +(modo==='creditos'?` · ${cr} créditos`:'');
+  // El costado derecho del promedio estaba vacío. Llevar aquí el contexto que
+  // ya aparecía debajo equilibra el bloque sin inventar otra estadística.
+  gpaSub.innerHTML=`<strong>${esc(periodoActual)}</strong><span>${detalleActual}</span>`;
+  gpaSub.style.display=S.ramos.length?'flex':'none';
   const detalleMetodo=descripcionMetodoGpa(S.ramos);
   if(detalleMetodo){
     gpaMethod.textContent=detalleMetodo.texto;
@@ -116,7 +121,7 @@ function renderHome(){
       const kind=abs<0.05?'flat':diff>0?'up':'down';
       const arrow=kind==='up'?'↑':kind==='down'?'↓':'·';
       deltaEl.className='gpa-delta '+kind;
-      deltaEl.innerHTML=`${arrow} ${nf(abs,2)}`;
+      deltaEl.innerHTML=`<strong>${arrow} ${nf(abs,2)}</strong><span>vs. ${esc(last.label||'semestre anterior')}</span>`;
       deltaEl.title=`vs ${last.label||'semestre anterior'}`;
       deltaEl.style.display='inline-flex';
     }else{
@@ -215,13 +220,11 @@ function renderHome(){
     const sig=siglaDeRamo(r);
     const div=document.createElement('div');div.className='ramo-row';div.dataset.ramoId=r.id;div.onclick=()=>openRamo(r.id);
     div.dataset.progress=String(prog.pct);
+    div.style.setProperty('--ramo-progress-scale',String(prog.pct/100));
     if(nn>0){
-      const tail=Math.min(14,100-prog.pct);
       div.classList.add('has-progress');
       if(completo)div.classList.add('is-complete');
       if(recienCerrado)div.classList.add('just-completed');
-      div.style.setProperty('--ramo-progress',`${prog.pct}%`);
-      div.style.setProperty('--ramo-progress-end',`${Math.min(100,prog.pct+tail)}%`);
     }
     if(S.sortMode==='manual')div.dataset.reorderable='true';
     div.style.setProperty('--ramo-tint',r.color);
@@ -231,9 +234,10 @@ function renderHome(){
         </button>`
       : '<span class="chevron-r">›</span>';
     div.innerHTML=`
-      <div class="ramo-band" style="background:${esc(r.color)}"></div>
-      <div class="ramo-info"><div class="ramo-name">${esc(r.nombre)}</div><div class="ramo-meta">${sig?`<span class="ramo-sigla">${esc(sig)}</span>`:''}${metaHtml}</div></div>
-      <div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div>${control}`;
+      <div class="ramo-band" aria-hidden="true" style="background:${esc(r.color)}"></div>
+      <div class="ramo-info"><button type="button" class="ramo-name">${esc(r.nombre)}</button><div class="ramo-meta">${sig?`<span class="ramo-sigla">${esc(sig)}</span>`:''}${metaHtml}</div></div>
+      <div class="ramo-grade-action"><div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div>${control}</div>
+      ${nc>0?'<span class="ramo-progress-track" aria-hidden="true"><span class="ramo-progress-fill"></span></span>':''}`;
     c.appendChild(div);
   });
   if(S.sortMode==='manual')activarReordenRamos(c);
@@ -253,6 +257,7 @@ function renderRamo(){
   const avg=ramoAvg(r);
   const calculo=calculoRamoConCompuertas(r);
   const recuperativo=estadoRecuperativo(r,calculo);
+  const eximicion=estadoEximicion(r);
   const descartes=calculo.res.drops||[];
   const avgEl=document.getElementById('ramo-hero-avg');
   if(avg!==null){
@@ -264,10 +269,11 @@ function renderRamo(){
     avgEl.textContent='Sin notas';avgEl.className='ramo-num empty';
   }
   const tp=r.categorias.reduce((a,c)=>a+c.peso,0);
+  const categoriasVisibles=r.categorias.filter(c=>!(eximicion&&eximicion.activa&&eximicion.regla.ocultaEvaluacion===true&&eximicion.examenId===c.id));
   const crTxt=r.creditos?` · ${r.creditos} créditos`:'';
-  document.getElementById('ramo-hero-sub').textContent=r.categorias.length===0
+  document.getElementById('ramo-hero-sub').textContent=categoriasVisibles.length===0
     ?('Agrega evaluaciones para comenzar'+crTxt)
-    :`${r.categorias.length} ${r.categorias.length===1?'evaluación':'evaluaciones'} · ${r2(tp)}% ponderado${crTxt}`;
+    :`${categoriasVisibles.length} ${categoriasVisibles.length===1?'evaluación':'evaluaciones'} · ${r2(tp)}% ponderado${crTxt}`;
   const periodoEl=document.getElementById('pauta-periodo');
   if(periodoEl){
     const info=infoPeriodoPauta(r);
@@ -285,7 +291,6 @@ function renderRamo(){
   const chipEl=document.getElementById('ramo-min-chip');
   if(r.categorias.length>0){
     const categoriasActivas=resumenCategoriasCalculadas(r,calculo);
-    const eximicion=estadoEximicion(r);
     const totalPeso=categoriasActivas.reduce((a,c)=>a+c.peso,0);
     let pesoConNotas=0,sumaPonderada=0;
     categoriasActivas.forEach(c=>{if(c.valor!==null&&c.valor!==undefined){pesoConNotas+=c.peso;sumaPonderada+=c.valor*c.peso;}});
@@ -296,7 +301,7 @@ function renderRamo(){
     if(eximicion&&eximicion.activa){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip';
-      chipEl.textContent='Exento/a del Examen · puedes registrar una nota si lo rendiste';
+      chipEl.textContent=`Te eximiste del ${eximicion.regla.evaluacion}`;
     } else if(gateHit){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip bad';
@@ -384,6 +389,34 @@ function renderRamo(){
       <div class="reglas-cuerpo${abierto?' open':''}">${bloques.join('<div style="height:10px;"></div>')}<span style="display:block;margin-top:6px;">Compáralo con la pauta del curso.</span></div>
     </div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
+
+  // Biocel exige asistencia de Taller, un dato que la app no tiene. Llegar al
+  // promedio solo habilita esta confirmación: nunca afirma la eximición sola.
+  const ew=document.getElementById('eximicion-warning');
+  if(ew&&eximicion&&eximicion.regla.requiereConfirmacion===true){
+    let texto='',accion='';
+    if(eximicion.puedeConfirmar){
+      texto=`<b>Por tus notas, puedes eximirte del ${esc(eximicion.regla.evaluacion)}.</b><br>Confirma que ingresaste todas tus notas previas al examen y que cumples la asistencia de Taller exigida por tu sección.`;
+      accion='<button type="button" onclick="confirmarEximicionActual()">Confirmar eximición</button>';
+    }else if(eximicion.activa){
+      texto=`<b>Te eximiste del ${esc(eximicion.regla.evaluacion)}.</b><br>Ya no aparece entre tus evaluaciones pendientes y tu nota de presentación queda como nota final.`;
+      accion='<button type="button" onclick="corregirEximicionActual()">Corregir confirmación</button>';
+    }else if(eximicion.confirmada){
+      const causa=eximicion.razon==='incompleto'
+        ? 'Todavía faltan notas previas al examen.'
+        : eximicion.razon==='minimo_categoria'
+          ? `Ya no se cumple el mínimo de ${nf(eximicion.minimoFallido.min)} en ${esc(eximicion.minimoFallido.evaluacion)}.`
+          : eximicion.razon==='examen_rendido'
+            ? `El ${esc(eximicion.regla.evaluacion)} tiene una nota ingresada y vuelve a formar parte del cálculo.`
+            : `Tu nota de presentación quedó bajo ${nf(eximicion.regla.min)}.`;
+      texto=`<b>Tu confirmación se conserva, pero ya no se aplica.</b><br>${causa} Si vuelves a cumplir las condiciones, la eximición se activa sola.`;
+      accion='<button type="button" onclick="corregirEximicionActual()">Corregir confirmación</button>';
+    }
+    if(texto){
+      ew.style.display='flex';ew.className='weight-setup-nudge eximicion-note';
+      ew.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${texto}<div style="margin-top:8px;">${accion}</div></div>`;
+    }else{ew.style.display='none';ew.innerHTML='';}
+  }else if(ew){ew.style.display='none';ew.innerHTML='';}
 
   const aw=document.getElementById('ausencias-justificadas-warning');
   const ausencias=calculo.ausencias;
@@ -483,6 +516,9 @@ function renderRamo(){
     const notas=Array.isArray(cat.notas)?cat.notas:[];
     const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaHoraCorta(cat.fecha,cat.hora))}</span>`:'';
     const exenta=categoriaEximida(r,cat);
+    // La categoría sigue guardada intacta. Solo se oculta mientras la
+    // confirmación esté activa, para que corregirla la haga reaparecer.
+    if(exenta&&eximicion&&eximicion.regla.ocultaEvaluacion===true)return;
     // Sección de preset: fila directa, solo escribir la nota (estilo simulador)
     if(cat.directNota){
       // Preset con varios espacios (ej: Laboratorio = 3 notas que se promedian) — COLAPSABLE
@@ -580,6 +616,34 @@ function renderRamo(){
 }
 
 // Formato corto de fecha para chips: "15 mar"
+// Se pinta aparte porque depende de una respuesta del servidor. Mientras no
+// llega, la sección no existe: no se muestra un esqueleto ni un "cargando" para
+// algo que la mayoría de las veces no va a tener nada que decir.
+async function pintarPosicionesCurso(){
+  const box=document.getElementById('stats-curso');
+  if(!box)return;
+  await subirNotasCurso();
+  const pos=await cargarPosicionesCurso();
+  const filas=(S.ramos||[]).filter(r=>r&&r.sigla&&pos&&pos[r.id]);
+  if(!filas.length){
+    // Con menos de cinco no hay comparación posible, y es el caso normal al
+    // principio. Se dice por qué en vez de dejar un hueco.
+    box.innerHTML=`<p class="stats-curso-vacio">Cuando al menos cinco personas lleven uno de tus ramos, vas a ver acá cómo te va respecto del resto. Nadie ve tu nota ni tu nombre.</p>`;
+    return;
+  }
+  box.innerHTML=filas.map(r=>{
+    const p=pos[r.id];
+    // El total va al lado del porcentaje a propósito. Con cinco participantes
+    // "mejor que el 75%" solo puede ser 0, 25, 50, 75 o 100, y sin saber cuántos
+    // son suena mucho más fino de lo que es.
+    return `<div class="stats-curso-row">
+      <span class="stats-curso-color" style="background:${esc(r.color)}"></span>
+      <span class="stats-curso-main"><strong>${esc(r.nombre)}</strong><small>${p.total} llevan este ramo</small></span>
+      <span class="stats-curso-val">${p.mejorQue}%<small>por sobre</small></span>
+    </div>`;
+  }).join('');
+}
+
 function renderStats(){
   const body=document.getElementById('stats-body');const g=gpa(S.ramos);
   const heroTitle=document.getElementById('stats-hero-title');
@@ -596,6 +660,10 @@ function renderStats(){
   }
 
   let html='';
+  // Cada sección se arma por separado y se emite al final en el orden que el
+  // estudiante haya dejado, saltando las que escondió. Vive en el scope de la
+  // función porque el historial se construye en otro bloque.
+  const piezas={};
   if(totalNotas===0){
     const ramosConPauta=S.ramos.filter(r=>Array.isArray(r.categorias)&&r.categorias.length>0).length;
     const evaluaciones=S.ramos.reduce((n,r)=>n+(Array.isArray(r.categorias)?r.categorias.length:0),0);
@@ -623,7 +691,6 @@ function renderStats(){
     const avanceTail=Math.min(14,100-avance.pct);
     const falta=loQueFaltaPorRamo(S.ramos);
     const necesidadPorRamo=new Map(falta.map(x=>[x.ramo.id,x]));
-    const mapa=S.ramos.map(r=>({ramo:r,avg:ramoAvg(r),progreso:ramoProgress(r),necesidad:necesidadPorRamo.get(r.id)||null}));
     const filaNecesidad=x=>{
       const imposible=x.necesita>7.05;
       const valor=imposible?'—':fmt(Math.max(1,x.necesita));
@@ -642,49 +709,42 @@ function renderStats(){
         <div class="stats-priority-value"><span style="color:${color};">${valor}</span><small>${imposible?'sin salida':'necesitas'}</small></div>
       </button>`;
     };
-    const filaMapa=x=>{
-      const {ramo,avg,progreso,necesidad}=x;
-      const cerrado=progreso.pct===100;
-      const imposible=necesidad&&necesidad.necesita>7.05;
-      const estado=avg===null?'Aún sin notas':imposible?'Ya no alcanza solo con lo pendiente':cerrado?'Todo evaluado':necesidad?`Necesitas ${fmt(Math.max(1,necesidad.necesita))} en lo que queda`:`Vas ${fmt(avg)} en lo evaluado`;
-      return `<button class="stats-ramo-row" onclick="openRamo('${esc(ramo.id)}')">
-        <span class="stats-ramo-color" style="background:${esc(ramo.color)}"></span>
-        <span class="stats-ramo-main"><strong>${esc(ramo.nombre)}</strong><small>${estado}</small></span>
-        <span class="stats-ramo-progress">${cerrado?'100%':`${progreso.pct}%`}<small>evaluado</small></span>
-        <span class="stats-ramo-avg" style="color:${avg===null?'var(--fg3)':getColor(avg)}">${avg===null?'—':fmt(avg)}</span>
-      </button>`;
-    };
-    html+=`
+    piezas.ritmo=`
     <div class="section-hd" style="padding:6px 20px 8px;">
-      <span class="section-hd-title">Ritmo del semestre</span>
+      <span class="section-hd-title">Avance del semestre</span>
     </div>
     <div class="stat-card stats-progress-card${avance.pct===100?' is-complete':''} stats-situation-card" role="progressbar" aria-label="${avance.pct}% de las evaluaciones evaluado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance.pct}" style="--stats-progress:${avance.pct}%;--stats-progress-end:${Math.min(100,avance.pct+avanceTail)}%;margin:0 20px 16px;">
       <div class="stats-situation-top">
-        <div><div class="stat-label">Avance del semestre</div><div class="stat-val stats-situation-value">${avance.pct}%</div><div class="stat-sub">del peso evaluable ya tiene nota</div></div>
+        <div><div class="stat-val stats-situation-value">${avance.pct}%</div><div class="stat-sub">del peso evaluable ya tiene nota</div></div>
         <div class="stats-situation-progress"><span>${totalNotas}</span><small>nota${totalNotas!==1?'s':''} ingresada${totalNotas!==1?'s':''}</small></div>
       </div>
       <div class="stats-situation-reading">${lectura}</div>
     </div>
-    ${(()=>{
+    `;
+    {
       const proy=proyeccionSemestre(S.ramos);
-      let out='';
       if(falta.length){
-        out+=`
+        piezas.prioridades=`
         <div class="section-hd" style="padding:0 20px 8px;">
-          <span class="section-hd-title">Qué mirar primero</span>
+          <span class="section-hd-title">Tus prioridades hoy</span>
         </div>
         <div style="padding:0 20px;">
           <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:0 0 10px;">Los ramos que más nota te exigen en lo pendiente. Tócalos para revisar su pauta.</p>
           ${falta.slice(0,3).map(filaNecesidad).join('')}
         </div>`;
       }
-      out+=`
-      <div class="section-hd" style="padding:20px 20px 8px;">
-        <span class="section-hd-title">Mapa de tus ramos</span>
-      </div>
-      <div class="stats-ramo-list">${mapa.map(filaMapa).join('')}</div>`;
+
+      // Cómo va respecto de quienes cursan lo mismo. La sección se pinta vacía
+      // y se rellena cuando el servidor responde: bloquear Estadísticas hasta
+      // que vuelva una comparación dejaría la pantalla en blanco por algo
+      // secundario.
+      piezas.curso=`
+        <div class="section-hd" style="padding:20px 20px 8px;">
+          <span class="section-hd-title">Cómo vas respecto a los demás</span>
+        </div>
+        <div id="stats-curso" class="stats-curso"></div>`;
       if(proy){
-        out+=`
+        piezas.rango=`
         <div class="section-hd" style="padding:20px 20px 8px;">
           <span class="section-hd-title">Rango del semestre</span>
         </div>
@@ -698,9 +758,7 @@ function renderStats(){
           <div class="stat-sub" style="margin-top:6px;">El rango considera sacar entre 1,0 y 7,0 en todo lo pendiente, incluidas las reglas que pueden topar una nota.</div>
         </div>`;
       }
-      return out;
-    })()}
-    </div>`;
+    }
   }
 
   // Historial de semestres. El encabezado y el botón para cargar uno anterior van
@@ -709,12 +767,12 @@ function renderStats(){
   // nunca.
   {
     const validos=(S.historial||[]).filter(h=>h&&Array.isArray(h.ramos));
-    html+=`<div class="section-hd stats-history-heading" style="padding:0 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    let hist=`<div class="section-hd stats-history-heading" style="padding:0 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
       <span class="section-hd-title">Historial</span>
       <button type="button" class="stats-hist-add" onclick="openSemestreAnteriorModal()">+ Semestre anterior</button>
     </div>`;
     if(!validos.length){
-      html+=`<p class="stats-hist-vacio">Si empezaste la carrera antes de usar GradeHub, agrega tus semestres anteriores con la nota final de cada ramo. Sirve para que tu promedio de carrera cuente todo lo que llevas.</p>`;
+      hist+=`<p class="stats-hist-vacio">Si empezaste la carrera antes de usar GradeHub, agrega tus semestres anteriores con la nota final de cada ramo. Sirve para que tu promedio de carrera cuente todo lo que llevas.</p>`;
     }
     if(validos.length>0){
       validos.forEach(h=>{
@@ -731,7 +789,7 @@ function renderStats(){
             <svg class="ic hist-pencil" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
           </button>`;
         }).join('');
-        html+=`
+        hist+=`
           <div class="hist-card">
             <div class="hist-header" role="button" tabindex="0" onclick="toggleHist('${h.id}')">
               <div style="flex:1;">
@@ -751,7 +809,19 @@ function renderStats(){
           </div>`;
       });
     }
+    piezas.historial=hist;
   }
 
+  // Las secciones se emiten en el orden que dejó el estudiante y sin las que
+  // escondió. Una sección que no existe en este semestre —no hay proyección, no
+  // hay nada urgente— simplemente no está en `piezas` y se salta sola.
+  ordenSecciones().forEach(id=>{
+    if(seccionOculta(id))return;
+    if(piezas[id])html+=piezas[id];
+  });
+
   body.innerHTML=html;
+  // El HTML ya está en pantalla; la comparación se rellena cuando el servidor
+  // conteste. Sin await: Estadísticas no espera por una sección secundaria.
+  if(!seccionOculta('curso'))pintarPosicionesCurso();
 }

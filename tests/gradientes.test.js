@@ -13,30 +13,23 @@ const regla = selector => (css.match(new RegExp(selector.replace(/[.*+?^${}()|[\
 
 console.log('\n=== Inventario de gradientes ===');
 const total = (css.match(/linear-gradient\(/g) || []).length;
-chk(`se conservan los 19 gradientes (${total})`, total === 19);
+// Editorial reemplaza los tres de Home (decoración, avance y cierre) por una
+// línea de identidad y un riel neutro. El resto sigue separado de esos cambios.
+chk(`quedan los 16 gradientes ajenos al rediseño del avance de Home (${total})`, total === 16);
 chk('el sistema declara una dirección para superficies y otra para acentos',
   /--gradient-surface:150deg;--gradient-accent:135deg;/.test(css));
 
-const decorativosSuperficie = ['.simg-hero', '.ramo-row', '.ag-event-priority-sec>.ag-priority-card', '.ag-priority-card', '.ag-empty'];
+const decorativosSuperficie = ['.simg-hero', '.ag-event-priority-sec>.ag-priority-card', '.ag-priority-card', '.ag-empty'];
 const decorativosAcento = ['.ramo-action.primary', '.ob-title-accent', '.btn-primary', '.accent-swatch', '.fondo-swatch'];
-chk('las 5 superficies decorativas usan el token de superficie',
+chk('las superficies decorativas que quedan usan el token de superficie',
   decorativosSuperficie.every(s => /linear-gradient\(var\(--gradient-surface\)/.test(regla(s))));
 chk('los 5 acentos decorativos usan el token de acento',
   decorativosAcento.every(s => /linear-gradient\(var\(--gradient-accent\)/.test(regla(s))));
 
 console.log('\n=== Avance: misma lectura antes y después ===');
-const progresoRamo = regla('.ramo-row.has-progress::before');
-const progresoEsperado = 'linear-gradient(90deg,color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 90%) 0%,color-mix(in srgb,var(--ramo-tint,var(--primary)),transparent 76%) var(--ramo-progress),transparent var(--ramo-progress-end))';
-chk('la barra del ramo conserva su gradiente funcional exacto', progresoRamo.includes(progresoEsperado));
-const medicion = porcentaje => {
-  const cola = Math.min(14, 100 - porcentaje);
-  return [0, porcentaje, Math.min(100, porcentaje + cola)];
-};
-const mediciones = [[0, [0, 0, 14]], [40, [0, 40, 54]], [100, [0, 100, 100]]];
-mediciones.forEach(([porcentaje, esperada]) => chk(`ramo al ${porcentaje}% conserva paradas ${esperada.join('/')}`,
-  JSON.stringify(medicion(porcentaje)) === JSON.stringify(esperada)));
+chk('Home ya no usa un fondo degradado para medir el avance', !/--ramo-progress-end/.test(css));
 chk('el onboarding conserva su barra funcional independiente', /linear-gradient\(90deg,var\(--primary\),var\(--accent\)\)/.test(regla('.ob-progress-bar')));
-chk('el cierre del ramo conserva su dirección y no se confunde con una superficie', /linear-gradient\(125deg,/.test(regla('.ramo-row.has-progress.is-complete')));
+chk('el cierre de Home no usa un gradiente que pueda confundirse con aprobación', !/linear-gradient/.test(regla('.ramo-row.has-progress.is-complete')));
 chk('Estadísticas conserva su gradiente de avance independiente', /linear-gradient\(90deg,/.test(regla('.stats-progress-card::before')) && /var\(--stats-progress\)/.test(regla('.stats-progress-card::before')));
 chk('el cierre de Estadísticas conserva su dirección', /linear-gradient\(125deg,/.test(regla('.stats-progress-card.is-complete')));
 

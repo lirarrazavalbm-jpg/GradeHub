@@ -288,19 +288,18 @@ const ACENTOS={
 
 // Fondos y acentos son dos decisiones independientes. Cada fondo declara sus
 // superficies y texto en ambos modos: elegir Papel en claro no puede arrastrar
-// los textos de Pizarra oscuro, ni viceversa. Neutro conserva exactamente la
-// apariencia histórica para las cuentas que todavía no eligieron uno.
+// los textos de Pizarra oscuro, ni viceversa. Neutro es la base Editorial:
+// blanco y negro sin tinte. Cambia su presentación, no la preferencia guardada.
 const FONDOS={
   neutro:{
     nombre:'Neutro',
     claro:{
-      bg:'#f2f7f8',bg2:'#ffffff',card:'#ffffff',border:'#deebee',border2:'#bccdd2',muted:'#eaf2f4',
-      fg:'#07171b',fg2:'#40565b',fg3:'#5f7479',
+      bg:'#ffffff',bg2:'#ffffff',card:'#ffffff',border:'#e7e7e9',border2:'#b8b8be',muted:'#f2f2f4',
+      fg:'#19191c',fg2:'#54545b',fg3:'#6c6c74',
     },
     oscuro:{
-      // bg conserva el fondo de og.png y la apariencia histórica por defecto.
-      bg:'#05070a',bg2:'#0a0f13',card:'#111820',border:'#20303a',border2:'#324755',muted:'#151d26',
-      fg:'#eef4f6',fg2:'#99aab2',fg3:'#71858f',
+      bg:'#080809',bg2:'#080809',card:'#111113',border:'#27272c',border2:'#55555e',muted:'#1b1b1f',
+      fg:'#f1f1f3',fg2:'#b4b4bd',fg3:'#92929c',
     },
   },
   pizarra:{
@@ -370,13 +369,13 @@ const CARRERAS_DECLARABLES={
     {n:'Derecho',malla:'UAI-DERECHO'},
     {n:'Doble Grado Derecho + Ingeniería Comercial',malla:'UAI-DOBLE-GRADO-DERECHO-E-INGENIERIA-COMERCIAL'},
     {n:'Doble Título Ingeniería Comercial + Sociología',malla:'UAI-DOBLE-TITULO-INGENIERIA-COMERCIAL-SOCIOLOGIA'},
-    {n:'Ingeniería Comercial'},
-    {n:'Bachillerato de Ingeniería Comercial'},
+    {n:'Ingeniería Comercial',malla:'UAI-INGENIERIA-COMERCIAL'},
+    {n:'Bachillerato de Ingeniería Comercial',malla:'UAI-BACHILLERATO-DE-INGENIERIA-COMERCIAL'},
     {n:'International Management',malla:'UAI-INTERNATIONAL-MANAGEMENT'},
     {n:'Ingeniería en Negocios y Tecnología',malla:'UAI-INGENIERIA-EN-NEGOCIOS-Y-TECNOLOGIA'},
     {n:'Ingeniería en Diseño',malla:'UAI-INGENIERIA-EN-DISENO'},
     {n:'Ingeniería en Computer Science',malla:'UAI-INGENIERIA-EN-COMPUTER-SCIENCE'},
-    {n:'Ingeniería Civil Industrial'},
+    {n:'Ingeniería Civil Industrial',malla:'UAI-INGENIERIA-CIVIL-INDUSTRIAL'},
     {n:'Ingeniería Civil Informática',malla:'UAI-INGENIERIA-CIVIL-INFORMATICA'},
     {n:'Ingeniería Civil en Bioingeniería',malla:'UAI-INGENIERIA-CIVIL-EN-BIOINGENIERIA'},
     {n:'Ingeniería Civil (Obras Civiles)',malla:'UAI-INGENIERIA-CIVIL-OBRAS-CIVILES'},
@@ -658,8 +657,23 @@ const PRESETS_UC={
       ['Trabajo grupal',3.5],
       ['Examen final',30],
     ],
+    // La app puede comprobar la presentación y los mínimos de notas, pero no
+    // sabe cuántos Talleres faltó la persona ni cuántos controles habrá. Por
+    // eso llegar al 5,0 solo OFRECE la eximición: el estudiante confirma que
+    // ingresó todo y que cumple la asistencia antes de sacar el Examen.
+    eximicion:{
+      evaluacion:'Examen final',
+      segun:['Interrogaciones','Talleres','Trabajos prácticos','Trabajo grupal'],
+      min:5,
+      ignoraDescartes:true,
+      requiereConfirmacion:true,
+      ocultaEvaluacion:true,
+      minimos:[
+        {evaluacion:'Interrogaciones',min:4,cadaNota:true},
+        {evaluacion:'Talleres',min:4},
+      ],
+    },
     noCalcula:[
-      'Puedes eximirte del Examen si cumples simultáneamente las condiciones de notas y asistencia de Taller que define el programa; la app no registra la asistencia ni separa los controles formativos de Taller',
       'Con 100% de los controles de Taller puedes eliminar la peor nota, pero el programa no especifica cuántos controles habrá durante el semestre',
       'El Examen es reprobatorio bajo las condiciones de Interrogaciones y Talleres que define el programa, pero no publica la fórmula con que se transforma esa situación en la nota final',
     ],
@@ -903,14 +917,23 @@ const PRESETS_UC={
 // solo para estos ramos confirmados: compartir todo por nombre podría aplicar
 // la pauta de otra facultad a un curso homónimo.
 const PRESETS_UC_COM=[
+  'Cálculo I',
   'Introducción al Álgebra Lineal',
   'Cálculo II',
   'Introducción a la Macroeconomía',
   'Probabilidad y Estadística',
   'Filosofía: ¿para qué?',
 ];
-// IMPORTANTE: los prospectos verificados son del plan común de INGENIERÍA.
-// "Cálculo I" de Comercial es OTRO curso (otra facultad/programa): no hereda estos pesos.
+// CÁLCULO I ES EL MISMO RAMO EN LAS DOS CARRERAS. Acá decía lo contrario —que el
+// de Comercial era otro curso de otra facultad y no heredaba estos pesos— y el
+// catálogo oficial de la UC dice que no: MAT1610 es UNA sola sigla, aparece en
+// la malla de Ingeniería Plan Común y en la de Comercial, con los mismos 10
+// créditos. No hay dos Cálculo I. Confirmado además por un estudiante de
+// Comercial que lo cursa.
+//
+// La distinción sí vale para el resto: los prospectos verificados son del plan
+// común de INGENIERÍA, y un ramo que en Comercial lleva otra sigla es otro curso
+// aunque se llame igual. Por eso esta lista es explícita y no "todo lo de UC".
 
 // ─── CRÉDITOS SCT DE INGENIERÍA UC ───────────────────────────────────────────
 // nombre del ramo → [créditos, sigla]
@@ -1778,3 +1801,145 @@ const PRESETS_FEN={
     ],
   },
 };
+
+// UAI · programas entregados por Lucas el 2026-09-08. Son pautas de secciones
+// concretas, no reglas de toda la universidad. El ámbito aparece en la ficha.
+// Los pesos son de la NOTA FINAL: no se copia como final un % de presentación.
+// Los bloques cuyo reparto interno no está fijado reciben la nota consolidada
+// del curso. No se inventan casillas, fechas de examen ni créditos ausentes.
+const PRESETS_UAI={
+  // Fuente: Programa 2026 IIS CORE ESCR sec 6 y 7 (DOCX), tabla 6.3 y §6.4.
+  // 75% presentación × (5,15,20,30,15,15) + 25% examen.
+  // Análisis: 40/60 explícito. CC/Ensayo quedan consolidados: su reescritura
+  // puede sustituir a la escritura; aplanarlos sin esa condición mentiría.
+  'Escritura Argumentativa':{
+    periodo:'2026-2',
+    evals:[
+      ['Test diagnóstico',3.75],
+      ['Análisis de textos 1',4.5,{fecha:'2026-08-20'}],
+      ['Análisis de textos 2',6.75,{fecha:'2026-08-27'}],
+      ['Comentario crítico',15],
+      ['Ensayo',22.5],
+      ['Evaluación entre pares',11.25],
+      ['Actividades y participación',11.25],
+      ['Examen',25],
+    ],
+    reglasDelCurso:[
+      'Programa UAI 2026-2 de Escritura Argumentativa, secciones 6 y 7. Revisa que corresponda a tu sección',
+      'Test diagnóstico: ingresa la mejor nota entre el diagnóstico inicial y su reescritura',
+      'Comentario crítico y Ensayo: ingresa la nota consolidada del curso, no una versión aislada. Cada uno combina esquema 10%, escritura 30% y reescritura 60%; si la reescritura llega a 6,3, reemplaza a la escritura sin cambiar el esquema',
+      'Evaluación entre pares tiene dos instancias, pero el programa no fija su reparto. Ingresa la nota consolidada; lo mismo para Actividades y participación',
+      'Se exige al menos 80% de asistencia. La eximición requiere estar en el 20% superior del curso, presentación de al menos 5,5 y todas las evaluaciones rendidas; la app no conoce el ranking',
+    ],
+  },
+  // Fuente: 142134 (1).pdf, MAT124, pp. 1, 3–4. NPE=.1T+.2C+.7P;
+  // sin eximición NF=.7NPE+.3EX. No se activa un recuperativo genérico: éste
+  // requiere haber rendido el primer examen en la fecha indicada.
+  'Matemáticas Avanzadas I':{
+    periodo:'2026-2',creditos:6,
+    evals:[
+      ['Talleres',7,{slots:3,slotLabel:'Taller'}],
+      ['Controles',14,{slots:3,slotLabel:'Control'}],
+      ['Pruebas',49,{slots:3,slotLabel:'Prueba'}],
+      ['Examen',30],
+    ],
+    noCalcula:[
+      'Con presentación de al menos 5,0 puedes eximirte: la final queda en la presentación. Si rindes el examen voluntariamente, su nota cuenta aunque baje el promedio',
+      'Solo si rendiste el examen en la fecha indicada y la final queda entre 3,5 y 3,9, puedes rendir un segundo examen: aprobarlo deja la final en 4,0; reprobarlo conserva la final anterior',
+      'Con justificativo aceptado, un taller se reemplaza por su prueba correspondiente y un control o prueba por el examen',
+    ],
+    reglasDelCurso:[
+      'Programa MAT124 UAI 2026-2, sección 2, Santiago. Esta pauta calcula el camino con examen',
+      'Si rendiste todas las pruebas y controles en sus fechas originales y obtienes al menos 4,0 en el examen, puedes reemplazar una prueba por el examen; no se otorga este beneficio con sanción de Honor',
+    ],
+  },
+  // Fuente: Syllabus RCD I - 2do.pdf, MAT125, pp. 1, 3–4.
+  // NF=.5(.7ET+.3PT)+.5(.7EP+.3PP); EP=.75C+.25Trabajo.
+  // Trabajo queda en 8,75% con nota consolidada (informe30/Excel70): no se
+  // redondean sus pesos internos 2,625/6,125 ni se los confunde con 30/70 final.
+  'Razonamiento Cuantitativo con Datos I':{
+    periodo:'2026-2',
+    evals:[
+      ['Pruebas teóricas',35,{slots:2,slotLabel:'Prueba'}],
+      ['Controles',26.25,{slots:5,slotLabel:'Control'}],
+      ['Trabajo aplicado',8.75],
+      ['Examen teórico',15],
+      ['Examen práctico',15],
+    ],
+    noCalcula:[
+      'Puedes eximirte con presentación de al menos 5,0 y con ET y EP de al menos 4,0 cada una. Sin examen la final es 50% ET y 50% EP',
+      'Tras rendir el examen, ET y EP deben ser al menos 4,0. Si no se cumple, el curso se reprueba con la menor de ET y EP; este promedio no aplica esa sustitución',
+      'Una prueba con ausencia justificada se reemplaza por el examen teórico; un control recuperado se reemplaza por el examen práctico. En ambos casos debes rendir el examen y no puedes eximirte',
+    ],
+    reglasDelCurso:[
+      'Programa MAT125 UAI 2026-2, cátedra de Macarena Larrain. Esta pauta calcula el camino con examen',
+      'ET es el promedio de dos pruebas; EP es 75% promedio de cinco controles y 25% Trabajo aplicado',
+      'En Trabajo aplicado ingresa su nota consolidada: 30% informe y 70% archivo Excel. Los trabajos no son justificables',
+    ],
+  },
+  // Fuente: Syllabus Intro a la Microeconomía 2026_02.pdf, ECO122, pp.1,5–6.
+  // No confundir con Micro FEN: éste no tiene mínimo de examen ni el
+  // recuperativo 3,6–3,9 de FEN. El número/reparto de controles no está fijado.
+  'Introducción a la Microeconomía':{
+    periodo:'2026-2',creditos:6,
+    evals:[
+      ['Controles y tareas',20],
+      ['Prueba 1',25],
+      ['Prueba 2',25],
+      ['Examen',30],
+    ],
+    noCalcula:[
+      'Con inasistencia justificada a una prueba, su ponderación pasa al examen. Si la ausencia justificada es a un control o tarea, su nota se reemplaza por la del examen',
+      'Con examen de al menos 4,8 y todas las pruebas rendidas, el examen reemplaza la peor prueba solo si mejora la final',
+    ],
+    reglasDelCurso:[
+      'Programa ECO122 UAI 2026-2, sección 1, Viña del Mar. Revisa que corresponda a tu sección',
+      'En Controles y tareas ingresa la nota consolidada que entrega el curso: el profesor decide la cantidad y el programa no desglosa sus pesos',
+      'Se aprueba con promedio ponderado de al menos 3,95. El examen es obligatorio y no tiene nota mínima',
+    ],
+  },
+  // Fuente: Syllabus_Programa Management Alumnos 2026_semestre 2.pdf,
+  // MGT103, pp.1,3–4. Hay tres solemnes: la tercera NO es un examen adicional.
+  'Management':{
+    periodo:'2026-2',
+    evals:[
+      ['Solemne 1',20],
+      ['Solemne 2',20],
+      ['Solemne 3',20],
+      ['Controles',25,{lista:true,dropLowest:{count:2},min:4,cap:3.9}],
+      ['Tareas',15,{lista:true}],
+    ],
+    reglasDelCurso:[
+      'Programa MGT103 UAI 2026-2, sección 2, Santiago. No contempla examen final',
+      'Al terminar los controles se eliminan las dos notas más bajas. Mientras agregas notas, el descarte y el promedio que muestra la app son una estimación parcial',
+      'Para aprobar, el promedio de Controles debe ser al menos 4,0; si la final era aprobatoria y no cumples, queda en 3,9',
+      'También se exige 75% de asistencia: si no la cumples, una final aprobatoria queda en 3,9. La app no conoce tu asistencia',
+      'Una ausencia a solemne aceptada por Secretaría habilita la evaluación recuperativa. Sin justificación aceptada, o si faltas al recuperativo, corresponde 1,0',
+    ],
+  },
+  // Fuente: 03_08_2026_Syllabus Introducción a la Macroeconomía para webc -
+  // 29-07-2026.pdf, ECO123, pp.1,4–6. "Al menos 8" no son 8 casillas;
+  // "dos o tres" descartes no autoriza elegir una cantidad en dropLowest.
+  'Introducción a la Macroeconomía':{
+    periodo:'2026-2',creditos:6,
+    evals:[
+      ['Controles y otras evaluaciones',15],
+      ['Prueba oficial 1',20],
+      ['Prueba oficial 2',20],
+      ['Prueba oficial 3',20],
+      ['Examen final',25],
+    ],
+    noCalcula:[
+      'La nota del examen reemplaza una prueba con inasistencia justificada',
+    ],
+    reglasDelCurso:[
+      'Programa ECO123 UAI 2026-2, sección 03, Santiago. Revisa que corresponda a tu sección',
+      'Ingresa el promedio consolidado de Controles y otras evaluaciones del curso: contempla al menos ocho evaluaciones y elimina dos o tres notas, sin fijar cuántas. Puede incluir participación con 50% de ese bloque a criterio del profesor',
+      'Las notas y promedios se redondean a un decimal: 3,94 queda en 3,9 y 3,95 en 4,0. El examen final es obligatorio',
+    ],
+  },
+};
+
+// Registro de contenido: sumar una universidad no exige replicar los cuatro
+// selectores de pautas. UC conserva su restricción por carrera en el adaptador.
+const PRESETS_POR_TENANT={fen:PRESETS_FEN,uc:PRESETS_UC,uai:PRESETS_UAI};

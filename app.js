@@ -33,9 +33,10 @@ function estadoPeriodoPauta(periodo,ahora){
   return fecha.getTime()<fin?'vigente':'vencido';
 }
 function definicionPreset(nombre,tenant,carrera){
-  if(tenant==='fen'){
-    const clave=claveCatalogo(nombre,Object.keys(PRESETS_FEN),'fen');
-    return clave?PRESETS_FEN[clave]:null;
+  if(tenant!=='uc'){
+    const presets=PRESETS_POR_TENANT[tenant];if(!presets)return null;
+    const clave=claveCatalogo(nombre,Object.keys(presets),tenant);
+    return clave?presets[clave]:null;
   }
   if(tenant!=='uc'||!presetUcDisponible(nombre,carrera))return null;
   const clave=claveUc(nombre);
@@ -310,7 +311,7 @@ function normalize(data) {
     // Solo se rellena si está vacío y si el ramo vino del catálogo: un crédito
     // escrito a mano por el estudiante manda sobre la tabla.
     if ((r.creditos === null || r.creditos === undefined) && r.origen && r.origen.tenant) {
-      const cr = creditosDe(r.nombre, r.origen.tenant, null);
+      const cr = creditosDe(r.nombre, r.origen.tenant, null, r.origen.ramoKey);
       if (typeof cr === 'number') r.creditos = cr;
     }
     completarFechasOficiales(r,{tenant:data.tenant,carrera:data.carrera});
@@ -532,11 +533,9 @@ function mallaFor(t){
 }
 
 // La malla de UNA carrera, mirando también las que se cargan aparte. Es distinta
-// de `mallaFor`, que alimenta el buscador: si las 69 mallas nuevas entraran al
-// catálogo de búsqueda, un estudiante de Ingeniería buscando "Ecolog" recibiría
-// "Ecología Veterinaria" antes que el ramo con pauta oficial que sí puede tomar.
-// El buscador se queda con las mallas validadas; estas solo SUGIEREN el semestre
-// de quien estudia esa carrera.
+// de `mallaFor`, que reúne las mallas base de una universidad: el buscador puede
+// sumar esta malla propia sin meter también las otras 19 de la UAI ni las otras
+// 68 de la UC. Así conserva el contexto del estudiante sin contaminar resultados.
 function mallaDeCarrera(tenant,carrera){
   if(!carrera)return null;
   const base=(mallaFor(tenant)||{})[carrera];
@@ -544,27 +543,24 @@ function mallaDeCarrera(tenant,carrera){
   const extra=mallasExtraDe(tenant);
   return (extra&&extra[carrera])||null;
 }
-// Las mallas que viven en su propio archivo, por universidad. La UC ya tiene el
-// suyo; la UAI entra igual el día que se transcriban sus PDF, sin tocar esta
-// función ni el cargador.
+// Las mallas que viven en su propio archivo, por universidad.
 function mallasExtraDe(tenant){
   if(tenant==='uc'&&typeof MALLAS_UC_EXTRA!=='undefined')return MALLAS_UC_EXTRA;
   if(tenant==='uai'&&typeof MALLAS_UAI_EXTRA!=='undefined')return MALLAS_UAI_EXTRA;
   return null;
 }
-// Qué archivo trae las mallas de cada universidad. Sin entrada acá, el tenant
-// funciona igual: sin sugerencia de ramos y con el buscador, que es como
-// funcionan hoy la UAI y la UAndes.
+// Qué archivo trae las mallas diferidas de cada universidad. Sin entrada acá,
+// el tenant funciona igual: sin sugerencia automática y agregando ramos a mano,
+// que es como funciona hoy la UAndes.
 const ARCHIVO_MALLAS={uc:'mallas-uc.js',uai:'mallas-uai.js'};
 
-// Las 69 mallas UC que no son Ingeniería ni Comercial viven en `mallas-uc.js`,
-// 73 KB que solo le sirven a quien estudia esa carrera. Se traen cuando se
-// necesitan y no en cada carga: meterlas en data.js habría cobrado ese peso a
-// todo el mundo, incluida la gente de FEN.
+// Las mallas extra de UC y UAI se traen cuando se necesitan y no en cada carga:
+// meterlas en data.js habría cobrado ese peso a todo el mundo, incluida la gente
+// de FEN. Del archivo completo solo entra al buscador la carrera propia.
 //
-// Si la descarga falla, la app se comporta como antes de que existieran: sin
-// sugerencia de ramos y con el buscador, que es exactamente el estado actual de
-// esas carreras. Un fallo acá no puede dejar a nadie peor que hoy.
+// Si la descarga falla, la app conserva los presets y catálogos que ya venían
+// disponibles y siempre deja agregar el ramo a mano. Un fallo acá no puede
+// romper el selector completo.
 const _mallasPendientes={};
 function cargarMallasUC(tenant){
   tenant=tenant||'uc';
@@ -585,6 +581,64 @@ function cargarMallasUC(tenant){
     document.head.appendChild(s);
   });
   return _mallasPendientes[tenant];
+}
+
+// El catálogo completo de la UC pesa mucho más que el arranque de la app y no
+// le sirve a otros tenants. Conservamos CURSOS_UC como catálogo mínimo y
+// sumamos el archivo diferido cuando llega: si la red falla, buscar sigue
+// funcionando exactamente con los datos que ya venían en data.js.
+function cursosUcExtra(){
+  return typeof CURSOS_UC_FULL!=='undefined'&&Array.isArray(CURSOS_UC_FULL)?CURSOS_UC_FULL:null;
+}
+function cursosUcDisponibles(){
+  const base=typeof CURSOS_UC!=='undefined'&&Array.isArray(CURSOS_UC)?CURSOS_UC:[];
+  const extra=cursosUcExtra();
+  // La versión completa va primero para que, al reemplazar la muestra, sus
+  // créditos y escuela enriquezcan las filas que también existen en el
+  // respaldo chico. Las siglas repetidas se filtran al armar el catálogo.
+  return extra?extra.concat(base):base;
+}
+let _cursosUcPendiente=null;
+function cargarCursosUC(){
+  if(_cursosUcPendiente)return _cursosUcPendiente;
+  if(cursosUcExtra())return (_cursosUcPendiente=Promise.resolve(true));
+  _cursosUcPendiente=new Promise(resolve=>{
+    const s=document.createElement('script');
+    // Igual que las mallas, hereda la versión sellada de app.js para que un
+    // HTML nuevo nunca se mezcle con una copia vieja del catálogo.
+    const propio=document.querySelector('script[src*="app.js"]');
+    const qs=propio&&propio.src.includes('?')?propio.src.slice(propio.src.indexOf('?')):'';
+    s.src='cursos-uc.js'+qs;
+    s.onload=()=>{
+      const ok=!!cursosUcExtra();
+      if(!ok)_cursosUcPendiente=null;
+      resolve(ok);
+    };
+    s.onerror=()=>{_cursosUcPendiente=null;resolve(false);};
+    document.head.appendChild(s);
+  });
+  return _cursosUcPendiente;
+}
+function escuelaCursoUc(indice){
+  if(typeof ESCUELAS_UC==='undefined'||!Array.isArray(ESCUELAS_UC))return null;
+  return Number.isInteger(indice)&&typeof ESCUELAS_UC[indice]==='string'?ESCUELAS_UC[indice]:null;
+}
+function cursoUcCompleto(nombre,sigla){
+  const extra=cursosUcExtra();
+  if(!extra)return null;
+  const ns=normName(sigla||''),nn=normName(nombre||'');
+  return extra.find(f=>{
+    if(!Array.isArray(f))return false;
+    return (ns&&normName(f[0]||'')===ns)||(!ns&&nn&&normName(f[1]||'')===nn);
+  })||null;
+}
+function repintarAlCargarCursosUC(tenant,repintar){
+  if(tenant!=='uc'||cursosUcExtra())return;
+  cargarCursosUC().then(ok=>{if(ok)repintar();});
+}
+function repintarAlCargarMallaPropia(tenant,carrera,repintar){
+  if(!carrera||!ARCHIVO_MALLAS[tenant]||(mallaFor(tenant)||{})[carrera]||mallasExtraDe(tenant))return;
+  cargarMallasUC(tenant).then(ok=>{if(ok)repintar();});
 }
 function selectTenant(t){
   selectedTenant=t;selectedCarrera=null;applyTheme();renderTenantPick();initCarreraGrid();checkOb();
@@ -781,9 +835,10 @@ function initials(s){return s.split(' ').slice(0,2).map(w=>w[0]||'').join('').to
 function definicionPresetDelRamo(ramo){
   const origen=ramo&&ramo.origen;
   if(!origen||!origen.tenant)return null;
-  if(origen.tenant==='fen'){
-    const nombre=Object.keys(PRESETS_FEN).find(n=>normName(n)===normName(ramo.nombre));
-    return nombre?PRESETS_FEN[nombre]:null;
+  if(origen.tenant!=='uc'){
+    const presets=PRESETS_POR_TENANT[origen.tenant];if(!presets)return null;
+    const nombre=Object.keys(presets).find(n=>normName(n)===normName(ramo.nombre));
+    return nombre?presets[nombre]:null;
   }
   if(origen.tenant!=='uc'||!presetUcDisponible(ramo.nombre,origen.carrera))return null;
   const nombre=claveUc(ramo.nombre);
@@ -912,14 +967,24 @@ function semester(){
   if(m<=6)return`${y}-1`;
   return`${y}-2`;
 }
-// Tramos según uso chileno: la tarde se estira hasta las 20:00, y de madrugada
-// sigue siendo "buenas noches" (no "buenos días" a las 3 AM).
-function greeting(){
-  const h=new Date().getHours();
-  if(h<6)return 'Buenas noches';
-  if(h<12)return 'Buenos días';
-  if(h<20)return 'Buenas tardes';
-  return 'Buenas noches';
+// Una frase por día, no una distinta en cada render: Inicio se vuelve a dibujar
+// al agregar notas y una frase que cambia en ese momento se siente aleatoria.
+// Ninguna presupone que al estudiante le está yendo bien; acompaña sin mentirle.
+const FRASES_INICIO=[
+  'Una nota a la vez',
+  'Veamos cómo va el semestre',
+  'Mantengamos las notas al día',
+  'Así va tu semestre',
+  'Revisemos qué viene',
+  'Sigamos con lo que toca',
+  'Todo listo para seguir',
+  'Un paso a la vez',
+  'Veamos qué sigue',
+  'Veamos dónde estamos'
+];
+function fraseInicio(fecha=new Date()){
+  const dia=Math.floor(Date.UTC(fecha.getFullYear(),fecha.getMonth(),fecha.getDate())/86400000);
+  return FRASES_INICIO[((dia%FRASES_INICIO.length)+FRASES_INICIO.length)%FRASES_INICIO.length];
 }
 
 // ─── SUPABASE / AUTH ───────────────────────────────────────────────────────────
@@ -1055,7 +1120,12 @@ function prepararObRamos(){
   obRamos=obRamosActuales().map(nombre=>({nombre,manual:false}));
   renderObCoursePicker();
 }
-function obTieneRamo(nombre){return obRamos.some(r=>normName(r.nombre)===normName(nombre));}
+function obTieneRamo(nombre,sigla){
+  return obRamos.some(r=>{
+    if(sigla&&r.sigla)return normName(r.sigla)===normName(sigla);
+    return normName(r.nombre)===normName(nombre);
+  });
+}
 // encodeURIComponent deja el apóstrofo intacto. Como el valor entra en un
 // literal JS delimitado por comillas simples dentro del atributo, se codifica
 // también para que un nombre manual no pueda cerrar el handler.
@@ -1112,11 +1182,15 @@ function obElegirVariante(baseCod,nombreCod){
   }
   renderObCoursePicker();obRender();
 }
-function obAgregarCatalogo(nombre){
-  if(!obTieneRamo(nombre))obRamos.push({nombre,manual:false});
+function obAgregarCatalogo(nombre,sigla){
+  const fila=selectedTenant==='uc'?cursoUcCompleto(nombre,sigla):null;
+  if(!obTieneRamo(nombre,sigla))obRamos.push({nombre,manual:false,sigla:sigla||null,
+    creditos:fila&&typeof fila[2]==='number'?fila[2]:null});
   renderObCoursePicker();obRender();
 }
-function obAgregarCatalogoCodificado(nombre){obAgregarCatalogo(decodeURIComponent(nombre));}
+function obAgregarCatalogoCodificado(nombre,sigla){
+  obAgregarCatalogo(decodeURIComponent(nombre),sigla?decodeURIComponent(sigla):null);
+}
 function obToggleManual(){obManualOpen=!obManualOpen;obManualError='';renderObCoursePicker();}
 function obAgregarManual(){
   const input=document.getElementById('ob-manual-name');
@@ -1166,7 +1240,11 @@ function obCatalogMeta(r){
   const lugar=r.semestre>0?`${r.semestre}° semestre`
     :r.fuente==='catalogo-ingenieria'?'catálogo de Ingeniería UC'
       :r.fuente==='curso-uc'?'curso UC fuera de malla':'fuera de malla';
-  return `${r.sigla?esc(r.sigla)+' · ':''}${lugar}${r.tienePreset?' · con ponderaciones oficiales':''}`;
+  const detalles=[r.sigla?esc(r.sigla):'',lugar];
+  if(typeof r.creditos==='number')detalles.push(`${r.creditos} créditos`);
+  if(r.escuela)detalles.push(esc(r.escuela));
+  if(r.tienePreset)detalles.push('con ponderaciones oficiales');
+  return detalles.filter(Boolean).join(' · ');
 }
 function renderObCoursePicker(){
   const box=document.getElementById('ob-course-picker');if(!box)return;
@@ -1232,11 +1310,17 @@ function renderObCoursePicker(){
 function renderObCourseResults(q){
   const box=document.getElementById('ob-course-results');if(!box)return;
   const term=(q||'').trim();if(!term){box.innerHTML='';return;}
+  const repintar=()=>{
+    const input=document.getElementById('ob-course-search');
+    if(input&&input.value===q)renderObCourseResults(q);
+  };
+  repintarAlCargarMallaPropia(selectedTenant,selectedCarrera,repintar);
+  repintarAlCargarCursosUC(selectedTenant,repintar);
   const res=searchCatalog(term,selectedTenant,selectedCarrera,selectedSem).slice(0,6);
   if(!res.length){box.innerHTML='<p class="course-picker-reassurance">No aparece en tu malla. Puedes agregarlo a mano.</p>';return;}
   box.innerHTML=res.map(r=>{
-    const tengo=obTieneRamo(r.nombre),otro=r.semestre>0&&r.semestre!==selectedSem;
-    return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${obCodificarNombre(r.nombre)}')"`}>
+    const tengo=obTieneRamo(r.nombre,r.sigla),otro=r.semestre>0&&r.semestre!==selectedSem;
+    return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${obCodificarNombre(r.nombre)}','${obCodificarNombre(r.sigla||'')}')"`}>
       <span class="course-picker-result-info"><span class="course-picker-result-name">${esc(r.nombre)}</span><span class="course-picker-result-meta">${obCatalogMeta(r)}</span></span>
       <span class="chevron-r">${tengo?'✓':'+'}</span>
     </button>${otro?'<p class="course-picker-reassurance">Que sea de otro semestre está bien.</p>':''}`;
@@ -1325,7 +1409,8 @@ function completeOnboarding(){
   obRamos.forEach(item=>{
     if(S.ramos.some(r=>normName(r.nombre)===normName(item.nombre)))return;
     const preset=!item.manual?presetRamo(item.nombre,selectedTenant,selectedCarrera):null;
-    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(item.nombre),creditos:creditosDe(item.nombre,selectedTenant,preset),categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
+    const creditos=typeof item.creditos==='number'?item.creditos:creditosDe(item.nombre,selectedTenant,preset,item.sigla);
+    S.ramos.push({id:uid(),nombre:item.nombre,color:nextRamoColor(item.nombre),origen:item.manual?null:origenActual(item.nombre,item.sigla),creditos,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   });
   S.onboardingDone=true;save();
   syncProfile();
@@ -1679,6 +1764,19 @@ function corregirRecuperativo(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r||!r.recuperativoRendido)return;
   r.recuperativoRendido=null;save();renderRamo();
 }
+function confirmarEximicionActual(){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  const estado=estadoEximicion(r);
+  if(!estado||!estado.puedeConfirmar){showToast('La eximición todavía no se puede confirmar',true);return;}
+  showConfirm('¿Confirmar tu eximición?',
+    `Tu nota de presentación es ${nf(estado.promedio)}. Confirma que ya ingresaste todas tus notas previas al examen y que cumples la asistencia de Taller exigida por tu sección. El examen dejará de aparecer y tu presentación quedará como nota final.`,()=>{
+      r.eximicionConfirmada=true;save();track('confirmar_eximicion');renderRamo();
+    },{label:'Confirmar eximición',danger:false});
+}
+function corregirEximicionActual(){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r||r.eximicionConfirmada!==true)return;
+  delete r.eximicionConfirmada;save();renderRamo();
+}
 function declararAusenciaJustificada(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const regla=r.reglasAusenciaJustificada;
@@ -1821,7 +1919,10 @@ function confirmDeleteCat(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const cat=r.categorias.find(c=>c.id===catId);if(!cat)return;
   showConfirm(`Eliminar "${cat.nombre}"`,`Se eliminarán todas las notas de esta evaluación.`,()=>{
-    r.categorias=r.categorias.filter(c=>c.id!==catId);save();renderRamo();
+    const totalAntes=r.categorias.reduce((s,c)=>s+(Number(c.peso)||0),0);
+    r.categorias=r.categorias.filter(c=>c.id!==catId);
+    repartirPesoRestante(r.categorias,totalAntes);
+    save();renderRamo();
   });
 }
 function deleteNota(catId,notaId){
@@ -2106,7 +2207,12 @@ function confirmAddMalla(){
 // después en la ficha del ramo — pedirlos acá era pedir una decisión en el
 // peor momento, cuando todavía no tiene el ramo.
 function openAddRamoModal(){
-  const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0;
+  // Una malla diferida todavía no está en `catalogRamos`, pero justamente se
+  // carga al abrir este camino. Ocultar los resultados hasta que exista haría
+  // imposible iniciar esa carga para toda la UAI.
+  const hayCatalogo=catalogRamos(S.tenant,S.carrera).length>0
+    ||presetsFueraDeMalla(S.tenant,S.carrera).length>0
+    ||S.tenant==='uc'||!!(S.carrera&&ARCHIVO_MALLAS[S.tenant]);
   const uni=(TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'';
   const buscaPorSigla=S.tenant==='uc';
   const etiquetaRamo=buscaPorSigla?'Nombre o sigla del ramo':'Nombre del ramo';
@@ -2138,6 +2244,12 @@ function openAddRamoModal(){
 // del estudiante — nunca de otra casa de estudios.
 function renderCatalogResults(q){
   const box=document.getElementById('m-ramo-results');if(!box)return;
+  const repintar=()=>{
+    const input=document.getElementById('m-ramo-search');
+    if(input&&input.value===q)renderCatalogResults(q);
+  };
+  repintarAlCargarMallaPropia(S.tenant,S.carrera,repintar);
+  repintarAlCargarCursosUC(S.tenant,repintar);
   const yaTengo=new Set(S.ramos.map(r=>normName(r.nombre)));
   const res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre).slice(0,6);
   if(res.length===0){
@@ -2146,10 +2258,10 @@ function renderCatalogResults(q){
   }
   box.innerHTML=res.map(r=>{
     const tengo=yaTengo.has(normName(r.nombre));
-    return `<button class="cat-hit${tengo?' ya':''}" ${tengo?'disabled':`onclick="addFromCatalog('${esc(r.nombre).replace(/'/g,"\\'")}')"`}>
+    return `<button class="cat-hit${tengo?' ya':''}" ${tengo?'disabled':`onclick="addFromCatalogCodificado('${obCodificarNombre(r.nombre)}','${obCodificarNombre(r.sigla||'')}')"`}>
       <span class="cat-hit-info">
         <span class="cat-hit-name">${esc(r.nombre)}</span>
-        <span class="cat-hit-meta">${r.semestre}° semestre${r.tienePreset?' · con ponderaciones':''}</span>
+        <span class="cat-hit-meta">${obCatalogMeta(r)}</span>
       </span>
       ${tengo?'<span class="cat-hit-tag">ya lo tienes</span>'
              :(r.tienePreset?'<svg class="ic cat-hit-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z" fill="currentColor" stroke="none"/></svg>':'<span class="chevron-r">+</span>')}
@@ -2158,12 +2270,17 @@ function renderCatalogResults(q){
 }
 
 // Agrega directo desde el catálogo, con sello de procedencia y preset si existe
-function addFromCatalog(nombre){
+function addFromCatalogCodificado(nombre,sigla){
+  addFromCatalog(decodeURIComponent(nombre),sigla?decodeURIComponent(sigla):null);
+}
+function addFromCatalog(nombre,sigla){
   const presetName=findPresetName(nombre,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
+  const fila=S.tenant==='uc'?cursoUcCompleto(nombre,sigla):null;
+  const creditos=fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
   S.ramos.push({
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
-    creditos:creditosDe(nombre,S.tenant,preset),origen:origenActual(presetName||nombre),
+    creditos,origen:origenActual(presetName||nombre,sigla),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
   });
   save();track('add_ramo_catalogo',{preset:!!preset});
@@ -2241,12 +2358,18 @@ function claveCatalogo(nombre,claves,tenant){
 // un dato conocido y exacto; null es "no lo tenemos". Confundirlos es lo que
 // haría que un ramo sin dato se colara al promedio con peso cero.
 const CREDITOS_POR_TENANT={uc:CREDITOS_UC,fen:CREDITOS_FEN};
-function creditosDe(nombre,tenant,preset){
+function creditosDe(nombre,tenant,preset,sigla){
   if(preset&&typeof preset.creditos==='number')return preset.creditos;
   const tabla=CREDITOS_POR_TENANT[tenant];
-  if(!tabla)return null;
-  const clave=claveCatalogo(nombre,Object.keys(tabla),tenant);
-  return clave?tabla[clave][0]:null;
+  if(tabla){
+    const clave=claveCatalogo(nombre,Object.keys(tabla),tenant);
+    if(clave)return tabla[clave][0];
+  }
+  if(tenant==='uc'){
+    const fila=cursoUcCompleto(nombre,sigla);
+    if(fila&&typeof fila[2]==='number')return fila[2];
+  }
+  return null;
 }
 
 // La sigla de un ramo YA CARGADO, para mostrarla junto al nombre. Sale de la
@@ -2260,10 +2383,17 @@ function siglaDeRamo(r,tenant){
   // y vive en `selectedTenant`. Por eso se puede pasar explícita.
   tenant=tenant||(r.origen&&r.origen.tenant)||S.tenant;
   const tabla=CREDITOS_POR_TENANT[tenant];
-  if(!tabla)return null;
-  const clave=claveCatalogo(r.nombre,Object.keys(tabla),tenant);
-  const fila=clave?tabla[clave]:null;
-  return fila&&typeof fila[1]==='string'?fila[1]:null;
+  if(tabla){
+    const clave=claveCatalogo(r.nombre,Object.keys(tabla),tenant);
+    const fila=clave?tabla[clave]:null;
+    if(fila&&typeof fila[1]==='string')return fila[1];
+  }
+  const origenKey=r.origen&&r.origen.ramoKey;
+  // Los ramos UC antiguos sin sigla guardaron el nombre normalizado como
+  // ramoKey. Solo se muestra la clave si tiene forma de código oficial.
+  if(tenant==='uc'&&typeof origenKey==='string'&&/^[A-Z]{2,5}\d{3,4}[A-Z]?$/i.test(origenKey))return origenKey.toUpperCase();
+  const completa=tenant==='uc'?cursoUcCompleto(r.nombre,null):null;
+  return completa&&typeof completa[0]==='string'?completa[0]:null;
 }
 
 // Identificador oficial de un ramo UC. La carrera solo sirve para resolver un
@@ -2287,7 +2417,7 @@ function siglaCatalogoUC(nombre){
 }
 
 function catalogRamos(tenant,carrera){
-  const porCarrera=(mallaFor(tenant)||{})[carrera];
+  const porCarrera=mallaDeCarrera(tenant,carrera);
   if(!porCarrera)return [];
   const out=[],vistos=new Set();
   Object.keys(porCarrera).sort((a,b)=>Number(a)-Number(b)).forEach(sem=>{
@@ -2310,18 +2440,78 @@ function catalogRamos(tenant,carrera){
 //
 // `propio` marca si el ramo está en la malla del estudiante — se usa para
 // ordenar, no para esconder.
+//
+// La identidad se resuelve por nombre normalizado O por sigla. Las fuentes no
+// siempre escriben igual el nombre oficial y también pueden asociar códigos
+// distintos al mismo rótulo. Si cualquiera de las dos claves
+// coincide, se conserva una sola fila y gana la que realmente ayuda al alumno:
+// pauta > ubicación en la malla > curso pelado.
+function prioridadCatalogo(r){
+  if(r&&r.tienePreset)return 3;
+  if(r&&Number(r.semestre)>0)return 2;
+  return 1;
+}
+function buildCatalog(filas){
+  const rows=(filas||[]).filter(r=>r&&normName(r.nombre));
+  const parent=rows.map((_,i)=>i);
+  const find=i=>{
+    let root=i;
+    while(parent[root]!==root)root=parent[root];
+    while(parent[i]!==i){const next=parent[i];parent[i]=root;i=next;}
+    return root;
+  };
+  const unir=(a,b)=>{a=find(a);b=find(b);if(a!==b)parent[b]=a;};
+  const porNombre=new Map(),porSigla=new Map();
+  rows.forEach((r,i)=>{
+    const nombre=normName(r.nombre),sigla=normName(r.sigla||'');
+    if(porNombre.has(nombre))unir(i,porNombre.get(nombre));
+    else porNombre.set(nombre,i);
+    if(sigla){
+      if(porSigla.has(sigla))unir(i,porSigla.get(sigla));
+      else porSigla.set(sigla,i);
+    }
+  });
+
+  const grupos=new Map();
+  rows.forEach((r,i)=>{
+    const root=find(i);
+    if(!grupos.has(root))grupos.set(root,[]);
+    grupos.get(root).push(r);
+  });
+  return Array.from(grupos.values()).map(grupo=>{
+    let mejor=grupo[0];
+    grupo.slice(1).forEach(r=>{if(prioridadCatalogo(r)>prioridadCatalogo(mejor))mejor=r;});
+    const unido={...mejor};
+    // La precedencia decide qué nombre y fuente representan al ramo, pero no
+    // bota información compatible: una pauta fuera de malla todavía puede
+    // heredar el semestre y la sigla que otra fuente sí conoce.
+    grupo.forEach(r=>{
+      if(!unido.sigla&&r.sigla)unido.sigla=r.sigla;
+      if(!(Number(unido.semestre)>0)&&Number(r.semestre)>0)unido.semestre=Number(r.semestre);
+      if(r.propio)unido.propio=true;
+      if(r.tienePreset)unido.tienePreset=true;
+      ['creditos','escuela','indiceEscuela'].forEach(k=>{
+        if((unido[k]===undefined||unido[k]===null||unido[k]==='')&&r[k]!==undefined)unido[k]=r[k];
+      });
+    });
+    return unido;
+  });
+}
 function catalogRamosUniversidad(tenant,carreraPropia){
   const mallas=mallaFor(tenant)||{};
   const propios=new Set(catalogRamos(tenant,carreraPropia).map(r=>normName(r.nombre)));
-  const out=[],vistos=new Set();
-  Object.keys(mallas).forEach(car=>{
-    const porSem=mallas[car]||{};
+  const out=[];
+  const mallasBuscables=Object.entries(mallas);
+  const propia=mallaDeCarrera(tenant,carreraPropia);
+  // Las mallas diferidas viven juntas en un archivo, pero eso no las convierte
+  // en un catálogo de toda la universidad: solo sumamos la carrera del alumno.
+  if(propia&&!Object.prototype.hasOwnProperty.call(mallas,carreraPropia))mallasBuscables.push([carreraPropia,propia]);
+  mallasBuscables.forEach(([car,porSem])=>{
     Object.keys(porSem).sort((a,b)=>Number(a)-Number(b)).forEach(sem=>{
       (porSem[sem]||[]).forEach(nombre=>{
         const k=normName(nombre);
-        if(vistos.has(k))return;
-        vistos.add(k);
-        out.push({nombre,semestre:Number(sem),propio:propios.has(k),sigla:tenant==='uc'?siglaCatalogoUC(nombre):null,
+        const sigla=tenant==='uc'?siglaCatalogoUC(nombre):null;
+        out.push({nombre,semestre:Number(sem),propio:propios.has(k),sigla,
                   tienePreset:!!findPresetName(nombre,tenant,carreraPropia)||!!findPresetName(nombre,tenant,car)});
       });
     });
@@ -2334,34 +2524,29 @@ function catalogRamosUniversidad(tenant,carreraPropia){
   // van en la malla a propósito, porque son una elección y no un ramo de todos;
   // eso no es razón para esconder su pauta.
   presetsFueraDeMalla(tenant,carreraPropia).forEach(nombre=>{
-    const k=normName(nombre);
-    if(vistos.has(k))return;
-    vistos.add(k);
+    const sigla=tenant==='uc'?siglaCatalogoUC(nombre):null;
     // semestre 0 = fuera de malla. No compite con los del semestre del
     // estudiante en el orden, porque no le corresponde a nadie en particular.
-    out.push({nombre,semestre:0,propio:false,sigla:tenant==='uc'?siglaCatalogoUC(nombre):null,tienePreset:true});
+    out.push({nombre,semestre:0,propio:false,sigla,tienePreset:true});
   });
   // Y los cursos que existen sin pertenecer a un semestre ni traer pauta: los
   // optativos y OFG. Entran por el mismo camino que los presets fuera de
   // malla, con `tienePreset:false` porque no hay ponderaciones que prometer.
   // Sin esto el estudiante tiene que escribir "biocel" a mano y la app lo
   // guarda como un ramo inventado por él, sin sigla y sin forma de agrupar.
-  if(tenant==='uc')CURSOS_UC.forEach(([sigla,nombre])=>{
-    const k=normName(nombre);
-    if(vistos.has(k))return;
-    vistos.add(k);
-    out.push({nombre,semestre:0,propio:false,sigla,fuente:'curso-uc',tienePreset:false});
+  if(tenant==='uc')cursosUcDisponibles().forEach(([sigla,nombre,creditos,indiceEscuela])=>{
+    if(typeof nombre!=='string'||!nombre.trim())return;
+    out.push({nombre,semestre:0,propio:false,sigla,creditos:typeof creditos==='number'?creditos:null,
+              escuela:escuelaCursoUc(indiceEscuela),fuente:'curso-uc',
+              tienePreset:!!findPresetName(nombre,tenant,carreraPropia)});
   });
   // CREDITOS_UC ya viene del catálogo oficial de los 34 majors. No inventa
   // una malla ni dice a qué semestre corresponde: solo evita que Ingeniería
   // UC termine artificialmente en 4° y deja buscar por la sigla del horario.
   if(tenant==='uc')Object.entries(CREDITOS_UC).forEach(([nombre,[,sigla]])=>{
-    const k=normName(nombre);
-    if(vistos.has(k))return;
-    vistos.add(k);
     out.push({nombre,semestre:0,propio:false,sigla,fuente:'catalogo-ingenieria',tienePreset:false});
   });
-  return out;
+  return buildCatalog(out);
 }
 // Nombres con pauta oficial que ESTE estudiante puede recibir de verdad. Se
 // pregunta por findPresetName y no por las claves del registro: los presets UC
@@ -2369,7 +2554,7 @@ function catalogRamosUniversidad(tenant,carreraPropia){
 // Comercial es otro curso—, así que listarlos sin filtrar pondría una estrella
 // de "pauta oficial" sobre un ramo que después se agregaría vacío.
 function presetsFueraDeMalla(tenant,carrera){
-  const p=tenant==='fen'?PRESETS_FEN:(tenant==='uc'?PRESETS_UC:null);
+  const p=PRESETS_POR_TENANT[tenant];
   if(!p)return [];
   // findPresetName ya descarta los que solo traen reglas y no ponderaciones
   // (Cálculo II): si no hay pauta que ofrecer, no hay nada que mostrar acá.
@@ -2378,54 +2563,123 @@ function presetsFueraDeMalla(tenant,carrera){
 
 // B\u00fasqueda tolerante a tildes. Ordena: exacto > empieza con > contiene;
 // a igualdad, primero los del semestre actual del estudiante.
-function searchCatalog(q,tenant,carrera,semActual){
+//
+// El catálogo UC completo supera las 13 mil filas. Armarlo y volver a quitar
+// tildes de cada nombre en cada tecla consumía casi un cuadro en computador.
+// El índice conserva exactamente las mismas filas y el mismo ordenamiento; solo
+// memoriza el catálogo derivado y sus textos normalizados. Las referencias a
+// mallas/cursos diferidos son su versión: cuando aparece un archivo nuevo, la
+// siguiente búsqueda reconstruye el índice sola y no queda pegada al fallback.
+const _indicesBusquedaCatalogo=new Map();
+function fuentesDiferidasCatalogo(tenant){
+  return {
+    mallas:mallasExtraDe(tenant),
+    cursos:tenant==='uc'?cursosUcExtra():null,
+  };
+}
+function indiceBusquedaCatalogo(tenant,carrera){
+  const key=catalogKey(tenant,carrera),fuentes=fuentesDiferidasCatalogo(tenant);
+  const guardado=_indicesBusquedaCatalogo.get(key);
+  if(guardado&&guardado.mallas===fuentes.mallas&&guardado.cursos===fuentes.cursos)return guardado;
   const todos=catalogRamosUniversidad(tenant,carrera);
+  const indice={
+    mallas:fuentes.mallas,cursos:fuentes.cursos,todos,
+    filas:todos.map(r=>({ramo:r,nombre:normName(r.nombre),sigla:normName(r.sigla||'')})),
+    ordenes:new Map(),
+  };
+  _indicesBusquedaCatalogo.set(key,indice);
+  return indice;
+}
+// "Álgebra (MAT1289)": el mismo nombre que otro ramo, con su código al lado para
+// poder distinguirlos. Se reconoce por la forma y no por una marca en el dato
+// porque la etiqueta se arma al generar el catálogo, no en la app.
+const SIGLA_EN_ETIQUETA=/ \([A-Z]{2,4}\d{3,4}[A-Z]?\)$/;
+// La misma forma sobre el nombre ya normalizado, que viene en minúsculas.
+const SIGLA_NORMALIZADA=/ \([a-z]{2,4}\d{3,4}[a-z]?\)$/;
+function ordenBusquedaCatalogo(indice,semActual){
+  const sem=Number(semActual)||0;
+  if(indice.ordenes.has(sem))return indice.ordenes.get(sem);
+  const filas=indice.filas.slice().sort((a,b)=>{
+    const ra=a.ramo,rb=b.ramo;
+    if(ra.propio!==rb.propio)return ra.propio?-1:1;
+    if(ra.tienePreset!==rb.tienePreset)return ra.tienePreset?-1:1;
+    const da=Math.abs(ra.semestre-sem),db=Math.abs(rb.semestre-sem);
+    if(da!==db)return da-db;
+    return ra.nombre.localeCompare(rb.nombre);
+  });
+  indice.ordenes.set(sem,filas);
+  return filas;
+}
+function searchCatalog(q,tenant,carrera,semActual){
+  const indice=indiceBusquedaCatalogo(tenant,carrera),todos=indice.todos;
   const nq=normName(q);
+  // La consulta vacía se usa al abrir el selector. Aprovecha ese momento para
+  // dejar listo el desempate antes de que el estudiante empiece a escribir,
+  // sin cambiar el orden que históricamente devuelve el catálogo completo.
+  const filas=ordenBusquedaCatalogo(indice,semActual);
   if(!nq)return todos.slice();
-  const scored=[];
-  todos.forEach(r=>{
-    const n=normName(r.nombre),sigla=normName(r.sigla||'');
+  const grupos=[[],[],[],[]],tk=nq.split(/\s+/).filter(Boolean);
+  filas.forEach(f=>{
+    const r=f.ramo,n=f.nombre,sigla=f.sigla;
     let s=-1;
     if(n===nq||sigla===nq)s=0;
     else if(n.startsWith(nq)||sigla.startsWith(nq))s=1;
     else if(n.includes(nq)||sigla.includes(nq))s=2;
     else{
       // que "micro 1" encuentre "Microeconom\u00eda I"
-      const tk=nq.split(/\s+/).filter(Boolean);
       if(tk.length>1&&tk.every(t=>n.includes(t)))s=3;
     }
-    if(s>=0)scored.push({...r,_s:s});
+    // `n` ya viene normalizado por el índice: se conserva en la fila para que el
+    // reordenamiento de abajo no tenga que volver a normalizar cada ramo.
+    if(s>=0)grupos[s].push({...r,_s:s,_n:n});
   });
-  scored.sort((a,b)=>{
-    if(a._s!==b._s)return a._s-b._s;
-    // Los de tu propia malla primero: son los más probables. Los de otras
-    // carreras siguen apareciendo, solo más abajo.
-    if(a.propio!==b.propio)return a.propio?-1:1;
-    // Con pauta antes que sin ella. Al entrar los OFG y optativos al catálogo,
-    // buscar "Ecolog" devolvía primero "Cristianismo y Crisis Ecológica" —el
-    // alfabético desempataba— y dejaba abajo el único que trae ponderaciones
-    // oficiales. Entre dos que calzan igual, sirve más el que llega con su
-    // pauta puesta.
-    if(a.tienePreset!==b.tienePreset)return a.tienePreset?-1:1;
-    const da=Math.abs(a.semestre-(semActual||0)),db=Math.abs(b.semestre-(semActual||0));
-    if(da!==db)return da-db;
-    return a.nombre.localeCompare(b.nombre);
+  // Las filas ya vienen en el mismo orden de desempate de antes. Separarlas
+  // por tipo de coincidencia conserva exacto > prefijo > contenido > tokens,
+  // sin ordenar miles de resultados de nuevo en cada tecla.
+  const porCoincidencia=grupos[0].concat(grupos[1],grupos[2],grupos[3]);
+
+  // Pero la calidad de la coincidencia no puede mandar sobre de quién es el
+  // ramo. Buscando "algebra", un estudiante de Ingeniería recibía primero el
+  // "Álgebra" de otra carrera —coincidencia exacta— y su propia "Álgebra
+  // Lineal" quedaba segunda, detrás de siete filas que no puede cursar. El
+  // ramo de tu malla es literalmente el que vas a tomar: va primero aunque
+  // otro calce mejor con lo que escribiste.
+  //
+  // Y al final van las desambiguaciones —"Álgebra (MAT1289)"—, que existen
+  // para distinguir dos ramos con el mismo nombre y son las filas menos
+  // informativas de la lista: con once seguidas tapan a "Álgebra Abstracta" o
+  // "Álgebra Conmutativa", que sí se distinguen por su nombre.
+  // Con una excepción que importa: si la desambiguación pertenece a un ramo que
+  // SÍ está en tu malla, no es ruido, es tu otra opción. El plan común de
+  // Ingeniería admite "Dinámica" de FIS o de ICE y el estudiante cursa la que le
+  // tocó en su horario; mandar "Dinámica (ICE1514)" al fondo la vuelve
+  // inencontrable justo para quien la necesita.
+  const nombresPropios=new Set();
+  porCoincidencia.forEach(r=>{if(r.propio)nombresPropios.add(r._n);});
+  const propios=[],normales=[],variantes=[];
+  porCoincidencia.forEach(r=>{
+    if(r.propio){propios.push(r);return;}
+    if(!SIGLA_EN_ETIQUETA.test(r.nombre)){normales.push(r);return;}
+    (nombresPropios.has(r._n.replace(SIGLA_NORMALIZADA,''))?propios:variantes).push(r);
   });
-  return scored;
+  return propios.concat(normales,variantes);
 }
 
 // Sello de procedencia para un ramo creado desde el catálogo. La clave queda
 // en el ramo, para que el servidor no tenga que duplicar las siglas de data.js.
-function ramoKey(nombre,tenant,carrera){
+function ramoKey(nombre,tenant,carrera,sigla){
   // Dos carreras que le dicen distinto al mismo ramo tienen que dar la misma
   // clave, o sus reportes no se juntan nunca y el consenso no llega a tres.
   nombre=sinonimoDe(nombre,tenant)||nombre;
   if(tenant!=='uc')return normName(nombre);
+  if(typeof sigla==='string'&&sigla.trim())return sigla.trim().toUpperCase();
   const directa=siglaUC(nombre,carrera);if(directa)return directa;
   const credito=Object.keys(CREDITOS_UC||{}).find(n=>normName(n)===normName(nombre));
-  return (credito&&CREDITOS_UC[credito]&&CREDITOS_UC[credito][1])||normName(nombre);
+  if(credito&&CREDITOS_UC[credito]&&CREDITOS_UC[credito][1])return CREDITOS_UC[credito][1];
+  const completa=cursoUcCompleto(nombre,null);
+  return (completa&&completa[0])||normName(nombre);
 }
-function origenActual(nombre){return {tenant:S.tenant,carrera:S.carrera,ramoKey:ramoKey(nombre,S.tenant,S.carrera)};}
+function origenActual(nombre,sigla){return {tenant:S.tenant,carrera:S.carrera,ramoKey:ramoKey(nombre,S.tenant,S.carrera,sigla)};}
 
 // La clave de consenso se fija al CREAR el ramo y se guarda para que sobreviva
 // a que el estudiante le cambie el nombre. Eso está bien y no se toca.
@@ -2609,7 +2863,7 @@ function openReportModal(ramoId,conservarBorrador=false){
     <div class="rep-row">
       <div class="rep-name"><input type="text" id="m-rep-nombre-${i}" value="${esc(e.nombre)}" placeholder="Ej: Prueba ${i+1}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-label="Nombre de la evaluaci\u00f3n ${i+1}" oninput="actualizarReporteNombre(${i},this)" style="width:100%;min-height:44px;padding:9px 10px;border:1.5px solid var(--border2);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;font-weight:600;"/>${e.slots?` <span class="rep-tag">${e.slots} notas</span>`:''}${e.min?` <span class="rep-tag">m\u00edn ${nf(e.min)}</span>`:''}</div>
       <span class="rep-peso-field"><input class="rep-peso-input" type="text" inputmode="decimal" id="m-rep-peso-${i}" name="ponderacion-${i}" value="${r2(e.peso)}" maxlength="5" autocomplete="off" aria-describedby="m-rep-balance" oninput="actualizarReportePeso(${i},this)" onblur="normalizarReportePeso(${i},this)"/><span class="rep-peso-suffix" aria-hidden="true">%</span></span>
-      <button type="button" onclick="quitarReporteFila(${i})" aria-label="Quitar ${esc(e.nombre||'evaluaci\u00f3n')} del reporte" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem 'Onest',sans-serif;cursor:pointer;">Quitar</button>
+      <button type="button" onclick="quitarReporteFila(${i})" aria-label="Quitar ${esc(e.nombre||'evaluaci\u00f3n')} del reporte" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem var(--font-ui);cursor:pointer;">Quitar</button>
     </div>`).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Reportar pauta</div>
@@ -2619,7 +2873,7 @@ function openReportModal(ramoId,conservarBorrador=false){
     </p>
     <div class="rep-box">
       ${filas}
-      <button type="button" onclick="agregarReporteFila()" style="width:100%;margin:8px 0 4px;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 0.8125rem 'Onest',sans-serif;cursor:pointer;">+ Agregar evaluaci\u00f3n</button>
+      <button type="button" onclick="agregarReporteFila()" style="width:100%;margin:8px 0 4px;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 0.8125rem var(--font-ui);cursor:pointer;">+ Agregar evaluaci\u00f3n</button>
       <div class="rep-total ${estado.lista?'ok':'warn'}" id="m-rep-total" role="status" aria-live="polite" tabindex="-1">
         <span>Suma</span><span id="m-rep-suma">${r2(estado.total)}%</span>
       </div>
@@ -2693,6 +2947,148 @@ async function cargarConsenso(){
 }
 
 // \u00bfHay una versi\u00f3n con m\u00e1s respaldo que la que tiene este ramo?
+// --- COMO VAS RESPECTO DE QUIENES CURSAN TU MISMO RAMO ---
+// El promedio de cada ramo sube a `curso_notas` y vuelve convertido en una
+// posicion: "mejor que el 70%". Nunca baja una nota ajena al navegador: la
+// comparacion la hace el servidor y devuelve dos enteros.
+//
+// Solo participan los ramos CON SIGLA. Sin ella no hay forma de saber que la
+// "Dinamica" de uno es la misma que la del otro, y juntar dos ramos distintos
+// bajo el mismo nombre haria que la posicion no signifique nada.
+
+// Se manda el mismo numero que el estudiante ve en su pantalla, no uno
+// recalculado: `ramoAvg` es la unica formula de promedio que existe.
+// Un ramo NO guarda su sigla como propiedad: la app la deriva del nombre con
+// `siglaDeRamo`. Esto se escribio filtrando por `r.sigla`, que es undefined en
+// todos, asi que la lista quedaba vacia y no se subio nunca nada. La tabla
+// estaba en cero y la seccion no aparecia jamas.
+function siglaParaCurso(r){
+  const s=(r&&r.sigla)||siglaDeRamo(r);
+  return typeof s==='string'&&s.trim()?s.trim():null;
+}
+async function subirNotasCurso(){
+  if(!supabaseClient||!currentUser)return;
+  let fallos=0;
+  for(const r of (S.ramos||[])){
+    const sigla=siglaParaCurso(r);
+    if(!sigla)continue;
+    const avg=ramoAvg(r,undefined,S.ramos);
+    try{
+      const {error}=await supabaseClient.rpc('curso_nota_set',{
+        p_tenant:S.tenant,p_sigla:sigla,
+        // null saca el ramo del curso: sin notas no hay con que compararse, y
+        // dejarlo congelado en su ultima nota ensuciaria el agregado ajeno.
+        p_promedio:(avg===null||avg===undefined)?null:avg
+      });
+      // El cliente de Supabase DEVUELVE el error, no lo lanza: sin esta linea
+      // el catch no se activa nunca y un rechazo se pierde entero. Es el mismo
+      // agujero que tenia `syncNow` y que hizo invisible la perdida de notas.
+      if(error)throw error;
+    }catch(e){fallos++;}
+  }
+  // Que falle no puede romper Estadisticas, pero tampoco puede desaparecer: un
+  // catch mudo aca fue la razon de que esto llevara dias sin funcionar.
+  if(fallos)console.warn('No se pudieron subir '+fallos+' promedios al curso');
+}
+
+let _posCursoCache=null;
+async function cargarPosicionesCurso(){
+  if(!supabaseClient||!currentUser)return null;
+  if(_posCursoCache)return _posCursoCache;
+  const out={};
+  for(const r of (S.ramos||[])){
+    const sigla=siglaParaCurso(r);
+    if(!sigla)continue;
+    try{
+      const {data,error}=await supabaseClient.rpc('curso_posicion',{p_tenant:S.tenant,p_sigla:sigla});
+      if(error)throw error;
+      const fila=Array.isArray(data)?data[0]:data;
+      // Sin fila = todavia no son cinco. No se distingue de "fallo la red" a
+      // proposito: en los dos casos no hay nada que mostrar.
+      if(fila&&typeof fila.mejor_que==='number')out[r.id]={total:fila.total,mejorQue:fila.mejor_que};
+    }catch(e){}
+  }
+  _posCursoCache=out;
+  return out;
+}
+function invalidarPosicionesCurso(){_posCursoCache=null;}
+
+// Apagar esto esconde la seccion para quien lo apaga. Su nota sigue contando en
+// el agregado del curso, que es anonimo y no muestra nombres: si cada uno
+// pudiera sacarse, el promedio dejaria de representar al curso y la comparacion
+// no valdria para nadie.
+// --- QUE ESTADISTICAS SEA DE QUIEN LA MIRA ---
+// Cada seccion responde una pregunta distinta y no a todos les sirve la misma.
+// Quien ya sabe como va no necesita el ritmo arriba; a quien le importa el
+// ranking lo quiere primero. En vez de discutir un orden universal, se deja
+// mover y esconder.
+//
+// El orden vive como lista de ids y no como numeros: agregar una seccion nueva
+// no obliga a renumerar lo que el estudiante ya acomodo.
+const SECCIONES_STATS=[
+  {id:'ritmo',      titulo:'Ritmo del semestre'},
+  {id:'prioridades',titulo:'Qué mirar primero'},
+  {id:'curso',      titulo:'Cómo vas en tus ramos'},
+  {id:'rango',      titulo:'Rango del semestre'},
+  {id:'historial',  titulo:'Historial'},
+];
+function ordenSecciones(){
+  const guardado=Array.isArray(S.statsOrden)?S.statsOrden:[];
+  const validos=guardado.filter(id=>SECCIONES_STATS.some(s=>s.id===id));
+  // Una seccion nueva no puede quedar invisible solo porque el estudiante
+  // guardo su orden antes de que existiera: las que faltan se agregan al final.
+  SECCIONES_STATS.forEach(s=>{if(!validos.includes(s.id))validos.push(s.id);});
+  return validos;
+}
+function seccionOculta(id){
+  return Array.isArray(S.statsOcultas)&&S.statsOcultas.includes(id);
+}
+function toggleSeccionStats(id,visible){
+  const ocultas=new Set(Array.isArray(S.statsOcultas)?S.statsOcultas:[]);
+  if(visible)ocultas.delete(id);else ocultas.add(id);
+  S.statsOcultas=[...ocultas];
+  save();renderStats();renderEditarSecciones();
+}
+function moverSeccionStats(id,delta){
+  const orden=ordenSecciones();
+  const i=orden.indexOf(id),j=i+delta;
+  if(i<0||j<0||j>=orden.length)return;
+  orden.splice(j,0,orden.splice(i,1)[0]);
+  S.statsOrden=orden;
+  save();renderStats();renderEditarSecciones();
+}
+function openEditarSeccionesModal(){
+  renderEditarSecciones();
+  openModal();
+}
+function renderEditarSecciones(){
+  const box=document.getElementById('modal-content');if(!box)return;
+  const orden=ordenSecciones();
+  const filas=orden.map((id,i)=>{
+    const def=SECCIONES_STATS.find(s=>s.id===id);
+    if(!def)return '';
+    const visible=!seccionOculta(id);
+    return `<div class="sec-row${visible?'':' oculta'}">
+      <div class="sec-mover">
+        <button type="button" onclick="moverSeccionStats('${esc(id)}',-1)" ${i===0?'disabled':''} aria-label="Subir ${esc(def.titulo)}">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></button>
+        <button type="button" onclick="moverSeccionStats('${esc(id)}',1)" ${i===orden.length-1?'disabled':''} aria-label="Bajar ${esc(def.titulo)}">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      </div>
+      <span class="sec-nombre">${esc(def.titulo)}</span>
+      <label class="toggle"><input type="checkbox" ${visible?'checked':''} onchange="toggleSeccionStats('${esc(id)}',this.checked)" aria-label="Mostrar ${esc(def.titulo)}"/><span class="toggle-slider"></span></label>
+    </div>`;
+  }).join('');
+  box.innerHTML=`
+    <div class="modal-title">Editar Estadísticas</div>
+    <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin-bottom:14px;">
+      Ordena las secciones o esconde las que no miras. Se guarda al momento y
+      solo cambia tu pantalla.
+    </p>
+    <div class="sec-lista">${filas}</div>
+    <div class="modal-btns"><button class="btn-confirm" onclick="closeModal()">Listo</button></div>`;
+}
+
 async function consensoParaRamo(r){
   const cons=await cargarConsenso();
   if(!cons)return null;
@@ -2897,7 +3293,7 @@ function presetUcDisponible(nombre,carrera){
   return PRESETS_UC_COM.some(n=>normName(n)===normName(clave));
 }
 function findPresetName(nombre,tenant,carrera){
-  if(tenant==='fen')return claveCatalogo(nombre,Object.keys(PRESETS_FEN),'fen');
+  if(tenant!=='uc')return claveCatalogo(nombre,Object.keys(PRESETS_POR_TENANT[tenant]||{}),tenant);
   if(tenant!=='uc'||!MALLA_UC[carrera])return null;
   // La estrella y el selector prometen ponderaciones precargadas. Un programa
   // que solo trae reglas (como Cálculo II) no debe fingir que las tiene, así
@@ -2926,6 +3322,21 @@ function estadoPauta(categorias){
   const total=(categorias||[]).reduce((s,c)=>s+(Number(c.peso)||0),0);
   const diferencia=Math.round((100-total)*10)/10;
   return {total,diferencia,lista:Math.abs(diferencia)<0.05};
+}
+// Si una pauta completa pierde una evaluación, las que quedan conservan su
+// proporción y vuelven a representar el 100% del ramo. Se guarda la fracción
+// completa (por ejemplo 100/3), aunque el editor muestre solo dos decimales:
+// redondear cada fila por separado dejaría una pauta de 99,99%.
+//
+// Una pauta que ya estaba incompleta no se toca. Completarla automáticamente
+// inventaría porcentajes que el estudiante todavía no ha sacado del programa.
+function repartirPesoRestante(categorias,totalAntes){
+  if(Math.abs((Number(totalAntes)||0)-100)>=0.05)return false;
+  const totalRestante=(categorias||[]).reduce((s,c)=>s+(Number(c.peso)||0),0);
+  if(totalRestante<=0)return false;
+  const factor=100/totalRestante;
+  categorias.forEach(c=>{c.peso=(Number(c.peso)||0)*factor;});
+  return true;
 }
 
 // Un ramo del catálogo sin preset no es un ramo "vacío" del estudiante: la
@@ -3256,25 +3667,25 @@ function renderPautaManualModal(){
   const disponibles=plantillasPauta(S.tenant);
   const plantillas=(puedeUsarPlantillaPauta()&&disponibles.length)?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;background:var(--muted);">
     <div style="font-size:0.8125rem;font-weight:700;color:var(--fg);margin-bottom:7px;">Parte con una estructura</div>
-    <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px 'Onest',sans-serif;cursor:pointer;">${p.label}</button>`).join('')}</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;">${disponibles.map(p=>`<button type="button" onclick="aplicarPlantillaPauta('${p.tipo}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--bg);color:var(--fg);font:600 12px var(--font-ui);cursor:pointer;">${p.label}</button>`).join('')}</div>
     <div style="font-size:0.75rem;color:var(--fg2);line-height:1.4;margin-top:8px;">Los pesos quedan en 0%. Confírmalos con el programa del curso.</div>
   </div>`:'';
   const duplicar=fuentes.length?`<div style="margin:0 0 12px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);">
     <div style="font-size:0.8125rem;font-weight:700;color:var(--fg);margin-bottom:4px;">¿Ya la tienes armada en otro ramo?</div>
     <div style="font-size:0.75rem;color:var(--fg2);line-height:1.4;margin-bottom:8px;">Copia evaluaciones y porcentajes. Tus notas y fechas no se copian.</div>
-    <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px 'Onest',sans-serif;cursor:pointer;">Usar pauta</button></div>
+    <div style="display:flex;gap:7px;"><select id="m-pauta-origen" style="min-width:0;flex:1;padding:9px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--fg);font:inherit;"><option value="">Elige un ramo</option>${fuentes.map(r=>`<option value="${esc(r.id)}">${esc(r.nombre)} · ${r.cantidad} evaluación${r.cantidad!==1?'es':''}</option>`).join('')}</select><button type="button" onclick="duplicarPautaDesdeRamo()" style="padding:9px 11px;border:0;border-radius:9px;background:var(--primary);color:white;font:600 12px var(--font-ui);cursor:pointer;">Usar pauta</button></div>
   </div>`:'';
   const filas=pautaDraft.map((fila,i)=>{
     // El editor nunca decide un porcentaje. Solo calcula el resto y se lo
     // ofrece a la fila vacía que la persona eligió explícitamente.
     const resto=restoParaPautaFila(i);
     const errorEnFila=pautaDraftErrorIndex===i;
-    const usarResto=fila.peso===0?`<button type="button" onclick="usarRestoPauta(${i})" style="margin-top:4px;padding:0;border:0;background:none;color:var(--primary);font:700 10px 'Onest',sans-serif;cursor:pointer;white-space:nowrap;">${resto>0?`Usar ${r2(resto)}%`:'Usar el resto'}</button>`:'';
+    const usarResto=fila.peso===0?`<button type="button" onclick="usarRestoPauta(${i})" style="margin-top:4px;padding:0;border:0;background:none;color:var(--primary);font:700 10px var(--font-ui);cursor:pointer;white-space:nowrap;">${resto>0?`Usar ${r2(resto)}%`:'Usar el resto'}</button>`:'';
     const cantidad=fila.varias?`<div style="grid-column:1 / -1;display:flex;align-items:center;gap:7px;padding:7px 9px;margin-top:-2px;border-radius:9px;background:var(--muted);font-size:0.75rem;color:var(--fg2);"><span style="flex:1;min-width:0;">Se promedian varias notas</span><label style="display:flex;align-items:center;gap:4px;white-space:nowrap;">Esperas <input type="text" inputmode="numeric" id="m-pauta-cantidad-${i}" value="${fila.cantidad||''}" placeholder="—" maxlength="3" oninput="actualizarPautaCantidad(${i},this.value)" aria-label="Cantidad esperada de notas para ${esc(fila.nombre||'evaluación')}" style="width:32px;padding:5px 4px;border:1px solid var(--border);border-radius:6px;background:var(--bg2);color:var(--fg);font:inherit;text-align:center;"/> notas</label></div>`:'';
     return `
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 64px 52px 30px;gap:6px;align-items:center;margin:8px 0;">
       <input type="text" id="m-pauta-nombre-${i}" value="${esc(fila.nombre)}" placeholder="Ej: ${ejemplo} ${i+1}" maxlength="${NOMBRE_MAX}" list="m-pauta-sugerencias" autocomplete="off" oninput="actualizarPautaNombre(${i},this.value)" onkeydown="pautaTecla(event,${i},'nombre')" ${errorEnFila&&pautaDraftErrorTarget==='nombre'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="min-width:0;padding:11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/>
-      <div style="position:relative;"><input type="text" inputmode="numeric" id="m-pauta-peso-${i}" value="${fila.peso||''}" placeholder="0" maxlength="3" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" ${errorEnFila&&pautaDraftErrorTarget==='peso'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span>${usarResto}</div>
+      <div style="position:relative;"><input type="text" inputmode="decimal" id="m-pauta-peso-${i}" value="${fila.peso?r2(fila.peso):''}" placeholder="0" maxlength="6" oninput="actualizarPautaPeso(${i},this.value)" onkeydown="pautaTecla(event,${i},'peso')" aria-label="Peso de ${esc(fila.nombre||'evaluación')}" ${errorEnFila&&pautaDraftErrorTarget==='peso'?'aria-invalid="true" aria-describedby="m-pauta-error"':''} style="width:100%;box-sizing:border-box;padding:11px 23px 11px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;"/><span style="position:absolute;right:9px;top:11px;color:var(--fg3);font-size:0.8125rem;pointer-events:none;">%</span>${usarResto}</div>
       <label title="Son varias notas que se promedian" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:40px;cursor:pointer;font-size:0.5625rem;color:var(--fg3);font-weight:700;line-height:1;">
         <input type="checkbox" ${fila.varias?'checked':''} onchange="actualizarPautaVarias(${i},this.checked)" aria-label="${esc(fila.nombre||'Evaluación')}: son varias notas que se promedian" style="width:17px;height:17px;accent-color:var(--primary);"/><span style="margin-top:2px;">VARIAS</span>
       </label>
@@ -3294,7 +3705,7 @@ function renderPautaManualModal(){
       <span>Evaluación</span><span>Peso</span><span title="Son varias notas que se promedian" style="text-align:center;">Notas</span><span></span>
     </div>
     <div>${filas}</div>
-    <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px 'Onest',sans-serif;cursor:pointer;">+ Otra evaluación</button>
+    <button type="button" onclick="agregarPautaFila()" style="width:100%;padding:10px;border:1px dashed var(--border2);border-radius:10px;background:none;color:var(--primary);font:600 13px var(--font-ui);cursor:pointer;">+ Otra evaluación</button>
     <div class="modal-btns" style="margin-top:14px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="guardarPautaManual()">Guardar</button>
@@ -3338,8 +3749,10 @@ function usarRestoPauta(i){
 function actualizarPautaPeso(i,valor){
   limpiarErrorPauta();
   if(!pautaDraft[i])return;
-  const limpio=String(valor||'').replace(/[^0-9]/g,'');
-  const peso=Math.min(100,parseInt(limpio,10)||0);
+  const crudo=String(valor||'').replace(',','.').replace(/[^0-9.]/g,'');
+  const partes=crudo.split('.');
+  const limpio=partes[0]+(partes.length>1?'.'+partes.slice(1).join('').slice(0,2):'');
+  const peso=Math.min(100,Number(limpio)||0);
   pautaDraft[i].peso=peso;
   const input=document.getElementById('m-pauta-peso-'+i);if(input&&input.value!==limpio)input.value=limpio;
   const total=document.getElementById('m-pauta-total');if(total)total.textContent=pautaResumen();
@@ -3355,7 +3768,10 @@ function quitarPautaFila(i){
   showConfirm(nombre?`¿Quitar "${nombre}"?`:'¿Quitar esta evaluación?',
     'Se quitará de esta pauta. Puedes volver a agregarla antes de guardar.',()=>{
       limpiarErrorPauta();
-      pautaDraft.splice(i,1);if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
+      const totalAntes=pautaDraft.reduce((s,f)=>s+(Number(f.peso)||0),0);
+      pautaDraft.splice(i,1);
+      repartirPesoRestante(pautaDraft,totalAntes);
+      if(!pautaDraft.length)pautaDraft.push({id:null,nombre:'',peso:0,tieneNotas:false,varias:false,cantidad:null});renderPautaManualModal();
     },{label:'Quitar evaluación',focusCancel:true});
   return true;
 }
@@ -3848,6 +4264,7 @@ function openSettings(){
       <label class="modal-label accent-picker-label">Color de acento</label>
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>
       <label class="modal-label accent-picker-label">Fondo</label>
+      <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>
       <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
     if(section==='agentes')return currentUser?`
       <div class="agent-explainer"><b>Un agente puede ver tus ramos, notas y fechas; agregar ramos y proponer pautas.</b><span>No puede escribir tus notas.</span></div>
@@ -4345,7 +4762,7 @@ function pasoRamosSemestreAnterior(){
   const filas=histManual.ramos.map((r,i)=>`
     <div class="rep-row">
       <div class="rep-name">${esc(r.nombre)}${r.creditos?` <span class="rep-tag">${r.creditos} cr</span>`:''}</div>
-      <button type="button" onclick="quitarRamoSemestreAnterior(${i})" aria-label="Quitar ${esc(r.nombre)}" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem 'Onest',sans-serif;cursor:pointer;">Quitar</button>
+      <button type="button" onclick="quitarRamoSemestreAnterior(${i})" aria-label="Quitar ${esc(r.nombre)}" style="min-height:44px;padding:9px 8px;border:0;border-radius:10px;background:none;color:var(--fg3);font:600 0.75rem var(--font-ui);cursor:pointer;">Quitar</button>
     </div>`).join('');
   return `
     <div class="modal-title">Agregar un semestre anterior</div>
@@ -4381,20 +4798,27 @@ function renderBusquedaSemestreAnterior(q){
   const texto=String(q||'').trim();
   // Con una sola letra el catálogo devuelve medio semestre: no ayuda a nadie.
   if(texto.length<BUSQUEDA_MIN){box.innerHTML='';return;}
+  const repintar=()=>{
+    const input=document.getElementById('m-hist-buscar');
+    if(input&&input.value===q)renderBusquedaSemestreAnterior(q);
+  };
+  repintarAlCargarMallaPropia(S.tenant,S.carrera,repintar);
+  repintarAlCargarCursosUC(S.tenant,repintar);
   const res=searchCatalog(texto,S.tenant,S.carrera,8)
     .filter(c=>!histManual.ramos.some(r=>normName(r.nombre)===normName(c.nombre)));
   box.innerHTML=res.map(c=>`
-    <button type="button" class="course-picker-result" onclick="agregarRamoSemestreAnterior('${obCodificarNombre(c.nombre)}')">
+    <button type="button" class="course-picker-result" onclick="agregarRamoSemestreAnterior('${obCodificarNombre(c.nombre)}','${obCodificarNombre(c.sigla||'')}')">
       <span class="course-picker-result-name">${esc(c.nombre)}</span>
     </button>`).join('')
     // Un ramo de hace dos años puede no estar en el catálogo de hoy: se agrega igual.
     +`<button type="button" class="course-picker-manual" onclick="agregarRamoSemestreAnterior('${obCodificarNombre(texto)}')">Agregar «${esc(texto)}»</button>`;
 }
 
-function agregarRamoSemestreAnterior(cod){
+function agregarRamoSemestreAnterior(cod,siglaCod){
   const nombre=decodeURIComponent(cod).trim();
   if(!nombre||histManual.ramos.some(r=>normName(r.nombre)===normName(nombre)))return;
-  histManual.ramos.push({nombre,creditos:creditosDe(nombre,S.tenant,null),nota:''});
+  const sigla=siglaCod?decodeURIComponent(siglaCod):null;
+  histManual.ramos.push({nombre,creditos:creditosDe(nombre,S.tenant,null,sigla),nota:''});
   renderSemestreAnteriorModal();
 }
 function quitarRamoSemestreAnterior(i){histManual.ramos.splice(i,1);renderSemestreAnteriorModal();}
@@ -4527,7 +4951,7 @@ function abrirImportar(){
       <button class="btn-confirm" onclick="confirmarImportar()">Importar</button>
     </div>
     ${hayRespaldoPreImport()?`<p style="text-align:center;margin:14px 0 0;font-size:0.78125rem;">
-      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:'Onest',sans-serif;font-size:0.78125rem;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
+      <button onclick="deshacerImport()" style="border:none;background:none;padding:0;cursor:pointer;font-family:var(--font-ui);font-size:0.78125rem;font-weight:700;color:var(--primary);">Deshacer la última importación</button></p>`:''}`;
   openModal();
   setTimeout(()=>document.getElementById('import-text').focus(),100);
 }
@@ -4950,12 +5374,15 @@ function proyeccionSemestre(ramos){
 
 // Qué necesita cada ramo en lo que le queda, ordenado por dificultad. Lo que
 // pide 6,8 va primero: es donde hay que decidir hoy, no al final del semestre.
+// Un ramo sin ninguna nota devuelve el 4,0 genérico de la escala, pero eso no
+// describe la situación de esa persona y puede llenar los tres cupos dejando
+// fuera un ramo que sí tiene una exigencia calculada desde sus resultados.
 function loQueFaltaPorRamo(ramos){
   return (ramos||[]).map(r=>{
     const avg=ramoAvg(r);
     const necesita=notaNecesaria(r);
     return {ramo:r,avg,necesita,abierto:!!reglaDescarteConCantidadAbierta(r)};
-  }).filter(x=>x.necesita!==null)
+  }).filter(x=>x.avg!==null&&x.necesita!==null)
     .sort((a,b)=>b.necesita-a.necesita);
 }
 
@@ -5181,7 +5608,7 @@ function openCalculadoraModal(){
 }
 
 // ─── SIMULADOR DE ESCENARIOS ──────────────────────────────────────────────────
-let simState={}; // { catId: [ {id, valor} ] }  — notas hipotéticas, no se guardan
+let simState={}; // { catId: [ {id, valor, slot?} ] } — hipotéticas, no se guardan
 
 // ─── SIMULADOR GLOBAL DE SEMESTRE ────────────────────────────────────────────
 // Proyecta el promedio general moviendo la nota final de cada ramo con sliders.
@@ -5266,12 +5693,25 @@ function simGlobalClear(ramoId){
 }
 
 // Promedio proyectado: usa la nota hipotética si existe, si no la real del ramo
+// El promedio proyectado se le pide a `gpa`, la MISMA función que calcula el
+// número que el estudiante ve en su pantalla. Acá se calculaba aparte, con una
+// suma dividida por la cantidad de ramos, y eso lo dejaba diciendo otra cosa:
+// abrir el simulador y no tocar nada mostraba 6,22 cuando la app decía 6,03.
+//
+// No era un redondeo. `gpa` hace tres cosas que la cuenta a mano no hacía:
+// pondera por créditos cuando todos los ramos los tienen —un laboratorio de 0
+// créditos no mueve el promedio real, pero en un promedio simple pesa igual que
+// un ramo de 10—, filtra con `ramosDelPromedio` los que no corresponde contar
+// por separado, y le pasa el semestre entero a `ramoAvg` para resolver los
+// ramos vinculados.
+//
+// Duplicar ese cálculo era la causa: dos fórmulas para el mismo número siempre
+// terminan separándose. Las notas simuladas entran como `avgOverride`, que es
+// el mecanismo que `ramoAvg` ya respeta, y el resto lo resuelve `gpa`.
 function simGlobalAvg(){
-  const vals=S.ramos.map(r=>{
-    if(simGlobalState[r.id]!==undefined)return simGlobalState[r.id];
-    return ramoAvg(r);
-  }).filter(v=>v!==null&&v!==undefined);
-  return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+  const proyectado=S.ramos.map(r=>
+    simGlobalState[r.id]!==undefined?{...r,avgOverride:simGlobalState[r.id]}:r);
+  return gpa(proyectado);
 }
 
 function renderSimGlobal(){renderSimGlobalHero();renderSimGlobalList();}
@@ -5363,13 +5803,19 @@ function openSimuladorModal(){
 
 // Combina notas reales (con su peso) + hipotéticas (peso 1) de una categoría
 function simCombinadas(c){
-  return [...c.notas, ...((simState[c.id]||[]).map(s=>({valor:s.valor,peso:1})))];
+  return [...c.notas, ...((simState[c.id]||[]).map(s=>({
+    valor:s.valor,peso:1,
+    ...(Number.isInteger(s.slot)?{slot:s.slot}:{}),
+  })))];
 }
 function simCatAvg(c){return avgPond(simCombinadas(c));}
 // Proyección del simulador: mismo motor y mismas compuertas que el promedio real.
 // Mezcla notas reales + hipotéticas y delega en ramoAvg (gate-aware).
 function simProjectedAvg(r){
-  const merged={...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({id:n.id||('sim_'+c.id+'_'+i),nombre:n.nombre||'Nota',valor:n.valor,peso:n.peso||1}))}))};
+  const merged={...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({
+    id:n.id||('sim_'+c.id+'_'+i),nombre:n.nombre||'Nota',valor:n.valor,peso:n.peso||1,
+    ...(Number.isInteger(n.slot)?{slot:n.slot}:{}),
+  }))}))};
   return ramoAvg(merged);
 }
 
@@ -5407,7 +5853,7 @@ function renderSimulador(){
   document.getElementById('sim-cats').innerHTML=r.categorias.map(c=>{
     const catAvg=simCatAvg(c);
     const realChips=c.notas.map(n=>`<span class="sim-chip real">${esc(n.nombre)}: ${fmt(n.valor)}</span>`).join('');
-    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
+    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':''}${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
     return `
       <div class="sim-cat">
         <div class="sim-cat-head">
@@ -5427,8 +5873,20 @@ function simAddNota(catId){
   const inp=document.getElementById('sim-in-'+catId);if(!inp)return;
   const val=parseNota(inp.value);
   if(isNaN(val)){showToast('Ingresa una nota entre 1.0 y 7.0',true);return;}
+  const r=S.ramos.find(x=>x.id===currentRamoId);
+  const cat=r&&(r.categorias||[]).find(c=>c.id===catId);if(!cat)return;
   if(!simState[catId])simState[catId]=[];
-  simState[catId].push({id:uid(),valor:val});
+  const tieneCasillas=Number.isInteger(cat.slots)&&cat.slots>1;
+  let slot;
+  if(tieneCasillas){
+    const ocupadas=new Set([
+      ...(cat.notas||[]).filter(n=>Number.isInteger(n.slot)).map(n=>n.slot),
+      ...simState[catId].filter(n=>Number.isInteger(n.slot)).map(n=>n.slot),
+    ]);
+    slot=Array.from({length:cat.slots},(_,i)=>i).find(i=>!ocupadas.has(i));
+    if(slot===undefined){showToast(`Ya simulaste las ${cat.slots} casillas de ${cat.nombre}`,true);return;}
+  }
+  simState[catId].push({id:uid(),valor:val,...(slot===undefined?{}:{slot})});
   renderSimulador();
   setTimeout(()=>{const i=document.getElementById('sim-in-'+catId);if(i)i.focus();},30);
 }
@@ -5444,7 +5902,11 @@ function simCommit(){
   showConfirm('Guardar como notas reales',`Se agregarán ${total} nota${total!==1?'s':''} hipotética${total!==1?'s':''} como notas reales en este ramo.`,()=>{
     r.categorias.forEach(c=>{
       (simState[c.id]||[]).forEach(s=>{
-        c.notas.push({id:uid(),nombre:'Simulada '+(c.notas.length+1),valor:s.valor,peso:1});
+        const conCasilla=Number.isInteger(s.slot);
+        c.notas.push({
+          id:uid(),nombre:conCasilla?etiquetaCasilla(r,c,s.slot):'Simulada '+(c.notas.length+1),
+          valor:s.valor,peso:1,...(conCasilla?{slot:s.slot}:{}),
+        });
         openCats[c.id]=true;
       });
     });

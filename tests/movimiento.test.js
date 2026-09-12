@@ -3,7 +3,7 @@
 // revisa acá y no a ojo.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const raiz = path.join(__dirname, '..');
-const css = fs.readFileSync(path.join(raiz, 'styles.css'), 'utf8');
+const css = fs.readFileSync(process.env.GRADEHUB_CSS || path.join(raiz, 'styles.css'), 'utf8');
 
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
@@ -101,6 +101,22 @@ const curvasSueltas = [...css.matchAll(/\b(transition|animation)\s*:\s*([^;{}]+)
   .flatMap(([, , v]) => v.match(/cubic-bezier\([^)]*\)/g) || []);
 chk(`ninguna curva copiada a mano (${curvasSueltas.length} encontradas)`, curvasSueltas.length === 0);
 if (curvasSueltas.length) [...new Set(curvasSueltas)].forEach(c => console.log('       ' + c));
+// `ease` es la curva que decide el navegador si no se declara otra. No tiene
+// nada malo visualmente, pero deja cada superficie fuera del ritmo común y no
+// se ajusta cuando cambian las curvas del sistema.
+const transiciones = [...css.matchAll(/\btransition\s*:\s*([^;{}]+)/g)].map(([, valor]) => valor);
+const conEasePorDefecto = transiciones.filter(valor => /(?:^|[\s,])ease(?:\s|,|$)/.test(valor));
+chk(`ninguna transición usa el ease por defecto (${conEasePorDefecto.length} encontradas)`, conEasePorDefecto.length === 0);
+if (conEasePorDefecto.length) conEasePorDefecto.forEach(t => console.log('       ' + t));
+// Las transiciones restantes solían mezclar .3s y .35s con el ritmo del
+// sistema. El autofill de Chrome queda fuera: sus 5000s evitan el amarillo y no
+// es una animación de interacción.
+const duracionesSinToken = transiciones.filter(valor => /(?:^|[\s,])\.3(?:5)?s(?:\s|,|$)/.test(valor));
+chk(`ninguna transición conserva .3s o .35s sueltos (${duracionesSinToken.length} encontradas)`, duracionesSinToken.length === 0);
+if (duracionesSinToken.length) duracionesSinToken.forEach(t => console.log('       ' + t));
+const tabSwipe = (css.match(/\.app\.tab-mode #screen-agenda\{([\s\S]*?)\n\}/) || [])[1] || '';
+chk('el desplazamiento de pantalla usa el token largo documentado',
+  /--motion-screen:320ms/.test(css) && /transition:transform var\(--motion-screen\) var\(--ease-out\)/.test(tabSwipe));
 
 console.log('\n=== El rebote al soltar tiene con qué volver ===');
 // `button:active{transform:scale(.97)}` sin transición en `button` hunde el
@@ -178,10 +194,10 @@ const app = sinComentarios(fs.readFileSync(path.join(raiz, 'app.js'), 'utf8') + 
 const cssCodigo = sinComentarios(css);
 
 console.log('\n=== Cerrar un ramo no significa aprobarlo ===');
-const reglaProgreso = (cssCodigo.match(/\.ramo-row\.has-progress::before\{([^}]*)\}/) || [])[1] || '';
-chk('Home integra el avance como gradiente dentro de la fila del ramo',
-  /background:linear-gradient/.test(reglaProgreso) && /var\(--ramo-progress\)/.test(reglaProgreso) &&
-  /var\(--ramo-progress-end\)/.test(reglaProgreso));
+const reglaProgreso = (cssCodigo.match(/^\.ramo-progress-fill\{([^}]*)\}/m) || [])[1] || '';
+chk('Home mide el avance con scaleX, no animando el ancho ni tiñendo la fila',
+  /transform:scaleX\(var\(--ramo-progress-scale,0\)\)/.test(reglaProgreso) &&
+  /transform-origin:left/.test(reglaProgreso) && !/var\(--(?:green|yellow|red|ramo-tint)/.test(reglaProgreso));
 const fnCierre = (app.match(/function ramoRecienCerrado\([^)]*\)\{[^}]*\}/) || [])[0] || '';
 const ramoRecienCerrado = fnCierre ? vm.runInNewContext(`(${fnCierre})`) : null;
 chk('el efecto ocurre solo al cruzar desde menos de 100 a 100',
@@ -193,11 +209,11 @@ chk('Home conserva el avance anterior en el DOM para no repetir el efecto al vol
 chk('el porcentaje queda bajo el nombre y el 100% no se presenta como aprobación',
   /pctLabel=completo\?'100%':`\$\{prog\.pct\}% evaluado`/.test(app) &&
   !/prog\.pct===100[^;\n]*(aprob|éxito|logro)/i.test(app));
-const reglaCierre = (cssCodigo.match(/\.ramo-row\.has-progress\.is-complete\{([^}]*)\}/) || [])[1] || '';
-chk('el cierre usa la identidad del ramo y no el semáforo académico',
-  /var\(--ramo-tint/.test(reglaCierre) && !/var\(--(?:green|yellow|red)/.test(reglaCierre));
+const reglaCierre = (cssCodigo.match(/\.ramo-row\.is-complete \.ramo-progress-fill\{([^}]*)\}/) || [])[1] || '';
+chk('el cierre usa tinta neutra y no el semáforo académico',
+  /var\(--fg2/.test(reglaCierre) && !/var\(--(?:green|yellow|red)/.test(reglaCierre));
 chk('la llegada al cierre tiene una versión reducida que conserva opacidad sin recorrido',
-  /\.ramo-row\.just-completed::before\{animation-name:\s*ramo-row-close-reduce/.test(cssCodigo) &&
+  /\.ramo-row\.just-completed \.ramo-progress-fill\{animation-name:\s*ramo-row-close-reduce/.test(cssCodigo) &&
   /@keyframes\s+ramo-row-close-reduce\{[^}]*opacity:[^}]*\}[^}]*\}/.test(cssCodigo) &&
   !/@keyframes\s+ramo-row-close-reduce\{[^}]*transform/.test(cssCodigo));
 const reglaAvanceStats=(cssCodigo.match(/\.stats-progress-card::before\{([^}]*)\}/)||[])[1]||'';
