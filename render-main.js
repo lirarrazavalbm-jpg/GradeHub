@@ -660,6 +660,10 @@ function renderStats(){
   }
 
   let html='';
+  // Cada sección se arma por separado y se emite al final en el orden que el
+  // estudiante haya dejado, saltando las que escondió. Vive en el scope de la
+  // función porque el historial se construye en otro bloque.
+  const piezas={};
   if(totalNotas===0){
     const ramosConPauta=S.ramos.filter(r=>Array.isArray(r.categorias)&&r.categorias.length>0).length;
     const evaluaciones=S.ramos.reduce((n,r)=>n+(Array.isArray(r.categorias)?r.categorias.length:0),0);
@@ -705,7 +709,7 @@ function renderStats(){
         <div class="stats-priority-value"><span style="color:${color};">${valor}</span><small>${imposible?'sin salida':'necesitas'}</small></div>
       </button>`;
     };
-    html+=`
+    piezas.ritmo=`
     <div class="section-hd" style="padding:6px 20px 8px;">
       <span class="section-hd-title">Ritmo del semestre</span>
     </div>
@@ -716,11 +720,11 @@ function renderStats(){
       </div>
       <div class="stats-situation-reading">${lectura}</div>
     </div>
-    ${(()=>{
+    `;
+    {
       const proy=proyeccionSemestre(S.ramos);
-      let out='';
       if(falta.length){
-        out+=`
+        piezas.prioridades=`
         <div class="section-hd" style="padding:0 20px 8px;">
           <span class="section-hd-title">Qué mirar primero</span>
         </div>
@@ -734,15 +738,13 @@ function renderStats(){
       // y se rellena cuando el servidor responde: bloquear Estadísticas hasta
       // que vuelva una comparación dejaría la pantalla en blanco por algo
       // secundario.
-      if(!S.ocultarCurso){
-        out+=`
+      piezas.curso=`
         <div class="section-hd" style="padding:20px 20px 8px;">
           <span class="section-hd-title">Cómo vas en tus ramos</span>
         </div>
         <div id="stats-curso" class="stats-curso"></div>`;
-      }
       if(proy){
-        out+=`
+        piezas.rango=`
         <div class="section-hd" style="padding:20px 20px 8px;">
           <span class="section-hd-title">Rango del semestre</span>
         </div>
@@ -756,9 +758,7 @@ function renderStats(){
           <div class="stat-sub" style="margin-top:6px;">El rango considera sacar entre 1,0 y 7,0 en todo lo pendiente, incluidas las reglas que pueden topar una nota.</div>
         </div>`;
       }
-      return out;
-    })()}
-    </div>`;
+    }
   }
 
   // Historial de semestres. El encabezado y el botón para cargar uno anterior van
@@ -767,12 +767,12 @@ function renderStats(){
   // nunca.
   {
     const validos=(S.historial||[]).filter(h=>h&&Array.isArray(h.ramos));
-    html+=`<div class="section-hd stats-history-heading" style="padding:0 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    let hist=`<div class="section-hd stats-history-heading" style="padding:0 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
       <span class="section-hd-title">Historial</span>
       <button type="button" class="stats-hist-add" onclick="openSemestreAnteriorModal()">+ Semestre anterior</button>
     </div>`;
     if(!validos.length){
-      html+=`<p class="stats-hist-vacio">Si empezaste la carrera antes de usar GradeHub, agrega tus semestres anteriores con la nota final de cada ramo. Sirve para que tu promedio de carrera cuente todo lo que llevas.</p>`;
+      hist+=`<p class="stats-hist-vacio">Si empezaste la carrera antes de usar GradeHub, agrega tus semestres anteriores con la nota final de cada ramo. Sirve para que tu promedio de carrera cuente todo lo que llevas.</p>`;
     }
     if(validos.length>0){
       validos.forEach(h=>{
@@ -789,7 +789,7 @@ function renderStats(){
             <svg class="ic hist-pencil" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
           </button>`;
         }).join('');
-        html+=`
+        hist+=`
           <div class="hist-card">
             <div class="hist-header" role="button" tabindex="0" onclick="toggleHist('${h.id}')">
               <div style="flex:1;">
@@ -809,10 +809,19 @@ function renderStats(){
           </div>`;
       });
     }
+    piezas.historial=hist;
   }
+
+  // Las secciones se emiten en el orden que dejó el estudiante y sin las que
+  // escondió. Una sección que no existe en este semestre —no hay proyección, no
+  // hay nada urgente— simplemente no está en `piezas` y se salta sola.
+  ordenSecciones().forEach(id=>{
+    if(seccionOculta(id))return;
+    if(piezas[id])html+=piezas[id];
+  });
 
   body.innerHTML=html;
   // El HTML ya está en pantalla; la comparación se rellena cuando el servidor
   // conteste. Sin await: Estadísticas no espera por una sección secundaria.
-  if(!S.ocultarCurso)pintarPosicionesCurso();
+  if(!seccionOculta('curso'))pintarPosicionesCurso();
 }
