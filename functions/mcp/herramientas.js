@@ -107,6 +107,35 @@ export const HERRAMIENTAS = [
     },
   },
   {
+    nombre: 'proponer_fechas',
+    tipo: 'propuesta',
+    // El calendario del curso vive en un PDF, en un correo o en una
+    // publicación, y transcribir diez fechas a mano es justo lo que nadie hace.
+    // Sin fechas la Agenda queda vacía, así que esto es lo que la llena.
+    resumen: 'Propone fechas (y hora) para las evaluaciones de un ramo, leídas del calendario del curso. No las guarda: quedan pendientes y el estudiante las acepta, edita o rechaza en la app.',
+    args: {
+      ramo: 'nombre o sigla de un ramo que la persona ya tenga agregado',
+      fechas: {
+        type: 'array',
+        description: 'Fechas propuestas, una por evaluación.',
+        minItems: 1,
+        maxItems: 60,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['evaluacion', 'fecha'],
+          properties: {
+            evaluacion: { type: 'string', description: 'Nombre de la evaluación tal como está en el ramo' },
+            fecha: { type: 'string', description: 'Fecha en formato AAAA-MM-DD' },
+            hora: { type: 'string', description: 'Hora en formato HH:MM, si el calendario la dice' },
+            casilla: { type: 'integer', minimum: 1, maximum: 100, description: 'Cuál de las evaluaciones de ese grupo, si tiene varias (el Control 2, por ejemplo)' },
+          },
+        },
+      },
+      fuente: 'De dónde salió el calendario: el programa, el correo, la publicación del curso',
+    },
+  },
+  {
     nombre: 'agregar_ramo',
     tipo: 'escritura',
     resumen: 'Agrega un ramo al semestre. Sin notas: solo el ramo y, si se sabe, su pauta.',
@@ -154,6 +183,38 @@ export function validarPropuestaNotas(args) {
     if (casilla != null && (!Number.isInteger(casilla) || casilla < 1 || casilla > 100)) return 'Propuesta inválida: la casilla debe ser un entero entre 1 y 100.';
     const clave = normalizarNombre(evaluacion) + '#' + (casilla == null ? '' : casilla);
     if (vistas.has(clave)) return `Propuesta inválida: hay dos notas para "${evaluacion}" en la misma casilla.`;
+    vistas.add(clave);
+  }
+  return null;
+}
+
+// Una fecha se valida por forma y por rango. Lo segundo importa: un año 2019 o
+// 2031 en el calendario de un semestre es un dato mal leído, y una fecha mal
+// puesta manda una evaluación al fondo de la Agenda o la saca de la vista.
+const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+export function validarPropuestaFechas(args) {
+  const fuente = String(args && args.fuente || '').trim();
+  const fechas = args && args.fechas;
+  if (!fuente) return 'Propuesta inválida: di de dónde salió el calendario (el programa, el correo, la publicación).';
+  if (!Array.isArray(fechas) || fechas.length < 1 || fechas.length > 60) return 'Propuesta inválida: entrega entre 1 y 60 fechas.';
+  const anioAhora = new Date().getUTCFullYear();
+  const vistas = new Set();
+  for (const f of fechas) {
+    const evaluacion = String(f && f.evaluacion || '').trim();
+    const fecha = String(f && f.fecha || '').trim();
+    const hora = f && f.hora == null ? null : String(f.hora).trim();
+    const casilla = f && f.casilla;
+    if (!evaluacion) return 'Propuesta inválida: cada fecha necesita el nombre de su evaluación.';
+    if (!FECHA_RE.test(fecha)) return `Propuesta inválida: "${evaluacion}" tiene una fecha que no es AAAA-MM-DD.`;
+    const d = new Date(fecha + 'T00:00:00Z');
+    if (isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== fecha) return `Propuesta inválida: "${evaluacion}" tiene una fecha que no existe.`;
+    const anio = Number(fecha.slice(0, 4));
+    if (anio < anioAhora - 1 || anio > anioAhora + 1) return `Propuesta inválida: "${evaluacion}" cae en ${anio}, fuera del año académico en curso.`;
+    if (hora !== null && hora !== '' && !HORA_RE.test(hora)) return `Propuesta inválida: "${evaluacion}" tiene una hora que no es HH:MM.`;
+    if (casilla != null && (!Number.isInteger(casilla) || casilla < 1 || casilla > 100)) return 'Propuesta inválida: la casilla debe ser un entero entre 1 y 100.';
+    const clave = normalizarNombre(evaluacion) + '#' + (casilla == null ? '' : casilla);
+    if (vistas.has(clave)) return `Propuesta inválida: hay dos fechas para "${evaluacion}" en la misma casilla.`;
     vistas.add(clave);
   }
   return null;

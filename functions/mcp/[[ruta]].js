@@ -15,7 +15,7 @@
 // pueda pegar en el lugar equivocado, y desconectar desde Ajustes lo corta de
 // verdad.
 
-import { HERRAMIENTAS, NOMBRES, validarPropuestaPauta, validarPropuestaNotas } from './herramientas.js';
+import { HERRAMIENTAS, NOMBRES, validarPropuestaPauta, validarPropuestaNotas, validarPropuestaFechas } from './herramientas.js';
 import motorCompartido from '../../engine.js';
 
 const SUPABASE_URL = 'https://lsulsnswzesyekpsvlql.supabase.co';
@@ -148,6 +148,38 @@ function errorPropuesta(valor) {
   return mensaje.startsWith('Propuesta inválida:') || mensaje.startsWith('No se encontró') || mensaje.startsWith('La conexión')
     ? mensaje
     : 'No se pudo guardar la propuesta.';
+}
+
+async function guardarPropuestaFechas(token, estado, args) {
+  const ramo = ramoParaPropuesta(estado, args.ramo);
+  if (!ramo) return { error: 'No se encontró ese ramo en el semestre. Pídele a la persona que lo agregue primero.' };
+  const invalida = validarPropuestaFechas(args);
+  if (invalida) return { error: invalida };
+  const declaradas = (ramo.categorias || []).map(c => String(c.nombre || ''));
+  const sinCalce = args.fechas
+    .map(f => String(f.evaluacion || '').trim())
+    .filter(nombre => !declaradas.some(d => norm(d) === norm(nombre)));
+  if (sinCalce.length) {
+    return { error: `No encontré estas evaluaciones en ${ramo.nombre}: ${sinCalce.join(', ')}. Las que tiene son: ${declaradas.join(', ')}.` };
+  }
+  const clave = String((ramo.origen && ramo.origen.ramoKey) || norm(ramo.nombre));
+  try {
+    const r = await rpc('proponer_fechas_agente', {
+      p_token: token,
+      p_ramo: String(ramo.nombre || '').trim(),
+      p_ramo_key: clave,
+      p_fechas: args.fechas,
+      p_fuente: String(args.fuente || '').trim(),
+    });
+    if (!r.ok) return { error: errorPropuesta(await r.json().catch(() => null)) };
+    const data = await r.json();
+    return {
+      id: data, ramo: ramo.nombre, fechas: args.fechas.length,
+      mensaje: 'Fechas propuestas. NO están guardadas: la persona las acepta, edita o rechaza en la ficha del ramo.',
+    };
+  } catch {
+    return { error: 'No se pudo conectar con GradeHub para guardar la propuesta.' };
+  }
 }
 
 async function guardarPropuestaNotas(token, estado, args) {
@@ -291,6 +323,19 @@ function despachar(nombre, estado, args) {
     const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
     const out = [];
     ramos.forEach(r => (r.categorias || []).forEach(c => {
+      // Una nota con fecha propia es una evaluación suelta dentro del grupo: el
+      // Control 2 puede ser tres semanas después del Control 1. Se listan
+      // aparte porque la fecha de la categoría vale para el grupo entero, y
+      // antes solo se miraba esa —así que las fechas por casilla no llegaban
+      // nunca al agente, aunque la Agenda sí las mostrara.
+      (c.notas || []).forEach(n => {
+        if (!n.fecha || n.fecha < hoy || n.fecha > hasta) return;
+        out.push({
+          ramo: r.nombre, evaluacion: n.nombre || c.nombre, fecha: n.fecha,
+          hora: n.hora || null, peso: c.peso, grupo: c.nombre,
+          rendida: typeof n.valor === 'number',
+        });
+      });
       const f = c.fecha;
       if (f && f >= hoy && f <= hasta) out.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: f, hora: c.hora || null, peso: c.peso });
     }));
@@ -367,6 +412,12 @@ export async function onRequestPost({ request, params }) {
     if (!estado) return error(id, -32001, 'Esta conexión ya no es válida. Vuelve a vincular desde Ajustes.');
 
     const argumentos = args.arguments || {};
+    if (nombre === 'proponer_fechas') {
+      const propuesta = await guardarPropuestaFechas(token, estado, argumentos);
+      if (propuesta.error) return error(id, -32602, propuesta.error);
+      return respuesta(id, { content: [{ type: 'text', text: JSON.stringify(propuesta) }] });
+    }
+
     if (nombre === 'proponer_notas') {
       const propuesta = await guardarPropuestaNotas(token, estado, argumentos);
       if (propuesta.error) return error(id, -32602, propuesta.error);
