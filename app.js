@@ -2377,6 +2377,12 @@ function creditosDe(nombre,tenant,preset,sigla){
 // necesita saber la carrera. Importa donde el nombre no basta: en el plan común
 // hay dos ramos llamados "Dinámica" con códigos distintos, y el estudiante
 // reconoce el suyo por la sigla de su horario, no por el nombre.
+function siglaDePreset(nombre){
+  if(typeof PRESETS_UC==='undefined'||!nombre)return null;
+  const clave=claveCatalogo(nombre,Object.keys(PRESETS_UC),'uc');
+  const def=clave?PRESETS_UC[clave]:null;
+  return def&&typeof def.sigla==='string'&&def.sigla?def.sigla:null;
+}
 function siglaDeRamo(r,tenant){
   if(!r||!r.nombre)return null;
   // En el onboarding la universidad todavía no está en `S`: se está eligiendo,
@@ -2387,6 +2393,21 @@ function siglaDeRamo(r,tenant){
     const clave=claveCatalogo(r.nombre,Object.keys(tabla),tenant);
     const fila=clave?tabla[clave]:null;
     if(fila&&typeof fila[1]==='string')return fila[1];
+  }
+  // La sigla de un ramo que solo existe como preset. Los OFG y electivos no
+  // están en ninguna malla, así que `CREDITOS_UC` no los tiene, y el catálogo
+  // completo se baja aparte —solo al buscar un ramo— así que en la pantalla de
+  // inicio todavía no llegó: ahí la sigla salía vacía aunque la supiéramos.
+  //
+  // Va ANTES del catálogo a propósito. Cuando las dos fuentes no coinciden
+  // manda la del preset, porque es la del curso cuya pauta estamos prometiendo.
+  // "Revelación y Fe" es el caso: el horario oficial la da como TTF012 y el
+  // catálogo de programas publica un homónimo, TEB110, que es otro curso.
+  // Resolver por nombre contra el catálogo le mostraría al estudiante la sigla
+  // de un ramo que no está tomando.
+  if(tenant==='uc'){
+    const dePreset=siglaDePreset(r.nombre);
+    if(dePreset)return dePreset;
   }
   const origenKey=r.origen&&r.origen.ramoKey;
   // Los ramos UC antiguos sin sigla guardaron el nombre normalizado como
