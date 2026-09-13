@@ -216,7 +216,7 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
    de ~130px— y en el celular el calendario nativo se abre anclado a esa caja
    diminuta. Poner la fecha de una prueba era pelear con un control enano.
    El font-size de 16px además evita que iOS haga zoom al enfocarlo. */
-input[type=text],input[type=number],input[type=password],input[type=email],input[type=date],input[type=time]{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:1rem;font-family:var(--font-ui);color:var(--fg);background:var(--bg2);outline:none;transition:border var(--motion-fast);}
+input[type=text],input[type=number],input[type=password],input[type=email],input[type=date],input[type=time],input[type=search]{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:1rem;font-family:var(--font-ui);color:var(--fg);background:var(--bg2);outline:none;transition:border var(--motion-fast);}
 /* El campo tiene que ser tocable con el pulgar: 44px es el mínimo que
    recomiendan iOS y Android para un objetivo táctil. Y el ícono del calendario
    viene de 12px en Chrome — a ese tamaño hay que apuntarle. */
@@ -894,12 +894,18 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
    dos piezas conviven para no perder contexto al cambiar entre opciones. */
 .settings-shell{min-width:0;}
 .settings-nav{display:flex;flex-direction:column;gap:3px;}
+.settings-search-label{margin:0 4px 7px;font-size:.75rem;font-weight:550;color:var(--fg2);}
+input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;padding:10px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--card);color:var(--fg);font:inherit;font-size:1rem;}
+.settings-search::placeholder{color:var(--fg3);}
+.settings-search-status{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
+.settings-search-empty{margin:14px 6px;font-size:.8125rem;line-height:1.5;color:var(--fg2);}
+.settings-account-access{margin-top:28px;padding-top:22px;border-top:1px solid var(--border);}
 .settings-nav-group{margin:16px 10px 6px;font-size:0.65625rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);}
 .settings-nav-group:first-child{margin-top:0;}
 .settings-nav-item{display:flex;align-items:center;gap:11px;width:100%;padding:11px 10px;border:0;border-radius:12px;background:transparent;color:var(--fg);font-family:var(--font-ui);text-align:left;cursor:pointer;}
 .settings-nav-item>span:nth-child(2){display:flex;min-width:0;flex:1;flex-direction:column;gap:2px;}
 .settings-nav-item b{font-size:0.84375rem;letter-spacing:-.01em;line-height:1.2;}
-.settings-nav-item small{overflow:hidden;color:var(--fg3);font-size:0.71875rem;line-height:1.25;white-space:nowrap;text-overflow:ellipsis;}
+.settings-nav-item small{color:var(--fg3);font-size:0.71875rem;line-height:1.25;}
 .settings-nav-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:var(--muted);color:var(--fg2);flex-shrink:0;}
 .settings-nav-icon .ic{width:18px;height:18px;}
 .settings-nav-chevron{color:var(--fg3);font-size:1.5rem;font-weight:300;line-height:1;}
@@ -1006,10 +1012,15 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 @media(min-width:768px){
   .modal-sheet:has(.settings-shell){max-width:760px;padding:22px;}
   .settings-modal-title{margin-bottom:14px;}
-  .settings-shell{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:390px;overflow:hidden;border:1px solid var(--border);border-radius:16px;background:var(--card);}
+  .settings-shell{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:390px;overflow:hidden;border:1px solid var(--border);border-radius:16px;background:var(--card);}
   .settings-nav{padding:16px 10px;border-right:1px solid var(--border);background:color-mix(in srgb,var(--muted),var(--card) 35%);}
   .settings-nav-group{margin-top:18px;}
   .settings-nav-item{padding:10px;}
+  /* En escritorio el detalle ya explica cada opción: el índice queda compacto
+     para no empujar Apariencia y Ayuda fuera de la primera vista. */
+  .settings-shell .settings-nav-item{min-height:54px;padding:8px 6px;}
+  .settings-shell .settings-nav-item b{font-size:.84375rem;}
+  .settings-shell .settings-nav-item small{display:none;}
   .settings-nav-item.active{background:var(--primary-light);color:var(--primary);}
   .settings-nav-item.active .settings-nav-icon{background:color-mix(in srgb,var(--primary),transparent 84%);color:var(--primary);}
   .settings-nav-chevron{display:none;}
