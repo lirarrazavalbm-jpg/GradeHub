@@ -717,8 +717,7 @@ Ojo con el contador del grupo: cuenta casillas CON NOTA, no casillas
 registradas. Una casilla creada solo para fecharla no puede sumar al "2/3
 ingresadas".
 **Tres cosas pedidas por Lucas el 2026-09-12 para la pantalla de Ajustes y la
-conexión de agentes.** Ninguna está hecha; se anotan con lo que ya se sabe para
-que quien las tome no vuelva a levantarlo.
+conexión de agentes.** La 2 está implementada; la 1 y la 3 siguen pendientes.
 
 **1. Sacar el camino del código (Claude Code y Codex).** Hoy la sección de
 agentes ofrece dos formas de conectar: la URL —que sirve para ChatGPT, Claude y
@@ -734,13 +733,12 @@ Ojo con los tests que las cubren: `agentes-conectados.test.js` y
 `agente-conectar.test.js` comprueban justo ese flujo, así que hay que sacarles
 esas comprobaciones —no debilitarlas— y dejar las de la URL.
 
-**2. Ordenar Ajustes y poner un buscador arriba.** Hoy son siete secciones
-declaradas en `sections` (app.js), agrupadas en Tu cuenta, Estudio,
-Preferencias, Ayuda y Datos. El buscador tiene que filtrar por el título y por
-la bajada de cada una; con siete entradas el valor real está en encontrar una
-opción concreta —"cambiar mi carrera", "borrar mi cuenta"— sin saber en qué
-grupo vive, así que conviene indexar también las opciones de adentro y no solo
-los títulos de sección.
+**2. Ordenar Ajustes y poner un buscador arriba — implementado.** Las siete
+secciones se reúnen en Tu cuenta, Tu semestre y La app. El buscador filtra por
+título, bajada y opciones internas: "cambiar mi carrera" y "borrar mi cuenta"
+encuentran su sección. Buscar solo repinta la navegación, no el formulario.
+El correo de acceso vive en Perfil; respaldos y eliminación siguen en Datos y
+cuenta. `tests/ajustes-orden.test.js` fija estos caminos sin guardar preferencias.
 
 **3. Explicar de verdad cómo conectar un agente, empezando por un prompt.** Hoy
 la pantalla entrega la URL y poco más, y eso deja al estudiante adivinando dónde

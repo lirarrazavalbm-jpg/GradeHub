@@ -4643,6 +4643,7 @@ function openSettings(){
   let settingsCarrera=S.carrera,settingsCarreraNombre=S.carreraNombre||null,settingsCarreraFiltro='';
   let settingsName=S.userName;
   let settingsNameError='';
+  let settingsSearch='';
   // Se declara acá arriba: los render*Grid() se llaman antes de las definiciones
   // de función y con `let` más abajo caería en la zona muerta temporal (TDZ).
   let settingsTenant=S.tenant||'fen';
@@ -4659,30 +4660,37 @@ function openSettings(){
     arrow:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>'
   };
   const sections=[
-    ['Tu cuenta','perfil','Perfil','Tu nombre en GradeHub'],
-    ['Estudio','academico','Información académica','Universidad, carrera y semestre'],
-    ['Estudio','calendario','Calendario','Apple, Google y Outlook'],
-    ['Preferencias','apariencia','Apariencia','Cómo se ve la app'],
-    ['Tu cuenta','agentes','Agentes conectados','Controla quién puede ver tus notas'],
-    ['Ayuda','sugerencias','Sugerencias y comentarios','Cuéntanos qué mejorar'],
-    ['Datos','datos','Datos y cuenta','Respaldos y acciones de cuenta']
+    ['Tu cuenta','perfil','Perfil','Tu nombre y correo de acceso','cambiar nombre correo email'],
+    ['Tu cuenta','agentes','Agentes conectados','Conectar o desconectar un agente','chatgpt claude gemini codex inteligencia artificial url codigo revocar permisos'],
+    ['Tu cuenta','datos','Datos y cuenta','Respaldos, reinicio y eliminación','exportar importar copia respaldo borrar eliminar cuenta reiniciar dispositivo privacidad terminos'],
+    ['Tu semestre','academico','Información académica','Universidad, carrera y semestre','cambiar carrera universidad agregar semestre anterior historial'],
+    ['Tu semestre','calendario','Calendario','Importar fechas o suscribirte','apple google outlook importar archivo ics fechas copiar url suscripcion'],
+    ['La app','apariencia','Apariencia','Modo, acento y fondo','tema claro oscuro sistema color cambiar fondo'],
+    ['La app','sugerencias','Sugerencias y comentarios','Cuéntanos qué mejorar','ayuda problema reportar falla comentario enviar contactar soporte']
   ];
 
   function guardarBtn(){return '<button class="btn-primary settings-save" id="s-save-btn" onclick="saveSettings()">Guardar cambios</button>';}
   function panel(section){
     if(section==='perfil')return `
-      <label class="modal-label">Nombre para mostrar</label>
+      <label class="modal-label" for="s-name">Nombre para mostrar</label>
       <div class="settings-name-field">
         <div class="modal-input"><input type="text" id="s-name" value="${esc(settingsName)}" maxlength="30" autocomplete="off" aria-describedby="s-name-hint s-name-error"/></div>
         <p id="s-name-error" role="alert" ${settingsNameError?'':'hidden'} style="margin:7px 0 0;font-size:0.75rem;line-height:1.4;color:var(--red);">${esc(settingsNameError)}</p>
         <p class="settings-name-hint" id="s-name-hint">Aparece en el saludo de inicio.</p>
       </div>
-      ${guardarBtn()}`;
+      ${guardarBtn()}
+      ${currentUser?`<div class="settings-account-access">
+        <label class="modal-label" for="s-account-email">Correo de acceso</label>
+        <div class="modal-input"><input type="email" id="s-account-email" value="${esc(currentUser.email||'')}" maxlength="60" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" aria-describedby="s-account-email-help s-account-email-status"/></div>
+        <p class="settings-help" id="s-account-email-help" style="margin:7px 0 10px;">Cámbialo al tiro. Revisa que esté bien escrito: lo usarás para entrar y recuperar tu cuenta.</p>
+        <p id="s-account-email-status" role="alert" aria-live="polite" hidden style="margin:0 0 10px;font-size:0.75rem;line-height:1.4;"></p>
+        <button type="button" class="settings-reset-btn" id="s-account-email-save" onclick="cambiarCorreoCuenta()">Cambiar correo</button>
+      </div>`:''}`;
     if(section==='academico')return `
-      <label class="modal-label">Universidad</label>
+      <div class="modal-label">Universidad</div>
       <div id="s-tenant-grid" class="s-tenant-grid"></div>
       <p class="settings-help">Cambia tu catálogo disponible. Tus ramos y notas no se tocan.</p>
-      <label class="modal-label">Carrera</label>
+      <label class="modal-label" for="s-carrera-buscar">Carrera</label>
       <div class="modal-input" style="margin-bottom:10px;"><input type="text" id="s-carrera-buscar" placeholder="Busca tu carrera" autocomplete="off" oninput="filtrarCarrerasAjustes(this.value)"/></div>
       <div id="s-carrera-grid" class="settings-carrera-grid"></div>
       <div style="height:1px;background:var(--border);margin:22px 0 16px;"></div>
@@ -4718,7 +4726,6 @@ function openSettings(){
       <label class="modal-label accent-picker-label">Color de acento</label>
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>
       <label class="modal-label accent-picker-label">Fondo</label>
-      <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>
       <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
     // La pantalla se ordenó el 2026-09-12, después de que cada arreglo le
     // sumara un bloque encima: quedaban dos formas de conectar compitiendo con
@@ -4781,13 +4788,6 @@ function openSettings(){
         <button type="button" onclick="exportarDatos()">Exportar mis datos</button>
         <button type="button" onclick="abrirImportar()">Importar datos</button>
       </div>
-      ${currentUser?`<div class="settings-reset-zone" style="margin-top:0;margin-bottom:12px;">
-        <label class="modal-label" for="s-account-email">Correo de acceso</label>
-        <div class="modal-input"><input type="email" id="s-account-email" value="${esc(currentUser.email||'')}" maxlength="60" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" aria-describedby="s-account-email-help s-account-email-status"/></div>
-        <p class="settings-help" id="s-account-email-help" style="margin:7px 0 10px;">Cámbialo al tiro. Revisa que esté bien escrito: lo usarás para entrar y recuperar tu cuenta.</p>
-        <p id="s-account-email-status" role="alert" aria-live="polite" hidden style="margin:0 0 10px;font-size:0.75rem;line-height:1.4;"></p>
-        <button type="button" class="settings-reset-btn" id="s-account-email-save" onclick="cambiarCorreoCuenta()">Cambiar correo</button>
-      </div>`:''}
       <div class="settings-danger-zone">
         <div class="settings-danger-label">Zona sensible</div>
         <button type="button" class="settings-danger-btn" onclick="confirmarEliminarCuenta()">Eliminar mi cuenta</button>
@@ -4796,19 +4796,43 @@ function openSettings(){
       ${currentUser?`<div class="settings-reset-zone"><button type="button" class="settings-reset-btn" onclick="confirmResetApp()">Reiniciar app</button><p>Borra los datos de este dispositivo y cierra sesión. Tus notas en la nube se conservan.</p></div>`:`<div class="settings-danger-zone settings-reset-danger-zone"><div class="settings-danger-label">Zona sensible</div><button type="button" class="settings-danger-btn" onclick="confirmResetApp()">Reiniciar app</button><p>Borra todos tus datos de este dispositivo. No se puede deshacer.</p></div>`}
       <p class="settings-privacy"><a href="/terminos.html" target="_blank" rel="noopener">Términos de uso</a> · <a href="/privacidad.html" target="_blank" rel="noopener">Política de privacidad</a></p>`;
   }
+  function renderSettingsNav(){
+    // Buscar no vuelve a pintar el panel: hacerlo borraría un correo o comentario
+    // que el estudiante esté escribiendo. El índice incluye las opciones internas.
+    const tokens=normName(settingsSearch).split(/\s+/).filter(t=>t&&!['mi','mis','el','la','los','las','de','del','un','una','y','en'].includes(t));
+    const results=sections.filter(section=>tokens.every(t=>normName(section.join(' ')).includes(t)));
+    const nav=document.getElementById('settings-nav-list');
+    nav.innerHTML=results.map(([group,id,title,detail],i)=>`${!i||results[i-1][0]!==group?`<div class="settings-nav-group">${group}</div>`:''}<button type="button" class="settings-nav-item${id===activeSection?' active':''}" data-settings-section="${id}"${id===activeSection?' aria-current="page"':''}><span class="settings-nav-icon" aria-hidden="true">${icons[id]}</span><span><b>${title}</b><small>${detail}</small></span><span class="settings-nav-chevron" aria-hidden="true">›</span></button>`).join('')||'<p class="settings-search-empty">No encontramos esa opción. Prueba con «carrera», «correo» o «fondo».</p>';
+    document.getElementById('settings-search-status').textContent=settingsSearch.trim()?`${results.length} ${results.length===1?'sección encontrada':'secciones encontradas'}`:'';
+    document.querySelectorAll('[data-settings-section]').forEach(b=>b.onclick=()=>{
+      activeSection=b.dataset.settingsSection;renderSettings();
+      if(activeSection!=='perfil')document.getElementById('settings-detail-title').focus();
+    });
+  }
   function renderSettings(){
-    const nav=sections.map(([group,id,title,detail],i)=>`${!i||sections[i-1][0]!==group?`<div class="settings-nav-group">${group}</div>`:''}<button type="button" class="settings-nav-item${id===activeSection?' active':''}" data-settings-section="${id}"><span class="settings-nav-icon">${icons[id]}</span><span><b>${title}</b><small>${detail}</small></span><span class="settings-nav-chevron">›</span></button>`).join('');
     const current=sections.find(x=>x[1]===activeSection);
     document.getElementById('modal-content').innerHTML=`
-      <div class="modal-title settings-modal-title${activeSection?' settings-mobile-hidden':''}">Ajustes</div>
+      <div id="modal-titulo" class="modal-title settings-modal-title${activeSection?' settings-mobile-hidden':''}">Ajustes</div>
       <div class="settings-shell${activeSection?' settings-detail-open':''}">
-        <aside class="settings-nav" aria-label="Secciones de Ajustes">${nav}</aside>
+        <nav class="settings-nav" aria-label="Secciones de Ajustes">
+          <label class="settings-search-label" for="settings-search">Buscar en Ajustes</label>
+          <input type="search" class="settings-search" id="settings-search" value="${esc(settingsSearch)}" placeholder="¿Qué buscas?" autocomplete="off" aria-controls="settings-nav-list"/>
+          <span class="settings-search-status" id="settings-search-status" role="status"></span>
+          <div id="settings-nav-list"></div>
+        </nav>
         <section class="settings-detail" ${activeSection?'':'aria-hidden="true"'}>
-          ${activeSection?`<div class="settings-detail-heading"><button type="button" class="settings-back" aria-label="Volver a Ajustes">${icons.arrow}<span>Ajustes</span></button><div><h2>${current[2]}</h2><p>${current[3]}</p></div></div><div class="settings-detail-body">${panel(activeSection)}</div>`:''}
+          ${activeSection?`<div class="settings-detail-heading"><button type="button" class="settings-back" aria-label="Volver a Ajustes">${icons.arrow}<span>Ajustes</span></button><div><h2 id="settings-detail-title" tabindex="-1">${current[2]}</h2><p>${current[3]}</p></div></div><div class="settings-detail-body">${panel(activeSection)}</div>`:''}
         </section>
       </div>`;
-    document.querySelectorAll('[data-settings-section]').forEach(b=>b.onclick=()=>{activeSection=b.dataset.settingsSection;renderSettings();});
-    const back=document.querySelector('.settings-back');if(back)back.onclick=()=>{activeSection='';renderSettings();};
+    renderSettingsNav();
+    const search=document.getElementById('settings-search');
+    search.oninput=()=>{settingsSearch=search.value;renderSettingsNav();};
+    const back=document.querySelector('.settings-back');if(back)back.onclick=()=>{
+      const previous=activeSection;activeSection='';renderSettings();
+      const option=document.querySelector(`[data-settings-section="${previous}"]`);
+      (option||document.getElementById('settings-search')).focus();
+    };
+    etiquetarCamposDelModal(document.getElementById('modal-content'));
     if(activeSection==='academico'){renderSettingsSemGrid();renderSettingsTenantGrid();renderSettingsCarreraGrid();}
     if(activeSection==='apariencia'){renderModoGrid();renderAcentoGrid();renderFondoGrid();}
     if(activeSection==='calendario'&&currentUser)pintarFeedCalendario();
