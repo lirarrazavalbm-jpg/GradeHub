@@ -1,4 +1,5 @@
-// Generar el código del agente falla y la persona no puede saber por qué.
+// La conexión ahora es solo por URL: conserva las garantías de errores y sesión
+// que se probaron originalmente para el código temporal.
 //
 // El 2026-09-12 Lucas no pudo generar el código y lo único que dijo la app fue
 // "No pudimos generar el código. Intenta de nuevo." Las dos RPC estaban vivas y
@@ -15,7 +16,7 @@
 //    base contesta "sin sesión", que es correcto y parece un error nuestro.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const raiz = path.join(__dirname, '..');
-const app = fs.readFileSync(path.join(raiz, 'app.js'), 'utf8');
+const app = fs.readFileSync(process.env.GRADEHUB_APP || path.join(raiz, 'app.js'), 'utf8');
 
 let ok = 0, fail = 0;
 const chk = (n, c) => { if (c) { ok++; console.log('  OK   ' + n); } else { fail++; console.log('  FAIL ' + n); } };
@@ -30,9 +31,9 @@ function montar(respuestas) {
     showToast: (m, esError) => toasts.push({ m, esError }),
     document: { getElementById: () => ({ disabled: false, textContent: '' }) },
     currentUser: { id: 'u1' },
-    pintarCodigoAgente() {},
-    AGENTE_CODIGO_MS: 3e5,
-    agenteCodigoActual: '', agenteCodigoVence: 0,
+    pintarUrlAgente() {}, cargarAgentesConectados() {},
+    MCP_URL_BASE: 'https://gradehub.cl/mcp/',
+    agenteUrlActual: '',
     Date,
     supabaseClient: {
       rpc: async (nombre, args) => { llamadas.push(nombre); return respuestas.shift(); },
@@ -41,18 +42,18 @@ function montar(respuestas) {
   };
   vm.createContext(ctx);
   for (const re of [/\nfunction sesionCaducada\([\s\S]*?\n\}/, /\nasync function rpcAgente\([\s\S]*?\n\}/,
-                    /\nasync function crearCodigoAgente\([\s\S]*?\n\}/]) {
+                    /\nasync function crearUrlAgente\([\s\S]*?\n\}/]) {
     const m = app.match(re);
     if (!m) { console.log('  FAIL falta la función ' + re); fail++; return null; }
     vm.runInContext(m[0], ctx);
   }
-  vm.runInContext(';globalThis.__crear=crearCodigoAgente;', ctx);
+  vm.runInContext(';globalThis.__crear=crearUrlAgente;', ctx);
   return { ctx, toasts, llamadas, refrescos: () => refrescos };
 }
 
 (async () => {
   console.log('=== El motivo del fallo se dice ===');
-  let m = montar([{ data: null, error: { message: 'permission denied for table agent_link_codes' } }]);
+  let m = montar([{ data: null, error: { message: 'permission denied for function crear_vinculo_agente' } }]);
   if (m) {
     await m.ctx.__crear();
     const t = m.toasts[m.toasts.length - 1] || {};
@@ -61,13 +62,13 @@ function montar(respuestas) {
   }
 
   console.log('\n=== Una sesión vencida se refresca y se reintenta una vez ===');
-  m = montar([{ data: null, error: { message: 'sin sesión' } }, { data: 'AB2C3D', error: null }]);
+  m = montar([{ data: null, error: { message: 'sin sesión' } }, { data: {token:'a'.repeat(64)}, error: null }]);
   if (m) {
     await m.ctx.__crear();
     chk('refrescó la sesión', m.refrescos() === 1);
-    chk('reintentó la RPC', m.llamadas.filter(x => x === 'crear_codigo_agente').length === 2);
-    chk('el código quedó guardado y no hubo error visible',
-      m.ctx.agenteCodigoActual === 'AB2C3D' && !m.toasts.some(t => t.esError));
+    chk('reintentó la RPC', m.llamadas.filter(x => x === 'crear_vinculo_agente').length === 2);
+    chk('la URL quedó en memoria y no hubo error visible',
+      m.ctx.agenteUrlActual === 'https://gradehub.cl/mcp/'+'a'.repeat(64) && !m.toasts.some(t => t.esError));
   }
 
   console.log('\n=== Si sigue sin sesión, se dice qué hacer y no se reintenta para siempre ===');

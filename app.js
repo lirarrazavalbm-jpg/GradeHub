@@ -4032,12 +4032,7 @@ document.addEventListener('keydown',e=>{
 });
 
 // ─── AGENTES CONECTADOS ────────────────────────────────────────────────────
-// El código vive solamente mientras esta pestaña está abierta. No es un token,
-// no se guarda en S ni en localStorage, y vence en el servidor a los 5 minutos.
-// Guardarlo haría que alguien pudiera volver a abrir la app y encontrar una
-// llave de acceso todavía a la vista.
-const AGENTE_CODIGO_MS=5*60*1000;
-let agenteCodigoActual='',agenteCodigoVence=0,agentesConectados=[],agentesCargando=false,agentesError='';
+let agentesConectados=[],agentesCargando=false,agentesError='';
 // La URL vive SOLO en memoria y solo mientras la pantalla está abierta: es una
 // llave de lectura, y guardarla en el dispositivo la volvería permanente sin
 // que nadie lo haya pedido.
@@ -4047,70 +4042,13 @@ let propuestasPautaAgente=[],propuestasPautaCargando=false;
 // evaluaciones con pesos y mostrarlas ahí las leería como una pauta.
 let propuestasNotasAgente=[];
 let propuestasFechasAgente=[];
-let _agenteCodigoTimer=null;
 
 function fechaAgente(valor,vacio){
   const fecha=valor?new Date(valor):null;
   if(!fecha||isNaN(fecha.getTime()))return vacio;
   return new Intl.DateTimeFormat('es-CL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(fecha);
 }
-// El texto que el estudiante le pega a su agente. Existe porque el paso del
-// medio no lo puede hacer él: un cliente MCP solo acepta una URL, y la URL
-// lleva el token, que a propósito no se muestra en pantalla. Quien canjea el
-// código es el agente. Sin estas instrucciones la pantalla decía "úsalo en tu
-// agente" y ahí terminaba, o sea pedía adivinar un curl, una llave y una ruta.
 const MCP_URL_BASE='https://gradehub.cl/mcp/';
-function instruccionesAgente(codigo){
-  return [
-    'Conéctate por MCP a GradeHub, mi app de notas.',
-    '',
-    '1. Canjea este código por tu token. Vence en 5 minutos y sirve una vez:',
-    '',
-    "curl -s -X POST '"+SUPABASE_URL+"/rest/v1/rpc/canjear_codigo_agente' \\",
-    "  -H 'apikey: "+SUPABASE_ANON_KEY+"' \\",
-    "  -H 'content-type: application/json' \\",
-    '  -d \'{"p_codigo":"'+codigo+'","p_agente":"Mi agente"}\'',
-    '',
-    '2. Agrega el servidor MCP en '+MCP_URL_BASE+'<token>',
-    '   En Claude Code: claude mcp add --transport http gradehub '+MCP_URL_BASE+'<token>',
-    '',
-    'Podrás ver mis ramos y mis notas, agregar un ramo y proponerme una pauta.',
-    'No puedes escribir mis notas ni borrar nada.',
-  ].join('\n');
-}
-async function copiarInstruccionesAgente(){
-  if(!agenteCodigoActual){showToast('Genera un código primero',true);return;}
-  const texto=instruccionesAgente(agenteCodigoActual);
-  try{
-    await navigator.clipboard.writeText(texto);
-    showToast('Instrucciones copiadas');
-  }catch(e){
-    // Sin permiso de portapapeles el texto ya está a la vista en la pantalla,
-    // así que no hay nada que recuperar: solo hay que decir dónde mirar.
-    showToast('Cópialas del cuadro de abajo',true);
-  }
-}
-function detenerCodigoAgente(){if(_agenteCodigoTimer){clearInterval(_agenteCodigoTimer);_agenteCodigoTimer=null;}}
-function pintarCodigoAgente(){
-  const raiz=document.getElementById('s-agent-code');
-  if(!raiz){detenerCodigoAgente();return;}
-  const quedan=Math.max(0,agenteCodigoVence-Date.now());
-  const vencido=!!agenteCodigoActual&&quedan<=0;
-  if(!agenteCodigoActual||quedan<=0){
-    agenteCodigoActual='';agenteCodigoVence=0;detenerCodigoAgente();
-    raiz.innerHTML=`<div class="agent-code-expired" role="status">${vencido?'Este código venció. Genera otro para conectar un agente.':'Genera un código temporal para conectar un agente.'}</div>`;
-    const btn=document.getElementById('s-agent-code-create');if(btn){btn.disabled=false;btn.textContent=vencido?'Generar otro código':'Generar código';}
-    return;
-  }
-  const total=Math.ceil(quedan/1000),min=Math.floor(total/60),seg=String(total%60).padStart(2,'0');
-  raiz.innerHTML=`<div class="agent-code-live" role="status"><span class="agent-code-value">${esc(agenteCodigoActual)}</span><span>Vence en ${min}:${seg}</span></div>
-    <div class="agent-steps">
-      <div class="agent-steps-head"><b>Pásale esto a tu agente</b><button type="button" class="agent-refresh" onclick="copiarInstruccionesAgente()">Copiar</button></div>
-      <pre class="agent-steps-pre">${esc(instruccionesAgente(agenteCodigoActual))}</pre>
-    </div>`;
-  const btn=document.getElementById('s-agent-code-create');if(btn){btn.disabled=false;btn.textContent='Generar otro código';}
-  if(!_agenteCodigoTimer)_agenteCodigoTimer=setInterval(pintarCodigoAgente,1000);
-}
 function pintarAgentesConectados(){
   const raiz=document.getElementById('s-agent-list');if(!raiz)return;
   if(agentesCargando){raiz.innerHTML='<div class="agent-list-empty" aria-live="polite">Buscando tus agentes conectados…</div>';return;}
@@ -4204,28 +4142,6 @@ async function copiarUrlAgente(){
 // para eso se crea otra, que además queda registrada aparte y se puede
 // desconectar sola.
 function olvidarUrlAgente(){agenteUrlActual='';}
-async function crearCodigoAgente(){
-  if(!currentUser||!supabaseClient){showToast('Inicia sesión para conectar un agente',true);return;}
-  const btn=document.getElementById('s-agent-code-create');
-  if(btn){btn.disabled=true;btn.textContent='Generando…';}
-  try{
-    const {data,error}=await rpcAgente('crear_codigo_agente');
-    if(error)throw error;
-    if(typeof data!=='string'||!/^[-A-Z2-9]{6}$/i.test(data))throw new Error('código inválido');
-    agenteCodigoActual=data.toUpperCase();agenteCodigoVence=Date.now()+AGENTE_CODIGO_MS;
-    pintarCodigoAgente();
-  }catch(e){
-    // El motivo se dice. "Intenta de nuevo" sobre un error que se repite
-    // siempre manda a repetir lo que ya falló, y deja sin saber si el problema
-    // es la sesión, la red o nosotros. Pasó con esta misma pantalla.
-    const motivo=(e&&(e.message||e.msg))||'';
-    showToast(sesionCaducada(e)
-      ? 'Tu sesión expiró. Vuelve a entrar y genera el código otra vez.'
-      : ('No pudimos generar el código'+(motivo?': '+motivo:'. Intenta de nuevo.')),true);
-    console.warn('crear_codigo_agente falló:',e);
-    if(btn){btn.disabled=false;btn.textContent='Generar código';}
-  }
-}
 function confirmarRevocarAgente(id){
   const agente=agentesConectados.find(a=>a.id===id);
   if(!agente)return;
@@ -4661,7 +4577,7 @@ function openSettings(){
   };
   const sections=[
     ['Tu cuenta','perfil','Perfil','Tu nombre y correo de acceso','cambiar nombre correo email'],
-    ['Tu cuenta','agentes','Agentes conectados','Conectar o desconectar un agente','chatgpt claude gemini codex inteligencia artificial url codigo revocar permisos'],
+    ['Tu cuenta','agentes','Agentes conectados','Conectar o desconectar un agente','chatgpt claude gemini inteligencia artificial url revocar permisos'],
     ['Tu cuenta','datos','Datos y cuenta','Respaldos, reinicio y eliminación','exportar importar copia respaldo borrar eliminar cuenta reiniciar dispositivo privacidad terminos'],
     ['Tu semestre','academico','Información académica','Universidad, carrera y semestre','cambiar carrera universidad agregar semestre anterior historial'],
     ['Tu semestre','calendario','Calendario','Importar fechas o suscribirte','apple google outlook importar archivo ics fechas copiar url suscripcion'],
@@ -4727,15 +4643,7 @@ function openSettings(){
       <div class="accent-grid" id="s-acento-grid" role="radiogroup" aria-label="Color de acento"></div>
       <label class="modal-label accent-picker-label">Fondo</label>
       <div class="fondo-grid" id="s-fondo-grid" role="radiogroup" aria-label="Fondo de la app"></div>`;
-    // La pantalla se ordenó el 2026-09-12, después de que cada arreglo le
-    // sumara un bloque encima: quedaban dos formas de conectar compitiendo con
-    // el mismo peso, un muro de instrucciones siempre a la vista y la bandeja
-    // de propuestas antes de lo único que se viene a hacer acá.
-    //
-    // Ahora hay UN camino a la vista —la URL, que es la que sirve para ChatGPT,
-    // Claude y Gemini— y el del código queda guardado detrás de un
-    // desplegable, porque solo aplica a quien corre comandos. Los detalles
-    // largos de cada uno viven dentro de su propio paso, no sueltos.
+    // Una sola forma de conectar: crear la URL y pegarla en el agente.
     if(section==='agentes')return currentUser?`
       <div class="agent-explainer">
         <b>Qué puede hacer un agente conectado</b>
@@ -4749,15 +4657,8 @@ function openSettings(){
 
       <label class="modal-label">2. Crea la URL y pégala en tu agente</label>
       <p class="settings-help" style="margin-top:0;">En ChatGPT, Claude o Gemini se agrega como conector. Dura 90 días.</p>
-      <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-url-create" onclick="crearUrlAgente()">Crear URL de conexión</button>
+      <button type="button" class="settings-reset-btn agent-url-create" id="s-agent-url-create" onclick="crearUrlAgente()">Crear URL de conexión</button>
       <div id="s-agent-url" class="agent-url-wrap" aria-live="polite"></div>
-
-      <details class="agent-alt">
-        <summary>Mi agente corre comandos (Claude Code, Codex)</summary>
-        <p class="settings-help" style="margin-top:0;">Ahí conviene un código: lo canjea el agente y el token no queda a la vista de nadie. Dura 5 minutos y sirve una sola vez.</p>
-        <button type="button" class="settings-reset-btn agent-code-create" id="s-agent-code-create" onclick="crearCodigoAgente()">Generar código</button>
-        <div id="s-agent-code" class="agent-code-box" aria-live="polite"></div>
-      </details>
 
       <div class="agent-list-heading"><label class="modal-label">Agentes conectados</label><span>Los puedes desconectar cuando quieras.</span></div>
       <button type="button" class="agent-refresh" onclick="cargarAgentesConectados()">Actualizar lista</button>
@@ -4839,7 +4740,7 @@ function openSettings(){
     // Al SALIR de la pantalla la URL se olvida: es una llave y no tiene por qué
     // seguir viva en memoria mientras alguien anda en Apariencia.
     if(activeSection!=='agentes')olvidarUrlAgente();
-    if(activeSection==='agentes'&&currentUser){pintarCodigoAgente();pintarUrlAgente();cargarAgentesConectados();}
+    if(activeSection==='agentes'&&currentUser){pintarUrlAgente();cargarAgentesConectados();}
     if(activeSection==='perfil'){
       const inp=document.getElementById('s-name');
       if(inp){

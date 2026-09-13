@@ -717,21 +717,18 @@ Ojo con el contador del grupo: cuenta casillas CON NOTA, no casillas
 registradas. Una casilla creada solo para fecharla no puede sumar al "2/3
 ingresadas".
 **Tres cosas pedidas por Lucas el 2026-09-12 para la pantalla de Ajustes y la
-conexión de agentes.** La 2 está implementada; la 1 y la 3 siguen pendientes.
+conexión de agentes.** La 1 y la 2 están implementadas; la 3 sigue pendiente.
 
-**1. Sacar el camino del código (Claude Code y Codex).** Hoy la sección de
-agentes ofrece dos formas de conectar: la URL —que sirve para ChatGPT, Claude y
-Gemini, o sea para casi todos— y un código de un solo uso escondido detrás del
-desplegable "Mi agente corre comandos". Ese segundo camino se elimina.
+**1. Sacar el camino del código (Claude Code y Codex) — implementado.**
+Ajustes solo ofrece la conexión por URL. Se retiraron el desplegable, las
+instrucciones de comandos, la generación del código y su temporizador del cliente.
+La lista y la desconexión conservan todos los agentes existentes, aunque se hayan
+vinculado por código. No se revoca ni migra ningún acceso.
 
-Lo que toca: el `<details class="agent-alt">` de la sección, `crearCodigoAgente`,
-`pintarCodigoAgente`, `instruccionesAgente`, `copiarInstruccionesAgente` y el
-temporizador de los cinco minutos. Del lado de la base, `crear_codigo_agente` y
-`canjear_codigo_agente` quedan sin usar; borrarlas es una migración aparte y no
-urge, pero hay que decidirlo en vez de dejarlas ahí sin que nadie sepa por qué.
-Ojo con los tests que las cubren: `agentes-conectados.test.js` y
-`agente-conectar.test.js` comprueban justo ese flujo, así que hay que sacarles
-esas comprobaciones —no debilitarlas— y dejar las de la URL.
+`crear_codigo_agente` y `canjear_codigo_agente` siguen en Supabase y no las llama
+la interfaz: retirarlas requiere otra migración explícita. Este cambio no toca
+SQL ni el servidor MCP. Los tests conservan el handshake, la URL y la revocación;
+las garantías de errores y sesión vencida ahora se prueban sobre la URL.
 
 **2. Ordenar Ajustes y poner un buscador arriba — implementado.** Las siete
 secciones se reúnen en Tu cuenta, Tu semestre y La app. El buscador filtra por
