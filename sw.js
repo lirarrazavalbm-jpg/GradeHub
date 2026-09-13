@@ -26,6 +26,7 @@ const SHELL = [
   '/manifest.json',
   '/icon.svg',
   '/icon.svg?v=__ASSET_VERSION__',
+  '/logo.svg?v=__ASSET_VERSION__',
   '/icon.svg?v=capas-1',
   '/icon-192.png',
   '/icon-192.png?v=__ASSET_VERSION__',

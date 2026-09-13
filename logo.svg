@@ -1,9 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 128 128">
-  <title>GradeHub</title>
-  <!-- Generado desde logo.svg con node bin/preparar-icono.cjs.
-       Para exportar los PNG, ver bin/iconos.html. No editar este derivado. -->
-  <rect x=".25" y=".25" width="127.5" height="127.5" rx="28.5" fill="#111113" stroke="#242427" stroke-width=".5"/>
-<svg x="20.18462" y="17.23077" width="87.63077" height="87.63077" viewBox="0 0 128 128" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
   <title>GradeHub — tres capas</title>
   <desc>Tres capas con colores planos en el orden original: gris arriba, turquesa al medio y morado abajo.</desc>
   <!-- Tres planos completos. Las máscaras ocultan lo que queda debajo de cada
@@ -32,5 +27,4 @@
     <g mask="url(#bajo-superior)"><use href="#plano" fill="#2DD4BF" transform="translate(0 25)"/></g>
     <use href="#plano" fill="#A6A8B1"/>
   </g>
-</svg>
 </svg>

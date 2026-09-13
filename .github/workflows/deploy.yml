@@ -82,7 +82,7 @@ jobs:
           for f in index.html 404.html preguntas.html privacidad.html \
                    data.js mallas-uc.js mallas-uai.js cursos-uc.js engine.js app.js app-session.js render-main.js render-agenda.js styles.css sw.js \
                    manifest.json _headers robots.txt sitemap.xml \
-                   icon.svg icon-192.png icon-512.png og-v3.png \
+                   logo.svg icon.svg icon-192.png icon-512.png og-v3.png \
                    'functions/cal/[token].js'; do
             [ -e "dist/$f" ] || { echo "FALTA en dist: $f — no se publica nada"; exit 1; }
           done
@@ -96,7 +96,7 @@ jobs:
           # Cada asset que pide el HTML tiene que existir con exactamente la
           # misma URL en el precache. Una URL sin SHA puede devolver código de
           # un deploy anterior aunque la navegación ya haya traído HTML nuevo.
-          for asset in styles.css data.js engine.js app.js app-session.js render-main.js render-agenda.js icon.svg icon-192.png; do
+          for asset in styles.css data.js engine.js app.js app-session.js render-main.js render-agenda.js icon.svg icon-192.png logo.svg; do
             grep -Fq "\"${asset}?v=${ASSET_VERSION}\"" dist/index.html || {
               echo "dist/index.html no selló ${asset}"; exit 1; }
             grep -Fq "'/${asset}?v=${ASSET_VERSION}'" dist/sw.js || {

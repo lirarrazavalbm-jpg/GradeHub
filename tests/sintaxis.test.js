@@ -22,7 +22,7 @@ const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
 // HTML nuevo + JS viejo deja la app a medio cargar: el HTML pide funciones que
 // todavía no existen. El deploy sella estos assets (también los iconos) con el mismo SHA que
 // CACHE_NAME para que una cache vieja no pueda responder una URL nueva.
-const assetsVersionados = ['styles.css', 'data.js', 'engine.js', 'app.js', 'app-session.js', 'render-main.js', 'render-agenda.js', 'icon.svg', 'icon-192.png'];
+const assetsVersionados = ['styles.css', 'data.js', 'engine.js', 'app.js', 'app-session.js', 'render-main.js', 'render-agenda.js', 'icon.svg', 'icon-192.png', 'logo.svg'];
 assetsVersionados.forEach(asset => {
   if (!html.includes(asset + '?v=__ASSET_VERSION__')) {
     console.error('index.html debe dejar el marcador de versión para ' + asset);
@@ -124,7 +124,7 @@ if (!/grep -q '__ASSET_VERSION__' index\.html/.test(deployYml) ||
   console.error('deploy.yml debe comprobar y sellar los marcadores de assets en index.html y sw.js');
   process.exit(1);
 }
-if (!/for asset in styles\.css data\.js engine\.js app\.js app-session\.js render-main\.js render-agenda\.js icon\.svg icon-192\.png; do/.test(deployYml) ||
+if (!/for asset in styles\.css data\.js engine\.js app\.js app-session\.js render-main\.js render-agenda\.js icon\.svg icon-192\.png logo\.svg; do/.test(deployYml) ||
     !/dist\/index\.html no selló/.test(deployYml) ||
     !/dist\/sw\.js no precachea/.test(deployYml)) {
   console.error('deploy.yml debe comprobar en dist cada asset sellado, no solo ejecutar el sed');

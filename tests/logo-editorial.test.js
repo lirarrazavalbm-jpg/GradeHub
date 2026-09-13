@@ -17,12 +17,22 @@ check('el logo vectorial es plano y reutiliza las tres capas aprobadas',()=>{
 });
 check('registro y onboarding usan el mismo SVG, no dos copias raster antiguas',()=>{
   assert(!/data:image\/png;base64/.test(html));
-  assert.equal((html.match(/<img src="icon\.svg\?v=__ASSET_VERSION__"/g)||[]).length,2);
+  assert.equal((html.match(/<img src="logo\.svg\?v=__ASSET_VERSION__"/g)||[]).length,2);
 });
 check('el HTML y el precache piden exactamente la misma versión del icono',()=>{
   assert.match(html,/href="icon\.svg\?v=__ASSET_VERSION__"/);
   assert.match(sw,/'\/icon\.svg\?v=__ASSET_VERSION__'/);
+  assert.match(sw,/'\/logo\.svg\?v=__ASSET_VERSION__'/);
   assert.match(deploy,/for asset in [^\n]* icon\.svg/);
+});
+check('el fondo de la marca respeta el tema de la app, no solo el sistema',()=>{
+  assert.equal((html.match(/class="ob-icon ob-icon-logo ob-icon-brand"/g)||[]).length,2);
+  assert.match(read('styles.css'),/\.ob-icon-brand\{background:var\(--card\)/);
+  const logo=read('logo.svg');
+  assert(!/<rect[^>]+fill="#/.test(logo),'la marca no incluye una pastilla opaca');
+  const expected=logo.replace('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">',
+    '<svg x="20.18462" y="17.23077" width="87.63077" height="87.63077" viewBox="0 0 128 128" fill="none">').trim();
+  assert(icon.includes(expected),'el icono debe derivarse de la misma marca, no divergir');
 });
 check('la tarjeta usa el SVG y una URL nueva para las previews cacheadas',()=>{
   assert.match(og,/src="\.\.\/icon\.svg"/);

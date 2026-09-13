@@ -1,10 +1,12 @@
 <!doctype html>
 <!--
-GradeHub: icon.svg es la fuente única. Exportación offline de los PNG.
+GradeHub: logo.svg es la fuente única; icon.svg le agrega el fondo oscuro.
+Exportación offline de los PNG.
 El fondo completo es opaco para los iconos maskable, y la marca queda dentro
 de la zona central; no se regeneran geometría ni colores en otra herramienta.
 
 Desde la raíz del repo, en macOS (Chrome y sips):
+  node bin/preparar-icono.cjs
   ICON_TMP=$(mktemp -d /tmp/gradehub-iconos.XXXXXX)
   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
     --headless=new --disable-gpu --hide-scrollbars --allow-file-access-from-files \
