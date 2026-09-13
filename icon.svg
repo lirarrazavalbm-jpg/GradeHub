@@ -1,25 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Versión geométrica del logo de GradeHub: tres placas isométricas apiladas.
-       Debe leerse igual que icon-512.png a tamaño de favicon. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 128 128">
+  <title>GradeHub</title>
+  <!-- Fuente única de los iconos PNG y del logo de la app. Para regenerar,
+       ver bin/iconos.html. Geometría aprobada: gris, turquesa y morado. -->
+  <rect x=".25" y=".25" width="127.5" height="127.5" rx="28.5" fill="#111113" stroke="#242427" stroke-width=".5"/>
+<svg x="20.18462" y="17.23077" width="87.63077" height="87.63077" viewBox="0 0 128 128" fill="none">
+  <title>GradeHub — tres capas</title>
+  <desc>Tres capas con colores planos en el orden original: gris arriba, turquesa al medio y morado abajo.</desc>
+  <!-- Tres planos completos. Las máscaras ocultan lo que queda debajo de cada
+       plano superior, sin pintar un fondo: sirve sobre claro y oscuro. -->
   <defs>
-    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f2f6f8"/>
-      <stop offset="1" stop-color="#b9c6cc"/>
-    </linearGradient>
-    <linearGradient id="mid" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#6fe3d2"/>
-      <stop offset="1" stop-color="#2dd4bf"/>
-    </linearGradient>
-    <linearGradient id="bot" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8b8cf0"/>
-      <stop offset="1" stop-color="#5b5bd6"/>
-    </linearGradient>
+    <!-- Contornos independientes: exterior suave e interior apenas redondeado.
+         Pendientes ±27/48 y distancia perpendicular de 6.5 entre rectas.
+         Recorte exterior (7,3.9375); interior (2,1.125).
+         Las tres capas reutilizan exactamente la misma geometría. -->
+    <path id="exterior" d="M57 12.20862Q64 8.27112 71 12.20862L111.62912 35.0625Q118.62912 39 111.62912 42.9375L71 65.79138Q64 69.72888 57 65.79138L16.37088 42.9375Q9.37088 39 16.37088 35.0625Z"/>
+    <path id="plano" fill-rule="evenodd" d="M57 12.20862Q64 8.27112 71 12.20862L111.62912 35.0625Q118.62912 39 111.62912 42.9375L71 65.79138Q64 69.72888 57 65.79138L16.37088 42.9375Q9.37088 39 16.37088 35.0625Z M62 16.85388Q64 15.72888 66 16.85388L103.37088 37.875Q105.37088 39 103.37088 40.125L66 61.14612Q64 62.27112 62 61.14612L24.62912 40.125Q22.62912 39 24.62912 37.875Z"/>
+    <mask id="bajo-superior" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128" style="mask-type:luminance">
+      <rect width="128" height="128" fill="white"/>
+      <use href="#exterior" fill="black"/>
+    </mask>
+    <mask id="bajo-intermedio" maskUnits="userSpaceOnUse" x="0" y="0" width="128" height="128" style="mask-type:luminance">
+      <rect width="128" height="128" fill="white"/>
+      <g fill="black">
+        <use href="#exterior"/>
+        <use href="#exterior" transform="translate(0 25)"/>
+      </g>
+    </mask>
   </defs>
-  <rect width="512" height="512" rx="116" fill="#0a0e14"/>
-  <!-- placa inferior -->
-  <path d="M256 330 L104 258 L256 186 L408 258 Z" fill="url(#bot)" opacity=".9"/>
-  <!-- placa media -->
-  <path d="M256 286 L104 214 L256 142 L408 214 Z" fill="url(#mid)" opacity=".92"/>
-  <!-- placa superior -->
-  <path d="M256 242 L104 170 L256 98 L408 170 Z" fill="url(#top)"/>
+  <g transform="translate(0 3)">
+    <g mask="url(#bajo-intermedio)"><use href="#plano" fill="#A78BFA" transform="translate(0 50)"/></g>
+    <g mask="url(#bajo-superior)"><use href="#plano" fill="#2DD4BF" transform="translate(0 25)"/></g>
+    <use href="#plano" fill="#A6A8B1"/>
+  </g>
+</svg>
 </svg>
