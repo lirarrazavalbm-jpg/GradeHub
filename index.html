@@ -61,7 +61,8 @@
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-TS791S6PDM');
+  // Sin cookies: así no hay nada que consentir. Cuenta visitas, no personas.
+  gtag('config', 'G-TS791S6PDM', { client_storage: 'none' });
 </script>
 
 <!-- Supabase -->
