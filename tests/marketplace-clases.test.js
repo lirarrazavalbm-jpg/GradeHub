@@ -176,10 +176,10 @@ vm.runInContext(`
     !/user_id|viewer|device/i.test(rpc.replace(/--[^\n]*/g,'')));
   chk('la frecuencia se limita en el servidor sin guardar una identidad',
     /updated_at <= now\(\) - interval '10 seconds'/.test(rpc));
-  chk('el corte de cuatro eventos no se devuelve y el de cinco sí',
-    /m\.eventos >= 5/.test(sql)&&!/m\.eventos >= 4/.test(sql));
+  chk('el corte de catorce eventos no se devuelve y el de quince sí',
+    /m\.eventos >= 15\b/.test(sql)&&!/m\.eventos >= (?!15\b)\d/.test(sql));
   chk('el corte se aplica dentro de la RPC de lectura, no en la vista',
-    /create or replace function public\.resumen_metricas_anuncio[\s\S]*?m\.eventos >= 5/.test(sql)&&
+    /create or replace function public\.resumen_metricas_anuncio[\s\S]*?m\.eventos >= 15/.test(sql)&&
     !/\.filter\([^\n]*5/.test(fs.readFileSync(path.join(raiz,'marketplace.js'),'utf8')));
 
   console.log(fail?`\nFAIL: ${fail}`:`\nMarketplace OK: ${ok}`);
