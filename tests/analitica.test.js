@@ -74,7 +74,7 @@ if (!/googletagmanager\.com\/gtag\/js/.test(html)) {
   mal('el ID de GA sigue siendo el placeholder — pon el real antes de mergear');
 } else if (!idGA) {
   mal('el ID de GA no tiene forma de measurement id (G-XXXXXXXXXX)');
-} else if (!html.includes(`gtag('config', '${idGA}')`)) {
+} else if (!html.includes(`gtag('config', '${idGA}'`)) {
   mal(`el script carga ${idGA} pero el gtag('config', …) usa otro ID`);
 } else if (idGA === 'G-FCTGPM7LB3') {
   mal('ese es el ID de FENnotas: GradeHub necesita su propia propiedad o se mezclan los datos');
