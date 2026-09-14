@@ -42,21 +42,93 @@ guardado. Antes de activar la función, los términos y la política tienen que
 decir claramente que el uso local de notas y ramos para ordenar avisos forma
 parte del servicio para todas las cuentas.
 
-## Cuándo una clase puede destacarse
+## Público configurable por campaña
 
-La regla propuesta es deliberadamente conservadora y se calcula localmente:
+Cada aviso declara universidad, siglas y sus propios `criterios`:
 
-- el ramo tiene al menos 20% de avance ponderado;
-- su promedio parcial es menor a 4,0; y
-- existe un aviso publicado que declara la sigla exacta del ramo.
+```js
+{promedioMenorA: 5, avanceMinimo: 20}
+{promedioMenorA: 4, avanceMinimo: 40}
+```
 
-El 20% evita presentar como problema un primer control aislado. Es una señal de
-apoyo, no una predicción de reprobación: si faltan ponderaciones, no hay sigla
-verificada o el cálculo no puede decidir, no se personaliza nada.
+Son ejemplos, no reglas globales. El promedio debe ser estrictamente menor al
+umbral y el avance al menos el mínimo. La comparación usa el avance sin
+redondear: un 19,9% mostrado como 20% no cumple un mínimo de 20%.
+
+`seleccionarClaseApoyo` usa `ramoAvg` y `ramoProgress` existentes. Mantiene el
+orden de ramos del estudiante y el orden de avisos para desempatar. El cálculo
+queda en el navegador, sin enviar notas para seleccionar el anuncio.
+
+Una sigla solo coincide dentro de la misma universidad. Los ramos sin sigla
+verificada, sin notas, con pautas incompletas o listas abiertas sin cantidad
+conocida no se usan para personalizar. Tampoco los completamente evaluados.
+Un aviso sin criterios queda como catálogo general, no hereda una regla nueva.
 
 Solo se destaca un aviso por pantalla y siempre se muestra su etiqueta de
-“Clase particular”. La persona puede cerrarlo; el catálogo general sigue siendo
+“Publicidad · Clase particular”. La persona puede cerrarlo; el catálogo general sigue siendo
 el camino para comparar alternativas.
+
+## Cotización y cobro: cantidades diferentes
+
+La recomendación comercial es cotizar por público potencial y cobrar por
+alcance único efectivo, con un máximo de presupuesto por campaña:
+
+- **Elegibles:** cuentas que cumplen los criterios; sirven para estimar el alcance.
+- **Alcanzados:** cuentas distintas que efectivamente vieron el anuncio. Una cuenta
+  que abre la app cinco veces no debe cobrarse cinco veces.
+- **Precio de la clase:** lo que cobra el tutor por enseñar (`precio_clp` en el aviso).
+- **Tarifa publicitaria:** lo que cobra GradeHub por cada cuenta alcanzada. Es aparte.
+
+`cotizarCampanaClases` recibe conteos agregados y una tabla configurable de tarifas.
+No recibe notas ni listas de estudiantes. Si cumplen varios tramos toma la tarifa
+más alta; una tarifa específica exige ambos criterios. Así la tarifa de bajo 4,0
+y al menos 40% no se aplica a bajo 4,0 con solo 20%.
+
+Ejemplos para probar el modelo, **no precios aprobados ni alcance real**:
+
+| Segmentación | Elegibles | Tarifa por alcance | Si todos lo ven | Si solo lo ven 12 |
+|---|---:|---:|---:|---:|
+| Bajo 5,0 y ≥20% | 30 | $1.000 | $30.000 | $12.000 |
+| Bajo 4,0 y ≥40% | 20 | $2.000 | $40.000 | $24.000 |
+
+El anunciante puede acotar público y presupuesto. Las tarifas las administra
+GradeHub; no pueden ser un campo que el anunciante mande como precio definitivo.
+Con $15.000 de presupuesto y $2.000 por persona caben siete alcances facturables,
+no ocho. Sin medición disponible, la cotización devuelve desconocido (`null`),
+nunca cero cuentas. Los precios/criterios acordados deberán fijarse al publicar:
+editarlos después no puede cambiar retroactivamente una factura.
+
+### Lo que todavía impide cobrar
+
+Las métricas de `anuncio_metricas` cuentan eventos agregados y limitan su frecuencia
+globalmente. **No son cuentas únicas y no sirven como facturas.** No hay un conteo
+real de cuentas elegibles implementado en este PR ni se consultó producción.
+
+Para activar cotizaciones reales y cobros falta un diseño adicional: ventana de
+medición para elegibles, deduplicación de alcance por cuenta/campaña, presupuesto
+aplicado en el servidor y tarifas fijadas al publicar. El tutor debe recibir solo
+agregados. La deduplicación requiere un registro nuevo y definir cuánto dura y
+cómo se elimina con la cuenta; no se puede prometer alcance único usando el
+contador actual ni afirmar que no guarda identidad mientras depende de ella.
+
+No se cambia la persistencia de notas ni `gradehub_v1` para resolver esto. Antes
+de implementar esos registros se acuerda su modelo y se prepara SQL aditivo.
+
+## Muestra revisable sin cuentas reales
+
+```bash
+node bin/preview-marketplace.js /tmp/gradehub-marketplace-muestra.html
+```
+
+Abre ese HTML: permite cambiar universidad, ramo, promedio máximo, avance mínimo,
+tarifas de ejemplo y presupuesto. Muestra cotización y tarjeta para perfiles
+sintéticos. Las 120 cuentas están inventadas y no salen del navegador. Si una
+cuenta calza con dos ramos se cuenta una vez. El ejemplo usa el motor real y
+extrae `ramoProgress` desde `app.js`, en vez de mantener otra cuenta de pesos.
+
+El generador y la plantilla viven en `bin/`, excluido del deploy. La muestra se
+genera fuera del repo. No hay formulario público de tutor ni tarjeta activada en
+Inicio todavía: la segmentación y cotización quedan preparadas para esa interfaz.
 
 ## Frontera de datos y métricas
 
@@ -98,7 +170,7 @@ actualizan en el mismo PR antes de activar la tarjeta contextual.
 - Vender notas, riesgos, listas de ramos o identidades a profesores.
 - Cobros dentro de GradeHub, comisiones por nota o verificaciones falsas de
   inscritos.
-- Ranking de estudiantes, perfiles académicos para anunciantes o segmentación
-  por carrera, semestre o nota.
+- Ranking de estudiantes o listas de perfiles académicos para anunciantes.
+  Elegir un umbral de nota en un aviso no autoriza a consultar quién lo cumple.
 - Activar recomendaciones personalizadas sin publicar antes los términos y la
   política que describen el uso local de datos académicos.
