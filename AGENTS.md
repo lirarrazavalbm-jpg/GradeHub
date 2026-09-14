@@ -717,7 +717,7 @@ Ojo con el contador del grupo: cuenta casillas CON NOTA, no casillas
 registradas. Una casilla creada solo para fecharla no puede sumar al "2/3
 ingresadas".
 **Tres cosas pedidas por Lucas el 2026-09-12 para la pantalla de Ajustes y la
-conexión de agentes.** La 1 y la 2 están implementadas; la 3 sigue pendiente.
+conexión de agentes.** Las tres están implementadas.
 
 **1. Sacar el camino del código (Claude Code y Codex) — implementado.**
 Ajustes solo ofrece la conexión por URL. Se retiraron el desplegable, las
@@ -737,18 +737,16 @@ encuentran su sección. Buscar solo repinta la navegación, no el formulario.
 El correo de acceso vive en Perfil; respaldos y eliminación siguen en Datos y
 cuenta. `tests/ajustes-orden.test.js` fija estos caminos sin guardar preferencias.
 
-**3. Explicar de verdad cómo conectar un agente, empezando por un prompt.** Hoy
-la pantalla entrega la URL y poco más, y eso deja al estudiante adivinando dónde
-se pega en SU app. La idea de Lucas, que es mejor que una lista de pasos
-nuestra: ofrecer primero un texto para copiar y pegarle a su propio agente, del
-tipo "esta es la URL de mi app de notas, explícame paso a paso cómo agregarte
-como conector" — el agente sabe dónde está su propia configuración y nosotros no
-tenemos que mantener instrucciones de tres productos que cambian solos.
+**3. Explicar de verdad cómo conectar un agente, empezando por un prompt —
+implementado.** La pantalla primero entrega un mensaje inocuo para pegarle al
+agente. Ese mensaje le pide que explique dónde se configura un conector MCP en
+la app que la persona ya usa. Después se nombra la conexión y recién al final se
+crea la URL.
 
-Cuidado con una cosa al escribirlo: ese texto lleva la URL, o sea el token. Si
-se copia desde una pantalla, va a terminar pegado en conversaciones que quedan
-guardadas. Vale la pena decirlo ahí mismo, igual que el aviso que ya está sobre
-la URL.
+El prompt no lleva el token. La URL se copia aparte y la pantalla dice que debe
+pegarse solo en el campo del conector que indicó el agente, nunca en el chat. Así
+no mantenemos instrucciones de productos que cambian solos ni dejamos una llave
+guardada dentro de una conversación.
 
 **Un agente propone notas; no las escribe.** Pedido por Lucas el 2026-09-12 y
 hecho: `proponer_notas` deja una propuesta pendiente y la ficha del ramo la

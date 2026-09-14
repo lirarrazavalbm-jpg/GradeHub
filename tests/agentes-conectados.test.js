@@ -25,7 +25,18 @@ const panel=vm.runInNewContext('(function(section){'+app.slice(inicio,fin)+'})',
 const html=panel('agentes');
 chk('la pantalla solo ofrece vincular por URL, sin comandos ni código temporal',
   /onclick="crearUrlAgente\(\)"/.test(html)&&
-  !/agent-alt|s-agent-code|crearCodigoAgente|Claude Code|Codex|Generar código|corre comandos/.test(html));
+  !/agent-alt|s-agent-code|crearCodigoAgente|ChatGPT|Claude|Gemini|Codex|Generar código|corre comandos/.test(html));
+const iPrompt=html.indexOf('onclick="copiarPromptConectorAgente()"');
+const iNombre=html.indexOf('id="s-agent-url-nombre"');
+const iCrear=html.indexOf('onclick="crearUrlAgente()"');
+chk('primero entrega un mensaje y después pide nombre y crea la URL',
+  iPrompt>-1&&iPrompt<iNombre&&iNombre<iCrear);
+chk('el mensaje le pide al agente explicar dónde va el conector',
+  /Explícame paso a paso dónde debo agregar un conector o servidor MCP/.test(html));
+chk('advierte que la URL no se manda por el chat',
+  /No me pidas que envíe la URL por el chat/.test(html)&&/no la envíes por el chat/.test(app));
+chk('el botón copia el mismo mensaje que se muestra',
+  /async function copiarPromptConectorAgente\(\)[\s\S]*?s-agent-prompt-text[\s\S]*?navigator\.clipboard\.writeText\(texto\)/.test(app));
 chk('quedan la lista revocable y las propuestas pendientes',
   /id="s-agent-list"/.test(html)&&/cargarAgentesConectados\(\)/.test(html)&&/cargarPropuestasPautaAgente/.test(html));
 const sinSesion=vm.runInNewContext('(function(section){'+app.slice(inicio,fin)+'})',{currentUser:null})('agentes');

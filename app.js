@@ -4123,14 +4123,20 @@ async function crearUrlAgente(){
     if(btn){btn.disabled=false;btn.textContent=agenteUrlActual?'Crear otra URL':'Crear URL de conexión';}
   }
 }
+async function copiarPromptConectorAgente(){
+  const texto=((document.getElementById('s-agent-prompt-text')||{}).textContent||'').trim();
+  if(!texto){showToast('No pudimos preparar el mensaje. Intenta de nuevo.',true);return;}
+  try{await navigator.clipboard.writeText(texto);showToast('Mensaje copiado. Pégaselo a tu agente.');}
+  catch(e){showToast('Copia el mensaje del cuadro de arriba',true);}
+}
 function pintarUrlAgente(){
   const raiz=document.getElementById('s-agent-url');
   if(!raiz)return;
   if(!agenteUrlActual){raiz.innerHTML='';return;}
   raiz.innerHTML=`<div class="agent-url-box">
-    <div class="agent-url-warn">Esta URL es como una contraseña: quien la tenga puede ver tus ramos y tus notas. Pégala solo en tu agente. No se vuelve a mostrar.</div>
+    <div class="agent-url-warn">Esta URL es como una contraseña: quien la tenga puede ver tus ramos y tus notas. Pégala solo en el campo de URL del conector que te indicó tu agente; no la envíes por el chat. No se vuelve a mostrar.</div>
     <code class="agent-url-value">${esc(agenteUrlActual)}</code>
-    <button type="button" class="agent-refresh" onclick="copiarUrlAgente()">Copiar URL</button>
+    <button type="button" class="agent-refresh" onclick="copiarUrlAgente()">Copiar URL del conector</button>
   </div>`;
 }
 async function copiarUrlAgente(){
@@ -4651,12 +4657,19 @@ function openSettings(){
         <span class="agent-explainer-no">No puede escribir tus notas ni borrar nada.</span>
       </div>
 
-      <label class="modal-label">1. Ponle un nombre</label>
-      <p class="settings-help" style="margin-top:0;">Es el que vas a ver en la lista para reconocerlo y desconectarlo.</p>
-      <div class="modal-input" style="margin-bottom:12px;"><input type="text" id="s-agent-url-nombre" placeholder="Ej: ChatGPT" maxlength="60" autocomplete="off"/></div>
+      <label class="modal-label">1. Pregúntale a tu agente dónde conectarlo</label>
+      <p class="settings-help" style="margin-top:0;">Copia este mensaje y pégalo en el chat. Tu agente te mostrará dónde agregar un conector por URL en la app que usas.</p>
+      <div class="agent-prompt-box">
+        <p id="s-agent-prompt-text" class="agent-prompt-text">Quiero conectar GradeHub a este agente mediante una URL MCP. Explícame paso a paso dónde debo agregar un conector o servidor MCP en esta aplicación. No me pidas que envíe la URL por el chat: debo pegarla directamente en la configuración del conector.</p>
+        <button type="button" class="agent-refresh" onclick="copiarPromptConectorAgente()">Copiar mensaje para mi agente</button>
+      </div>
 
-      <label class="modal-label">2. Crea la URL y pégala en tu agente</label>
-      <p class="settings-help" style="margin-top:0;">En ChatGPT, Claude o Gemini se agrega como conector. Dura 90 días.</p>
+      <label class="modal-label">2. Ponle un nombre a la conexión</label>
+      <p class="settings-help" style="margin-top:0;">Es el que vas a ver en la lista para reconocerlo y desconectarlo.</p>
+      <div class="modal-input" style="margin-bottom:12px;"><input type="text" id="s-agent-url-nombre" placeholder="Ej: Mi agente" maxlength="60" autocomplete="off"/></div>
+
+      <label class="modal-label">3. Crea la URL y agrégala al conector</label>
+      <p class="settings-help" style="margin-top:0;">Vuelve a los pasos que te dio tu agente y pega ahí la URL. Dura 90 días y la verás una sola vez.</p>
       <button type="button" class="settings-reset-btn agent-url-create" id="s-agent-url-create" onclick="crearUrlAgente()">Crear URL de conexión</button>
       <div id="s-agent-url" class="agent-url-wrap" aria-live="polite"></div>
 

@@ -1937,6 +1937,9 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .agent-url-value{display:block;margin-bottom:10px;padding:9px 10px;border:1px solid var(--border);border-radius:9px;background:var(--card);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.6875rem;line-height:1.5;color:var(--fg);word-break:break-all;-webkit-user-select:all;user-select:all;}
 
 .agent-explainer-no{color:var(--fg3);}
+.agent-prompt-box{margin:0 0 18px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);}
+.agent-prompt-text{margin:0 0 10px;color:var(--fg2);font-size:.75rem;line-height:1.5;}
+.agent-prompt-box .agent-refresh{margin-bottom:0;}
 
 /* Notas que un agente propuso, dentro de la ficha del ramo. La nota anterior se
    muestra tachada al lado de la nueva: pisar un 6,2 con un 4,0 es una decisión
