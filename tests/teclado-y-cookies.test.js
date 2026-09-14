@@ -24,7 +24,8 @@ chk('un handler global convierte Enter/Espacio en click sobre role="button"',
   /e\.key!=='Enter'&&e\.key!==' '/.test(app) && /closest\('\[role="button"\]'\)/.test(app));
 chk('ningún onkeydown suelto duplica al handler global', !/onkeydown="/.test(render));
 
-chk('GA configurado sin cookies', /gtag\('config',\s*'G-[A-Z0-9]+',\s*\{\s*client_storage:\s*'none'\s*\}\)/.test(html));
+const iConsent = html.search(/gtag\('consent',\s*'default',\s*\{[^}]*analytics_storage:\s*'denied'/), iConfig = html.search(/gtag\('config',\s*'G-[A-Z0-9]+'/);
+chk('GA sin cookies: analytics_storage denegado antes del config', iConsent > -1 && iConfig > iConsent);
 chk('la política ya no dice que GA usa cookies', !/usa cookies/.test(priv) && /sin cookies/.test(priv));
 
 console.log(`\n${ok} ok, ${fail} fail`);

@@ -60,9 +60,12 @@
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
   // Sin cookies: así no hay nada que consentir. Cuenta visitas, no personas.
-  gtag('config', 'G-TS791S6PDM', { client_storage: 'none' });
+  // Va ANTES del config. client_storage:'none' no sirve en GA4 (se probó en
+  // producción y la _ga apareció igual); lo que corta la cookie es consent mode.
+  gtag('consent', 'default', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+  gtag('js', new Date());
+  gtag('config', 'G-TS791S6PDM');
 </script>
 
 <!-- Supabase -->
