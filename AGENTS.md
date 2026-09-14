@@ -76,7 +76,7 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 
 ## Arquitectura
 
-Sin build, sin frameworks. Ocho archivos de la app se despliegan tal cual:
+Sin build, sin frameworks. Los archivos de la app se despliegan tal cual:
 
 | Archivo | Qué tiene |
 |---|---|
@@ -85,12 +85,13 @@ Sin build, sin frameworks. Ocho archivos de la app se despliegan tal cual:
 | `engine.js` | El motor: `calculateFinalGrade`, `solveForTarget`, compuertas y descartes |
 | `app.js` | Estado, navegación, editor y adaptadores de cálculo |
 | `app-session.js` | Auth, recuperación, persistencia local y sync con Supabase |
+| `marketplace.js` | Avisos, segmentación local y cotización; interfaz y cobro aún sin activar |
 | `render-main.js` | `renderHome`, `renderRamo` y `renderStats` |
 | `render-agenda.js` | `renderAgenda`, separado de `app.js` por tamaño |
 | `styles.css` | Estilos y la base neutra compartida |
 
 El orden de carga en `index.html` es `data.js` → `engine.js` → `app.js` →
-`app-session.js` → `render-main.js` → `render-agenda.js`, y no es decorativo:
+`app-session.js` → `marketplace.js` → `render-main.js` → `render-agenda.js`, y no es decorativo:
 son `<script>` clásicos, así que sus `const` quedan en el ámbito léxico global y
 cada uno ve a los anteriores sin imports. Si inviertes el orden, aparece un
 `ReferenceError` en el primer render.

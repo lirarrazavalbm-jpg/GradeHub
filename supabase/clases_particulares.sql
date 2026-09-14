@@ -39,6 +39,25 @@ create table if not exists public.tutor_anuncios (
   )
 );
 
+-- Aditivo: si existía un aviso queda con criterios NULL y sigue siendo general.
+-- No reinterpreta ni rellena campañas anteriores. Sin criterios explícitos el
+-- cliente no usa notas para recomendarlo. La tarifa se acuerda al publicar;
+-- este esquema aún no registra alcance único ni sirve para facturar.
+alter table public.tutor_anuncios add column if not exists criterios jsonb
+  check (
+    criterios is null or case
+      when jsonb_typeof(criterios) = 'object'
+       and jsonb_typeof(criterios->'promedioMenorA') = 'number'
+       and jsonb_typeof(criterios->'avanceMinimo') = 'number'
+       and (criterios - 'promedioMenorA' - 'avanceMinimo') = '{}'::jsonb
+      then (criterios->>'promedioMenorA')::numeric > 1
+       and (criterios->>'promedioMenorA')::numeric <= 7
+       and (criterios->>'avanceMinimo')::numeric >= 0
+       and (criterios->>'avanceMinimo')::numeric < 100
+      else false
+    end
+  );
+
 create index if not exists tutor_anuncios_publicados_por_tenant
   on public.tutor_anuncios (tenant, publicado_at desc)
   where estado = 'publicado';
@@ -51,13 +70,13 @@ alter table public.tutor_anuncios enable row level security;
 -- Aun así no se entrega autor_id ni las marcas internas de revisión/pago:
 -- los permisos de columna de abajo dejan fuera esos campos.
 revoke all on public.tutor_anuncios from public, anon, authenticated;
-grant select (id, tenant, ramos_siglas, modalidad, ubicacion, precio_clp, descripcion,
+grant select (id, tenant, ramos_siglas, criterios, modalidad, ubicacion, precio_clp, descripcion,
               contacto_tipo, contacto_valor, estado, publicado_at, vence_at, created_at)
   on public.tutor_anuncios to anon, authenticated;
-grant insert (autor_id, tenant, ramos_siglas, modalidad, ubicacion, precio_clp,
+grant insert (autor_id, tenant, ramos_siglas, criterios, modalidad, ubicacion, precio_clp,
               descripcion, contacto_tipo, contacto_valor)
   on public.tutor_anuncios to authenticated;
-grant update (ramos_siglas, modalidad, ubicacion, precio_clp, descripcion,
+grant update (ramos_siglas, criterios, modalidad, ubicacion, precio_clp, descripcion,
               contacto_tipo, contacto_valor, estado)
   on public.tutor_anuncios to authenticated;
 
