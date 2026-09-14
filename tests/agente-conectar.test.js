@@ -14,11 +14,6 @@
 //    eventos. Acá todo va en la respuesta del POST, y devolverle un 200 con
 //    otro JSON lo deja esperando un flujo que no llega.
 //
-// Y la parte que no es protocolo: el paso del medio —canjear el código por el
-// token— no lo puede hacer el estudiante, porque un cliente MCP solo acepta
-// una URL y el token a propósito no se muestra. Si la pantalla no le entrega
-// las instrucciones armadas, la vinculación es imposible de completar aunque
-// todo lo demás funcione.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const raiz = path.join(__dirname, '..');
 const leer = f => fs.readFileSync(path.join(raiz, f), 'utf8');
@@ -92,27 +87,6 @@ const mcp = cargarEndpoint();
   });
   chk('una notificación sin token tampoco pasa', sinToken.status === 404);
 
-  // ---------- Las instrucciones de la pantalla ----------
-  console.log('\n=== La pantalla entrega las instrucciones armadas ===');
-  const app = leer('app.js');
-  const sesion = leer('app-session.js');
-  const ctx = { console };
-  vm.createContext(ctx);
-  // Solo se necesitan las dos constantes y la función: cargar la app entera
-  // acá arrastraría el DOM y no es lo que se está probando.
-  const fn = app.slice(app.indexOf('function instruccionesAgente'));
-  vm.runInContext(
-    sesion.match(/const SUPABASE_URL\s*=.*/)[0] + '\n' +
-    sesion.match(/const SUPABASE_ANON_KEY\s*=.*/)[0] + '\n' +
-    app.match(/const MCP_URL_BASE\s*=.*/)[0] + '\n' +
-    fn.slice(0, fn.indexOf('\n}\n') + 3) + '\n;globalThis.__i=instruccionesAgente;', ctx);
-  const texto = ctx.__i('AB2C3D');
-  chk('llevan el código que está en pantalla', texto.includes('AB2C3D'));
-  chk('llevan la RPC que canjea el código', texto.includes('canjear_codigo_agente'));
-  chk('llevan la URL del MCP', texto.includes('https://gradehub.cl/mcp/'));
-  chk('llevan la llave pública, no una secreta',
-    texto.includes('sb_publishable_') && !texto.includes('sb_secret'));
-  chk('dicen que el agente no escribe notas', /no puedes escribir mis notas/i.test(texto));
 
   console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
   process.exit(fail ? 1 : 0);

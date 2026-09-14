@@ -717,21 +717,18 @@ Ojo con el contador del grupo: cuenta casillas CON NOTA, no casillas
 registradas. Una casilla creada solo para fecharla no puede sumar al "2/3
 ingresadas".
 **Tres cosas pedidas por Lucas el 2026-09-12 para la pantalla de Ajustes y la
-conexión de agentes.** La 2 está implementada; la 1 y la 3 siguen pendientes.
+conexión de agentes.** Las tres están implementadas.
 
-**1. Sacar el camino del código (Claude Code y Codex).** Hoy la sección de
-agentes ofrece dos formas de conectar: la URL —que sirve para ChatGPT, Claude y
-Gemini, o sea para casi todos— y un código de un solo uso escondido detrás del
-desplegable "Mi agente corre comandos". Ese segundo camino se elimina.
+**1. Sacar el camino del código (Claude Code y Codex) — implementado.**
+Ajustes solo ofrece la conexión por URL. Se retiraron el desplegable, las
+instrucciones de comandos, la generación del código y su temporizador del cliente.
+La lista y la desconexión conservan todos los agentes existentes, aunque se hayan
+vinculado por código. No se revoca ni migra ningún acceso.
 
-Lo que toca: el `<details class="agent-alt">` de la sección, `crearCodigoAgente`,
-`pintarCodigoAgente`, `instruccionesAgente`, `copiarInstruccionesAgente` y el
-temporizador de los cinco minutos. Del lado de la base, `crear_codigo_agente` y
-`canjear_codigo_agente` quedan sin usar; borrarlas es una migración aparte y no
-urge, pero hay que decidirlo en vez de dejarlas ahí sin que nadie sepa por qué.
-Ojo con los tests que las cubren: `agentes-conectados.test.js` y
-`agente-conectar.test.js` comprueban justo ese flujo, así que hay que sacarles
-esas comprobaciones —no debilitarlas— y dejar las de la URL.
+`crear_codigo_agente` y `canjear_codigo_agente` siguen en Supabase y no las llama
+la interfaz: retirarlas requiere otra migración explícita. Este cambio no toca
+SQL ni el servidor MCP. Los tests conservan el handshake, la URL y la revocación;
+las garantías de errores y sesión vencida ahora se prueban sobre la URL.
 
 **2. Ordenar Ajustes y poner un buscador arriba — implementado.** Las siete
 secciones se reúnen en Tu cuenta, Tu semestre y La app. El buscador filtra por
@@ -740,18 +737,16 @@ encuentran su sección. Buscar solo repinta la navegación, no el formulario.
 El correo de acceso vive en Perfil; respaldos y eliminación siguen en Datos y
 cuenta. `tests/ajustes-orden.test.js` fija estos caminos sin guardar preferencias.
 
-**3. Explicar de verdad cómo conectar un agente, empezando por un prompt.** Hoy
-la pantalla entrega la URL y poco más, y eso deja al estudiante adivinando dónde
-se pega en SU app. La idea de Lucas, que es mejor que una lista de pasos
-nuestra: ofrecer primero un texto para copiar y pegarle a su propio agente, del
-tipo "esta es la URL de mi app de notas, explícame paso a paso cómo agregarte
-como conector" — el agente sabe dónde está su propia configuración y nosotros no
-tenemos que mantener instrucciones de tres productos que cambian solos.
+**3. Explicar de verdad cómo conectar un agente, empezando por un prompt —
+implementado.** La pantalla primero entrega un mensaje inocuo para pegarle al
+agente. Ese mensaje le pide que explique dónde se configura un conector MCP en
+la app que la persona ya usa. Después se nombra la conexión y recién al final se
+crea la URL.
 
-Cuidado con una cosa al escribirlo: ese texto lleva la URL, o sea el token. Si
-se copia desde una pantalla, va a terminar pegado en conversaciones que quedan
-guardadas. Vale la pena decirlo ahí mismo, igual que el aviso que ya está sobre
-la URL.
+El prompt no lleva el token. La URL se copia aparte y la pantalla dice que debe
+pegarse solo en el campo del conector que indicó el agente, nunca en el chat. Así
+no mantenemos instrucciones de productos que cambian solos ni dejamos una llave
+guardada dentro de una conversación.
 
 **Un agente propone notas; no las escribe.** Pedido por Lucas el 2026-09-12 y
 hecho: `proponer_notas` deja una propuesta pendiente y la ficha del ramo la

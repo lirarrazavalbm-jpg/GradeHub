@@ -945,11 +945,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .agent-explainer{display:flex;flex-direction:column;gap:5px;margin:-4px 0 22px;padding:14px 15px;border:1px solid color-mix(in srgb,var(--primary),transparent 72%);border-radius:13px;background:var(--primary-light);font-size:.75rem;line-height:1.45;}
 .agent-explainer b{color:var(--fg);font-weight:700;}
 .agent-explainer span{color:var(--fg2);}
-.agent-code-create{margin-bottom:0;}
-.agent-code-box{min-height:42px;margin:10px 0 23px;}
-.agent-code-expired{padding:10px 2px;color:var(--fg3);font-size:.75rem;line-height:1.4;}
-.agent-code-live{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid color-mix(in srgb,var(--primary),transparent 58%);border-radius:12px;background:var(--primary-light);color:var(--primary);font-size:.75rem;font-weight:700;font-variant-numeric:tabular-nums;}
-.agent-code-value{font-size:1.25rem;font-weight:800;letter-spacing:.18em;line-height:1;color:var(--fg);font-variant-numeric:tabular-nums;}
+.agent-url-create{margin-bottom:0;}
 .agent-list-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:7px;}
 .agent-list-heading .modal-label{margin:0;}
 .agent-list-heading span{color:var(--fg3);font-size:.65625rem;line-height:1.3;text-align:right;}
@@ -1933,15 +1929,6 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .sec-mover button:disabled{opacity:.25;cursor:default;}
 .sec-mover .ic{width:15px;height:15px;}
 
-/* Las instrucciones que el estudiante le pasa a su agente. El bloque es
-   seleccionable a mano a propósito: el botón Copiar necesita permiso de
-   portapapeles y no siempre lo hay. */
-.agent-steps{margin-top:10px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);overflow:hidden;}
-.agent-steps-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);}
-.agent-steps-head b{font-size:0.8125rem;font-weight:700;color:var(--fg);}
-.agent-steps-head .agent-refresh{margin:0;}
-.agent-steps-pre{margin:0;padding:12px;max-height:230px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.6875rem;line-height:1.55;color:var(--fg2);white-space:pre;-webkit-user-select:all;user-select:all;}
-
 /* La URL de conexión del agente. El aviso va DENTRO del cuadro y antes del
    valor: si se lee después de copiar, ya no sirve de nada. */
 .agent-url-wrap:empty{display:none;}
@@ -1949,18 +1936,10 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .agent-url-warn{margin-bottom:9px;font-size:0.75rem;line-height:1.45;color:var(--fg2);}
 .agent-url-value{display:block;margin-bottom:10px;padding:9px 10px;border:1px solid var(--border);border-radius:9px;background:var(--card);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.6875rem;line-height:1.5;color:var(--fg);word-break:break-all;-webkit-user-select:all;user-select:all;}
 
-/* La pantalla de agentes, ordenada en pasos. El camino del código queda
-   guardado en un desplegable: solo aplica a quien corre comandos, y a la vista
-   competía con el único que sirve para ChatGPT, Claude y Gemini. */
 .agent-explainer-no{color:var(--fg3);}
-.agent-alt{margin:14px 0 4px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);}
-.agent-alt>summary{padding:11px 13px;font-size:0.8125rem;font-weight:700;color:var(--fg);cursor:pointer;list-style:none;}
-.agent-alt>summary::-webkit-details-marker{display:none;}
-.agent-alt>summary::after{content:'+';float:right;font-weight:800;color:var(--fg3);}
-.agent-alt[open]>summary::after{content:'–';}
-.agent-alt>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:12px;}
-.agent-alt>*:not(summary){margin-left:13px;margin-right:13px;}
-.agent-alt>*:last-child{margin-bottom:13px;}
+.agent-prompt-box{margin:0 0 18px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);}
+.agent-prompt-text{margin:0 0 10px;color:var(--fg2);font-size:.75rem;line-height:1.5;}
+.agent-prompt-box .agent-refresh{margin-bottom:0;}
 
 /* Notas que un agente propuso, dentro de la ficha del ramo. La nota anterior se
    muestra tachada al lado de la nueva: pisar un 6,2 con un 4,0 es una decisión
