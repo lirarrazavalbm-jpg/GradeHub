@@ -19,6 +19,80 @@ alter table public.catalog_reports
 alter table public.catalog_reports
   add column if not exists updated_at timestamptz not null default now();
 
+-- La huella que agrupa reportes: dos estudiantes que describen la MISMA pauta
+-- tienen que sumar al mismo grupo aunque la escriban distinto. La calcula el
+-- servidor desde `estructura`, no la que manda el cliente: así un navegador con
+-- la versión vieja en caché no puede volver a partir los grupos.
+--
+-- Espeja `huellaEstructura()` de app.js. Si cambias una regla acá, cámbiala allá.
+--   · Filas en 0% fuera: no son parte de la pauta.
+--   · Nombre sin mayúsculas ni tildes, "Solemne3" = "Solemne 3", y cada palabra
+--     de 4+ letras en singular ("Controles" = "Control").
+--   · 3+ evaluaciones numeradas del mismo nombre y el mismo peso, sin casillas
+--     ni compuerta propia, son una categoría con casillas: "Control 1, 2 y 3" de
+--     10% = "Controles" de 30% con 3 casillas. Con pesos distintos no se juntan.
+create or replace function public.huella_catalogo(p_estructura jsonb)
+returns text
+language sql
+stable
+set search_path = public
+as $$
+  with items as (
+    select
+      (
+        select string_agg(
+          case when w ~ '^[a-z]{4,}$'
+            then regexp_replace(regexp_replace(replace(w, 'zz', 'z'), 's$', ''), '([lrndjz])e$', '\1')
+            else w end,
+          ' ' order by i)
+        from regexp_split_to_table(
+          regexp_replace(
+            regexp_replace(
+              regexp_replace(
+                regexp_replace(normalize(lower(e.valor->>'nombre'), NFD), '[\u0300-\u036f]', '', 'g'),
+                '[[:space:]]+', ' ', 'g'),
+              '([a-z])([0-9])', '\1 \2', 'g'),
+            '([0-9])([a-z])', '\1 \2', 'g'),
+          ' ') with ordinality as t(w, i)
+        where w <> ''
+      ) as clave,
+      (e.valor->>'peso')::numeric as peso,
+      coalesce((e.valor->>'slots')::numeric, 1) as slots,
+      coalesce((e.valor->>'min')::numeric, 0) as min,
+      coalesce((e.valor->>'cap')::numeric, 0) as cap
+    from jsonb_array_elements(p_estructura) as e(valor)
+    where (e.valor->>'peso')::numeric > 0
+  ), marcadas as (
+    select items.*,
+           substring(clave from '^(.+) [0-9]+$') as base,
+           slots <= 1 and min = 0 and cap = 0 as agrupable
+    from items
+  ), series as (
+    select base, count(*) as n, sum(peso) as total
+    from marcadas
+    where base is not null and agrupable
+    group by base
+    having count(*) >= 3 and max(peso) - min(peso) <= 0.011
+  ), canon as (
+    select clave, peso, slots, min, cap
+    from marcadas as m
+    where not (m.agrupable and exists (select 1 from series as s where s.base = m.base))
+    union all
+    -- 3 × 6,67 = 20,01 es el 20% repartido en tres: cada peso viene redondeado
+    -- a dos decimales, así que la suma puede correrse hasta 0,005 por casilla.
+    select base,
+           case when abs(total - round(total)) <= 0.005 * n + 0.001 then round(total) else round(total, 2) end,
+           n, 0, 0
+    from series
+  )
+  select string_agg(fila, '|' order by fila collate "C")
+  from (
+    select clave || '~' || trim_scale(peso)::text || '~' || trim_scale(slots)::text || '~' ||
+           trim_scale(min)::text || '~' || trim_scale(cap)::text as fila
+    from canon
+  ) as filas;
+$$;
+
 create or replace function public.submit_catalog_report(
   p_tenant text,
   p_carrera text,
@@ -116,7 +190,7 @@ begin
          ramo_norm = p_ramo_norm,
          ramo_sigla = sigla,
          estructura = p_estructura,
-         huella = p_huella,
+         huella = public.huella_catalogo(p_estructura),
          nota = nullif(trim(p_nota), ''),
          updated_at = now()
    where user_id = uid
@@ -131,7 +205,7 @@ begin
       (user_id, tenant, carrera, ramo, ramo_norm, ramo_sigla, estructura, huella, nota)
     values
       (uid, p_tenant, coalesce(p_carrera, ''), p_ramo, p_ramo_norm, sigla,
-       p_estructura, p_huella, nullif(trim(p_nota), ''));
+       p_estructura, public.huella_catalogo(p_estructura), nullif(trim(p_nota), ''));
   end if;
 end;
 $$;
@@ -148,20 +222,55 @@ language sql
 security definer
 set search_path = public
 as $$
+  -- Agrupa SOLO por la huella: `estructura` es lo que escribió cada estudiante
+  -- ("controles" o "Control 1, 2, 3") y no puede partir un grupo. Se cuentan
+  -- personas distintas del grupo entero, y para mostrar se devuelve la variante
+  -- que más personas escribieron; si empatan, la más reciente.
+  with grupos as (
+    select
+      coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm) as ramo_key,
+      cr.huella,
+      min(cr.ramo) as ramo,
+      count(distinct cr.user_id)::integer as respaldos
+    from public.catalog_reports as cr
+    where cr.tenant = p_tenant
+    group by 1, 2
+    having count(distinct cr.user_id) >= 3
+  ), variantes as (
+    select
+      coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm) as ramo_key,
+      cr.huella,
+      cr.estructura,
+      count(distinct cr.user_id) as personas,
+      max(cr.updated_at) as ultimo
+    from public.catalog_reports as cr
+    where cr.tenant = p_tenant
+    group by 1, 2, 3
+  )
   select
-    min(cr.ramo) as ramo,
-    coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm) as ramo_key,
-    cr.estructura,
-    cr.huella,
-    count(distinct cr.user_id)::integer as respaldos
-  from public.catalog_reports as cr
-  where cr.tenant = p_tenant
-  group by coalesce(nullif(cr.ramo_sigla, ''), cr.ramo_norm), cr.estructura, cr.huella
-  having count(distinct cr.user_id) >= 3
-  order by respaldos desc, ramo_key;
+    g.ramo,
+    g.ramo_key,
+    (select v.estructura from variantes as v
+      where v.ramo_key = g.ramo_key and v.huella = g.huella
+      order by v.personas desc, v.ultimo desc, v.estructura::text
+      limit 1) as estructura,
+    g.huella,
+    g.respaldos
+  from grupos as g
+  order by g.respaldos desc, g.ramo_key;
 $$;
 
 revoke all on function public.submit_catalog_report(text, text, text, text, text, jsonb, text, text) from public, anon;
 revoke all on function public.catalog_consensus(text) from public, anon;
+-- Solo la usan las dos RPC de arriba, que corren como dueño.
+revoke all on function public.huella_catalogo(jsonb) from public, anon, authenticated;
 grant execute on function public.submit_catalog_report(text, text, text, text, text, jsonb, text, text) to authenticated;
 grant execute on function public.catalog_consensus(text) to authenticated;
+
+-- Los reportes que ya existen se guardaron con la huella que mandó el cliente.
+-- Se recalculan una vez con la función de arriba para que sumen con los nuevos.
+-- Solo cambia `huella`: `estructura`, notas y pautas de estudiantes no se tocan.
+-- Correr este archivo de nuevo no cambia nada: solo actualiza las distintas.
+update public.catalog_reports
+   set huella = coalesce(public.huella_catalogo(estructura), '')
+ where huella is distinct from coalesce(public.huella_catalogo(estructura), '');

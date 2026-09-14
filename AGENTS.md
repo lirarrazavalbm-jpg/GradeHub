@@ -472,8 +472,10 @@ si no compensas ese cambio de altura, en móvil la fila salta bajo el dedo.
 
 **El consenso de reportes ya está construido. Lo que falta son reportes.** El
 recorrido completo existe: `submit_catalog_report` y `catalog_consensus` en
-`supabase/catalog_consensus.sql` —agrupa por (ramo, estructura, huella) y exige
-**tres personas distintas**, no tres reportes—, y `aplicarConsensoAuto()` en
+`supabase/catalog_consensus.sql` —agrupa por (ramo, huella) y exige **tres
+personas distintas**, no tres reportes; la huella la calcula el servidor con
+`huella_catalogo()` y junta la misma pauta escrita distinto, incluido "Control
+1, 2 y 3" del mismo peso con "Controles" en 3 casillas—, y `aplicarConsensoAuto()` en
 `app.js` lo aplica solo. **Solo donde no hay nada que pisar**: ramos del catálogo
 sin pauta. Si hay programa oficial transcrito, ese manda; si el estudiante editó
 la suya, manda la suya; y lo aplicado queda marcado con `consensoRespaldos`, con

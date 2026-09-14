@@ -117,6 +117,51 @@ chk('el modal permite editar nombres, quitar y agregar evaluaciones',
   /onclick="quitarReporteFila\(\$\{i\}\)"/.test(src) &&
   /onclick="agregarReporteFila\(\)"/.test(src));
 
+console.log('\n=== Huella: la misma pauta escrita distinto ===');
+const h = e => huellaEstructura(e);
+const EXAMEN = { nombre: 'Examen', peso: 40 };
+const tresControles = [{ nombre: 'Control 1', peso: 20 }, { nombre: 'Control 2', peso: 20 }, { nombre: 'Control 3', peso: 20 }, EXAMEN];
+chk('Control 1, 2 y 3 de 20% suman con "Controles" de 60% en 3 casillas',
+  h(tresControles) === h([{ nombre: 'Controles', peso: 60, slots: 3 }, EXAMEN]));
+chk('mayúsculas, tildes, plural y número pegado no parten el grupo',
+  h([{ nombre: 'interrogacion1', peso: 20 }, { nombre: 'Interrogación 2', peso: 20 }, { nombre: 'INTERROGACION 3', peso: 20 }, EXAMEN]) ===
+  h([{ nombre: 'Interrogaciones', peso: 60, slots: 3 }, { nombre: 'examen', peso: 40 }]));
+chk('el 20% repartido en tres (6,67 cada uno) es el mismo 20% con 3 casillas',
+  h([{ nombre: 'Quiz 1', peso: 6.67 }, { nombre: 'Quiz 2', peso: 6.67 }, { nombre: 'Quiz 3', peso: 6.66 }, { nombre: 'Examen', peso: 80 }]) ===
+  h([{ nombre: 'Quizzes', peso: 20, slots: 3 }, { nombre: 'Examen', peso: 80 }]));
+chk('con pesos distintos NO se juntan: 30/35/35 no es un promedio en partes iguales',
+  h([{ nombre: 'Prueba 1', peso: 30 }, { nombre: 'Prueba 2', peso: 35 }, { nombre: 'Prueba 3', peso: 35 }]) !==
+  h([{ nombre: 'Pruebas', peso: 100, slots: 3 }]));
+chk('dos numeradas no alcanzan para agruparse',
+  h([{ nombre: 'Control 1', peso: 10 }, { nombre: 'Control 2', peso: 10 }, { nombre: 'Examen', peso: 80 }]) !==
+  h([{ nombre: 'Controles', peso: 20, slots: 2 }, { nombre: 'Examen', peso: 80 }]));
+chk('una numerada con compuerta propia no se esconde dentro del grupo',
+  h([{ nombre: 'Prueba 1', peso: 20, min: 3, cap: 3.9 }, { nombre: 'Prueba 2', peso: 20 }, { nombre: 'Prueba 3', peso: 20 }, EXAMEN]) !==
+  h([{ nombre: 'Pruebas', peso: 60, slots: 3 }, EXAMEN]));
+chk('distinta cantidad de casillas sigue siendo otra pauta',
+  h([{ nombre: 'Talleres', peso: 10, slots: 11 }, { nombre: 'Examen', peso: 90 }]) !==
+  h([{ nombre: 'Talleres', peso: 10, slots: 12 }, { nombre: 'Examen', peso: 90 }]));
+chk('el orden en que se escribieron no cambia la huella',
+  h(tresControles) === h([...tresControles].reverse()));
+chk('una fila en 0% guardada antes del #272 no separa el reporte',
+  h([...tresControles, { nombre: 'X', peso: 0 }]) === h(tresControles));
+chk('la ficha compara con la huella calculada acá, no con la del servidor',
+  /huellaEstructura\(estructuraParaConsenso\(c\.estructura\)\)!==mine/.test(src) && !/c\.huella!==mine/.test(src));
+
+console.log('\n=== La huella la decide el servidor ===');
+const fnHuella = sql.slice(sql.indexOf('create or replace function public.huella_catalogo'), sql.indexOf('create or replace function public.submit_catalog_report'));
+chk('el servidor calcula la huella desde la estructura al guardar e ignora la del cliente',
+  (sql.match(/huella = public\.huella_catalogo\(p_estructura\)/g) || []).length === 1 &&
+  /p_estructura, public\.huella_catalogo\(p_estructura\), nullif/.test(sql) && !/huella = p_huella|p_estructura, p_huella,/.test(sql));
+chk('la función del servidor aplica las mismas reglas: 0% fuera, singular, 3+ del mismo peso',
+  /peso'\)::numeric > 0/.test(fnHuella) && /\(\[lrndjz\]\)e\$/.test(fnHuella) &&
+  /having count\(\*\) >= 3 and max\(peso\) - min\(peso\) <= 0\.011/.test(fnHuella) && /collate "C"/.test(fnHuella));
+chk('el consenso agrupa solo por ramo y huella, no por el texto de la estructura',
+  /group by 1, 2\s+having count\(distinct cr\.user_id\) >= 3/.test(consensoSql()) && !/group by [^\n]*cr\.estructura/.test(sql));
+chk('los reportes existentes se recalculan sin tocar su estructura',
+  /update public\.catalog_reports\s+set huella = coalesce\(public\.huella_catalogo\(estructura\), ''\)\s+where huella is distinct from/.test(sql));
+function consensoSql() { return sql.slice(sql.indexOf('create or replace function public.catalog_consensus')); }
+
 console.log('\n=== RPC segura y agregada ===');
 const consenso = sql.slice(sql.indexOf('create or replace function public.catalog_consensus'));
 chk('el reporte se escribe por RPC, no desde el cliente a la tabla',

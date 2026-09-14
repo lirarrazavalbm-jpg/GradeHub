@@ -2834,9 +2834,60 @@ function estructuraParaConsenso(est){
     .map(e=>({...e,nombre:limpiarNombreAjeno(e.nombre)})));
 }
 
-// Huella estable: dos reportes id\u00e9nticos producen la misma cadena.
+// Huella estable: dos reportes que describen la MISMA pauta producen la misma
+// cadena aunque la hayan escrito distinto. Solo sirve para agrupar reportes:
+// no cambia los nombres que alguien ve ni la pauta que se guarda.
+//
+// `public.huella_catalogo()` en supabase/catalog_consensus.sql hace lo mismo y
+// es la que decide en el servidor. Si cambias una regla ac\u00e1, c\u00e1mbiala all\u00e1.
+//
+// Nombre: sin may\u00fasculas ni tildes, "Solemne3" = "Solemne 3", y cada palabra de
+// 4+ letras en singular, porque "Controles" y "Control" son la misma evaluaci\u00f3n.
+function singularHuella(p){
+  if(!/^[a-z]{4,}$/.test(p))return p;
+  return p.replace(/zz/g,'z').replace(/s$/,'').replace(/([lrndjz])e$/,'$1');
+}
+function nombreHuella(nombre){
+  return normName(nombre).replace(/\s+/g,' ')
+    .replace(/([a-z])(?=\d)|(\d)(?=[a-z])/g,'$& ')
+    .split(' ').filter(Boolean).map(singularHuella).join(' ');
+}
+// Tres o m\u00e1s evaluaciones numeradas del mismo nombre y el mismo peso son una
+// categor\u00eda con casillas: "Control 1, 2 y 3" de 10% cada uno = "Controles" de
+// 30% con 3 casillas, que calculan igual. Con pesos distintos NO se juntan:
+// 30/35/35 promediado en partes iguales ser\u00eda otra pauta. Tampoco si alguna
+// trae casillas o compuerta propia.
+const MIN_NUMERADAS_HUELLA=3;
+function agruparNumeradasHuella(filas){
+  const series=new Map();
+  filas.forEach(f=>{
+    const m=/^(.+) (\d+)$/.exec(f.clave);
+    if(!m||f.slots>1||f.min||f.cap)return;
+    if(!series.has(m[1]))series.set(m[1],[]);
+    series.get(m[1]).push(f);
+  });
+  const fuera=new Set(),grupos=[];
+  series.forEach((serie,base)=>{
+    const pesos=serie.map(f=>f.peso);
+    if(serie.length<MIN_NUMERADAS_HUELLA||Math.max(...pesos)-Math.min(...pesos)>0.011)return;
+    serie.forEach(f=>fuera.add(f));
+    // 3 \u00d7 6,67 = 20,01 es el 20% repartido en tres: cada peso viene redondeado
+    // a dos decimales, as\u00ed que la suma puede correrse hasta 0,005 por casilla.
+    const total=pesos.reduce((s,p)=>s+p,0),entero=Math.round(total);
+    const peso=Math.abs(total-entero)<=0.005*serie.length+0.001?entero:r2(total);
+    grupos.push({clave:base,peso,slots:serie.length,min:0,cap:0});
+  });
+  return filas.filter(f=>!fuera.has(f)).concat(grupos);
+}
 function huellaEstructura(est){
-  return ordenarEstructuraConsenso(est).map(e=>[normName(e.nombre),e.peso,e.slots||1,e.min||0,e.cap||0].join('~')).join('|');
+  // Las filas en 0% no son parte de la pauta (#272). Los reportes anteriores a
+  // ese arreglo las traen guardadas, y el servidor también las descarta.
+  const filas=(est||[]).filter(e=>Number(e.peso)>0).map(e=>({clave:nombreHuella(e.nombre),peso:Number(e.peso),
+    slots:Number(e.slots)||1,min:e.min||0,cap:e.cap||0}));
+  // sort() sin comparador ordena por c\u00f3digo, igual en todos los dispositivos y
+  // igual que `collate "C"` en el servidor.
+  return agruparNumeradasHuella(filas)
+    .map(f=>[f.clave,f.peso,f.slots,f.min,f.cap].join('~')).sort().join('|');
 }
 
 // El reporte tiene su propio borrador: corregir lo que se envía al catálogo no
@@ -3176,7 +3227,11 @@ async function consensoParaRamo(r){
   const cons=await cargarConsenso();
   if(!cons)return null;
   const mine=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
-  const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&c.huella!==mine);
+  // Las dos huellas se calculan acá, con la misma función: comparar contra
+  // `c.huella`, que calcula el servidor, ofrecería como "otra pauta" la misma
+  // si alguna vez las dos implementaciones difieren en un detalle.
+  const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&
+    huellaEstructura(estructuraParaConsenso(c.estructura))!==mine);
   return hit||null;
 }
 
