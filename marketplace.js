@@ -145,7 +145,7 @@ async function registrarMetricaAnuncio(anuncioId,tipo,ramoSigla){
   return data===true;
 }
 
-// La RPC aplica el mínimo de cinco EVENTOS en el servidor. Esta función no
+// La RPC aplica el mínimo de quince EVENTOS en el servidor. Esta función no
 // replica ni relaja el umbral: si no hay filas, simplemente no hay un corte
 // seguro para mostrar todavía.
 async function resumenMetricasAnuncio(anuncioId){

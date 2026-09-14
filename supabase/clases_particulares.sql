@@ -187,7 +187,7 @@ $$;
 
 -- El tutor consulta sus propios agregados. El umbral es de EVENTOS, no de
 -- personas distintas: contar personas implicaría guardar identidad. Con menos
--- de cinco el corte no sale de esta función, aunque otro cliente la invoque.
+-- de quince el corte no sale de esta función, aunque otro cliente la invoque.
 create or replace function public.resumen_metricas_anuncio(p_anuncio_id uuid)
 returns table (dia date, tipo text, tenant text, ramo_sigla text, eventos integer)
 language plpgsql
@@ -209,7 +209,7 @@ begin
   select m.dia, m.tipo, m.tenant, m.ramo_sigla, m.eventos
   from public.anuncio_metricas m
   where m.anuncio_id = p_anuncio_id
-    and m.eventos >= 5
+    and m.eventos >= 15
   order by m.dia desc, m.tipo, m.ramo_sigla;
 end;
 $$;

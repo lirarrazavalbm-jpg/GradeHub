@@ -142,7 +142,7 @@ S.ramos y notas -> cálculo local -> coincidencia local -> tarjeta
 Las métricas llevan únicamente `anuncio_id`, tipo de evento y sigla del aviso.
 No incluyen `user_id`, correo, carrera, semestre, promedio, nota, estado de
 consentimiento ni un indicador de riesgo. Los reportes para tutores salen solo
-agregados y desde cinco eventos; cuentan eventos, no personas.
+agregados y desde quince eventos; cuentan eventos, no personas.
 
 ## Orden de lanzamiento
 
