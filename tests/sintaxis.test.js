@@ -6,6 +6,7 @@ new vm.Script(fs.readFileSync(path.join(raiz, 'data.js'), 'utf8'));
 new vm.Script(fs.readFileSync(path.join(raiz, 'engine.js'), 'utf8'));
 new vm.Script(fs.readFileSync(path.join(raiz, 'app.js'), 'utf8'));
 new vm.Script(fs.readFileSync(path.join(raiz, 'app-session.js'), 'utf8'));
+new vm.Script(fs.readFileSync(path.join(raiz, 'marketplace.js'), 'utf8'));
 new vm.Script(fs.readFileSync(path.join(raiz, 'render-main.js'), 'utf8'));
 new vm.Script(fs.readFileSync(path.join(raiz, 'render-agenda.js'), 'utf8'));
 
@@ -20,28 +21,28 @@ if (abre !== cierra) {
 // El HTML debe apuntar a los archivos externos, no tener el código inline
 const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
 // HTML nuevo + JS viejo deja la app a medio cargar: el HTML pide funciones que
-// todavía no existen. El deploy sella estos siete assets con el mismo SHA que
+// todavía no existen. El deploy sella estos ocho assets con el mismo SHA que
 // CACHE_NAME para que una cache vieja no pueda responder una URL nueva.
-const assetsVersionados = ['styles.css', 'data.js', 'engine.js', 'app.js', 'app-session.js', 'render-main.js', 'render-agenda.js'];
+const assetsVersionados = ['styles.css', 'data.js', 'engine.js', 'app.js', 'app-session.js', 'marketplace.js', 'render-main.js', 'render-agenda.js'];
 assetsVersionados.forEach(asset => {
   if (!html.includes(asset + '?v=__ASSET_VERSION__')) {
     console.error('index.html debe dejar el marcador de versión para ' + asset);
     process.exit(1);
   }
 });
-if (!html.includes('href="styles.css?v=__ASSET_VERSION__"') || !html.includes('src="app.js?v=__ASSET_VERSION__"') || !html.includes('src="app-session.js?v=__ASSET_VERSION__"') || !html.includes('src="data.js?v=__ASSET_VERSION__"') || !html.includes('src="engine.js?v=__ASSET_VERSION__"') || !html.includes('src="render-main.js?v=__ASSET_VERSION__"') || !html.includes('src="render-agenda.js?v=__ASSET_VERSION__"')) {
-  console.error('index.html no enlaza data.js, engine.js, app.js, app-session.js, render-agenda.js y styles.css');
+if (!html.includes('href="styles.css?v=__ASSET_VERSION__"') || !html.includes('src="app.js?v=__ASSET_VERSION__"') || !html.includes('src="app-session.js?v=__ASSET_VERSION__"') || !html.includes('src="marketplace.js?v=__ASSET_VERSION__"') || !html.includes('src="data.js?v=__ASSET_VERSION__"') || !html.includes('src="engine.js?v=__ASSET_VERSION__"') || !html.includes('src="render-main.js?v=__ASSET_VERSION__"') || !html.includes('src="render-agenda.js?v=__ASSET_VERSION__"')) {
+  console.error('index.html no enlaza data.js, engine.js, app.js, app-session.js, marketplace.js, render-agenda.js y styles.css');
   process.exit(1);
 }
 // data.js declara los const que app.js consume: si se carga después, ReferenceError
-if (!(html.indexOf('src="data.js?v=__ASSET_VERSION__"') < html.indexOf('src="engine.js?v=__ASSET_VERSION__"') && html.indexOf('src="engine.js?v=__ASSET_VERSION__"') < html.indexOf('src="app.js?v=__ASSET_VERSION__"') && html.indexOf('src="app.js?v=__ASSET_VERSION__"') < html.indexOf('src="app-session.js?v=__ASSET_VERSION__"') && html.indexOf('src="app-session.js?v=__ASSET_VERSION__"') < html.indexOf('src="render-main.js?v=__ASSET_VERSION__"') && html.indexOf('src="render-main.js?v=__ASSET_VERSION__"') < html.indexOf('src="render-agenda.js?v=__ASSET_VERSION__"'))) {
-  console.error('index.html no respeta el orden data.js → engine.js → app.js → app-session.js → render-main.js → render-agenda.js');
+if (!(html.indexOf('src="data.js?v=__ASSET_VERSION__"') < html.indexOf('src="engine.js?v=__ASSET_VERSION__"') && html.indexOf('src="engine.js?v=__ASSET_VERSION__"') < html.indexOf('src="app.js?v=__ASSET_VERSION__"') && html.indexOf('src="app.js?v=__ASSET_VERSION__"') < html.indexOf('src="app-session.js?v=__ASSET_VERSION__"') && html.indexOf('src="app-session.js?v=__ASSET_VERSION__"') < html.indexOf('src="marketplace.js?v=__ASSET_VERSION__"') && html.indexOf('src="marketplace.js?v=__ASSET_VERSION__"') < html.indexOf('src="render-main.js?v=__ASSET_VERSION__"') && html.indexOf('src="render-main.js?v=__ASSET_VERSION__"') < html.indexOf('src="render-agenda.js?v=__ASSET_VERSION__"'))) {
+  console.error('index.html no respeta el orden data.js → engine.js → app.js → app-session.js → marketplace.js → render-main.js → render-agenda.js');
   process.exit(1);
 }
 
 // El service worker precachea la shell: si falta un archivo, la PWA queda a medias
 const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
-['/data.js?v=__ASSET_VERSION__', '/engine.js?v=__ASSET_VERSION__', '/app.js?v=__ASSET_VERSION__', '/app-session.js?v=__ASSET_VERSION__', '/render-main.js?v=__ASSET_VERSION__', '/render-agenda.js?v=__ASSET_VERSION__', '/styles.css?v=__ASSET_VERSION__', '/index.html'].forEach(f => {
+['/data.js?v=__ASSET_VERSION__', '/engine.js?v=__ASSET_VERSION__', '/app.js?v=__ASSET_VERSION__', '/app-session.js?v=__ASSET_VERSION__', '/marketplace.js?v=__ASSET_VERSION__', '/render-main.js?v=__ASSET_VERSION__', '/render-agenda.js?v=__ASSET_VERSION__', '/styles.css?v=__ASSET_VERSION__', '/index.html'].forEach(f => {
   if (!sw.includes("'" + f + "'")) {
     console.error('sw.js no precachea ' + f);
     process.exit(1);
@@ -74,7 +75,7 @@ if (fetchStart < 0 || nonGetGuard < 0 || nonGetGuard > firstFetchRoute) {
 
 // Marcadores de conflicto en cualquier archivo que se despliega. Con varias
 // ramas en paralelo esto pasa, y lo caro es que llegue a producción.
-['sw.js', 'app.js', 'app-session.js', 'data.js', 'engine.js', 'render-main.js', 'render-agenda.js', 'styles.css', 'index.html', 'privacidad.html', 'package.json']
+['sw.js', 'app.js', 'app-session.js', 'marketplace.js', 'data.js', 'engine.js', 'render-main.js', 'render-agenda.js', 'styles.css', 'index.html', 'privacidad.html', 'package.json']
   .forEach(f => {
     const src = fs.readFileSync(path.join(raiz, f), 'utf8');
     if (/^(<{7}|={7}|>{7})/m.test(src)) {
@@ -124,7 +125,7 @@ if (!/grep -q '__ASSET_VERSION__' index\.html/.test(deployYml) ||
   console.error('deploy.yml debe comprobar y sellar los marcadores de assets en index.html y sw.js');
   process.exit(1);
 }
-if (!/for asset in styles\.css data\.js engine\.js app\.js app-session\.js render-main\.js render-agenda\.js; do/.test(deployYml) ||
+if (!/for asset in styles\.css data\.js engine\.js app\.js app-session\.js marketplace\.js render-main\.js render-agenda\.js; do/.test(deployYml) ||
     !/dist\/index\.html no selló/.test(deployYml) ||
     !/dist\/sw\.js no precachea/.test(deployYml)) {
   console.error('deploy.yml debe comprobar en dist cada asset sellado, no solo ejecutar el sed');
