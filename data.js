@@ -921,6 +921,42 @@ const PRESETS_UC={
       'Tu nota de evaluación de pares se calcula promediando la nota que te asignan tus compañeros y tu autoevaluación; si no respondes la autoevaluación, esa parte queda con nota 1',
     ],
   },
+  // ── Dinámica ICE1514 ──────────────────────────────────────────────────────
+  // Programa oficial del 5-agosto-2026, segundo semestre 2026. Es la otra
+  // Dinámica del plan común y comparte el mismo laboratorio (FIS0154): si se
+  // aprueban los dos, la nota final es 70% esta cátedra y 30% el laboratorio.
+  //
+  // El programa da el peso de cada control ("10% c.u.") y de cada interrogación
+  // ("20% c.u."), así que van separados y cada uno con su fecha. Los talleres
+  // son "~11": no hay un número exacto, así que quedan como lista abierta en vez
+  // de inventar casillas, y se elimina el peor como dice el programa.
+  //
+  // `min` del laboratorio: el programa dice que cátedra y laboratorio "son ambas
+  // reprobatorias", pero no con qué nota queda el ramo si una baja de 4,0. Sin
+  // `min` un laboratorio reprobado se promediaría y el ramo saldría aprobado.
+  // Con `min` se ve reprobado con la más baja de las dos, igual que FIS1514, y
+  // la ficha avisa que ese número no sale del programa.
+  //
+  // El programa advierte que las ponderaciones podrían cambiar entre secciones
+  // ICE. Si una sección tiene otra, la edita y el consenso de reportes lo dirá.
+  'Dinámica (ICE1514)':{
+    periodo:'2026-2',
+    evals:[
+      ['Control 1',10,{fecha:'2026-09-04'}],
+      ['Control 2',10,{fecha:'2026-10-16'}],
+      ['Control 3',10,{fecha:'2026-10-30'}],
+      ['Interrogación 1',20,{fecha:'2026-09-29'}],
+      ['Interrogación 2',20,{fecha:'2026-11-13'}],
+      ['Examen',20,{fecha:'2026-12-01'}],
+      ['Talleres',10,{lista:true,dropLowest:{count:1}}],
+    ],
+    aporta:{ramo:'Laboratorio de Dinámica',peso:30,min:4.0},
+    noCalcula:[
+      'Si faltas con justificación a un control o interrogación, esa nota se reemplaza por el promedio ponderado de tus otras evaluaciones sumativas, sin contar los talleres; una segunda inasistencia es un 1,0',
+      'Faltar a un taller, con o sin justificación, es un 1,0 en ese taller',
+      'Si repruebas la cátedra o el laboratorio, repruebas Dinámica: el programa no dice con qué nota quedas, así que mostramos la más baja de las dos',
+    ],
+  },
   'Revelación y Fe':{
     sigla:'TTF012',
     periodo:'2026-2',
