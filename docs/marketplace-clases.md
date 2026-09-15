@@ -6,10 +6,11 @@ dato que GradeHub entregue a profesores o anunciantes.
 
 ## Principio que no se negocia
 
-La recomendación personalizada se decide **en el navegador**. El servidor puede
-entregar el catálogo público de avisos de una universidad, pero no recibe qué
-ramos tiene la persona, qué promedio lleva, si puede aprobar ni una señal de
-riesgo. Un tutor tampoco ve quién recibió su aviso.
+La recomendación personalizada se decide **en el navegador**. La petición que
+trae avisos no incluye qué ramos tiene la persona, qué promedio lleva, si puede
+aprobar ni una señal de riesgo. Para cotizar, un proceso interno y restringido
+puede calcular un total usando los datos ya sincronizados en GradeHub, pero solo
+devuelve ese agregado. Un tutor nunca ve quién recibió su aviso.
 
 ## Dos puertas distintas
 
@@ -48,6 +49,29 @@ En el primer lanzamiento la aprobación se hace manualmente en Supabase con un
 rol privilegiado. El cliente no recibe permisos para cambiar `estado` ni las
 marcas de revisión. Un panel interno para Lucas puede reemplazar ese paso más
 adelante sin cambiar el modelo ni abrir la aprobación a los estudiantes.
+
+### Postulación y entrada al espacio de profesor
+
+Después de iniciar sesión, el menú de la cuenta ofrece **Espacio de profesor**.
+Si todavía no tiene ficha, ahí puede postular; no se crea otro login ni se mezcla
+el formulario con las notas. La postulación pide nombre público, una presentación
+breve, universidad o vínculo académico, ramos que ofrece por sigla, modalidad,
+contacto y al menos un antecedente que Lucas pueda revisar. Ningún campo aprueba
+automáticamente a la persona.
+
+Lucas decide la postulación completa, no una puntuación automática. `rechazado`
+permite corregir y volver a postular; `suspendido` corta el acceso comercial hasta
+una revisión manual. La aplicación estudiantil sigue funcionando en ambos casos.
+Toda negativa muestra un motivo breve: un estado que cambia sin explicación no
+le permite a la persona corregir nada.
+
+Para aprobar una ficha, Lucas comprueba que la identidad y el contacto sean
+plausibles y que exista algún antecedente académico o docente relacionado con
+los ramos ofrecidos. No se promete una certificación formal ni se aprueba por
+tener buenas notas dentro de GradeHub. Para aprobar un anuncio se exige ramo y
+servicio claros, precio de la clase visible, modalidad, contacto válido y nada de
+garantías de aprobación, suplantación institucional o alusiones a las notas de
+quien lo recibe.
 
 ## Decisión al crear la cuenta
 
@@ -91,8 +115,18 @@ conocida no se usan para personalizar. Tampoco los completamente evaluados.
 Un aviso sin criterios queda como catálogo general, no hereda una regla nueva.
 
 Solo se destaca un aviso por pantalla y siempre se muestra su etiqueta de
-“Publicidad · Clase particular”. La persona puede cerrarlo; el catálogo general sigue siendo
-el camino para comparar alternativas.
+“Publicidad · Clase particular”. En el piloto aparece únicamente en **Inicio**,
+junto al ramo que produjo la coincidencia; no interrumpe la Agenda, el ingreso de
+notas, la calculadora ni la ficha del ramo. La persona puede cerrarlo y esa
+campaña no vuelve a mostrarse en ese dispositivo. No se reemplaza inmediatamente
+por otra: como máximo se intenta una recomendación contextual por día.
+
+El cierre y ese límite viven en una clave local separada
+(`gradehub_marketplace_v1`), no dentro de `gradehub_v1`: activar o quitar el
+marketplace no migra ni reescribe el estado académico.
+
+El catálogo general sigue siendo el camino para comparar alternativas. Ahí los
+avisos se ordenan por ramo y vigencia, no por las notas del estudiante.
 
 ## Cotización y cobro: cantidades diferentes
 
@@ -110,35 +144,56 @@ No recibe notas ni listas de estudiantes. Si cumplen varios tramos toma la tarif
 más alta; una tarifa específica exige ambos criterios. Así la tarifa de bajo 4,0
 y al menos 40% no se aplica a bajo 4,0 con solo 20%.
 
-Ejemplos para probar el modelo, **no precios aprobados ni alcance real**:
+El piloto parte con dos tarifas. Son una decisión comercial configurable por
+GradeHub, no un precio que el profesor pueda editar:
 
 | Segmentación | Elegibles | Tarifa por alcance | Si todos lo ven | Si solo lo ven 12 |
 |---|---:|---:|---:|---:|
 | Bajo 5,0 y ≥20% | 30 | $1.000 | $30.000 | $12.000 |
 | Bajo 4,0 y ≥40% | 20 | $2.000 | $40.000 | $24.000 |
 
-El anunciante puede acotar público y presupuesto. Las tarifas las administra
-GradeHub; no pueden ser un campo que el anunciante mande como precio definitivo.
-Con $15.000 de presupuesto y $2.000 por persona caben siete alcances facturables,
-no ocho. Sin medición disponible, la cotización devuelve desconocido (`null`),
-nunca cero cuentas. Los precios/criterios acordados deberán fijarse al publicar:
-editarlos después no puede cambiar retroactivamente una factura.
+El anunciante propone el público y el presupuesto; Lucas puede corregir ambos
+antes de aprobar. La cotización definitiva queda congelada cuando el profesor
+acepta y paga. Cambiar siglas, texto, criterios, contacto, precio de la clase o
+presupuesto crea una nueva revisión: nunca cambia retroactivamente lo cobrado.
 
-### Lo que todavía impide cobrar
+La campaña dura 30 días o hasta agotar su presupuesto, lo que ocurra primero. El
+presupuesto se paga antes de publicar. Al cerrar, lo que no se gastó queda como
+saldo para otra campaña o se devuelve si el profesor lo pide. Con $15.000 y una
+tarifa de $2.000 caben siete alcances; los $1.000 restantes no autorizan un octavo.
 
-Las métricas de `anuncio_metricas` cuentan eventos agregados y limitan su frecuencia
-globalmente. **No son cuentas únicas y no sirven como facturas.** No hay un conteo
-real de cuentas elegibles implementado en este PR ni se consultó producción.
+### Qué se cotiza y qué se cobra
 
-Para activar cotizaciones reales y cobros falta un diseño adicional: ventana de
-medición para elegibles, deduplicación de alcance por cuenta/campaña, presupuesto
-aplicado en el servidor y tarifas fijadas al publicar. El tutor debe recibir solo
-agregados. La deduplicación requiere un registro nuevo y definir cuánto dura y
-cómo se elimina con la cuenta; no se puede prometer alcance único usando el
-contador actual ni afirmar que no guarda identidad mientras depende de ella.
+- La **cotización** usa el número de cuentas activas que cumplen la regla en el
+  momento de la revisión. Es una fotografía, no una promesa de alcance.
+- El **cobro** usa personas alcanzadas realmente, una sola vez por campaña, con
+  el tope del presupuesto. Abrir GradeHub cinco veces no cobra cinco veces.
+- Un alcance cuenta cuando al menos la mitad de la tarjeta estuvo visible durante
+  un segundo. Un clic o contacto se informa aparte, pero no cambia el cobro.
+- El profesor ve conteos agregados, costo consumido y saldo. Nunca ve identidades,
+  notas, promedios ni la lista de quienes cumplieron la regla.
 
-No se cambia la persistencia de notas ni `gradehub_v1` para resolver esto. Antes
-de implementar esos registros se acuerda su modelo y se prepara SQL aditivo.
+Para este cálculo, una cuenta activa es una que abrió GradeHub durante los 30 días
+anteriores y tiene al menos una nota vigente en el ramo. La marca de actividad es
+solo una fecha, no un historial de sesiones. Sin esa señal la cuenta no infla la
+cotización, aunque su semestre antiguo siga guardado.
+
+Para deduplicar de verdad, el lanzamiento necesita una tabla privada de alcance
+con `(anuncio_id, user_id)` único, ambas FK con `ON DELETE CASCADE`. Solo una RPC
+`security definer` escribe en ella usando `auth.uid()`; no hay permisos directos
+de lectura para el profesor. Las filas se eliminan 90 días después de terminar la
+campaña. Esto permite cobrar una vez sin entregar la identidad al anunciante.
+
+El conteo de elegibles se calcula dentro de GradeHub con el mismo motor académico
+y devuelve únicamente un total agregado. No se implementa de nuevo la aritmética
+en SQL. La regla y la tarifa aprobadas se guardan como una instantánea inmutable
+de la campaña.
+
+`anuncio_metricas` sigue sirviendo para observar impresiones, clics y contactos,
+pero **no factura**: cuenta eventos y no personas. La tabla privada de alcance,
+el saldo prepago, la fecha de última actividad y el cálculo agregado requieren
+otro SQL aditivo y un paso manual antes de activar cobros. No cambian `gradehub_v1`
+ni el significado de las notas.
 
 ## Muestra revisable sin cuentas reales
 
@@ -147,7 +202,7 @@ node bin/preview-marketplace.js /tmp/gradehub-marketplace-muestra.html
 ```
 
 Abre ese HTML: permite cambiar universidad, ramo, promedio máximo, avance mínimo,
-tarifas de ejemplo y presupuesto. Muestra cotización y tarjeta para perfiles
+tarifas iniciales del piloto y presupuesto. Muestra cotización y tarjeta para perfiles
 sintéticos. Las 120 cuentas están inventadas y no salen del navegador. Si una
 cuenta calza con dos ramos se cuenta una vez. El ejemplo usa el motor real y
 extrae `ramoProgress` desde `app.js`, en vez de mantener otra cuenta de pesos.
@@ -163,6 +218,7 @@ El módulo de datos del primer PR (`marketplace.js`) conserva esta separación:
 ```text
 Supabase -> catálogo público por universidad -> navegador
 S.ramos y notas -> cálculo local -> coincidencia local -> tarjeta
+datos sincronizados -> cálculo interno restringido -> total elegible
 ```
 
 Las métricas llevan únicamente `anuncio_id`, tipo de evento y sigla del aviso.
@@ -178,8 +234,8 @@ agregados y desde quince eventos; cuentan eventos, no personas.
    SQL.
 2. **Flujo de tutor.** Crear borrador, enviar a revisión y publicar solo después
    de que la ficha del profesor haya sido aprobada, y después de revisión y pago
-   manuales del anuncio. No hay pasarela de pago ni publicación automática en
-   el primer lanzamiento.
+   manuales del anuncio. El pago inicial es transferencia y se acredita como
+   presupuesto; no hay pasarela automática en el primer lanzamiento.
 3. **Catálogo general para estudiantes.** Explorar avisos por ramo o sigla, sin
    mirar notas y sin recomendaciones personalizadas. Sirve para probar que los
    avisos son útiles antes de usar cualquier señal académica.
@@ -187,10 +243,18 @@ agregados y desde quince eventos; cuentan eventos, no personas.
 desmarcada al crear cuenta, incorpora el uso local de notas; las cuentas
 existentes reciben el mismo trato sin selector. Los términos y la política se
 actualizan en el mismo PR antes de activar la tarjeta contextual.
-5. **Medición y revisión.** Se revisan métricas agregadas, calidad de los
-   avisos y el límite de datos local. Antes de escalar, hacer revisión legal de
-   publicidad dirigida a estudiantes y del tratamiento de usuarios menores de
-   edad.
+5. **Alcance facturable.** Agregar la tabla privada deduplicada, saldo, expiración
+   a 30 días y borrado a 90 días. Va en un PR borrador con SQL manual y pruebas
+   de RLS antes de cobrar la primera campaña.
+6. **Medición y revisión.** Revisar métricas agregadas, calidad de los avisos y
+   frecuencia. No ampliar el público ni agregar nuevos lugares de publicidad sin
+   comprobar primero que el piloto ayuda y no interrumpe el uso diario.
+
+Los puntos pendientes de esta lista son implementación, no decisiones de
+producto. El flujo, los estados, la ubicación, la frecuencia, las tarifas, la
+duración, la unidad de cobro y quién puede aprobar quedaron fijados arriba. Si la
+prueba real obliga a cambiarlos, se modifica esta decisión explícitamente; no se
+dejan variantes ocultas en distintas funciones.
 
 ## Fuera de alcance por ahora
 

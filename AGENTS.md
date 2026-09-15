@@ -673,34 +673,30 @@ Y no es solo higiene: **es el control que sostiene el consenso de reportes.** Es
 umbral son tres `user_id` distintos, y mientras crear una cuenta no cueste nada,
 "tres personas" no significa tres personas.
 
-### Lo que espera una decisión, no un agente
+### Marketplace de clases: decisiones cerradas, todavía sin activar
 
-**Monetización.** Decidida a medias y a propósito. El modelo no se define hasta
-tener el dato de frecuencia de uso (DAU/MAU): sin eso ni la suscripción ni el
-auspicio se pueden evaluar, se eligen por corazonada.
+El diseño aprobado está en `docs/marketplace-clases.md`. Una misma identidad de
+Supabase puede tener un espacio de estudiante y una ficha separada de profesor;
+ser estudiante no habilita a ofrecer clases. Lucas aprueba primero al profesor y
+después cada anuncio. Suspender al profesor oculta todas sus campañas sin borrar
+el historial.
 
-Lo que sí se decidió y ya está publicado: la política dejó de prometer "nunca
-habrá publicidad" —una promesa que no se puede sostener— y dice derecho que la
-app va a tener que financiarse, probablemente con funciones pagadas o auspicios.
-Lo que no se promete por "nunca" sino que se ata a una condición: usar las notas
-de alguien para elegir qué anuncio ve exige su permiso explícito, aparte de la
-política, y negarse no degrada la app. Eso es exigible y no cierra ninguna
-puerta. No hay publicidad hoy ni está decidido que la haya.
+La recomendación usa universidad, sigla, promedio y avance, pero se decide dentro
+de GradeHub y el profesor recibe solo agregados. En el piloto se muestra como
+máximo una recomendación contextual al día, solo en Inicio. Los anuncios también
+se pueden explorar en un catálogo general.
 
-**Tres formas concretas que Lucas quiere evaluar**, y que siguen esperando el
-mismo dato de uso, no una implementación:
+La tarifa inicial es $1.000 por cuenta alcanzada; sube a $2.000 cuando la campaña
+exige promedio bajo 4,0 y al menos 40% evaluado. Se cotiza con elegibles, se cobra
+una sola vez por persona realmente alcanzada y nunca sobre el presupuesto prepago.
+La campaña dura 30 días. Estos precios son administrables por GradeHub, no por el
+profesor.
 
-- **Un botón de donación.** Es el único de los tres que no toca la política ni
-  pide nada del estudiante, así que es el más barato de probar.
-- **Una página de avisos de clases particulares, donde el anunciante paga por
-  estar.** Ojo: esto es publicidad, y la política ya fijó las condiciones —
-  igual para todos y sin usar las notas de nadie para elegir qué se muestra. Un
-  aviso de "clases de Cálculo II" elegido según quién va mal en Cálculo II es
-  exactamente lo que se prometió no hacer sin permiso explícito. Un tablón igual
-  para todos no lo es.
-- **Una franja de avisos en la versión de computador.** Mismo marco. Y conviene
-  mirar primero cuánta gente entra desde el computador: si la app se usa casi
-  toda en el teléfono, la franja rinde poco y gasta confianza igual.
+Nada de esto está activo todavía. Falta implementar el flujo de profesor, la
+tarjeta y la medición única. Esta última necesita una tabla privada con FK a
+`auth.users`, `ON DELETE CASCADE`, retención de 90 días y SQL aplicado a mano;
+por eso su PR será borrador. `anuncio_metricas` cuenta eventos y no se usa para
+facturar personas.
 
 **Cada evaluación de un grupo puede tener su propia fecha.** Hecho el
 2026-09-12. El modelo y la Agenda ya lo soportaban —`agendaEvents` lo dice y lo
