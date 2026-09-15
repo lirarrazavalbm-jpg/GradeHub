@@ -270,7 +270,7 @@ function renderRamo(){
   }
   const tp=r.categorias.reduce((a,c)=>a+c.peso,0);
   const categoriasVisibles=r.categorias.filter(c=>!(eximicion&&eximicion.activa&&eximicion.regla.ocultaEvaluacion===true&&eximicion.examenId===c.id));
-  const crTxt=r.creditos?` · ${r.creditos} créditos`:'';
+  const crTxt=(r.seccion?` · Sección ${r.seccion}`:'')+(r.creditos?` · ${r.creditos} créditos`:'');
   document.getElementById('ramo-hero-sub').textContent=categoriasVisibles.length===0
     ?('Agrega evaluaciones para comenzar'+crTxt)
     :`${categoriasVisibles.length} ${categoriasVisibles.length===1?'evaluación':'evaluaciones'} · ${r2(tp)}% ponderado${crTxt}`;
