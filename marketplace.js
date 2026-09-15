@@ -87,7 +87,8 @@ function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.
 
 // Cotización pura: recibe CONTEOS agregados, nunca cuentas ni notas. El equipo
 // define tramos de tarifas; se toma el más caro que cumple la segmentación.
-// Los ejemplos $1.000/$2.000 viven en la muestra, no son precios de producción.
+// El piloto parte con $1.000/$2.000, pero los recibe como dato para que GradeHub
+// pueda administrarlos sin duplicar la regla dentro de esta función.
 // Esto no factura: los eventos actuales no miden alcance único. Sin medición
 // real, null significa desconocido y nunca se transforma en cero usuarios.
 function cotizarCampanaClases(criterios,tarifas,{elegibles=null,alcanzados=null,presupuestoClp=null}={}){
