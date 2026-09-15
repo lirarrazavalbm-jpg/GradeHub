@@ -218,6 +218,7 @@ S = { ramos, userName, careerSemestre, carrera, tenant, onboardingDone, historia
 ramo = {
   id, nombre, color,
   creditos,          // SCT — si TODOS los ramos lo tienen, el promedio se pondera
+  seccion,           // entero 1–999 o null; opcional, se escribe en Editar ramo
   origen,            // {tenant, carrera} si vino del catálogo; null si es manual
   categorias: [{ id, nombre, peso, fecha, slots, directNota, notas: [] }],
   gates: []
@@ -792,8 +793,9 @@ existe entero —`submitNewPassword` en `app-session.js`— pero solo se alcanza
 por el correo de recuperación, en `screen-reset`. Falta la puerta en Ajustes,
 no la función.
 
-**3. Sección del ramo, opcional.** Pedida por Lucas el 2026-09-12 junto con una
-idea para llenarla: el horario de BuscaCursos trae `SIGLA-SECCIÓN` de todos los
+**3. Sección del ramo, opcional.** Pedida por Lucas el 2026-09-12. **El campo
+ya existe**: `seccion` se escribe en Editar ramo y la ficha la muestra. Lo que
+queda es la idea para llenarla sola: el horario de BuscaCursos trae `SIGLA-SECCIÓN` de todos los
 ramos, y el estudiante lo tiene a mano. Validar cada sigla contra
 `cursos-uc.js` hace el reconocimiento robusto: lo que no sea una sigla real se
 descarta solo. De las 6 siglas de un horario de prueba, 5 estaban en el

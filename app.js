@@ -185,6 +185,9 @@ function normalize(data) {
     // Créditos SCT — opcional. Si todos los ramos lo tienen, el promedio se pondera.
     // El 0 se conserva: es un dato exacto, no un faltante. Ver tieneCreditos().
     creditos: (typeof r.creditos === 'number' && r.creditos >= 0) ? r.creditos : null,
+    // Sección del curso — opcional, la escribe el estudiante. Sin ella todo
+    // funciona igual; un valor que no sea una sección válida se descarta.
+    seccion: seccionValida(r.seccion),
     // De qué catálogo (universidad + carrera) salió este ramo. null = creado a mano.
     origen: (r.origen && r.origen.tenant) ? {tenant:r.origen.tenant, carrera:r.origen.carrera||null, ramoKey:claveCanonica(typeof r.origen.ramoKey==='string'&&r.origen.ramoKey.trim()?r.origen.ramoKey.trim():ramoKey(r.nombre,r.origen.tenant,r.origen.carrera),r.origen.tenant,r.origen.carrera)} : null,
     // Otro ramo aporta parte de esta nota (el laboratorio de Dinámica).
@@ -3575,6 +3578,19 @@ function readPesoControl(fallback){
 }
 
 // Créditos: entero 1–60, o null si viene vacío/inválido
+// Una sección es el número del curso dentro de la sigla ("MAT1610-3"). Se
+// guarda como entero para poder compararla después con BuscaCursos.
+const SECCION_MAX=999;
+function seccionValida(n){
+  return (Number.isInteger(n)&&n>=1&&n<=SECCION_MAX)?n:null;
+}
+// Vacío = sin sección (null). Algo escrito que no es una sección = undefined,
+// para avisar en vez de borrar en silencio lo que la persona escribió.
+function parseSeccion(raw){
+  const txt=String(raw==null?'':raw).trim();
+  if(!txt)return null;
+  return /^\d{1,3}$/.test(txt)?(seccionValida(Number(txt))??undefined):undefined;
+}
 function parseCreditos(raw){
   const n=parseInt(String(raw==null?'':raw).trim(),10);
   return (!isNaN(n)&&n>0&&n<=60)?n:null;
@@ -5879,6 +5895,9 @@ function openEditRamoModal(){
     <p id="m-ramo-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     <label class="modal-label">Créditos <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(SCT — opcional)</span></label>
     <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-creditos" value="${r.creditos!=null?r.creditos:''}" placeholder="Ej: 10" maxlength="3" autocomplete="off"/></div>
+    <label class="modal-label" for="m-ramo-seccion">Sección <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional)</span></label>
+    <div class="modal-input"><input type="text" inputmode="numeric" id="m-ramo-seccion" value="${r.seccion!=null?r.seccion:''}" placeholder="Ej: 3" maxlength="3" autocomplete="off" aria-describedby="m-ramo-seccion-error"/></div>
+    <p id="m-ramo-seccion-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     <label class="modal-label">Color</label>
     <div class="color-row" id="m-colors"></div>
     <div class="modal-btns">
@@ -5889,14 +5908,21 @@ function openEditRamoModal(){
   setTimeout(()=>{const i=document.getElementById('m-ramo-name');i.focus();i.select();},100);
   document.getElementById('m-ramo-name').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditRamo();});
   document.getElementById('m-ramo-name').addEventListener('input',()=>{if(editRamoError){editRamoError='';limpiarErrorCampo('m-ramo-name','m-ramo-error');}});
+  document.getElementById('m-ramo-seccion').addEventListener('keydown',e=>{if(e.key==='Enter')confirmEditRamo();});
+  document.getElementById('m-ramo-seccion').addEventListener('input',()=>limpiarErrorCampo('m-ramo-seccion','m-ramo-seccion-error'));
 }
 function confirmEditRamo(){
   const input=document.getElementById('m-ramo-name');
   const name=(input&&input.value||'').trim();
   if(!name){editRamoError='Escribe el nombre del ramo para guardarlo.';mostrarErrorCampo('m-ramo-name','m-ramo-error',editRamoError);return false;}
+  // Se valida antes de tocar el ramo: con la sección mal escrita no se guarda
+  // nada, ni siquiera el nombre, y el modal sigue abierto con lo escrito.
+  const seccion=parseSeccion((document.getElementById('m-ramo-seccion')||{}).value);
+  if(seccion===undefined){mostrarErrorCampo('m-ramo-seccion','m-ramo-seccion-error','La sección es un número, como 3. Déjala vacía si no la sabes.');return false;}
   const r=S.ramos.find(x=>x.id===currentRamoId);
   r.nombre=name;r.color=modalColor;
   r.creditos=parseCreditos((document.getElementById('m-ramo-creditos')||{}).value);
+  r.seccion=seccion;
   save();track('edit_ramo');closeModal();renderRamo();
 }
 
