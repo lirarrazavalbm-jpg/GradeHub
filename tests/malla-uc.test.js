@@ -102,8 +102,20 @@ chk('las dos Dinámicas oficiales aparecen diferenciadas en el catálogo',
   !!dinamicaIce&&dinamicaIce.sigla==='ICE1514');
 chk('la sigla ICE1514 encuentra la alternativa de Ingeniería',
   buscarCatalogo('ICE1514','uc','ING-PC',2).some(r=>r.nombre==='Dinámica (ICE1514)'&&r.sigla==='ICE1514'));
-chk('ICE1514 conserva sus 10 créditos y no hereda pauta de Física',
-  creditosDe('Dinámica (ICE1514)','uc',null)===10&&dinamicaIce.tienePreset===false);
+// Desde el 2026-09-15 tiene su programa propio. Lo que se sigue exigiendo es
+// que la pauta sea LA SUYA y no la de Física, que se llama igual.
+const ice=presetRamo('Dinámica (ICE1514)','uc','ING-PC',Date.parse('2026-09-15'));
+const catIce=n=>ice&&ice.categorias.find(c=>c.nombre===n);
+chk('ICE1514 conserva sus 10 créditos y carga su propio programa, no el de Física',
+  creditosDe('Dinámica (ICE1514)','uc',null)===10&&dinamicaIce.tienePreset===true&&
+  !!catIce('Control 1')&&!!catIce('Talleres')&&catIce('Examen').peso===20&&!catIce('Controles'));
+chk('ICE1514 suma 100 y aporta el laboratorio con mínimo 4,0',
+  ice.categorias.reduce((s,c)=>s+c.peso,0)===100&&
+  ice.aporta&&ice.aporta.ramo==='Laboratorio de Dinámica'&&ice.aporta.peso===30&&ice.aporta.min===4);
+chk('ICE1514 lleva las seis fechas del programa y elimina el peor taller',
+  ['Control 1','Control 2','Control 3','Interrogación 1','Interrogación 2','Examen'].map(n=>catIce(n).fecha).join('|')===
+    '2026-09-04|2026-10-16|2026-10-30|2026-09-29|2026-11-13|2026-12-01'&&
+  catIce('Talleres').directNota===false&&!catIce('Talleres').slots);
 const calculoOrigen={nombre:'Cálculo II',origen:{tenant:'uc',carrera:'ING-PC'}};
 const calc2=presetRamo('Cálculo II','uc','ING-PC');
 chk('Cálculo II carga su pauta del programa clase a clase',calc2&&calc2.categorias.length===5);
