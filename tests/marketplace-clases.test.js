@@ -3,7 +3,7 @@
 // frontera antes de que exista la interfaz.
 const fs=require('fs'),path=require('path'),vm=require('vm');
 const raiz=path.join(__dirname,'..');
-const sql=fs.readFileSync(path.join(raiz,'supabase/clases_particulares.sql'),'utf8');
+const sql=fs.readFileSync(process.env.GRADEHUB_MARKETPLACE_SQL||path.join(raiz,'supabase/clases_particulares.sql'),'utf8');
 const src=['data.js','engine.js','app.js','app-session.js','marketplace.js']
   .map(f=>fs.readFileSync(f==='marketplace.js'&&process.env.GRADEHUB_MARKETPLACE?process.env.GRADEHUB_MARKETPLACE:path.join(raiz,f),'utf8')).join('\n');
 
@@ -156,14 +156,26 @@ vm.runInContext(`
   }
 
   console.log('\n=== RLS, borrado y métricas agregadas ===');
-  ['tutor_anuncios','anuncio_metricas','anuncio_inscritos'].forEach(tabla=>{
+  ['tutor_perfiles','tutor_anuncios','anuncio_metricas','anuncio_inscritos'].forEach(tabla=>{
     chk(`${tabla} tiene RLS activa`,new RegExp(`alter table public\\.${tabla} enable row level security`,'i').test(sql));
   });
-  chk('las tres tablas borran al autor junto con su cuenta',
-    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===2);
+  chk('las tablas con identidad borran sus filas junto con la cuenta',
+    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===3);
+  chk('una postulación nueva siempre parte pendiente',
+    /create table if not exists public\.tutor_perfiles[\s\S]*?estado\s+text not null default 'pendiente'/.test(sql)&&
+    /tutor_perfiles_insert_pendiente_propio[\s\S]*?estado = 'pendiente'[\s\S]*?revisado_at is null/.test(sql));
+  chk('el profesor no puede aprobar ni suspender su propia ficha',
+    /grant insert \(user_id, nombre_publico, presentacion\)[\s\S]*?to authenticated/i.test(sql)&&
+    /grant update \(nombre_publico, presentacion\)[\s\S]*?to authenticated/i.test(sql)&&
+    !/grant (?:insert|update) \([^)]*estado[^)]*\)[\s\S]*?public\.tutor_perfiles to authenticated/i.test(sql));
+  chk('solo una ficha aprobada puede crear anuncios',
+    /tutor_anuncios_insert_borrador_propio[\s\S]*?estado = 'borrador'[\s\S]*?tutor_aprobado\(\(select auth\.uid\(\)\)\)/.test(sql));
+  chk('suspender al profesor oculta también sus anuncios publicados',
+    /tutor_anuncios_select_publicados_o_propios[\s\S]*?estado = 'publicado'[\s\S]*?tutor_aprobado\(autor_id\)/.test(sql)&&
+    /where user_id = p_user_id and estado = 'aprobado'/.test(sql));
   chk('un tutor no puede publicarse ni marcarse pago desde el cliente',
     /grant insert \(autor_id,[\s\S]{0,300}?\)\s*on public\.tutor_anuncios to authenticated/i.test(sql)&&
-    /with check \(\(select auth\.uid\(\)\) = autor_id and estado = 'borrador'\)/i.test(sql)&&
+    /tutor_anuncios_insert_borrador_propio[\s\S]*?with check \([\s\S]*?estado = 'borrador'[\s\S]*?\);/i.test(sql)&&
     /grant update \(ramos_siglas,[\s\S]{0,260}?estado\)\s*on public\.tutor_anuncios to authenticated/i.test(sql)&&
     /estado in \('borrador', 'en_revision', 'pausado'\)/.test(sql));
   chk('las métricas no se leen ni escriben directo desde el cliente',

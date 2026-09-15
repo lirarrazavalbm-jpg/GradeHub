@@ -23,6 +23,32 @@ riesgo. Un tutor tampoco ve quién recibió su aviso.
 No se usa la palabra "reprobando" en la tarjeta. La intención es ofrecer una
 salida, no diagnosticar ni presionar: “Puede servirte apoyo para Cálculo II”.
 
+## Una identidad, dos espacios separados
+
+La cuenta de Supabase sigue siendo una sola. Una persona puede usar GradeHub
+como estudiante y, si quiere ofrecer clases, crear además una ficha de profesor.
+Eso evita obligarla a mantener dos correos y dos contraseñas, pero la interfaz
+de estudiante y el espacio de profesor no comparten formularios ni estados.
+
+Ser estudiante **no habilita automáticamente** a publicar:
+
+1. La persona completa su ficha de profesor. Nace `pendiente`.
+2. Lucas revisa la postulación y la deja `aprobada`, `rechazada` o `suspendida`.
+3. Solo una ficha aprobada puede crear y enviar anuncios.
+4. Cada anuncio se revisa por separado. El profesor puede mandarlo a revisión,
+   pero no puede marcarlo como revisado, pagado ni publicado.
+
+Son dos aprobaciones distintas a propósito. Aprobar a una persona no convierte
+en válido cualquier texto que publique después. Si edita el contenido de un
+anuncio publicado, primero tiene que sacarlo de publicación y volver a enviarlo
+a revisión. Si se suspende al profesor, todos sus anuncios dejan de ser públicos
+de inmediato; no se borran, para conservar el historial y permitir una revisión.
+
+En el primer lanzamiento la aprobación se hace manualmente en Supabase con un
+rol privilegiado. El cliente no recibe permisos para cambiar `estado` ni las
+marcas de revisión. Un panel interno para Lucas puede reemplazar ese paso más
+adelante sin cambiar el modelo ni abrir la aprobación a los estudiantes.
+
 ## Decisión al crear la cuenta
 
 En el registro se amplía la casilla obligatoria que ya acepta los términos; no
@@ -151,8 +177,9 @@ agregados y desde quince eventos; cuentan eventos, no personas.
    antes de que cualquier interfaz lo llame. Un deploy de Cloudflare no ejecuta
    SQL.
 2. **Flujo de tutor.** Crear borrador, enviar a revisión y publicar solo después
-   de revisión y pago manuales. No hay pasarela de pago ni publicación
-   automática en el primer lanzamiento.
+   de que la ficha del profesor haya sido aprobada, y después de revisión y pago
+   manuales del anuncio. No hay pasarela de pago ni publicación automática en
+   el primer lanzamiento.
 3. **Catálogo general para estudiantes.** Explorar avisos por ramo o sigla, sin
    mirar notas y sin recomendaciones personalizadas. Sirve para probar que los
    avisos son útiles antes de usar cualquier señal académica.

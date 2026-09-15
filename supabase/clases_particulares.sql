@@ -13,6 +13,73 @@
 -- personas distintas exigiría conservar esa identidad, que es justamente lo
 -- que este modelo evita.
 
+-- Ser estudiante no convierte la cuenta en cuenta de profesor. La persona
+-- postula con esta ficha y el equipo la aprueba por separado. El navegador no
+-- tiene permisos para escribir `estado` ni las marcas de revisión.
+create table if not exists public.tutor_perfiles (
+  user_id          uuid primary key references auth.users(id) on delete cascade,
+  nombre_publico   text not null check (char_length(btrim(nombre_publico)) between 2 and 100),
+  presentacion     text not null check (char_length(btrim(presentacion)) between 20 and 1500),
+  estado           text not null default 'pendiente'
+                   check (estado in ('pendiente', 'aprobado', 'rechazado', 'suspendido')),
+  solicitado_at    timestamptz not null default now(),
+  revisado_at      timestamptz,
+  created_at       timestamptz not null default now(),
+  constraint tutor_perfiles_revision_coherente check (
+    (estado = 'pendiente' and revisado_at is null)
+    or (estado <> 'pendiente' and revisado_at is not null)
+  )
+);
+
+alter table public.tutor_perfiles enable row level security;
+revoke all on public.tutor_perfiles from public, anon, authenticated;
+grant select (user_id, nombre_publico, presentacion, estado, solicitado_at, revisado_at, created_at)
+  on public.tutor_perfiles to authenticated;
+grant insert (user_id, nombre_publico, presentacion)
+  on public.tutor_perfiles to authenticated;
+grant update (nombre_publico, presentacion)
+  on public.tutor_perfiles to authenticated;
+
+drop policy if exists tutor_perfiles_select_propio on public.tutor_perfiles;
+create policy tutor_perfiles_select_propio
+on public.tutor_perfiles
+for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists tutor_perfiles_insert_pendiente_propio on public.tutor_perfiles;
+create policy tutor_perfiles_insert_pendiente_propio
+on public.tutor_perfiles
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id and estado = 'pendiente' and revisado_at is null);
+
+drop policy if exists tutor_perfiles_update_contenido_propio on public.tutor_perfiles;
+create policy tutor_perfiles_update_contenido_propio
+on public.tutor_perfiles
+for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+-- La función no entrega la ficha ni la identidad: solo permite que las
+-- políticas comprueben la aprobación aun cuando quien mira es anónimo.
+create or replace function public.tutor_aprobado(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.tutor_perfiles
+    where user_id = p_user_id and estado = 'aprobado'
+  );
+$$;
+
+revoke all on function public.tutor_aprobado(uuid) from public;
+grant execute on function public.tutor_aprobado(uuid) to anon, authenticated;
+
 create table if not exists public.tutor_anuncios (
   id              uuid primary key default gen_random_uuid(),
   autor_id        uuid not null references auth.users(id) on delete cascade,
@@ -86,18 +153,24 @@ on public.tutor_anuncios
 for select
 to anon, authenticated
 using (
-  (estado = 'publicado' and (vence_at is null or vence_at > now()))
+  (estado = 'publicado' and (vence_at is null or vence_at > now())
+    and public.tutor_aprobado(autor_id))
   or (select auth.uid()) = autor_id
 );
 
--- Un tutor solo crea borradores propios: no puede autoaprobarse ni marcarse
--- como pagado desde el navegador. Esas columnas ni siquiera tienen grant.
+-- Solo una cuenta cuya postulación de profesor ya fue aprobada puede crear
+-- borradores. Aun así no puede aprobar el aviso ni marcarlo como pagado desde
+-- el navegador: esas columnas ni siquiera tienen grant.
 drop policy if exists tutor_anuncios_insert_borrador_propio on public.tutor_anuncios;
 create policy tutor_anuncios_insert_borrador_propio
 on public.tutor_anuncios
 for insert
 to authenticated
-with check ((select auth.uid()) = autor_id and estado = 'borrador');
+with check (
+  (select auth.uid()) = autor_id
+  and estado = 'borrador'
+  and public.tutor_aprobado((select auth.uid()))
+);
 
 -- Puede editar su borrador o pausarlo/mandarlo a revisión, pero nunca publicar
 -- ni expirar por sí mismo. El equipo marca revisión, pago y publicación a mano.
@@ -109,6 +182,7 @@ to authenticated
 using ((select auth.uid()) = autor_id)
 with check (
   (select auth.uid()) = autor_id
+  and public.tutor_aprobado((select auth.uid()))
   and estado in ('borrador', 'en_revision', 'pausado')
 );
 
@@ -162,6 +236,7 @@ begin
   where id = p_anuncio_id
     and estado = 'publicado'
     and (vence_at is null or vence_at > now())
+    and public.tutor_aprobado(autor_id)
   for key share;
 
   if not found then
