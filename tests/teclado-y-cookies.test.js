@@ -23,6 +23,8 @@ sinTeclado.forEach(t => console.log('       ' + t.slice(0, 110)));
 chk('un handler global convierte Enter/Espacio en click sobre role="button"',
   /e\.key!=='Enter'&&e\.key!==' '/.test(app) && /closest\('\[role="button"\]'\)/.test(app));
 chk('ningún onkeydown suelto duplica al handler global', !/onkeydown="/.test(render));
+chk('Enter/Tab en una casilla de nota guarda y salta a la siguiente',
+  /matches\('#screen-ramo input\.eval-row-input'\)/.test(app) && /e\.key!=='Enter'&&!\(e\.key==='Tab'/.test(app));
 
 const iConsent = html.search(/gtag\('consent',\s*'default',\s*\{[^}]*analytics_storage:\s*'denied'/), iConfig = html.search(/gtag\('config',\s*'G-[A-Z0-9]+'/);
 chk('GA sin cookies: analytics_storage denegado antes del config', iConsent > -1 && iConfig > iConsent);

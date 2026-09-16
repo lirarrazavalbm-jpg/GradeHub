@@ -1000,9 +1000,6 @@ function fraseInicio(fecha=new Date()){
 // aceptando 6 aunque el cliente no lo ofrezca.
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
-const {data:loaded} = loadData();
-if(loaded){S={...S,...loaded};}
-selectedTenant=S.tenant||'fen';applyTheme();
 // Estado del onboarding por pasos. Va acá y no junto a sus funciones porque
 // boot() lo usa al arrancar: con `let` más abajo caía en la zona muerta temporal
 // y la app crasheaba si Supabase no cargaba.
@@ -1023,7 +1020,6 @@ const OB_ETAPAS=['nombre','universidad','carrera','semestre','ramos'];
 let obMaxPasoVisto=0;
 let obRamos=[],obRamosKey='',obManualOpen=false,obManualError='';
 
-initSemGrid();renderTenantPick();initCarreraGrid();
 document.getElementById('ob-name').addEventListener('input',checkOb);
 
 
@@ -1452,7 +1448,7 @@ function mostrarRamosCargados(cantidad,oficiales){
   }else if(oficiales>0){
     titulo='Pautas oficiales listas';
     principal=oficialesTxt;
-    detalle=`En esos ramos, los porcentajes ya están configurados. En los otros ${pendientes}, agrega evaluaciones y sus porcentajes antes de ingresar notas.`;
+    detalle=`En esos ramos, los porcentajes ya están configurados. En ${pendientes===1?'el otro':`los otros ${pendientes}`}, agrega evaluaciones y sus porcentajes antes de ingresar notas.`;
   }else{
     titulo='Tus ramos están agregados';
     principal=ramosTxt;
@@ -5756,6 +5752,22 @@ document.addEventListener('keydown',e=>{
   el.click();
 });
 
+// Enter o Tab en una casilla de nota guarda y salta a la siguiente (Shift+Tab,
+// a la anterior). Guardar repinta la ficha entera (renderRamo) y el foco caía
+// al body: quien llenaba varias notas seguidas tenía que volver a tocar cada
+// casilla. Tab solo se intercepta si la nota cambió; si no, no hay repintado y
+// el orden nativo sirve.
+document.addEventListener('keydown',e=>{
+  const el=e.target;
+  if(!el.matches||!el.matches('#screen-ramo input.eval-row-input'))return;
+  if(e.key!=='Enter'&&!(e.key==='Tab'&&el.value!==el.defaultValue))return;
+  e.preventDefault();
+  const casillas=()=>[...document.querySelectorAll('#screen-ramo .eval-row-input')];
+  const i=casillas().indexOf(el);
+  el.blur(); // dispara onchange → setSlotNota/setDirectNota → renderRamo
+  const sig=casillas()[i+(e.shiftKey?-1:1)];
+  if(sig){sig.focus();sig.select();}
+});
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if(document.getElementById('confirm-overlay').classList.contains('open'))closeConfirm();
@@ -7225,3 +7237,17 @@ if('serviceWorker' in navigator){
       .catch(err => console.warn('SW no registrado:', err));
   });
 }
+
+// ─── CARGA DE LA COPIA LOCAL ─────────────────────────────────────────────────
+// Va al FINAL del archivo a propósito. Antes corría en la línea ~1000, y
+// normalize() alcanza funciones que usan constantes declaradas más abajo
+// (`_nombresMalla`, `CREDITOS_POR_TENANT`…): en ese punto están en TDZ, la
+// excepción la atrapaba loadData() sin decir nada y la copia local se
+// descartaba como si no existiera. Online no se notaba porque la nube vuelve a
+// normalizar; sin red, a una persona con datos en caché le aparecía el
+// onboarding. Acá abajo ya está declarado todo. tests/carga-local.test.js
+// arranca el archivo con un ramo del catálogo guardado y exige que cargue.
+const {data:loaded} = loadData();
+if(loaded){S={...S,...loaded};}
+selectedTenant=S.tenant||'fen';applyTheme();
+initSemGrid();renderTenantPick();initCarreraGrid();
