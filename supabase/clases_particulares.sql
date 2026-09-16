@@ -339,3 +339,117 @@ on public.anuncio_inscritos
 for delete
 to authenticated
 using ((select auth.uid()) = autor_id);
+
+-- ─── ALCANCE ÚNICO: LO QUE SE PUEDE COBRAR ──────────────────────────────────
+--
+-- Se factura por CUENTAS DISTINTAS que vieron un aviso, no por veces que se
+-- mostró: quien abre la app cinco veces se cobra una sola. `anuncio_metricas`
+-- no sirve para esto —cuenta eventos— y por eso existe esta tabla aparte.
+--
+-- QUÉ GUARDA Y QUÉ NO. Guarda cuenta, campaña y día. No guarda el criterio con
+-- que se eligió el aviso, ni el ramo, ni la nota, ni el promedio: la fila dice
+-- "esta cuenta vio este aviso" y nada más. Sin el criterio guardado, la fila no
+-- se puede leer al revés para deducir cómo le va a nadie.
+--
+-- QUIÉN LA LEE: nadie. Cero políticas y cero grants, ni siquiera de select. El
+-- tutor recibe un total por `alcance_anuncio()`, y ese total es lo único que
+-- sale de acá. Se borra con la cuenta y con el aviso.
+create table if not exists public.anuncio_alcance (
+  anuncio_id      uuid not null references public.tutor_anuncios(id) on delete cascade,
+  user_id         uuid not null references auth.users(id) on delete cascade,
+  dia             date not null default current_date,
+  -- La llave es (aviso, cuenta): una cuenta cuenta UNA vez por campaña, aunque
+  -- vea el aviso todos los días. Cobrar por día sería cobrar por frecuencia.
+  primary key (anuncio_id, user_id)
+);
+
+alter table public.anuncio_alcance enable row level security;
+revoke all on public.anuncio_alcance from public, anon, authenticated;
+
+-- Devuelve true solo la PRIMERA vez que esta cuenta ve el aviso. El cliente no
+-- decide si cuenta o no: el servidor lo resuelve con la llave primaria.
+create or replace function public.registrar_alcance_anuncio(p_anuncio_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  filas integer := 0;
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+
+  if not exists (
+    select 1 from public.tutor_anuncios
+    where id = p_anuncio_id
+      and estado = 'publicado'
+      and (vence_at is null or vence_at > now())
+  ) then
+    raise exception 'anuncio no disponible';
+  end if;
+
+  insert into public.anuncio_alcance (anuncio_id, user_id)
+  values (p_anuncio_id, auth.uid())
+  on conflict (anuncio_id, user_id) do nothing;
+
+  get diagnostics filas = row_count;
+  return filas = 1;
+end;
+$$;
+
+-- El total de su propia campaña, y nada más: un número, sin fechas por persona
+-- ni forma de recorrer quiénes son. Es el número que se factura.
+create or replace function public.alcance_anuncio(p_anuncio_id uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+  if not exists (
+    select 1 from public.tutor_anuncios
+    where id = p_anuncio_id and autor_id = auth.uid()
+  ) then
+    raise exception 'no puedes ver el alcance de este anuncio';
+  end if;
+
+  return (select count(*)::integer from public.anuncio_alcance where anuncio_id = p_anuncio_id);
+end;
+$$;
+
+-- El registro existe para poder cobrar, así que se borra cuando ya no hay nada
+-- que cobrar: 90 días después de que la campaña venció, como dice
+-- docs/marketplace-clases.md. La ejecuta el equipo (o pg_cron) y devuelve
+-- cuántas filas soltó. No la puede llamar un cliente.
+create or replace function public.limpiar_alcance_anuncios(p_dias integer default 90)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  filas integer := 0;
+begin
+  if p_dias is null or p_dias < 30 then
+    raise exception 'el plazo mínimo de conservación es 30 días';
+  end if;
+  delete from public.anuncio_alcance as a
+   using public.tutor_anuncios as t
+   where t.id = a.anuncio_id
+     and t.vence_at is not null
+     and t.vence_at < now() - make_interval(days => p_dias);
+  get diagnostics filas = row_count;
+  return filas;
+end;
+$$;
+
+revoke all on function public.registrar_alcance_anuncio(uuid) from public, anon;
+revoke all on function public.alcance_anuncio(uuid) from public, anon;
+revoke all on function public.limpiar_alcance_anuncios(integer) from public, anon, authenticated;
+grant execute on function public.registrar_alcance_anuncio(uuid) to authenticated;
+grant execute on function public.alcance_anuncio(uuid) to authenticated;
