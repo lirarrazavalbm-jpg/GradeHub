@@ -218,11 +218,11 @@ vm.runInContext(`
   }
 
   console.log('\n=== RLS, borrado y métricas agregadas ===');
-  ['tutor_perfiles','tutor_anuncios','anuncio_metricas','anuncio_inscritos'].forEach(tabla=>{
+  ['tutor_perfiles','tutor_anuncios','anuncio_metricas','anuncio_inscritos','anuncio_alcance'].forEach(tabla=>{
     chk(`${tabla} tiene RLS activa`,new RegExp(`alter table public\\.${tabla} enable row level security`,'i').test(sql));
   });
   chk('las tablas con identidad borran sus filas junto con la cuenta',
-    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===3);
+    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===4);
   chk('una postulación nueva siempre parte pendiente',
     /create table if not exists public\.tutor_perfiles[\s\S]*?estado\s+text not null default 'pendiente'/.test(sql)&&
     /tutor_perfiles_insert_pendiente_propio[\s\S]*?estado = 'pendiente'[\s\S]*?revisado_at is null/.test(sql));
@@ -270,6 +270,33 @@ vm.runInContext(`
   chk('el corte se aplica dentro de la RPC de lectura, no en la vista',
     /create or replace function public\.resumen_metricas_anuncio[\s\S]*?m\.eventos >= 15/.test(sql)&&
     !/\.filter\([^\n]*5/.test(fs.readFileSync(path.join(raiz,'marketplace.js'),'utf8')));
+
+  console.log('\n=== Alcance único: lo que sí se puede cobrar ===');
+  const alcanceSql=sql.slice(sql.indexOf('create table if not exists public.anuncio_alcance'));
+  const tablaAlcance=(sql.match(/create table if not exists public\.anuncio_alcance \(([\s\S]*?)\n\);/)||[])[1]||'';
+  chk('se cobra por cuenta distinta y no por visita: la llave es (aviso, cuenta)',
+    /primary key \(anuncio_id, user_id\)/.test(tablaAlcance)&&
+    /on conflict \(anuncio_id, user_id\) do nothing/.test(alcanceSql));
+  chk('la fila no guarda el criterio del aviso, ni ramo, ni nota, ni promedio',
+    !!tablaAlcance&&!/criterio|promedio|nota|sigla|avance/i.test(tablaAlcance.replace(/--[^\n]*/g,'')));
+  chk('nadie lee la tabla: ni select para authenticated',
+    /revoke all on public\.anuncio_alcance from public, anon, authenticated;/.test(sql)&&
+    !/grant [a-z ]*on public\.anuncio_alcance/i.test(sql));
+  chk('el total sale solo por RPC y solo para el autor del aviso',
+    /create or replace function public\.alcance_anuncio[\s\S]*?autor_id = auth\.uid\(\)[\s\S]*?raise exception 'no puedes ver el alcance/.test(sql)&&
+    /grant execute on function public\.alcance_anuncio\(uuid\) to authenticated/.test(sql));
+  chk('un aviso que no está publicado o ya venció no suma alcance',
+    /registrar_alcance_anuncio[\s\S]*?estado = 'publicado'[\s\S]*?vence_at is null or vence_at > now\(\)[\s\S]*?anuncio no disponible/.test(sql));
+  chk('la limpieza no la puede llamar un cliente y exige un plazo mínimo',
+    /revoke all on function public\.limpiar_alcance_anuncios\(integer\) from public, anon, authenticated;/.test(sql)&&
+    !/grant execute on function public\.limpiar_alcance_anuncios/.test(sql)&&
+    /p_dias < 30[\s\S]*?raise exception/.test(sql));
+  chk('el cliente manda solo el id del aviso: la cuenta la pone el servidor',
+    /rpc\('registrar_alcance_anuncio',\{p_anuncio_id:anuncioId\}\)/.test(src)&&
+    /rpc\('alcance_anuncio',\{p_anuncio_id:anuncioId\}\)/.test(src));
+  chk('si la llamada falla se puede reintentar, y un alcance desconocido no es cero',
+    /ALCANCE_REGISTRADO\.delete\(anuncioId\)/.test(src)&&
+    /async function alcanceAnuncio\([\s\S]*?return null;[\s\S]*?Number\.isInteger\(data\)\?data:null/.test(src));
 
   console.log(fail?`\nFAIL: ${fail}`:`\nMarketplace OK: ${ok}`);
   process.exit(fail?1:0);
