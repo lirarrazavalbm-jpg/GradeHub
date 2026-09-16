@@ -155,3 +155,36 @@ async function resumenMetricasAnuncio(anuncioId){
   if(error){console.warn('No se pudieron cargar las métricas del anuncio:',error.message||error);return [];}
   return Array.isArray(data)?data:[];
 }
+
+// ─── ALCANCE ÚNICO ──────────────────────────────────────────────────────────
+//
+// Lo que se cobra es cuántas CUENTAS DISTINTAS vieron un aviso. La llamada solo
+// manda el id del aviso: la cuenta la pone el servidor con auth.uid() y la
+// campaña ya la conoce. No viajan notas, ramos ni el criterio con que se eligió
+// el aviso, así que la fila no dice nada de cómo le va a quien lo vio.
+//
+// El Set evita repetir la llamada dentro de la misma visita. No es la
+// deduplicación: esa la hace la llave primaria en el servidor, que es la que
+// cuenta para facturar. Acá solo se ahorra red.
+const ALCANCE_REGISTRADO=new Set();
+async function registrarAlcanceAnuncio(anuncioId){
+  if(!supabaseClient||!currentUser||!anuncioId||ALCANCE_REGISTRADO.has(anuncioId))return false;
+  ALCANCE_REGISTRADO.add(anuncioId);
+  const {data,error}=await supabaseClient.rpc('registrar_alcance_anuncio',{p_anuncio_id:anuncioId});
+  if(error){
+    // Si falló, no quedó registrado: se puede reintentar en la próxima vista.
+    ALCANCE_REGISTRADO.delete(anuncioId);
+    console.warn('No se pudo registrar el alcance del anuncio:',error.message||error);
+    return false;
+  }
+  return data===true;
+}
+
+// El total de la propia campaña. Devuelve null si no se pudo consultar, para no
+// confundir "no sé" con "nadie lo vio" en una pantalla que habla de plata.
+async function alcanceAnuncio(anuncioId){
+  if(!supabaseClient||!currentUser||!anuncioId)return null;
+  const {data,error}=await supabaseClient.rpc('alcance_anuncio',{p_anuncio_id:anuncioId});
+  if(error){console.warn('No se pudo cargar el alcance del anuncio:',error.message||error);return null;}
+  return Number.isInteger(data)?data:null;
+}
