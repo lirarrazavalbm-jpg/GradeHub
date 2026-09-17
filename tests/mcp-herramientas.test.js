@@ -21,7 +21,7 @@ function servidor(estado) {
   const llamadas = [];
   const ctx = {
     console, Response, structuredClone,
-    HERRAMIENTAS: [], NOMBRES: ['estado_semestre', 'simular', 'listar_ramos', 'ver_ramo', 'evaluaciones_proximas', 'que_necesito_para_aprobar', 'proponer_pauta', 'agregar_ramo'],
+    HERRAMIENTAS: [], NOMBRES: ['estado_semestre', 'simular', 'resumen_para_hoy', 'listar_ramos', 'ver_ramo', 'evaluaciones_proximas', 'que_necesito_para_aprobar', 'proponer_pauta', 'agregar_ramo'],
     validarPropuestaPauta: () => null,
     fetch: async (url, options) => { llamadas.push({ url, options }); return { ok: true, json: async () => structuredClone(estado) }; },
     module: { exports: {} }, exports: {},
@@ -163,6 +163,34 @@ const ramo = (nombre, notas, extra = {}) => ({
     // prueba de 30%.
     chk('y el supuesto hace comparables los números: 2,4 el examen, 1,8 cada prueba',
       Math.abs(impDos[0].mueveLaFinal - 2.4) < 0.001 && Math.abs(impDos[1].mueveLaFinal - 1.8) < 0.001);
+  }
+
+  console.log('\n=== resumen_para_hoy: el repaso que el agente corre solo ===');
+  {
+    const ayer = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+    const conPasada = ramo('Cálculo II', [3.0, 3.5]);
+    conPasada.categorias[2].fecha = ayer;            // el examen ya pasó y sigue sin nota
+    const estadoRes = { ramos: [ramo('Dinámica', [5.5, 6.0]), conPasada] };
+    ({ cuerpo } = await tool(estadoRes, 'resumen_para_hoy'));
+    const r = salida(cuerpo);
+    chk('avisa la evaluación que ya pasó y sigue sin nota',
+      r.porRegistrar.length === 1 && r.porRegistrar[0].ramo === 'Cálculo II' && r.porRegistrar[0].fecha === ayer);
+    chk('nombra los ramos en riesgo con lo que necesitan',
+      r.enRiesgo.length === 1 && r.enRiesgo[0].ramo === 'Cálculo II' && typeof r.enRiesgo[0].necesitaParaAprobar === 'number');
+    chk('dice dónde rinde estudiar, mirando el semestre entero',
+      r.dondeRinde.length > 0 && r.dondeRinde.every(d => d.ramo && typeof d.mueveLaFinal === 'number'));
+    // Las dos deciden aprobar y mueven lo mismo (2,4). Primero va la que está
+    // peor parada: con un 1,0 Cálculo II queda en 2,35 y Dinámica en 3,85.
+    chk('entre dos que deciden aprobar, va primero la que está peor parada',
+      r.dondeRinde[0].ramo === 'Cálculo II' && r.dondeRinde[0].notaFinalSiSacas1 < r.dondeRinde[1].notaFinalSiSacas1);
+    chk('trae el promedio general y la ventana usada',
+      r.promedioGeneral && r.ventanaDias === 7 && typeof r.fecha === 'string');
+    chk('y avisa cuando sí hay algo que contar', r.hayAlgoQueContar === true);
+    // Sin fechas, sin riesgo y sin nada atrasado, el agente no tiene por qué
+    // escribir un mensaje: inventar uno es lo que hace que lo desconecten.
+    const tranquilo = { ramos: [{ ...ramo('Todo bien', [6.5, 6.5]), categorias: ramo('Todo bien', [6.5, 6.5]).categorias.map(c => ({ ...c, fecha: undefined })) }] };
+    chk('con el semestre tranquilo dice que no hay nada que contar',
+      salida((await tool(tranquilo, 'resumen_para_hoy')).cuerpo).hayAlgoQueContar === false);
   }
 
   console.log('\n=== Token vencido o revocado corta todo ===');

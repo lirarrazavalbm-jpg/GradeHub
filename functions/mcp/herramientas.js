@@ -36,6 +36,16 @@ export const HERRAMIENTAS = [
     args: { dias: 'cuántos días hacia adelante mirar las evaluaciones con fecha (por defecto 14)' },
   },
   {
+    // Pensada para que el agente la corra sola, en una tarea programada: es lo
+    // que convierte el conector en un mensaje del domingo en vez de una
+    // consulta que hay que acordarse de hacer. Por eso viene resumida y no
+    // cruda: es lo que el agente necesita para escribir dos frases útiles.
+    nombre: 'resumen_para_hoy',
+    tipo: 'lectura',
+    resumen: 'El resumen corto del momento: qué hay hoy, qué viene en los próximos días, qué ramos están en riesgo, qué evaluaciones ya pasaron y siguen sin nota, y dónde rinde más estudiar. Sirve para el repaso diario o semanal, aunque nadie haya preguntado nada.',
+    args: { dias: 'cuántos días hacia adelante mirar (por defecto 7)' },
+  },
+  {
     // La pregunta que ningún otro dato del estudiante puede contestar: no es
     // qué nota tiene, es qué pasa si le va de cierta forma. El cálculo queda
     // acá por lo mismo que `que_necesito_para_aprobar`: casillas, descartes,

@@ -385,6 +385,21 @@ function impactoPendientes(ramos, ramo, meta) {
   }).filter(Boolean).sort((a, b) => b.mueveLaFinal - a.mueveLaFinal);
 }
 
+// Evaluaciones cuya fecha ya pasó y siguen sin nota. Es el dato que más rinde
+// en un repaso: la app no puede saber la nota, pero sí puede notar que la
+// prueba fue hace dos semanas y la casilla sigue vacía, que es justo cuando el
+// promedio que se está mirando ya no es el real.
+function porRegistrar(ramos, hoy, diasAtras = 45) {
+  const desde = new Date(Date.parse(hoy) - diasAtras * 864e5).toISOString().slice(0, 10);
+  const filas = [];
+  ramos.forEach(r => (r.categorias || []).forEach(c => {
+    if (!c.fecha || c.fecha >= hoy || c.fecha < desde) return;
+    const faltan = pendientesDeCategoria(c).length;
+    if (faltan) filas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, casillasSinNota: faltan });
+  }));
+  return filas.sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
 function simular(ramos, args) {
   const ramo = buscarRamo(ramos, args.ramo);
   if (!ramo) return { error: 'No encontré ese ramo', ramos: ramos.map(r => r.nombre) };
@@ -532,6 +547,49 @@ function despachar(nombre, estado, args) {
       // no debería tener que deducir cuáles son los que duelen.
       atencion: filas.filter(f => f.riesgo === 'en_riesgo' || f.riesgo === 'ya_no_alcanza').map(f => f.nombre),
       ventanaDias: dias,
+    };
+  }
+
+  if (nombre === 'resumen_para_hoy') {
+    const dias = Number(args.dias) > 0 ? Number(args.dias) : 7;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+    const calculo = calculoPara(ramos);
+    const proximas = [];
+    ramos.forEach(r => (r.categorias || []).forEach(c => {
+      if (c.fecha && c.fecha >= hoy && c.fecha <= hasta) {
+        proximas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso, esHoy: c.fecha === hoy });
+      }
+    }));
+    const enRiesgo = ramos.map(r => {
+      const promedio = calculo.ramoAvg(r);
+      const necesario = calculo.notaNecesaria(r);
+      return { ramo: r.nombre, promedio, necesitaParaAprobar: necesario, riesgo: riesgoDeRamo(promedio, necesario) };
+    }).filter(f => f.riesgo === 'en_riesgo' || f.riesgo === 'ya_no_alcanza');
+    // Lo que más mueve, mirando el semestre entero y no un ramo: es la respuesta
+    // a "¿en qué me conviene ponerme?" cuando hay cuatro cosas encima. Primero
+    // lo que decide aprobar; entre dos que deciden, la que está peor parada —su
+    // peor escenario es más grave—, y recién ahí cuánto mueve la final.
+    const dondeRinde = ramos
+      .flatMap(r => impactoPendientes(ramos, r, 4).map(i => ({ ramo: r.nombre, ...i })))
+      .sort((a, b) => {
+        if (a.decideAprobar !== b.decideAprobar) return a.decideAprobar ? -1 : 1;
+        if (a.notaFinalSiSacas1 !== b.notaFinalSiSacas1) return a.notaFinalSiSacas1 - b.notaFinalSiSacas1;
+        return b.mueveLaFinal - a.mueveLaFinal;
+      })
+      .slice(0, 3);
+    const sinRegistrar = porRegistrar(ramos, hoy);
+    return {
+      fecha: hoy,
+      ventanaDias: dias,
+      promedioGeneral: promedioGeneral(ramos, calculo),
+      hoy: proximas.filter(p => p.esHoy),
+      proximas: proximas.sort((a, b) => a.fecha.localeCompare(b.fecha)),
+      enRiesgo,
+      porRegistrar: sinRegistrar,
+      dondeRinde,
+      // Para que el agente no arme un mensaje cuando no hay nada que contar.
+      hayAlgoQueContar: !!(proximas.length || enRiesgo.length || sinRegistrar.length),
     };
   }
 
