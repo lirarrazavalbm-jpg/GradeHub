@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GradeHub · Probar una campaña de clases</title>
+<style>
+:root{color-scheme:light dark;--bg:#f8f8fa;--card:#fff;--fg:#18181b;--muted:#656570;--line:#dedee4;--accent:#0d7a6b;--soft:#eeeff2;--red:#b32540;--amber:#886008;--green:#167342;font-family:BlinkMacSystemFont,-apple-system,"Segoe UI",sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#080809;--card:#111113;--fg:#f1f1f3;--muted:#b4b4bd;--line:#303034;--soft:#1b1b20;--accent:#2dd4bf;--red:#ff5f7a;--amber:#ffc94d;--green:#62d99a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg)}main{max-width:1080px;margin:auto;padding:24px 20px 60px}header{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:20px}header strong{font-size:22px;letter-spacing:-1px}small,.muted{color:var(--muted)}.tag{font-size:12px;border:1px solid var(--line);border-radius:20px;padding:7px 11px}h1{font-size:clamp(27px,4vw,38px);letter-spacing:-1.3px;margin:30px 0 10px;max-width:690px}p{line-height:1.55;font-size:14px}.intro{max-width:660px;color:var(--muted);margin-bottom:26px}.layout{display:grid;gap:20px}.panel{border:1px solid var(--line);border-radius:16px;padding:20px;background:var(--card)}h2{font-size:18px;margin:0 0 18px;letter-spacing:-.4px}label{display:block;font-size:13px;font-weight:600;margin:18px 0 7px}label:first-of-type{margin-top:0}input,select{display:block;width:100%;min-height:44px;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:var(--bg);color:var(--fg);font:inherit;font-size:16px}input[type=range]{padding:0;accent-color:var(--accent)}input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}output{font-variant-numeric:tabular-nums}.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pair label{margin-top:16px}.help{font-size:12px;color:var(--muted);margin:8px 0 18px}.rule{padding:12px;background:var(--soft);border-radius:9px;font-size:13px;line-height:1.5;margin:16px 0}.numbers{display:grid;grid-template-columns:1fr 1fr;gap:20px 12px}.number{font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-1px;display:block;margin:6px 0}.numbers span{font-size:12px;color:var(--muted)}.total{border-top:1px solid var(--line);margin-top:20px;padding-top:16px;display:flex;justify-content:space-between;gap:10px;align-items:center}.total b{font-size:25px;font-variant-numeric:tabular-nums;letter-spacing:-.6px}.stack{display:grid;gap:20px;align-content:start}details{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}summary{cursor:pointer;font-size:13px;color:var(--muted);padding:5px 0}.ad{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:16px;margin:15px 0 0}.ad h3{font-size:19px;margin:10px 0 8px;letter-spacing:-.3px}.ad p{margin:7px 0}.ad small{font-size:11px;letter-spacing:.05em;text-transform:uppercase}.empty{padding:20px 0 8px;color:var(--muted);font-size:14px;line-height:1.6}.metric{font-variant-numeric:tabular-nums;font-weight:600}.status{color:var(--muted);font-size:13px;min-height:22px}.bad{color:var(--red)}.mid{color:var(--amber)}.good{color:var(--green)}button{min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--soft);color:var(--fg);font:inherit;font-size:14px;width:100%;margin-top:12px;cursor:pointer}.caption{margin:16px 0 0;font-size:12px;color:var(--muted)}@media(min-width:760px){.layout{grid-template-columns:1fr 1fr}main{padding-top:32px}.panel{padding:24px}}@media(max-width:390px){.number{font-size:28px}.total b{font-size:22px}}
+</style></head><body><main>
+<header><strong>GradeHub</strong><span class="tag">Muestra · datos simulados</span></header>
+<h1>Tus clases, para quienes pueden necesitarlas.</h1>
+<p class="intro">Prueba una campaña por ramo y situación académica. Cambia el público y compara cuánto costaría llegar a él. Todos los estudiantes, avisos y conteos de esta muestra son ficticios.</p>
+<div class="layout"><section class="panel"><h2>1. Define el público</h2>
+<label for="tenant">Universidad</label><select id="tenant"><option value="uc">Universidad Católica</option><option value="fen">FEN · Universidad de Chile</option><option value="uai">Universidad Adolfo Ibáñez</option></select>
+<label for="course">Ramo</label><select id="course"></select>
+<label for="grade">Promedio menor a <output id="grade-value">5.0</output></label><input id="grade" type="range" min="2" max="7" step=".1" value="5">
+<label for="progress">Al menos <output id="progress-value">20</output>% evaluado</label><input id="progress" type="range" min="0" max="90" step="5" value="20">
+<p class="help">La regla se guarda por aviso. La app considera las casillas rendidas y sus pesos; no trata una categoría incompleta como terminada.</p>
+<div class="rule" id="rule"></div>
+<label for="budget">Presupuesto máximo de la campaña (CLP)</label><input id="budget" type="number" value="30000" min="0" max="1000000" step="1000">
+<details><summary>Probar otras tarifas · solo en esta muestra</summary><p class="help">El piloto parte en $1.000 por alcance y $2.000 para bajo 4.0 con al menos 40% evaluado. GradeHub administra las tarifas; el profesor cambia su público y presupuesto, no el precio unitario.</p><div class="pair"><div><label for="base-price">Tarifa base del piloto</label><input id="base-price" type="number" value="1000" min="100" max="100000" step="100"></div><div><label for="specific-price">Bajo 4.0 y ≥40%</label><input id="specific-price" type="number" value="2000" min="100" max="100000" step="100"></div></div></details>
+</section><div class="stack"><section class="panel"><h2>2. Mira la cotización</h2><div class="numbers" aria-live="polite"><div><span>Cuentas que cumplen · simuladas</span><output class="number" id="audience">—</output></div><div><span>Por persona alcanzada · piloto</span><output class="number" id="rate">—</output></div></div>
+<div class="total"><span>Si todas vieran el aviso*</span><b id="quote">—</b></div><p id="cap" class="help"></p>
+<label for="reach">Personas que lo vieron: <output id="reach-value">0</output></label><input id="reach" type="range" value="0" min="0" max="30" step="1">
+<div class="total"><span>Costo según alcance simulado</span><b id="cost">—</b></div><p class="caption">*Con el límite de presupuesto. Ver el aviso varias veces no debería cobrar varias veces. Esta muestra no factura ni mide personas reales.</p><p id="quote-status" class="status" role="status"></p>
+</section><section class="panel"><h2>3. Lo que vería el estudiante</h2><label for="student">Perfil de prueba</label><select id="student"></select><p id="student-stats" class="help"></p><div id="student-view" aria-live="polite"></div><button id="dismiss" type="button">Cerrar aviso de prueba</button>
+<p class="caption">Este selector existe solo para revisar el diseño. Un anunciante no recibe esta lista ni los promedios de los estudiantes.</p></section></div></div>
+</main><script>
+__ENGINE__
+__PROGRESS__
+__MARKETPLACE__
+const normName=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+const {ramoAvg,categoriasVigentes}=gh_crearCalculoRamo({normName,ramos:()=>[],copiarRecuperativo:()=>null,definicionPresetDelRamo:()=>null});
+const siglaDeRamo=()=>null;
+const cursos={uc:[['MAT1610','Cálculo I'],['FIS1514','Dinámica']],fen:[['CON1005','Contabilidad'],['TEST102','Ramo de ejemplo']],uai:[['TEST201','Ramo de ejemplo A'],['TEST202','Ramo de ejemplo B']]};
+// 120 cuentas SINTÉTICAS. Cada una tiene dos ramos; calzar con dos no cuenta dos veces.
+const cuentas=Object.keys(cursos).flatMap((tenant,t)=>Array.from({length:40},(_,i)=>({id:t*40+i,tenant,ramos:cursos[tenant].map(([sigla,nombre],j)=>{
+  const n=(i+j)%7,valor=2.8+((i*7+j*3)%37)/10;
+  return {id:sigla,nombre,sigla,origen:{tenant,ramoKey:sigla},gates:[],categorias:[{id:'informes',nombre:'Informes',peso:70,slots:6,directNota:true,notas:Array.from({length:n},(_,slot)=>({id:'n'+slot,nombre:'Informe '+slot,slot,valor,peso:1}))},{id:'examen',nombre:'Examen',peso:30,directNota:true,notas:[]}]};
+})})));
+const $=id=>document.getElementById(id),pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
+let cerrados=[],actuales=[],aviso;
+function opciones(){
+  $('course').replaceChildren(...cursos[$('tenant').value].map(([value,texto])=>new Option(texto+' · '+value,value)));
+  const todas=new Option('Todos los ramos del ejemplo','*');$('course').append(todas);
+  const lista=cuentas.filter(c=>c.tenant===$('tenant').value);
+  $('student').replaceChildren(...lista.map(c=>new Option('Estudiante de prueba '+(c.id+1),String(c.id))));
+}
+function render(){
+  const tenant=$('tenant').value,criterios={promedioMenorA:Number($('grade').value),avanceMinimo:Number($('progress').value)};
+  $('grade-value').value=criterios.promedioMenorA.toFixed(1);$('progress-value').value=criterios.avanceMinimo;
+  const siglas=$('course').value==='*'?cursos[tenant].map(c=>c[0]):[$('course').value];
+  aviso={id:'demo',tenant,ramos_siglas:siglas,criterios,estado:'publicado',vence_at:null};
+  actuales=cuentas.filter(c=>seleccionarClaseApoyo([aviso],c.ramos,tenant));
+  $('rule').textContent='Solo '+$('tenant').selectedOptions[0].text+': '+$('course').selectedOptions[0].text+', promedio menor a '+criterios.promedioMenorA.toFixed(1)+' y al menos '+criterios.avanceMinimo+'% evaluado.';
+  const tarifas=[{criterios:{promedioMenorA:7,avanceMinimo:0},precioPorCuenta:Number($('base-price').value)},{criterios:{promedioMenorA:4,avanceMinimo:40},precioPorCuenta:Number($('specific-price').value)}];
+  const precioValido=['budget','base-price','specific-price'].every(id=>$(id).value!==''&&$(id).checkValidity());
+  let q=precioValido?cotizarCampanaClases(criterios,tarifas,{elegibles:actuales.length,presupuestoClp:Number($('budget').value)}):null;
+  $('audience').value=actuales.length;
+  if(q){
+    $('reach').max=q.alcanceCotizado;$('reach').value=Math.min(Number($('reach').value),q.alcanceCotizado);
+    q=cotizarCampanaClases(criterios,tarifas,{elegibles:actuales.length,alcanzados:Number($('reach').value),presupuestoClp:Number($('budget').value)});
+    $('rate').value=pesos(q.precioPorCuenta);$('quote').textContent=pesos(q.costoEstimado);$('cost').textContent=pesos(q.costoPorAlcance);$('reach-value').value=q.alcanzados;
+    $('cap').textContent='Tu presupuesto cubre hasta '+q.alcanceCotizado+' personas de este público simulado.';
+    $('quote-status').textContent='Tarifas iniciales del piloto. No hay campaña publicada.';
+  }else{
+    ['rate','quote','cost'].forEach(id=>$(id).textContent='—');$('cap').textContent='';$('quote-status').textContent='Revisa los precios y el presupuesto: usa pesos enteros positivos.';
+  }
+  renderEstudiante();
+}
+function renderEstudiante(){
+  const cuenta=cuentas.find(c=>String(c.id)===$('student').value),r=cuenta.ramos.find(r=>aviso.ramos_siglas.includes(r.sigla))||cuenta.ramos[0];
+  const promedio=ramoAvg(r),avance=ramoProgress(r);
+  $('student-stats').textContent=r.nombre+' · Promedio '+(promedio===null?'sin notas':promedio.toFixed(1))+' · '+avance.pct+'% evaluado (datos de prueba).';
+  const seleccion=seleccionarClaseApoyo([aviso],cuenta.ramos,cuenta.tenant,{descartados:cerrados});
+  $('student-view').replaceChildren();$('dismiss').hidden=!seleccion;
+  if(!seleccion){const p=document.createElement('p');p.className='empty';p.textContent=cerrados.length?'Cerraste el aviso en esta vista.':'Este perfil no cumple la regla de este aviso. Su GradeHub sigue igual.';$('student-view').append(p);return;}
+  const card=document.createElement('article');card.className='ad';
+  for(const [tag,texto] of [['small','Publicidad · Clase particular'],['h3','Apoyo para '+seleccion.ramo.nombre],['p','Repasa ejercicios y prepara tu próxima evaluación.'],['p','Tutor de ejemplo · Online'],['p','Precio y contacto por confirmar']]){const e=document.createElement(tag);e.textContent=texto;card.append(e);}
+  $('student-view').append(card);
+}
+$('tenant').addEventListener('change',()=>{cerrados=[];opciones();render();});
+$('student').addEventListener('change',()=>{cerrados=[];renderEstudiante();});
+$('dismiss').addEventListener('click',()=>{cerrados=['demo'];renderEstudiante();});
+['course','grade','progress','budget','base-price','specific-price','reach'].forEach(id=>$(id).addEventListener('input',()=>{cerrados=[];render();}));
+opciones();render();
+</script></body></html>

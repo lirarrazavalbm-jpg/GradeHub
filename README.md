@@ -48,6 +48,7 @@ La interfaz básica puede probarse localmente sin configurar Supabase. No uses d
 | `engine.js` | Cálculos académicos puros y reglas de aprobación. |
 | `app.js` | Estado, navegación, editor y adaptadores de cálculo. |
 | `app-session.js` | Autenticación, recuperación, persistencia local y sincronización con Supabase. |
+| `marketplace.js` | Avisos, reglas locales de público y cotización; sin publicidad activada todavía. |
 | `render-main.js` | Render de Inicio, ficha del ramo y Estadísticas. |
 | `render-agenda.js` | Presentación y priorización de la Agenda. |
 | `styles.css` | Sistema visual y adaptación para móvil y escritorio. |
@@ -56,7 +57,7 @@ La interfaz básica puede probarse localmente sin configurar Supabase. No uses d
 | `supabase/` | SQL versionado para funciones, políticas y servicios de datos. |
 | `.github/workflows/` | Comprobaciones automáticas y publicación en Cloudflare Pages. |
 
-El orden de carga de los scripts clásicos importa: `data.js` → `engine.js` → `app.js` → `app-session.js` → `render-main.js` → `render-agenda.js`.
+El orden de carga de los scripts clásicos importa: `data.js` → `engine.js` → `app.js` → `app-session.js` → `marketplace.js` → `render-main.js` → `render-agenda.js`.
 
 ## Contribuir
 

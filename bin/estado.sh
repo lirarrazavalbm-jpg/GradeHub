@@ -64,7 +64,7 @@ fi
 
 echo
 echo "=== TAMAÑOS ==="
-wc -c index.html data.js engine.js app.js app-session.js render-main.js render-agenda.js styles.css sw.js | sed '$d'
+wc -c index.html data.js engine.js app.js app-session.js marketplace.js render-main.js render-agenda.js styles.css sw.js | sed '$d'
 
 echo
 echo "=== TESTS ==="
