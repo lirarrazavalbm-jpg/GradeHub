@@ -2310,19 +2310,28 @@ function renderCatalogResults(q){
 function addFromCatalogCodificado(nombre,sigla){
   addFromCatalog(decodeURIComponent(nombre),sigla?decodeURIComponent(sigla):null);
 }
-function addFromCatalog(nombre,sigla){
+// Crea el ramo y lo deja en S, sin tocar la pantalla ni guardar: así el mismo
+// camino sirve para agregar uno a mano y para aceptar varios de una propuesta.
+// Devuelve el ramo creado para quien necesite completarlo (la sección, por
+// ejemplo, que el catálogo no conoce).
+function crearRamoDesdeCatalogo(nombre,sigla){
   const presetName=findPresetName(nombre,S.tenant,S.carrera);
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const fila=S.tenant==='uc'?cursoUcCompleto(nombre,sigla):null;
   const creditos=fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
-  S.ramos.push({
+  const ramo={
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
     creditos,origen:origenActual(presetName||nombre,sigla),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
-  });
-  save();track('add_ramo_catalogo',{preset:!!preset});
+  };
+  S.ramos.push(ramo);
+  return ramo;
+}
+function addFromCatalog(nombre,sigla){
+  const ramo=crearRamoDesdeCatalogo(nombre,sigla);
+  save();track('add_ramo_catalogo',{preset:!!(ramo.categorias||[]).length});
   closeModal();renderHome();
-  showToast(preset?'Agregado con sus ponderaciones':'Ramo agregado');
+  showToast((ramo.categorias||[]).length?'Agregado con sus ponderaciones':'Ramo agregado');
 }
 function renderModalColors(){
   const c=document.getElementById('m-colors');if(!c)return;c.innerHTML='';
@@ -4113,6 +4122,7 @@ let propuestasPautaAgente=[],propuestasPautaCargando=false;
 // evaluaciones con pesos y mostrarlas ahí las leería como una pauta.
 let propuestasNotasAgente=[];
 let propuestasFechasAgente=[];
+let propuestasRamosAgente=[];
 
 function fechaAgente(valor,vacio){
   const fecha=valor?new Date(valor):null;
@@ -4276,6 +4286,29 @@ function propuestaFechasLimpia(valor){
   }
   if(!fechas.length||fechas.length>60)return null;
   return {id,ramo,ramoKey,fuente,fechas,createdAt:valor.created_at||null};
+}
+// Los ramos que propuso un agente, saneados. Frontera de confianza: el nombre
+// lo escribió un agente leyendo un horario, así que pasa por el mismo filtro
+// que las pautas ajenas antes de tocar la pantalla.
+function propuestaRamosLimpia(valor){
+  const id=valor&&valor.id;
+  const fuente=limpiarNombreAjeno(valor&&valor.fuente).slice(0,300);
+  const lista=Array.isArray(valor&&valor.evaluaciones)?valor.evaluaciones:[];
+  const ramos=lista.map(r=>{
+    const nombre=limpiarNombreAjeno(r&&r.nombre);
+    if(!nombre)return null;
+    const sigla=limpiarNombreAjeno(r&&r.sigla).toUpperCase().slice(0,40);
+    const seccion=seccionValida(r&&r.seccion);
+    return {nombre,sigla:sigla||null,seccion};
+  }).filter(Boolean);
+  if(!id||!fuente||!ramos.length||ramos.length>20)return null;
+  return {id,fuente,ramos,createdAt:valor.created_at||null};
+}
+// Un ramo propuesto que la persona ya agregó (desde la app, o aceptando otra
+// propuesta) no se vuelve a ofrecer: agregarlo dos veces le duplica el ramo.
+function ramoPropuestoYaEsta(r){
+  return (S.ramos||[]).some(x=>normName(x.nombre)===normName(r.nombre)
+    ||(r.sigla&&normName(siglaDeRamo(x)||'')===normName(r.sigla)));
 }
 function propuestasFechasDeRamo(ramo){
   if(!ramo)return [];
@@ -4519,6 +4552,88 @@ function ramoDePropuestaPauta(propuesta){
   return (S.ramos||[]).find(r=>normName((r.origen&&r.origen.ramoKey)||r.nombre)===clave)
     ||(S.ramos||[]).find(r=>normName(r.nombre)===normName(propuesta&&propuesta.ramo))||null;
 }
+// ─── RAMOS PROPUESTOS POR UN AGENTE ─────────────────────────────────────────
+//
+// Aparece en Inicio y no en Ajustes: quien pegó su horario en el chat vuelve a
+// la app a ver sus ramos, no a buscar una bandeja. Se pinta solo si hay algo
+// pendiente, y no se aplica nada hasta que la persona lo acepta.
+function pintarRamosPropuestos(){
+  const el=document.getElementById('ramos-propuestos');
+  if(!el)return;
+  const propuesta=propuestasRamosAgente[0];
+  const nuevos=propuesta?propuesta.ramos.filter(r=>!ramoPropuestoYaEsta(r)):[];
+  if(!propuesta||!nuevos.length){el.style.display='none';el.innerHTML='';return;}
+  el.className='weight-setup-nudge';
+  el.style.width='auto';el.style.margin='12px 20px';
+  el.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>Tu agente te propone ${nuevos.length} ${nuevos.length===1?'ramo':'ramos'}.</b><br>Todavía no están agregados. Míralos y decide tú.<div style="margin-top:8px;"><button type="button" class="rep-link" style="width:auto;padding:7px 12px;margin:0;" onclick="abrirRamosPropuestos()">Ver los ramos</button></div></div>`;
+  el.style.display='flex';
+}
+// Cada ramo con su casilla: aceptar la lista entera y aceptar tres de seis son
+// el mismo camino. Lo que no se puede es editar el nombre acá — para eso está
+// Editar ramo, con la pantalla que ya existe.
+function abrirRamosPropuestos(){
+  const propuesta=propuestasRamosAgente[0];
+  if(!propuesta){showToast('No tienes ramos pendientes');return;}
+  const nuevos=propuesta.ramos.filter(r=>!ramoPropuestoYaEsta(r));
+  if(!nuevos.length){showToast('Ya tienes todos esos ramos');return;}
+  const filas=nuevos.map((r,i)=>{
+    const detalle=[r.sigla?esc(r.sigla):'',r.seccion?`Sección ${r.seccion}`:''].filter(Boolean).join(' · ');
+    return `<label class="agent-ramo-row">
+      <input type="checkbox" class="agent-ramo-check" data-i="${i}" checked/>
+      <span><b>${esc(r.nombre)}</b>${detalle?`<small>${detalle}</small>`:''}</span>
+    </label>`;
+  }).join('');
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Ramos por agregar</div>
+    <p class="modal-desc">Tu agente los leyó de ${esc(propuesta.fuente)}. <b>No están agregados.</b> Desmarca los que no lleves este semestre.</p>
+    <div class="agent-ramo-list">${filas}</div>
+    <p class="agent-proposal-help">A los que estén en el catálogo se les carga su pauta oficial al agregarlos. Ninguno llega con notas.</p>
+    <div class="modal-btns">
+      <button type="button" class="btn-cancel" onclick="confirmarDescartarRamosPropuestos()">Descartar</button>
+      <button type="button" class="btn-confirm" onclick="aplicarRamosPropuestos()">Agregar los marcados</button>
+    </div>`;
+  openModal();
+}
+function confirmarDescartarRamosPropuestos(){
+  const propuesta=propuestasRamosAgente[0];
+  if(!propuesta)return closeModal();
+  showConfirm('¿Descartar los ramos propuestos?','No se agrega ninguno. Tu agente puede proponerlos de nuevo cuando quieras.',()=>descartarRamosPropuestos(propuesta.id),{label:'Descartar',danger:true,focusCancel:true});
+}
+async function descartarRamosPropuestos(id){
+  try{
+    await supabaseClient.rpc('resolver_propuesta_pauta_agente',{p_id:id,p_accion:'descartada'});
+    propuestasRamosAgente=propuestasRamosAgente.filter(p=>p.id!==id);
+    closeModal();pintarRamosPropuestos();showToast('Propuesta descartada');
+  }catch{showToast('No se pudo descartar. Intenta de nuevo.',true);}
+}
+// Se agregan con el mismo camino que un ramo del catálogo, para que lleguen con
+// su pauta oficial, sus créditos y su origen. La sección viaja aparte porque el
+// catálogo no la conoce: la sabe el horario.
+async function aplicarRamosPropuestos(){
+  const propuesta=propuestasRamosAgente[0];
+  if(!propuesta)return closeModal();
+  const nuevos=propuesta.ramos.filter(r=>!ramoPropuestoYaEsta(r));
+  const marcados=[...document.querySelectorAll('.agent-ramo-check')]
+    .filter(c=>c.checked).map(c=>nuevos[Number(c.dataset.i)]).filter(Boolean);
+  if(!marcados.length){showToast('No marcaste ningún ramo',true);return;}
+  let puestos=0;
+  marcados.forEach(r=>{
+    if(ramoPropuestoYaEsta(r))return;
+    const creado=crearRamoDesdeCatalogo(r.nombre,r.sigla);
+    if(!creado)return;
+    if(r.seccion)creado.seccion=r.seccion;
+    puestos++;
+  });
+  save();
+  // La propuesta se marca resuelta en el servidor DESPUÉS de guardar los ramos:
+  // si la red se cae, la persona ve sus ramos y la propuesta sigue pendiente,
+  // que es el lado bueno del error. Al revés perdería las dos cosas.
+  try{await supabaseClient.rpc('resolver_propuesta_pauta_agente',{p_id:propuesta.id,p_accion:'aplicada'});}catch{}
+  propuestasRamosAgente=propuestasRamosAgente.filter(p=>p.id!==propuesta.id);
+  track('ramos_agente_aplicados',{cantidad:puestos});
+  closeModal();pintarRamosPropuestos();renderHome();
+  showToast(puestos===1?'Ramo agregado':`${puestos} ramos agregados`);
+}
 async function cargarPropuestasPautaAgente(opts){
   opts=opts||{};
   if(!currentUser||!supabaseClient)return [];
@@ -4532,6 +4647,8 @@ async function cargarPropuestasPautaAgente(opts){
     propuestasPautaAgente=filas.filter(f=>(f&&f.tipo||'pauta')==='pauta').map(propuestaPautaLimpia).filter(Boolean);
     propuestasNotasAgente=filas.filter(f=>f&&f.tipo==='notas').map(propuestaNotasLimpia).filter(Boolean);
     propuestasFechasAgente=filas.filter(f=>f&&f.tipo==='fechas').map(propuestaFechasLimpia).filter(Boolean);
+    propuestasRamosAgente=filas.filter(f=>f&&f.tipo==='ramos').map(propuestaRamosLimpia).filter(Boolean);
+    pintarRamosPropuestos();
     if(opts.mostrar&&propuestasPautaAgente.length)abrirPropuestasPautaAgente();
     else if(opts.mostrar&&opts.avisar)showToast('No tienes pautas pendientes');
     return propuestasPautaAgente;
