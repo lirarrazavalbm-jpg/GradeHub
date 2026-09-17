@@ -944,11 +944,18 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .agent-explainer b{color:var(--fg);font-weight:700;}
 .agent-explainer span{color:var(--fg2);}
 .agent-url-create{margin-bottom:0;}
-.agent-list-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:7px;}
+/* La pantalla de agentes es una secuencia de pasos, y cada bloque necesita
+   separarse del anterior para que se lea como paso y no como continuación. El
+   encabezado de la lista venía pegado al botón de crear la URL, y su bajada
+   apretada contra el título en la misma línea. */
+.agent-list-heading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 14px;margin:26px 0 10px;padding-top:18px;border-top:1px solid var(--border);}
 .agent-list-heading .modal-label{margin:0;}
-.agent-list-heading span{color:var(--fg3);font-size:.65625rem;line-height:1.3;text-align:right;}
-.agent-refresh{margin:-2px 0 8px;padding:0;border:0;background:transparent;color:var(--primary);font-family:var(--font-ui);font-size:.71875rem;font-weight:700;cursor:pointer;}
-.agent-list{display:grid;gap:8px;}
+.agent-list-heading span{color:var(--fg3);font-size:.65625rem;line-height:1.35;}
+/* Es un enlace dentro de un formulario de botones grandes: sin área propia se
+   confundía con la bajada de arriba. El padding le da dónde tocarlo en el
+   teléfono, que es donde se usa. */
+.agent-refresh{margin:0 0 12px;padding:6px 0;border:0;background:transparent;color:var(--primary);font-family:var(--font-ui);font-size:.71875rem;font-weight:700;cursor:pointer;}
+.agent-list{display:grid;gap:8px;margin-bottom:4px;}
 .agent-list-empty{padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--muted);color:var(--fg3);font-size:.75rem;line-height:1.45;}
 .agent-retry{margin-left:4px;padding:0;border:0;background:transparent;color:var(--primary);font:inherit;font-weight:700;cursor:pointer;}
 .agent-link-card{padding:14px;border:1px solid var(--border);border-radius:13px;background:var(--card);}
@@ -961,10 +968,13 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .agent-link-meta div{min-width:0;}
 .agent-link-meta dt{margin-bottom:3px;color:var(--fg3);font-size:.59375rem;font-weight:800;letter-spacing:.055em;text-transform:uppercase;}
 .agent-link-meta dd{margin:0;color:var(--fg2);font-size:.6875rem;line-height:1.3;font-variant-numeric:tabular-nums;}
-.agent-proposal-entry{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 20px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--muted);}
+.agent-proposal-entry{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;margin:14px 0 0;padding:14px 15px;border:1px solid var(--border);border-radius:12px;background:var(--muted);}
 .agent-proposal-entry b,.agent-proposal-entry span{display:block;}
 .agent-proposal-entry b{font-size:.8125rem;color:var(--fg);}
-.agent-proposal-entry span{margin-top:3px;font-size:.75rem;line-height:1.35;color:var(--fg2);}
+.agent-proposal-entry span{margin-top:4px;font-size:.75rem;line-height:1.45;color:var(--fg2);}
+/* El botón de la tarjeta se partía en dos líneas y quedaba flotando al medio
+   del texto. Va arriba, alineado con el título, y no se parte. */
+.agent-proposal-entry .agent-refresh{flex:none;align-self:flex-start;margin:0;padding:4px 0;white-space:nowrap;}
 .agent-proposals{display:grid;gap:12px;max-height:min(54vh,520px);overflow:auto;padding:1px 2px 2px;}
 .agent-proposal-card{padding:14px;border:1px solid var(--border);border-radius:13px;background:var(--bg2);}
 .agent-proposal-heading{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
@@ -985,7 +995,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .agent-proposal-list b{min-width:0;color:var(--fg);overflow-wrap:anywhere;}
 .agent-proposal-list span{flex:none;color:var(--fg2);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .agent-proposal-actions{margin-top:12px;}
-@media(max-width:420px){.agent-proposal-entry{align-items:flex-start;flex-direction:column}.agent-proposal-entry .agent-refresh{width:100%;}.agent-proposal-actions{grid-template-columns:1fr;}}
+@media(max-width:420px){.agent-proposal-entry{align-items:flex-start;flex-direction:column;gap:2px;}.agent-proposal-entry .agent-refresh{width:auto;padding-top:8px;}.agent-proposal-actions{grid-template-columns:1fr;}}
 .feedback-select,.feedback-message{width:100%;border:1.5px solid var(--border);border-radius:11px;background:var(--muted);color:var(--fg);font:inherit;outline:none;transition:border-color var(--motion-fast),box-shadow var(--motion-fast);}
 .feedback-select{margin-bottom:17px;padding:11px 12px;cursor:pointer;}
 .feedback-message{display:block;padding:12px 13px;line-height:1.45;resize:vertical;min-height:132px;}
@@ -1941,7 +1951,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .agent-url-value{display:block;margin-bottom:10px;padding:9px 10px;border:1px solid var(--border);border-radius:9px;background:var(--card);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.6875rem;line-height:1.5;color:var(--fg);word-break:break-all;-webkit-user-select:all;user-select:all;}
 
 .agent-explainer-no{color:var(--fg3);}
-.agent-prompt-box{margin:0 0 18px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);}
+.agent-prompt-box{margin:0 0 22px;padding:13px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);}
 .agent-prompt-text{margin:0 0 10px;color:var(--fg2);font-size:.75rem;line-height:1.5;}
 .agent-prompt-box .agent-refresh{margin-bottom:0;}
 
