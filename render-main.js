@@ -595,7 +595,10 @@ function renderRamo(){
           // ESA casilla: hasta ahora el grupo solo dejaba escribir el número, y
           // la fecha solo existía para el grupo entero —"Controles" el mismo
           // día—, que no es como se rinden.
-          const fSub=nota&&nota.fecha?formatEventDate({fecha:nota.fecha,hora:nota.hora||null}):'';
+          // `formatEventDate` devuelve {day,mon,dow} para la Agenda, no un texto:
+          // metido en la plantilla salía "[object Object]" bajo la casilla. El
+          // formato corto de la ficha es el mismo que usa el chip del grupo.
+          const fSub=nota&&nota.fecha?fechaHoraCorta(nota.fecha,nota.hora):'';
           rows+=`<div class="eval-sub">
             <button type="button" class="eval-sub-open" onclick="event.stopPropagation();abrirCasilla('${cat.id}',${i})" title="Fecha y detalle de ${esc(etiqueta)}" aria-label="Fecha y detalle de ${esc(etiqueta)}">
               <span class="eval-sub-name">${esc(etiqueta)}</span>

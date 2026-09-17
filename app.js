@@ -3622,10 +3622,26 @@ function campoFechaHoraHTML(idBase,fecha,hora,conQuitar){
   const f=esc(fecha||''),h=esc(hora||'');
   return `<label class="modal-label">Fecha <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">(opcional — aparece en la Agenda)</span></label>
     <div class="modal-input" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <input type="date" id="${idBase}-fecha" value="${f}" autocomplete="off" style="flex:1 1 9.5rem;min-width:9rem;" oninput="sincronizarHora('${idBase}')"/>
+      <input type="date" id="${idBase}-fecha" value="${f}" autocomplete="off" style="flex:1 1 9.5rem;min-width:9rem;" oninput="sincronizarHora('${idBase}')" onfocus="sembrarFechaHoy('${idBase}')"/>
       <input type="time" id="${idBase}-hora" value="${h}" autocomplete="off" aria-label="Hora (opcional)" style="flex:1 1 7rem;min-width:6.5rem;" ${fecha?'':'disabled'}/>
       ${conQuitar&&fecha?`<button type="button" onclick="limpiarFechaHora('${idBase}')" style="flex:0 0 auto;padding:10px 12px;background:var(--muted);border:none;border-radius:8px;color:var(--fg2);font-size:0.75rem;font-weight:600;cursor:pointer;">Quitar</button>`:''}
     </div>`;
+}
+// El campo nativo parte vacío y obliga a escribir el año completo cada vez, aunque
+// una evaluación del semestre siempre cae en el año en curso. Al entrar al campo
+// vacío se siembra HOY: el año queda puesto y normalmente solo hay que corregir
+// el día y el mes.
+//
+// Se hace al enfocar y no al abrir el modal a propósito: quien no toca la fecha
+// no se lleva una puesta sin querer, y el botón Quitar sigue estando para
+// borrarla. Tampoco pisa una fecha que ya existía.
+function sembrarFechaHoy(idBase){
+  const f=document.getElementById(idBase+'-fecha');
+  if(!f||f.value)return;
+  const hoy=new Date();
+  const mm=String(hoy.getMonth()+1).padStart(2,'0'),dd=String(hoy.getDate()).padStart(2,'0');
+  f.value=`${hoy.getFullYear()}-${mm}-${dd}`;
+  sincronizarHora(idBase);
 }
 // Quitar la fecha se lleva la hora: quedaría un dato que no se puede mostrar.
 function sincronizarHora(idBase){
