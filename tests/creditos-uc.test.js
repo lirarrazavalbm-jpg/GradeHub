@@ -56,7 +56,9 @@ const entradas = Object.entries(CREDITOS_UC);
 // ICE1514 y FIS1514 son dos cursos oficiales distintos que comparten nombre.
 // La variante ICE se etiqueta con su sigla para que el catálogo no convierta
 // dos alternativas en la misma opción.
-chk('trae 147 ramos de Ingeniería y 26 propios de Comercial', entradas.length === 173);
+// Los 24 teológicos con pauta entraron el 2026-09-17: están fuera de malla, y
+// esta tabla es de donde salen su sigla y sus créditos.
+chk('trae 147 ramos de Ingeniería, 26 propios de Comercial y 24 teológicos', entradas.length === 197);
 chk('cada entrada es [créditos, sigla]',
   entradas.every(([, v]) => Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'string'));
 chk('ninguna sigla vacía ni repetida',

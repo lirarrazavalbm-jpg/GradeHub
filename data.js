@@ -1141,6 +1141,219 @@ const PRESETS_UC={
       ['Examen final escrito',30],
     ],
   },
+  // ── FORMACIÓN TEOLÓGICA: LOS 24 QUE PUBLICAN SU PAUTA ─────────────────────
+  // Misma fuente y mismo criterio que el bloque de arriba: catalogo.uc.cl, el
+  // 2026-09-17. Importan porque TODO estudiante UC cursa uno de estos y hasta
+  // hoy ninguno traía ponderaciones: las escribía a mano el 100% de ellos.
+  //
+  // Llevan su `sigla` declarada porque no están en ninguna malla: entran al
+  // buscador por `presetsFueraDeMalla`, y por eso salen de la lista `CURSOS_UC`
+  // —que es solo nombre y sigla— para no aparecer dos veces, una con
+  // ponderaciones y otra sin ellas.
+  //
+  // Los teológicos que NO están acá son los que el catálogo no publica con
+  // porcentajes, o los publica sumando distinto de 100. Esos siguen en
+  // `CURSOS_UC` sin pauta, que es lo honesto mientras no haya un programa.
+  'La Biblia de Jesús':{
+    sigla:'TTF036',
+    evals:[
+      ['Infografía digital',20],
+      ['Corto de video',20],
+      ['Aplicación de lectura bíblica',30],
+      ['Ensayo',30],
+    ],
+  },
+  'La Belleza de la Fragilidad Humana':{
+    sigla:'TTF109',
+    evals:[
+      ['Fichas de lectura',30,{lista:true}],
+      ['Relatos autobiográficos',30,{lista:true}],
+      ['Texto autoetnográfico',40],
+    ],
+  },
+  'Virgen María y Feminismo: ¿Diálogo o Confrontación?':{
+    sigla:'TTF115',
+    evals:[
+      ['Control personal de contenido y lecturas',20],
+      ['Tareas grupales',30,{lista:true}],
+      ['Pre-entrega del trabajo del video',10],
+      ['Presentación y exposición del video final',40],
+    ],
+  },
+  'Arquitectura Sacra':{
+    sigla:'TTF116',
+    evals:[
+      ['Prueba escrita',30],
+      ['Informe análisis de caso individual',15],
+      ['Informe de análisis de caso grupal',15],
+      ['Ensayo final',40],
+    ],
+  },
+  'Esperanza Cristiana, Muerte y Más Allá':{
+    sigla:'TTF118',
+    evals:[
+      ['Tareas grupales en clases',40,{lista:true}],
+      ['Presentación grupal',20],
+      ['Co evaluación',20],
+      ['Informe de síntesis y sistematización',20],
+    ],
+  },
+  'Búsquedas Religiosas y Cristianismo':{
+    sigla:'TTF202',
+    evals:[
+      ['Síntesis de debates',40,{lista:true}],
+      ['Controles de lectura',30,{lista:true}],
+      ['Prueba',30],
+    ],
+  },
+  '¿Quién Es Jesús de Nazareth?':{
+    sigla:'TTF205',
+    evals:[
+      ['Infografía grupal',30],
+      ['Producción escrita',30],
+      ['Podcast',40],
+    ],
+  },
+  'El Padrenuestro: la Oración de Jesús':{
+    sigla:'TTF206',
+    evals:[
+      ['Informes investigación',20,{lista:true}],
+      ['Informes de lectura',30,{lista:true}],
+      ['Controles escritos',30,{lista:true}],
+      ['Presentación oral (final)',20],
+    ],
+  },
+  'Doctrina Social de la Iglesia':{
+    sigla:'TTF207',
+    evals:[
+      ['Pruebas',40,{lista:true}],
+      ['Controles de lectura',20,{lista:true}],
+      ['Ensayos',40,{lista:true}],
+    ],
+  },
+  'Fe y Razón: Una Perspectiva Histórica':{
+    sigla:'TTF208',
+    evals:[
+      ['Pruebas',30,{lista:true}],
+      ['Informes de lectura',30,{lista:true}],
+      ['Trabajo grupal',40],
+    ],
+  },
+  'Experiencia Creyente y Secularismo':{
+    sigla:'TTF210',
+    evals:[
+      ['Prueba de desarrollo',30],
+      ['Tareas',20,{lista:true}],
+      ['Producción audiovisual grupal',10],
+      ['Ensayo',40],
+    ],
+  },
+  'Para Pensar la Muerte':{
+    sigla:'TTF211',
+    evals:[
+      ['Ensayos individuales',60,{lista:true}],
+      ['Interrogaciones grupales',40,{lista:true}],
+    ],
+  },
+  'Espiritualidad Laical y Cultura Moderna':{
+    sigla:'TTF213',
+    evals:[
+      ['Controles de lecturas',50,{lista:true}],
+      ['Pruebas',20,{lista:true}],
+      ['Informe escrito grupal',30],
+    ],
+  },
+  'Teología y Ecología':{
+    sigla:'TTF215',
+    evals:[
+      ['Presentación síntesis de contenidos',30],
+      ['Informe escrito',35],
+      ['Análisis de caso grupal',35],
+    ],
+  },
+  '¿Creer o No Creer?':{
+    sigla:'TTF216',
+    evals:[
+      ['Pruebas',40,{lista:true}],
+      ['Informes de lectura',20,{lista:true}],
+      ['Trabajo grupal',30],
+      ['Asistencia',10],
+    ],
+  },
+  '¿Es Necesaria la Iglesia?':{
+    sigla:'TTF217',
+    evals:[
+      ['Pruebas',40,{lista:true}],
+      ['Trabajo grupal (entrevistas y análisis)',35],
+      ['Ensayo individual',25],
+    ],
+  },
+  'Lectura Contemporánea de la Biblia':{
+    sigla:'TTF218',
+    evals:[
+      ['Presentaciones grupales',30,{lista:true}],
+      ['Análisis de casos individual',40],
+      ['Ensayo final',30],
+    ],
+  },
+  'Existencia Humana y la Búsqueda de Sentido':{
+    sigla:'TTF219',
+    evals:[
+      ['Prueba escrita',30],
+      ['Informe de análisis de caso grupal',30],
+      ['Ensayo final',40],
+    ],
+  },
+  'Teología del Cuerpo Humano':{
+    sigla:'TTF220',
+    evals:[
+      ['Presentaciones grupales',60,{lista:true}],
+      ['Análisis de casos individual',25],
+      ['Ensayo final',15],
+    ],
+  },
+  'Cristianismo y Crisis Ecológica':{
+    sigla:'TTF222',
+    evals:[
+      ['Controles de lectura',50,{lista:true}],
+      ['Evaluación de pares',20],
+      ['Portafolio',30],
+    ],
+  },
+  'Fe y Ciencia':{
+    sigla:'TTF225',
+    evals:[
+      ['Control escrito de contenidos',35],
+      ['Ensayo',30],
+      ['Trabajo colaborativo y exposición',35],
+    ],
+  },
+  'Religión y Política':{
+    sigla:'TTF226',
+    evals:[
+      ['Pruebas',60,{lista:true}],
+      ['Exposiciones grupales',30,{lista:true}],
+      ['Participación en el curso',10],
+    ],
+  },
+  'Teología Feminista: Un Signo de los Tiempos':{
+    sigla:'TTF232',
+    evals:[
+      ['Tareas',20,{lista:true}],
+      ['Control de lectura',25],
+      ['Análisis de casos',25],
+      ['Portafolio',10],
+      ['Presentación oral grupal',20],
+    ],
+  },
+  'Teología y Literatura':{
+    sigla:'TTF233',
+    evals:[
+      ['Informe de lectura',15],
+      ['Ejercicios grupales',60,{lista:true}],
+      ['Relectura final individual',25],
+    ],
+  },
   'Revelación y Fe':{
     sigla:'TTF012',
     periodo:'2026-2',
@@ -1414,6 +1627,35 @@ const CREDITOS_UC={
   'Contabilidad Gerencial':[10,'EAA2240'],
   'Dirección de Personas':[10,'EAA2110'],
   'Práctica Social':[10,'EAF2500'],
+  // Los teológicos con pauta (arriba, en PRESETS_UC). Van también acá porque
+  // esta tabla es de dónde salen la sigla y los créditos de un ramo fuera de
+  // malla: sin su fila, el buscador los mostraba sin sigla —el reporte del
+  // 2026-09-11— y sin créditos, que además arrastra el promedio ponderado del
+  // semestre entero a promedio simple. Los 10 SCT son los del catálogo UC.
+  'La Biblia de Jesús':[10,'TTF036'],
+  'La Belleza de la Fragilidad Humana':[10,'TTF109'],
+  'Virgen María y Feminismo: ¿Diálogo o Confrontación?':[10,'TTF115'],
+  'Arquitectura Sacra':[10,'TTF116'],
+  'Esperanza Cristiana, Muerte y Más Allá':[10,'TTF118'],
+  'Búsquedas Religiosas y Cristianismo':[10,'TTF202'],
+  '¿Quién Es Jesús de Nazareth?':[10,'TTF205'],
+  'El Padrenuestro: la Oración de Jesús':[10,'TTF206'],
+  'Doctrina Social de la Iglesia':[10,'TTF207'],
+  'Fe y Razón: Una Perspectiva Histórica':[10,'TTF208'],
+  'Experiencia Creyente y Secularismo':[10,'TTF210'],
+  'Para Pensar la Muerte':[10,'TTF211'],
+  'Espiritualidad Laical y Cultura Moderna':[10,'TTF213'],
+  'Teología y Ecología':[10,'TTF215'],
+  '¿Creer o No Creer?':[10,'TTF216'],
+  '¿Es Necesaria la Iglesia?':[10,'TTF217'],
+  'Lectura Contemporánea de la Biblia':[10,'TTF218'],
+  'Existencia Humana y la Búsqueda de Sentido':[10,'TTF219'],
+  'Teología del Cuerpo Humano':[10,'TTF220'],
+  'Cristianismo y Crisis Ecológica':[10,'TTF222'],
+  'Fe y Ciencia':[10,'TTF225'],
+  'Religión y Política':[10,'TTF226'],
+  'Teología Feminista: Un Signo de los Tiempos':[10,'TTF232'],
+  'Teología y Literatura':[10,'TTF233'],
 };
 
 // Créditos SCT de la FEN. Misma forma que CREDITOS_UC: [créditos, sigla].
@@ -1596,7 +1838,6 @@ const CURSOS_UC=[
   ['TTF013','Tópicos de Ética Social Cristiana'],
   ['TTF019','Psicología y Religión Cristiana'],
   ['TTF026','Introducción a la Biblia'],
-  ['TTF036','La Biblia de Jesús'],
   ['TTF047','Dios en el Siglo XXI'],
   ['TTF068','El Matrimonio Cristiano Hoy'],
   ['TTF073','Fin de los Tiempos. Mitos y Realidad'],
@@ -1606,30 +1847,7 @@ const CURSOS_UC=[
   ['TTF087','¿Está Dios en el Escenario Humano?'],
   ['TTF091','Leer el Evangelio en el Siglo XXI'],
   ['TTF100','Arte y Revelación'],
-  ['TTF109','La Belleza de la Fragilidad Humana'],
   ['TTF111','Ética Teológica de la Tecnología Moderna'],
-  ['TTF115','Virgen María y Feminismo: ¿Diálogo o Confrontación?'],
-  ['TTF116','Arquitectura Sacra'],
-  ['TTF118','Esperanza Cristiana, Muerte y Más Allá'],
-  ['TTF202','Búsquedas Religiosas y Cristianismo'],
-  ['TTF205','¿Quién Es Jesús de Nazareth?'],
-  ['TTF206','El Padrenuestro: la Oración de Jesús'],
-  ['TTF207','Doctrina Social de la Iglesia'],
-  ['TTF208','Fe y Razón: Una Perspectiva Histórica'],
-  ['TTF210','Experiencia Creyente y Secularismo'],
-  ['TTF211','Para Pensar la Muerte'],
-  ['TTF213','Espiritualidad Laical y Cultura Moderna'],
-  ['TTF215','Teología y Ecología'],
-  ['TTF216','¿Creer o No Creer?'],
-  ['TTF217','¿Es Necesaria la Iglesia?'],
-  ['TTF218','Lectura Contemporánea de la Biblia'],
-  ['TTF219','Existencia Humana y la Búsqueda de Sentido'],
-  ['TTF220','Teología del Cuerpo Humano'],
-  ['TTF222','Cristianismo y Crisis Ecológica'],
-  ['TTF225','Fe y Ciencia'],
-  ['TTF226','Religión y Política'],
-  ['TTF232','Teología Feminista: Un Signo de los Tiempos'],
-  ['TTF233','Teología y Literatura'],
 ];
 
 const SIGLAS_UC={
