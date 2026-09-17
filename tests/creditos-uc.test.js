@@ -56,7 +56,9 @@ const entradas = Object.entries(CREDITOS_UC);
 // ICE1514 y FIS1514 son dos cursos oficiales distintos que comparten nombre.
 // La variante ICE se etiqueta con su sigla para que el catálogo no convierta
 // dos alternativas en la misma opción.
-chk('trae 147 ramos de Ingeniería y 26 propios de Comercial', entradas.length === 173);
+// Los 24 teológicos con pauta entraron el 2026-09-17: están fuera de malla, y
+// esta tabla es de donde salen su sigla y sus créditos.
+chk('trae 147 ramos de Ingeniería, 26 propios de Comercial y 24 teológicos', entradas.length === 197);
 chk('cada entrada es [créditos, sigla]',
   entradas.every(([, v]) => Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'string'));
 chk('ninguna sigla vacía ni repetida',
@@ -93,8 +95,13 @@ console.log('\n=== Valores oficiales de Ingeniería Comercial ===');
   ['Teoría Financiera',10,'EAA2210'], ['Estrategia Competitiva',10,'EAA2420'],
   ['Competencia y Mercado',10,'EAE2130'], ['Contabilidad de Costos',10,'EAA2220'],
   ['Ética, Economía y Empresa',10,'FIL209'], ['Marketing Analytics',10,'EAA2320'],
-  ['Empresas y Legislación',5,'EAA2240'], ['Macroeconomía II',10,'EAE2220'],
-  ['Contabilidad Gerencial',10,'EAA2230'], ['Dirección de Personas',10,'EAA2110'],
+  // Estas dos estaban cruzadas entre sí desde la primera transcripción de la
+  // malla. Comprobado el 2026-09-17 pidiendo las fichas a catalogo.uc.cl:
+  // EAA2230 = EMPRESA Y LEGISLACION, 05 créditos; EAA2240 = CONTABILIDAD
+  // GERENCIAL, 10 créditos. Los créditos por nombre ya estaban bien; lo que
+  // estaba mal era el código de cada uno.
+  ['Empresas y Legislación',5,'EAA2230'], ['Macroeconomía II',10,'EAE2220'],
+  ['Contabilidad Gerencial',10,'EAA2240'], ['Dirección de Personas',10,'EAA2110'],
   ['Práctica Social',10,'EAF2500'],
 ].forEach(([n, cr, sig]) => chk(`${n} = ${cr} SCT (${sig})`,
   CREDITOS_UC[n] && CREDITOS_UC[n][0] === cr && CREDITOS_UC[n][1] === sig));
