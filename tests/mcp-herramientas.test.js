@@ -21,7 +21,7 @@ function servidor(estado) {
   const llamadas = [];
   const ctx = {
     console, Response, structuredClone,
-    HERRAMIENTAS: [], NOMBRES: ['listar_ramos', 'ver_ramo', 'evaluaciones_proximas', 'que_necesito_para_aprobar', 'proponer_pauta', 'agregar_ramo'],
+    HERRAMIENTAS: [], NOMBRES: ['estado_semestre', 'simular', 'listar_ramos', 'ver_ramo', 'evaluaciones_proximas', 'que_necesito_para_aprobar', 'proponer_pauta', 'agregar_ramo'],
     validarPropuestaPauta: () => null,
     fetch: async (url, options) => { llamadas.push({ url, options }); return { ok: true, json: async () => structuredClone(estado) }; },
     module: { exports: {} }, exports: {},
@@ -97,6 +97,73 @@ const ramo = (nombre, notas, extra = {}) => ({
   chk('trae sus evaluaciones como array', Array.isArray(salida(cuerpo).evaluaciones));
   ({ cuerpo } = await tool(estado, 'evaluaciones_proximas', { dias: 30 }));
   chk('evaluaciones_proximas devuelve una lista', Array.isArray(salida(cuerpo)));
+
+  console.log('\n=== estado_semestre: todo el semestre en una llamada ===');
+  {
+    const conCreditos = { ramos: [ramo('Dinámica', [5.5, 6.0], { ramoKey: 'FIS1514' }), ramo('Cálculo II', [3.0, 3.5], { ramoKey: 'MAT1620' })] };
+    ({ cuerpo } = await tool(conCreditos, 'estado_semestre'));
+    const e = salida(cuerpo);
+    chk('trae los dos ramos con promedio, avance, riesgo y sigla',
+      e.ramos.length === 2 && e.ramos.every(r => typeof r.promedio === 'number' && r.avanceEvaluado === 60 && r.riesgo && 'sigla' in r));
+    chk('contesta lo mismo que que_necesito_para_aprobar, sin pedirlo ramo por ramo',
+      e.ramos[0].necesitaParaAprobar === salida((await tool(conCreditos, 'que_necesito_para_aprobar', { ramo: 'Dinámica' })).cuerpo).promedioNecesario);
+    chk('el ramo con promedio bajo 5,0 sale en la lista de atención',
+      e.atencion.includes('Cálculo II') && !e.atencion.includes('Dinámica'));
+    chk('el promedio general se pondera por créditos cuando todos los tienen',
+      e.promedioGeneral.modo === 'creditos' && Math.abs(e.promedioGeneral.valor - 4.5) < 0.001 && e.promedioGeneral.ramosConNota === 2);
+    // La misma regla que gpa() en app.js: si a UNO le faltan créditos, el
+    // promedio cae a simple en vez de ponderar con datos a medias.
+    const sinCreditos = { ramos: [ramo('Dinámica', [5.5, 6.0]), { ...ramo('Cálculo II', [3.0, 3.5]), creditos: null }] };
+    chk('y cae a simple si a un ramo con nota le faltan los créditos',
+      salida((await tool(sinCreditos, 'estado_semestre')).cuerpo).promedioGeneral.modo === 'simple');
+    // El laboratorio ya está contado dentro de Dinámica: contarlo aparte le
+    // daba al mismo ramo dos votos en el promedio general.
+    const conLab = { ramos: [{ ...ramo('Dinámica', [5.5, 6.0]), aporta: { ramo: 'Laboratorio de Dinámica', peso: 30, min: 4 } }, { ...ramo('Laboratorio de Dinámica', [7, 7]), creditos: 0 }] };
+    chk('el ramo que aporta su nota a otro no entra dos veces al promedio',
+      salida((await tool(conLab, 'estado_semestre')).cuerpo).promedioGeneral.ramosConNota === 1);
+    ({ cuerpo } = await tool(conCreditos, 'estado_semestre', { dias: 1 }));
+    chk('la ventana de fechas se respeta: el examen de 2099 no entra en 1 día',
+      salida(cuerpo).proximas.length === 0 && salida(cuerpo).ventanaDias === 1);
+  }
+
+  console.log('\n=== simular: qué pasaría, sin guardar nada ===');
+  {
+    const estadoSim = { ramos: [ramo('Dinámica', [5.5, 6.0])] };
+    ({ cuerpo } = await tool(estadoSim, 'simular', { ramo: 'Dinámica', notas: [{ evaluacion: 'Examen', valor: 2.0 }] }));
+    const s1 = salida(cuerpo);
+    chk('un 2,0 en el examen baja la nota final pero todavía aprueba',
+      Math.abs(s1.promedioSimulado - 4.25) < 0.001 && s1.promedioSimulado < s1.promedioActual && s1.alcanzaLaMeta === true);
+    chk('y con meta 5,0 el mismo escenario dice que no alcanza',
+      salida((await tool(estadoSim, 'simular', { ramo: 'Dinámica', notas: [{ evaluacion: 'Examen', valor: 2.0 }], meta: 5 })).cuerpo).alcanzaLaMeta === false);
+    const { llamadas: ll } = await tool(estadoSim, 'simular', { ramo: 'Dinámica', notas: [{ evaluacion: 'Examen', valor: 7 }] });
+    chk('no escribe: la única llamada a Supabase es la de leer el estado',
+      ll.length === 1 && ll[0].url.endsWith('/agente_datos'));
+    ({ cuerpo } = await tool(estadoSim, 'simular', { ramo: 'Dinámica', notas: [{ evaluacion: 'Control sorpresa', valor: 5 }] }));
+    chk('una evaluación que no existe se avisa con la lista de las que sí',
+      /No encontré "Control sorpresa"/.test(salida(cuerpo).error) && /Prueba 1/.test(salida(cuerpo).error));
+    ({ cuerpo } = await tool(estadoSim, 'simular', { ramo: 'Dinámica', notas: [{ evaluacion: 'Examen', valor: 9 }] }));
+    chk('una nota fuera de la escala 1,0–7,0 se rechaza', /fuera de la escala/.test(salida(cuerpo).error));
+
+    console.log('\n=== simular sin notas: dónde rinde estudiar ===');
+    ({ cuerpo } = await tool(estadoSim, 'simular', { ramo: 'Dinámica' }));
+    const imp = salida(cuerpo).impacto;
+    chk('lista solo lo que queda pendiente', imp.length === 1 && imp[0].evaluacion === 'Examen');
+    chk('dice cuánto mueve la nota final entre el mejor y el peor caso',
+      Math.abs(imp[0].mueveLaFinal - 2.4) < 0.001 && imp[0].notaFinalSiSacas7 > imp[0].notaFinalSiSacas1);
+    chk('y marca la evaluación que decide si aprueba', imp[0].decideAprobar === true);
+    // Con dos pendientes, la que pesa más va primero: es el orden en que
+    // conviene repartir las horas, y por eso no se devuelve en orden de pauta.
+    const dos = { ramos: [{ ...ramo('X', [null, null]) }] };
+    const impDos = salida((await tool(dos, 'simular', { ramo: 'X' })).cuerpo).impacto;
+    chk('ordena por cuánto mueve la final, no por el orden de la pauta',
+      impDos[0].evaluacion === 'Examen' && impDos[0].mueveLaFinal >= impDos[1].mueveLaFinal);
+    // Sin el supuesto, con todo pendiente cada evaluación movería la final
+    // entera —el promedio de lo rendido sería esa sola nota— y las tres
+    // empatarían en 6,0. El número tiene que separar el examen de 40% de una
+    // prueba de 30%.
+    chk('y el supuesto hace comparables los números: 2,4 el examen, 1,8 cada prueba',
+      Math.abs(impDos[0].mueveLaFinal - 2.4) < 0.001 && Math.abs(impDos[1].mueveLaFinal - 1.8) < 0.001);
+  }
 
   console.log('\n=== Token vencido o revocado corta todo ===');
   for (const name of ['listar_ramos', 'ver_ramo', 'que_necesito_para_aprobar', 'proponer_pauta', 'agregar_ramo']) {

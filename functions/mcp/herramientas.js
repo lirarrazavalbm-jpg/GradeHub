@@ -27,6 +27,43 @@ export const HERRAMIENTAS = [
     resumen: 'Los ramos del semestre con su sigla, promedio actual, cuánto llevan evaluado (en %) y si están en riesgo. La sigla viene null cuando no la tenemos guardada.',
   },
   {
+    // La primera llamada de cualquier conversación. Existe porque encadenar
+    // tres herramientas para saber de qué se está hablando es caro, y lo caro
+    // no se llama: el agente contesta con lo que recuerda y se equivoca.
+    nombre: 'estado_semestre',
+    tipo: 'lectura',
+    resumen: 'Todo el semestre en una llamada: promedio general, cada ramo con su nota, cuánto lleva evaluado, si está en riesgo y qué necesita para aprobar, más lo que viene con fecha. Úsala apenas la conversación toque un ramo, una prueba, el promedio o cuánto le falta.',
+    args: { dias: 'cuántos días hacia adelante mirar las evaluaciones con fecha (por defecto 14)' },
+  },
+  {
+    // La pregunta que ningún otro dato del estudiante puede contestar: no es
+    // qué nota tiene, es qué pasa si le va de cierta forma. El cálculo queda
+    // acá por lo mismo que `que_necesito_para_aprobar`: casillas, descartes,
+    // compuertas y ramo vinculado ya se equivocaron adentro de la app.
+    nombre: 'simular',
+    tipo: 'lectura',
+    resumen: 'Qué pasaría con un ramo si sacara ciertas notas: promedio final, si aprueba y qué compuertas quedan sin cumplir. No guarda nada. Sin notas, responde la otra mitad: cuánto mueve la nota final cada evaluación que queda, para saber dónde conviene poner las horas.',
+    args: {
+      ramo: 'nombre o sigla',
+      notas: {
+        type: 'array',
+        description: 'Notas hipotéticas. No se guardan: solo se calcula con ellas.',
+        maxItems: 60,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['evaluacion', 'valor'],
+          properties: {
+            evaluacion: { type: 'string', description: 'Nombre de la evaluación tal como está en el ramo' },
+            valor: { type: 'number', description: 'Nota entre 1,0 y 7,0' },
+            casilla: { type: 'integer', minimum: 1, maximum: 100, description: 'Cuál de las notas de esa evaluación, si tiene varias' },
+          },
+        },
+      },
+      meta: 'nota objetivo para decir si alcanza (por defecto 4,0)',
+    },
+  },
+  {
     nombre: 'ver_ramo',
     tipo: 'lectura',
     resumen: 'Un ramo con sus evaluaciones, ponderaciones y las notas que ya tiene.',
