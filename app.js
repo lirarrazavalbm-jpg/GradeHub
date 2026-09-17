@@ -4225,12 +4225,32 @@ function pintarUrlAgente(){
 // dato—. Es la regla que sostiene todo lo demás: un agente que rellena una
 // ponderación que no está en GradeHub devuelve un promedio que parece real.
 const PROMPTS_AGENTE = {
-  repaso: `Cada domingo revisa mi GradeHub y ponme al día en un mensaje corto.
+  repaso: {
+    titulo: 'Ponerme al día una vez a la semana',
+    bajada: 'Qué se viene, qué ramo está en riesgo, qué nota te falta registrar y dónde rinde estudiar. Los agentes con tareas programadas lo hacen solos cada domingo.',
+    texto: `Cada domingo revisa mi GradeHub y ponme al día en un mensaje corto.
 
 Dime cuatro cosas: qué evaluaciones vienen en los próximos diez días y cuánto pesa cada una; en qué ramos estoy en riesgo y qué promedio necesito en lo que me queda para aprobarlos; qué evaluaciones ya pasaron de fecha y siguen sin nota, porque mientras no las registre el promedio que veo no es el real; y en qué me conviene poner las horas de esta semana, mirando cuánto mueve la nota final cada cosa que me queda por rendir.
 
 Si no hay nada urgente, dímelo en una línea en vez de armarme un resumen igual. Y no inventes notas, fechas ni ponderaciones: si algo no está en GradeHub, dime qué falta y pídemelo.`,
-  plan: `Revisa todo mi GradeHub y ármame un plan para lo que queda del semestre.
+  },
+  proxima: {
+    titulo: 'Un plan para mi próxima evaluación',
+    bajada: 'Cuál es, qué día cae, cuánto pesa, qué nota te conviene sacarte y qué hacer cada día hasta entonces.',
+    texto: `Mira cuál es mi próxima evaluación en GradeHub y ármame un plan para llegar a ella.
+
+Dime primero cuál es y de qué ramo, qué día cae, cuántos días me quedan contando desde hoy, y cuánto pesa en la nota final de ese ramo.
+
+Después dime qué me conviene sacarme: la nota mínima para no quedar fuera de alcance, la que me deja tranquilo, y cómo queda mi nota final del ramo si me saco un 4,0, un 5,0 o un 6,0. Simúlalo con mis notas reales, no lo estimes.
+
+Cierra con un plan para los días que quedan: qué hacer cada día y qué tengo que tener listo el día anterior. Si esta evaluación pesa poco comparada con lo que me queda después, dímelo derecho para no quemarme en algo que mueve poco.
+
+Si en GradeHub no tengo ninguna evaluación con fecha, no la inventes: dímelo y ayúdame a ponerle las fechas.`,
+  },
+  plan: {
+    titulo: 'Un plan para lo que queda del semestre',
+    bajada: 'Mira todos tus ramos desde la fecha de hoy y arma un plan semana por semana, con la evaluación que decide si apruebas.',
+    texto: `Revisa todo mi GradeHub y ármame un plan para lo que queda del semestre.
 
 Parte diciéndome en qué fecha estamos hoy y cuántas semanas faltan para mi última evaluación con fecha.
 
@@ -4239,10 +4259,25 @@ Después ve ramo por ramo: cómo voy, cuánto llevo evaluado, qué promedio nece
 Cierra con un plan semana por semana hasta que termine el semestre, ordenado por urgencia: qué me conviene estudiar cada semana, cuál es la evaluación que decide si apruebo, y qué decisiones tengo que tomar pronto. Si un ramo ya no da, dímelo derecho en vez de darme ánimo.
 
 No inventes nada: si falta una nota, una fecha o una ponderación, dime cuál y pídemela.`,
+  },
 };
-async function copiarPromptAgente(clave){
-  const texto=PROMPTS_AGENTE[clave];
-  if(!texto)return;
+// Un solo bloque con un desplegable: tres tarjetas abiertas ocupaban media
+// pantalla de Ajustes para algo que se usa una vez. El texto elegido se pinta
+// en el momento, así que la pantalla sirve igual antes de tocar nada.
+function promptAgenteElegido(){
+  const sel=document.getElementById('s-agent-prompt-pick');
+  const clave=sel&&PROMPTS_AGENTE[sel.value]?sel.value:'repaso';
+  return {clave,...PROMPTS_AGENTE[clave]};
+}
+function pintarPromptAgente(){
+  const elegido=promptAgenteElegido();
+  const bajada=document.getElementById('s-agent-prompt-bajada');
+  const texto=document.getElementById('s-agent-prompt-texto');
+  if(bajada)bajada.textContent=elegido.bajada;
+  if(texto)texto.textContent=elegido.texto;
+}
+async function copiarPromptAgente(){
+  const {texto}=promptAgenteElegido();
   try{await navigator.clipboard.writeText(texto);showToast('Mensaje copiado. Pégaselo a tu agente.');}
   catch{showToast('No se pudo copiar. Selecciona el texto y cópialo a mano.');}
 }
@@ -4891,9 +4926,15 @@ function openSettings(){
       <button type="button" class="agent-refresh" onclick="cargarAgentesConectados()">Actualizar lista</button>
       <div id="s-agent-list" class="agent-list" aria-live="polite"></div>
 
-      <div class="agent-proposal-entry"><div><b>Pídele que te ponga al día una vez a la semana</b><span>Qué se viene, qué ramo está en riesgo, qué nota te falta registrar y dónde rinde estudiar. Los agentes con tareas programadas lo hacen solos cada domingo.<details class="agent-prompt-ver"><summary>Ver el mensaje</summary>${esc(PROMPTS_AGENTE.repaso)}</details></span></div><button type="button" class="agent-refresh" onclick="copiarPromptAgente('repaso')">Copiar</button></div>
-
-      <div class="agent-proposal-entry"><div><b>Pídele un plan para lo que queda del semestre</b><span>Mira tus ramos, calcula qué necesitas en cada uno desde la fecha de hoy y arma un plan semana por semana, con la evaluación que decide si apruebas.<details class="agent-prompt-ver"><summary>Ver el mensaje</summary>${esc(PROMPTS_AGENTE.plan)}</details></span></div><button type="button" class="agent-refresh" onclick="copiarPromptAgente('plan')">Copiar</button></div>
+      <div class="agent-proposal-entry agent-prompt-picker"><div>
+        <b>Pídele algo con lo que ya sabe</b>
+        <span>Elige un mensaje, cópialo y pégalo en el chat de tu agente.</span>
+        <select class="feedback-select" id="s-agent-prompt-pick" onchange="pintarPromptAgente()" aria-label="Qué pedirle a tu agente">
+          ${Object.entries(PROMPTS_AGENTE).map(([clave,p])=>`<option value="${esc(clave)}">${esc(p.titulo)}</option>`).join('')}
+        </select>
+        <span id="s-agent-prompt-bajada">${esc(PROMPTS_AGENTE.repaso.bajada)}</span>
+        <details class="agent-prompt-ver"><summary>Ver el mensaje</summary><span id="s-agent-prompt-texto">${esc(PROMPTS_AGENTE.repaso.texto)}</span></details>
+      </div><button type="button" class="agent-refresh" onclick="copiarPromptAgente()">Copiar</button></div>
 
       <div class="agent-proposal-entry"><div><b>Pautas por revisar</b><span>Si un agente te propuso una pauta, la revisas acá. Nada cambia hasta que la confirmes.</span></div><button type="button" class="agent-refresh" onclick="cargarPropuestasPautaAgente({mostrar:true,avisar:true})">Ver propuestas</button></div>`
       :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>La conexión queda atada a tu cuenta para que puedas ver y desconectar tus agentes.</p></div>`;

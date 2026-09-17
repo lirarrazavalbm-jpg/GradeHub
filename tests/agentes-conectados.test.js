@@ -72,26 +72,37 @@ if(explica){
 }
 chk('la URL y las fichas siguen legibles en pantalla angosta',/\.agent-url-value\{[^}]*word-break:break-all/.test(css)&&/\.agent-link-heading b\{[^}]*text-overflow:ellipsis/.test(css));
 
-console.log('\n=== Los dos mensajes que se le copian a un agente ===');
+console.log('\n=== Los mensajes que se le copian a un agente ===');
 const P=contexto.PROMPTS_AGENTE;
-chk('hay uno para el repaso semanal y otro para el plan del semestre',
-  !!(P&&P.repaso&&P.plan)&&P.repaso!==P.plan);
+chk('hay uno para el repaso semanal, uno para la próxima evaluación y uno para el semestre',
+  !!(P&&P.repaso&&P.proxima&&P.plan.texto)&&new Set([P.repaso.texto,P.proxima.texto,P.plan.texto]).size===3);
 // Un mensaje de una línea devuelve una respuesta genérica. Estos piden datos
 // concretos, y por eso son largos.
-chk('los dos son mensajes de verdad, no una frase',
-  P.repaso.length>400&&P.plan.length>600);
+chk('los tres son mensajes de verdad, no una frase',
+  P.repaso.texto.length>400&&P.proxima.texto.length>600&&P.plan.texto.length>600);
 chk('el repaso pide lo que solo GradeHub sabe',
-  /pesa|pondera/i.test(P.repaso)&&/riesgo/i.test(P.repaso)&&/sin nota|registr/i.test(P.repaso));
+  /pesa|pondera/i.test(P.repaso.texto)&&/riesgo/i.test(P.repaso.texto)&&/sin nota|registr/i.test(P.repaso.texto));
 chk('el del plan parte por la fecha de hoy y termina en semanas',
-  /hoy/i.test(P.plan)&&/semana/i.test(P.plan)&&/sim[uú]l/i.test(P.plan));
+  /hoy/i.test(P.plan.texto)&&/semana/i.test(P.plan.texto)&&/sim[uú]l/i.test(P.plan.texto));
+// La próxima evaluación es la pregunta del lunes: cuándo es, cuánto pesa y qué
+// me conviene sacarme. Sin fechas cargadas no hay nada que planificar, así que
+// tiene que decirlo en vez de inventar una.
+chk('el de la próxima evaluación cuenta los días, pesa y simula notas',
+  /d[ií]as/i.test(P.proxima.texto)&&/pesa/i.test(P.proxima.texto)&&/sim[uú]l/i.test(P.proxima.texto)&&
+  /4,0/.test(P.proxima.texto)&&/(sin|ninguna) evaluaci[oó]n con fecha|no tengo ninguna evaluaci[oó]n/i.test(P.proxima.texto));
 // La regla que sostiene todo: un agente que rellena una ponderación que no
 // está en GradeHub devuelve un promedio que parece real.
-chk('los dos prohíben inventar y piden avisar cuando falta un dato',
-  [P.repaso,P.plan].every(t=>/no inventes/i.test(t)&&/(pídemel|dime qué falta|dime cuál)/i.test(t)));
-chk('las dos tarjetas están en la pantalla, con su título y su botón',
-  /Pídele que te ponga al día una vez a la semana/.test(html)&&
-  /Pídele un plan para lo que queda del semestre/.test(html)&&
-  (html.match(/copiarPromptAgente\('(repaso|plan)'\)/g)||[]).length===2);
+chk('los tres prohíben inventar y piden avisar cuando falta un dato',
+  [P.repaso.texto,P.proxima.texto,P.plan.texto].every(t=>/no (inventes|la inventes)/i.test(t)&&/(pídemel|dime qué falta|dime cuál|ayúdame a poner)/i.test(t)));
+// Un desplegable y un botón, no tres tarjetas: la sección se usa una vez y no
+// puede ocupar media pantalla de Ajustes.
+chk('los tres están en un solo desplegable, con un botón para copiar',
+  /id="s-agent-prompt-pick"/.test(html)&&
+  Object.values(P).every(p=>html.includes(p.titulo))&&
+  (html.match(/<option value="(repaso|proxima|plan)"/g)||[]).length===3&&
+  (html.match(/onclick="copiarPromptAgente\(\)"/g)||[]).length===1);
+chk('el mensaje elegido se ve antes de copiarlo',
+  /id="s-agent-prompt-texto"/.test(html)&&html.includes(P.repaso.texto.slice(0,40)));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);

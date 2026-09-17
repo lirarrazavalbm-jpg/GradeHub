@@ -987,6 +987,11 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 /* El mensaje completo son varios párrafos: se muestra plegado para que la
    tarjeta siga siendo una línea y no una pared de texto, pero a la vista de
    quien quiera leer lo que va a copiar. */
+/* El bloque de mensajes es el único de la sección con un control adentro, así
+   que su contenido se apila en vez de quedar en una línea con el botón. */
+.agent-prompt-picker{align-items:flex-start;}
+.agent-prompt-picker > div{display:grid;gap:4px;min-width:0;width:100%;}
+.agent-prompt-picker .feedback-select{margin:8px 0 2px;}
 .agent-prompt-ver{margin-top:9px;border:0;padding:0;}
 .agent-prompt-ver summary{padding:4px 0;color:var(--primary);font-size:.71875rem;font-weight:700;cursor:pointer;}
 .agent-prompt-ver[open] summary{margin-bottom:6px;}
