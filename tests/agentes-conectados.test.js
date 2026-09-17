@@ -21,7 +21,14 @@ chk('no quedan funciones, RPC ni temporizadores del camino por código',
 const vm=require('vm');
 const inicio=app.indexOf('    if(section===\'agentes\')return');
 const fin=app.indexOf("    if(section==='sugerencias')",inicio);
-const panel=vm.runInNewContext('(function(section){'+app.slice(inicio,fin)+'})',{currentUser:{id:'sintetico'}});
+// La pantalla usa dos globales del propio app.js: el escapador y los mensajes
+// que el estudiante le copia a su agente. Se cargan en el mismo contexto en vez
+// de simularlos, para que este test siga mirando el texto real.
+const contexto={currentUser:{id:'sintetico'}};
+const iPrompts=app.indexOf('const PROMPTS_AGENTE = {');
+vm.runInNewContext(app.slice(iPrompts,app.indexOf('\n};',iPrompts)+3)+';this.PROMPTS_AGENTE=PROMPTS_AGENTE;',contexto);
+vm.runInNewContext(app.match(/function esc\([^]*?\n\}/)[0]+';this.esc=esc;',contexto);
+const panel=vm.runInNewContext('(function(section){'+app.slice(inicio,fin)+'})',contexto);
 const html=panel('agentes');
 chk('la pantalla solo ofrece vincular por URL, sin comandos ni código temporal',
   /onclick="crearUrlAgente\(\)"/.test(html)&&
@@ -64,6 +71,27 @@ if(explica){
   chk('y dice el límite: no escribe notas',/no puede escribir tus notas/i.test(t));
 }
 chk('la URL y las fichas siguen legibles en pantalla angosta',/\.agent-url-value\{[^}]*word-break:break-all/.test(css)&&/\.agent-link-heading b\{[^}]*text-overflow:ellipsis/.test(css));
+
+console.log('\n=== Los dos mensajes que se le copian a un agente ===');
+const P=contexto.PROMPTS_AGENTE;
+chk('hay uno para el repaso semanal y otro para el plan del semestre',
+  !!(P&&P.repaso&&P.plan)&&P.repaso!==P.plan);
+// Un mensaje de una línea devuelve una respuesta genérica. Estos piden datos
+// concretos, y por eso son largos.
+chk('los dos son mensajes de verdad, no una frase',
+  P.repaso.length>400&&P.plan.length>600);
+chk('el repaso pide lo que solo GradeHub sabe',
+  /pesa|pondera/i.test(P.repaso)&&/riesgo/i.test(P.repaso)&&/sin nota|registr/i.test(P.repaso));
+chk('el del plan parte por la fecha de hoy y termina en semanas',
+  /hoy/i.test(P.plan)&&/semana/i.test(P.plan)&&/sim[uú]l/i.test(P.plan));
+// La regla que sostiene todo: un agente que rellena una ponderación que no
+// está en GradeHub devuelve un promedio que parece real.
+chk('los dos prohíben inventar y piden avisar cuando falta un dato',
+  [P.repaso,P.plan].every(t=>/no inventes/i.test(t)&&/(pídemel|dime qué falta|dime cuál)/i.test(t)));
+chk('las dos tarjetas están en la pantalla, con su título y su botón',
+  /Pídele que te ponga al día una vez a la semana/.test(html)&&
+  /Pídele un plan para lo que queda del semestre/.test(html)&&
+  (html.match(/copiarPromptAgente\('(repaso|plan)'\)/g)||[]).length===2);
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);

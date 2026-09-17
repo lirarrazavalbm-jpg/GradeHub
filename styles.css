@@ -984,6 +984,13 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .agent-proposal-total{flex:none;margin:0!important;color:var(--primary)!important;font-weight:800;font-variant-numeric:tabular-nums;font-size:.875rem!important;}
 .agent-proposal-source,.agent-proposal-help,.agent-proposal-warning{margin:10px 0 0;color:var(--fg2);font-size:.75rem;line-height:1.45;overflow-wrap:anywhere;}
 .agent-proposal-warning{color:var(--amber);}
+/* El mensaje completo son varios párrafos: se muestra plegado para que la
+   tarjeta siga siendo una línea y no una pared de texto, pero a la vista de
+   quien quiera leer lo que va a copiar. */
+.agent-prompt-ver{margin-top:9px;border:0;padding:0;}
+.agent-prompt-ver summary{padding:4px 0;color:var(--primary);font-size:.71875rem;font-weight:700;cursor:pointer;}
+.agent-prompt-ver[open] summary{margin-bottom:6px;}
+.agent-prompt-ver{white-space:pre-line;color:var(--fg2);font-size:.75rem;line-height:1.5;}
 .agent-ramo-list{display:grid;gap:8px;margin:12px 0 14px;max-height:46vh;overflow-y:auto;}
 .agent-ramo-row{display:flex;align-items:center;gap:11px;padding:11px 12px;border:1px solid var(--border);border-radius:11px;background:var(--bg2);cursor:pointer;}
 .agent-ramo-row span{display:grid;gap:2px;min-width:0;font-size:.84375rem;line-height:1.3;}
