@@ -72,6 +72,12 @@ const CONFLICTOS_CONOCIDOS = {
   // El horario oficial 2026-2 la dicta como TTF012 (Formación Teológica).
   // TEB110 es un curso distinto con el mismo nombre.
   'Revelación y Fe': 'TEB110',
+  // Acá no son dos cursos: catalogo.uc.cl responde el MISMO programa —"Ética,
+  // Economía y Empresa", 10 créditos— para las dos siglas. La malla de
+  // Comercial la declara FIL209 y el catálogo completo la lista como ETI209;
+  // se conserva la de la malla, que es la que el estudiante tiene inscrita.
+  // Comprobado el 2026-09-17 pidiendo las dos fichas.
+  'Ética, Economía y Empresa': 'ETI209',
 };
 const catalogo = fs.readFileSync(raiz + 'cursos-uc.js', 'utf8');
 const filas = new Map();

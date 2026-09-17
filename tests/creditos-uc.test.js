@@ -93,8 +93,13 @@ console.log('\n=== Valores oficiales de Ingeniería Comercial ===');
   ['Teoría Financiera',10,'EAA2210'], ['Estrategia Competitiva',10,'EAA2420'],
   ['Competencia y Mercado',10,'EAE2130'], ['Contabilidad de Costos',10,'EAA2220'],
   ['Ética, Economía y Empresa',10,'FIL209'], ['Marketing Analytics',10,'EAA2320'],
-  ['Empresas y Legislación',5,'EAA2240'], ['Macroeconomía II',10,'EAE2220'],
-  ['Contabilidad Gerencial',10,'EAA2230'], ['Dirección de Personas',10,'EAA2110'],
+  // Estas dos estaban cruzadas entre sí desde la primera transcripción de la
+  // malla. Comprobado el 2026-09-17 pidiendo las fichas a catalogo.uc.cl:
+  // EAA2230 = EMPRESA Y LEGISLACION, 05 créditos; EAA2240 = CONTABILIDAD
+  // GERENCIAL, 10 créditos. Los créditos por nombre ya estaban bien; lo que
+  // estaba mal era el código de cada uno.
+  ['Empresas y Legislación',5,'EAA2230'], ['Macroeconomía II',10,'EAE2220'],
+  ['Contabilidad Gerencial',10,'EAA2240'], ['Dirección de Personas',10,'EAA2110'],
   ['Práctica Social',10,'EAF2500'],
 ].forEach(([n, cr, sig]) => chk(`${n} = ${cr} SCT (${sig})`,
   CREDITOS_UC[n] && CREDITOS_UC[n][0] === cr && CREDITOS_UC[n][1] === sig));

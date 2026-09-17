@@ -957,6 +957,190 @@ const PRESETS_UC={
       'Si repruebas la cátedra o el laboratorio, repruebas Dinámica: el programa no dice con qué nota quedas, así que mostramos la más baja de las dos',
     ],
   },
+  // ── PAUTAS DEL CATÁLOGO OFICIAL UC ────────────────────────────────────────
+  // Transcritas el 2026-09-17 desde catalogo.uc.cl —la ficha oficial de cada
+  // sigla— con `bin/proponer-pautas-uc.js`, y revisadas una por una acá.
+  //
+  // QUÉ SON Y QUÉ NO. Son las ponderaciones del programa REGISTRADO del curso:
+  // oficiales, pero genéricas. No son las de una sección ni las de este
+  // semestre, y el catálogo no declara período, así que la ficha las muestra
+  // como "período sin confirmar" y ninguna trae fechas. Si a alguien su sección
+  // le cambió los pesos, edita su pauta y el consenso de reportes hace el resto.
+  //
+  // Dos decisiones de transcripción, ninguna inventada:
+  // · Un conjunto en plural cuyo número el catálogo NO dice ("Pruebas 40%") va
+  //   como lista abierta. Poner tres casillas sería inventar cuántas son.
+  // · Cuando el catálogo sí dice cuántas ("Controles (5 en total)"), van con sus
+  //   casillas.
+  // Los nombres son los del catálogo; solo se les pusieron las tildes que le
+  // faltaban. Nada más se tocó: renombrar para que se lea mejor sería escribir
+  // una pauta que el documento no dice.
+  'Comportamiento Organizacional':{
+    evals:[
+      ['Pruebas',50,{lista:true}],
+      ['Trabajo en grupo y presentación oral en clases',20],
+      ['Examen final escrito',30],
+    ],
+  },
+  'Contabilidad':{
+    evals:[
+      ['Controles',30,{lista:true}],
+      ['Pruebas',40,{lista:true}],
+      ['Examen',30],
+    ],
+  },
+  'Fundamentos de Finanzas':{
+    evals:[
+      ['Pruebas y controles',60,{lista:true}],
+      ['Tareas en Excel',10,{lista:true}],
+      ['Examen final escrito',30],
+    ],
+  },
+  'Dirección de Personas':{
+    evals:[
+      ['Controles',40,{slots:5}],
+      ['Prueba 1',20],
+      ['Prueba 2',20],
+      ['Examen',20],
+    ],
+  },
+  'Contabilidad de Costos':{
+    evals:[
+      ['Pruebas y controles',70,{lista:true}],
+      ['Examen final escrito',30],
+    ],
+  },
+  // OJO: `data.js` tenía las siglas de este ramo y de Empresas y Legislación
+  // cambiadas entre sí, y por eso la primera transcripción les puso la pauta del
+  // otro. El catálogo oficial dice EAA2240 = Contabilidad Gerencial (10 cr) y
+  // EAA2230 = Empresa y Legislación (5 cr); los créditos de cada nombre ya
+  // calzaban, solo estaba mal el código.
+  'Contabilidad Gerencial':{
+    evals:[
+      ['Pruebas y controles',30,{lista:true}],
+      ['Casos prácticos y trabajos',40,{lista:true}],
+      ['Examen final escrito',30],
+    ],
+  },
+  'Empresas y Legislación':{
+    evals:[
+      ['Controles y pruebas',50,{lista:true}],
+      ['Examen',30],
+      ['Proyecto grupal',20],
+    ],
+  },
+  'Fundamentos de Marketing':{
+    evals:[
+      ['Pruebas',25,{lista:true}],
+      ['Controles',25,{lista:true}],
+      ['Trabajos grupales',20,{lista:true}],
+      ['Examen final escrito',30],
+    ],
+  },
+  'Marketing Analytics':{
+    evals:[
+      ['Pruebas',40,{lista:true}],
+      ['Participación en clases',10],
+      ['Casos y tareas grupales',30,{lista:true}],
+      ['Examen final',20],
+    ],
+  },
+  'Estrategia de la Organización':{
+    evals:[
+      ['Pruebas',40,{lista:true}],
+      ['Controles de lectura',20,{lista:true}],
+      ['Examen final escrito',40],
+    ],
+  },
+  'Estrategia Competitiva':{
+    evals:[
+      ['Prueba 1',30],
+      ['Prueba 2',30],
+      ['Examen final escrito',40],
+    ],
+  },
+  'Introducción a la Microeconomía':{
+    evals:[
+      ['Guías semanales',20,{lista:true}],
+      ['Pruebas',45,{lista:true}],
+      ['Examen',35],
+    ],
+  },
+  'Análisis Económico: La Experiencia Chilena':{
+    evals:[
+      ['Pruebas',25,{slots:2}],
+      ['Trabajo grupal',20],
+      ['Email cortos',10,{lista:true}],
+      ['Controles de lectura',15,{lista:true}],
+      ['Control de repaso',5],
+      ['Examen final',25],
+    ],
+  },
+  'Microeconomía I':{
+    evals:[
+      ['Tareas y controles',20,{lista:true}],
+      ['Pruebas escritas',48,{lista:true}],
+      ['Examen final escrito',32],
+    ],
+  },
+  'Microeconomía II':{
+    evals:[
+      ['Pruebas',48,{lista:true}],
+      ['Tareas',20,{lista:true}],
+      ['Examen final escrito',32],
+    ],
+  },
+  'Competencia y Mercado':{
+    evals:[
+      ['Pruebas',40,{lista:true}],
+      ['Controles',25,{lista:true}],
+      ['Examen final escrito',35],
+    ],
+  },
+  'Macroeconomía I':{
+    evals:[
+      ['Pruebas',48,{lista:true}],
+      ['Controles y tareas',20,{lista:true}],
+      ['Examen final escrito',32],
+    ],
+  },
+  'Macroeconomía II':{
+    evals:[
+      ['Pruebas',50,{lista:true}],
+      ['Controles',20,{lista:true}],
+      ['Examen final escrito',30],
+    ],
+  },
+  'Aplicaciones Matemáticas para Economía y Negocios':{
+    evals:[
+      ['Pruebas escritas',50,{lista:true}],
+      ['Examen final',30],
+      ['Tareas grupales',20,{lista:true}],
+    ],
+  },
+  'Práctica Social':{
+    evals:[
+      ['Evaluación socio comunitario',30],
+      ['Co-evaluación de estudiantes',20],
+      ['Registro de portafolio',30],
+      ['Presentación final Feria de proyectos',20],
+    ],
+  },
+  'Ética, Economía y Empresa':{
+    evals:[
+      ['Pruebas',40,{slots:2}],
+      ['Examen',30],
+      ['Trabajo grupal',20],
+      ['Controles y trabajos en clase',10,{lista:true}],
+    ],
+  },
+  'Cálculo III':{
+    evals:[
+      ['Evaluaciones sumativas',60,{lista:true}],
+      ['Laboratorios',10,{lista:true}],
+      ['Examen final escrito',30],
+    ],
+  },
   'Revelación y Fe':{
     sigla:'TTF012',
     periodo:'2026-2',
@@ -974,6 +1158,31 @@ const PRESETS_UC={
 // solo para estos ramos confirmados: compartir todo por nombre podría aplicar
 // la pauta de otra facultad a un curso homónimo.
 const PRESETS_UC_COM=[
+  // Los de abajo, en cambio, son ramos PROPIOS de Comercial: su pauta salió del
+  // catálogo oficial de su sigla, no de la malla de Ingeniería. Van en esta
+  // lista porque sin estar acá el preset existe y ningún estudiante de
+  // Comercial lo ve.
+  'Comportamiento Organizacional',
+  'Contabilidad',
+  'Fundamentos de Finanzas',
+  'Dirección de Personas',
+  'Contabilidad de Costos',
+  'Contabilidad Gerencial',
+  'Empresas y Legislación',
+  'Fundamentos de Marketing',
+  'Marketing Analytics',
+  'Estrategia de la Organización',
+  'Estrategia Competitiva',
+  'Introducción a la Microeconomía',
+  'Análisis Económico: La Experiencia Chilena',
+  'Microeconomía I',
+  'Microeconomía II',
+  'Competencia y Mercado',
+  'Macroeconomía I',
+  'Macroeconomía II',
+  'Aplicaciones Matemáticas para Economía y Negocios',
+  'Práctica Social',
+  'Ética, Economía y Empresa',
   'Cálculo I',
   'Introducción al Álgebra Lineal',
   'Cálculo II',
@@ -1200,9 +1409,9 @@ const CREDITOS_UC={
   'Contabilidad de Costos':[10,'EAA2220'],
   'Ética, Economía y Empresa':[10,'FIL209'],
   'Marketing Analytics':[10,'EAA2320'],
-  'Empresas y Legislación':[5,'EAA2240'],
+  'Empresas y Legislación':[5,'EAA2230'],
   'Macroeconomía II':[10,'EAE2220'],
-  'Contabilidad Gerencial':[10,'EAA2230'],
+  'Contabilidad Gerencial':[10,'EAA2240'],
   'Dirección de Personas':[10,'EAA2110'],
   'Práctica Social':[10,'EAF2500'],
 };
@@ -1454,8 +1663,8 @@ const SIGLAS_UC={
     'Macroeconomía I':'EAE2210', 'Teoría Financiera':'EAA2210',
     'Estrategia Competitiva':'EAA2420', 'Competencia y Mercado':'EAE2130',
     'Contabilidad de Costos':'EAA2220', 'Ética, Economía y Empresa':'ETI209',
-    'Marketing Analytics':'EAA2320', 'Empresas y Legislación':'EAA2240',
-    'Macroeconomía II':'EAE2220', 'Contabilidad Gerencial':'EAA2230',
+    'Marketing Analytics':'EAA2320', 'Empresas y Legislación':'EAA2230',
+    'Macroeconomía II':'EAE2220', 'Contabilidad Gerencial':'EAA2240',
     'Dirección de Personas':'EAA2110', 'Práctica Social':'EAF2500',
   },
 };
