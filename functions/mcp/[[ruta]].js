@@ -268,6 +268,175 @@ function riesgoDeRamo(promedio, necesario) {
   return 'bien';
 }
 
+// ─── ESTADO DEL SEMESTRE Y SIMULACIÓN ───────────────────────────────────────
+
+// La regla del promedio general es la de `gpa()` en app.js y tiene que decir lo
+// mismo que la app: se pondera por créditos SOLO si todos los ramos con nota
+// los tienen, y un ramo que aporta su nota a otro (el laboratorio de Dinámica)
+// no entra por su cuenta, porque ya está contado adentro del otro.
+function promedioGeneral(ramos, calculo) {
+  const aportados = new Set(ramos.filter(r => r && r.aporta && r.aporta.ramo).map(r => norm(r.aporta.ramo)));
+  const cuentan = ramos.filter(r => !aportados.has(norm(r.nombre)));
+  const conNota = cuentan.map(r => ({ r, avg: calculo.ramoAvg(r) })).filter(x => x.avg !== null);
+  if (!conNota.length) return { valor: null, modo: 'sin_notas', ramosConNota: 0 };
+  const tieneCreditos = r => typeof r.creditos === 'number' && r.creditos >= 0;
+  const simple = conNota.reduce((a, x) => a + x.avg, 0) / conNota.length;
+  if (!conNota.every(x => tieneCreditos(x.r))) return { valor: simple, modo: 'simple', ramosConNota: conNota.length };
+  const den = conNota.reduce((a, x) => a + x.r.creditos, 0);
+  return {
+    valor: den > 0 ? conNota.reduce((a, x) => a + x.avg * x.r.creditos, 0) / den : simple,
+    modo: den > 0 ? 'creditos' : 'simple',
+    ramosConNota: conNota.length,
+  };
+}
+
+function proximaConFecha(ramo, hoy) {
+  return (ramo.categorias || [])
+    .filter(c => c.fecha && c.fecha >= hoy)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .map(c => ({ evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso }))[0] || null;
+}
+
+// Una copia del ramo con notas hipotéticas puestas encima. No toca el original
+// ni vuelve a la base: se calcula y se bota. Las casillas usan `slot` como en
+// el resto de la app, así el motor las cuenta igual que si fueran reales.
+function ramoSimulado(ramo, notas) {
+  const clon = { ...ramo, categorias: (ramo.categorias || []).map(c => ({ ...c, notas: (c.notas || []).map(n => ({ ...n })) })) };
+  notas.forEach(({ evaluacion, valor, casilla }) => {
+    const cat = clon.categorias.find(c => norm(c.nombre) === norm(evaluacion));
+    if (!cat) return;
+    const slots = Number.isInteger(cat.slots) && cat.slots > 1 ? cat.slots : 0;
+    if (slots) {
+      const slot = (Number.isInteger(casilla) ? casilla : 1) - 1;
+      const existente = cat.notas.find(n => n.slot === slot);
+      if (existente) existente.valor = valor;
+      else cat.notas.push({ id: `__sim__${cat.id}__${slot}`, nombre: `${cat.nombre} ${slot + 1}`, valor, slot, peso: 1 });
+    } else if (cat.notas.length) {
+      cat.notas[0] = { ...cat.notas[0], valor };
+    } else {
+      cat.notas.push({ id: `__sim__${cat.id}`, nombre: cat.nombre, valor, peso: 1 });
+    }
+  });
+  return clon;
+}
+
+function errorSimulacion(ramo, notas) {
+  if (!Array.isArray(notas)) return 'Las notas tienen que venir en una lista.';
+  if (notas.length > 60) return 'Como máximo 60 notas por simulación.';
+  const declaradas = (ramo.categorias || []).map(c => String(c.nombre || ''));
+  for (const n of notas) {
+    const evaluacion = String(n && n.evaluacion || '').trim();
+    const valor = Number(n && n.valor);
+    const casilla = n && n.casilla;
+    if (!evaluacion) return 'Cada nota necesita el nombre de su evaluación.';
+    if (!Number.isFinite(valor) || valor < 1 || valor > 7) return `"${evaluacion}" tiene una nota fuera de la escala 1,0 a 7,0.`;
+    if (casilla != null && (!Number.isInteger(casilla) || casilla < 1 || casilla > 100)) return 'La casilla debe ser un entero entre 1 y 100.';
+    if (!declaradas.some(d => norm(d) === norm(evaluacion))) {
+      return `No encontré "${evaluacion}" en ${ramo.nombre}. Las evaluaciones que tiene son: ${declaradas.join(', ')}.`;
+    }
+  }
+  return null;
+}
+
+// Sin notas hipotéticas, la pregunta es la otra: dónde rinde estudiar. Para cada
+// evaluación sin nota se calcula la nota final sacándose un 7 y sacándose un 1,
+// con TODO lo demás pendiente fijo en 4,0 en los dos casos. Ese supuesto es lo
+// que hace comparable el número: sin él, con el semestre entero pendiente, cada
+// evaluación parece mover la final entera, porque el promedio de lo rendido es
+// esa sola nota. Sale del mismo motor, así que respeta pesos, casillas,
+// descartes y compuertas en vez de suponer que el peso es el impacto.
+const BASE_PENDIENTE = 4;
+
+function pendientesDeCategoria(cat) {
+  const slots = Number.isInteger(cat.slots) && cat.slots > 1 ? cat.slots : 0;
+  const conNota = (cat.notas || []).filter(n => typeof n.valor === 'number');
+  if (!slots) return conNota.length ? [] : [undefined];
+  const ocupados = new Set(conNota.map(n => n.slot));
+  const libres = [];
+  for (let i = 0; i < slots; i++) if (!ocupados.has(i)) libres.push(i + 1);
+  return libres;
+}
+
+function impactoPendientes(ramos, ramo, meta) {
+  const pendientes = (ramo.categorias || [])
+    .map(cat => ({ cat, casillas: pendientesDeCategoria(cat) }))
+    .filter(x => x.casillas.length);
+  const relleno = valorPorCategoria => pendientes.flatMap(({ cat, casillas }) =>
+    casillas.map(casilla => ({ evaluacion: cat.nombre, valor: valorPorCategoria(cat), casilla })));
+  const finalCon = valorPorCategoria => {
+    const clon = ramoSimulado(ramo, relleno(valorPorCategoria));
+    return calculoPara(ramos.map(x => (x === ramo ? clon : x))).ramoAvg(clon);
+  };
+  return pendientes.map(({ cat, casillas }) => {
+    const mejor = finalCon(c => (c === cat ? 7 : BASE_PENDIENTE));
+    const peor = finalCon(c => (c === cat ? 1 : BASE_PENDIENTE));
+    if (mejor === null || peor === null) return null;
+    return {
+      evaluacion: cat.nombre,
+      peso: cat.peso,
+      casillasPendientes: casillas.length,
+      notaFinalSiSacas7: mejor,
+      notaFinalSiSacas1: peor,
+      // Cuánto se mueve la nota final entre el mejor y el peor caso: es el
+      // orden en que conviene repartir las horas.
+      mueveLaFinal: Math.round((mejor - peor) * 100) / 100,
+      decideAprobar: peor < meta && mejor >= meta,
+    };
+  }).filter(Boolean).sort((a, b) => b.mueveLaFinal - a.mueveLaFinal);
+}
+
+// Evaluaciones cuya fecha ya pasó y siguen sin nota. Es el dato que más rinde
+// en un repaso: la app no puede saber la nota, pero sí puede notar que la
+// prueba fue hace dos semanas y la casilla sigue vacía, que es justo cuando el
+// promedio que se está mirando ya no es el real.
+function porRegistrar(ramos, hoy, diasAtras = 45) {
+  const desde = new Date(Date.parse(hoy) - diasAtras * 864e5).toISOString().slice(0, 10);
+  const filas = [];
+  ramos.forEach(r => (r.categorias || []).forEach(c => {
+    if (!c.fecha || c.fecha >= hoy || c.fecha < desde) return;
+    const faltan = pendientesDeCategoria(c).length;
+    if (faltan) filas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, casillasSinNota: faltan });
+  }));
+  return filas.sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+function simular(ramos, args) {
+  const ramo = buscarRamo(ramos, args.ramo);
+  if (!ramo) return { error: 'No encontré ese ramo', ramos: ramos.map(r => r.nombre) };
+  const meta = args.meta == null ? 4 : Number(args.meta);
+  if (!Number.isFinite(meta) || meta < 1 || meta > 7) return { error: 'La meta debe ser una nota entre 1,0 y 7,0.' };
+  const notas = args.notas == null ? [] : args.notas;
+  const invalida = errorSimulacion(ramo, notas);
+  if (invalida) return { error: invalida };
+
+  const actual = calculoPara(ramos).ramoAvg(ramo);
+  if (!Array.isArray(notas) || !notas.length) {
+    return {
+      ramo: ramo.nombre, meta, promedioActual: actual,
+      impacto: impactoPendientes(ramos, ramo, meta),
+      supuesto: `Para comparar, el resto de lo pendiente se deja en ${BASE_PENDIENTE},0 en los dos escenarios.`,
+      nota: 'Nada de esto está guardado: es lo que pasaría con cada evaluación que le queda.',
+    };
+  }
+
+  const clon = ramoSimulado(ramo, notas);
+  const calculo = calculoPara(ramos.map(x => (x === ramo ? clon : x)));
+  const simulado = calculo.ramoAvg(clon);
+  const faltaDespues = calculo.notaNecesaria(clon, meta);
+  return {
+    ramo: ramo.nombre,
+    meta,
+    promedioActual: actual,
+    promedioSimulado: simulado,
+    alcanzaLaMeta: simulado !== null && simulado >= meta,
+    // Lo que todavía quedaría por rendir después de estas notas: null cuando ya
+    // no queda nada pendiente.
+    promedioNecesarioEnLoQueQueda: faltaDespues,
+    compuertasIncumplidas: calculo.gatesActivas(clon).map(g => ({ nombre: g.nombre, actual: g.actual, minimo: g.min, tope: g.cap })),
+    nota: 'Simulación: no se guardó ninguna nota.',
+  };
+}
+
 function despachar(nombre, estado, args) {
   const ramos = Array.isArray(estado.ramos) ? estado.ramos : [];
   const buscar = q => buscarRamo(ramos, q);
@@ -340,6 +509,92 @@ function despachar(nombre, estado, args) {
       if (f && f >= hoy && f <= hasta) out.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: f, hora: c.hora || null, peso: c.peso });
     }));
     return out.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  if (nombre === 'estado_semestre') {
+    const dias = Number(args.dias) > 0 ? Number(args.dias) : 14;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+    const calculo = calculoPara(ramos);
+    const filas = ramos.map(r => {
+      const promedio = calculo.ramoAvg(r);
+      const necesario = calculo.notaNecesaria(r);
+      const avance = calculo.estadoParaNotaNecesaria(r);
+      return {
+        nombre: r.nombre,
+        sigla: siglaDeRamo(r),
+        creditos: r.creditos ?? null,
+        promedio,
+        avanceEvaluado: avance && avance.total > 0 ? Math.round((1 - avance.pendiente) * 100) : 0,
+        riesgo: riesgoDeRamo(promedio, necesario),
+        // El mismo número que contesta `que_necesito_para_aprobar` con meta 4,0,
+        // para que el agente no tenga que preguntarlo ramo por ramo.
+        necesitaParaAprobar: necesario,
+        proximaEvaluacion: proximaConFecha(r, hoy),
+      };
+    });
+    const proximas = [];
+    ramos.forEach(r => (r.categorias || []).forEach(c => {
+      if (c.fecha && c.fecha >= hoy && c.fecha <= hasta) {
+        proximas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso });
+      }
+    }));
+    return {
+      promedioGeneral: promedioGeneral(ramos, calculo),
+      ramos: filas,
+      proximas: proximas.sort((a, b) => a.fecha.localeCompare(b.fecha)),
+      // Lo que hay que mirar primero, ya filtrado: un agente que recibe 8 ramos
+      // no debería tener que deducir cuáles son los que duelen.
+      atencion: filas.filter(f => f.riesgo === 'en_riesgo' || f.riesgo === 'ya_no_alcanza').map(f => f.nombre),
+      ventanaDias: dias,
+    };
+  }
+
+  if (nombre === 'resumen_para_hoy') {
+    const dias = Number(args.dias) > 0 ? Number(args.dias) : 7;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+    const calculo = calculoPara(ramos);
+    const proximas = [];
+    ramos.forEach(r => (r.categorias || []).forEach(c => {
+      if (c.fecha && c.fecha >= hoy && c.fecha <= hasta) {
+        proximas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso, esHoy: c.fecha === hoy });
+      }
+    }));
+    const enRiesgo = ramos.map(r => {
+      const promedio = calculo.ramoAvg(r);
+      const necesario = calculo.notaNecesaria(r);
+      return { ramo: r.nombre, promedio, necesitaParaAprobar: necesario, riesgo: riesgoDeRamo(promedio, necesario) };
+    }).filter(f => f.riesgo === 'en_riesgo' || f.riesgo === 'ya_no_alcanza');
+    // Lo que más mueve, mirando el semestre entero y no un ramo: es la respuesta
+    // a "¿en qué me conviene ponerme?" cuando hay cuatro cosas encima. Primero
+    // lo que decide aprobar; entre dos que deciden, la que está peor parada —su
+    // peor escenario es más grave—, y recién ahí cuánto mueve la final.
+    const dondeRinde = ramos
+      .flatMap(r => impactoPendientes(ramos, r, 4).map(i => ({ ramo: r.nombre, ...i })))
+      .sort((a, b) => {
+        if (a.decideAprobar !== b.decideAprobar) return a.decideAprobar ? -1 : 1;
+        if (a.notaFinalSiSacas1 !== b.notaFinalSiSacas1) return a.notaFinalSiSacas1 - b.notaFinalSiSacas1;
+        return b.mueveLaFinal - a.mueveLaFinal;
+      })
+      .slice(0, 3);
+    const sinRegistrar = porRegistrar(ramos, hoy);
+    return {
+      fecha: hoy,
+      ventanaDias: dias,
+      promedioGeneral: promedioGeneral(ramos, calculo),
+      hoy: proximas.filter(p => p.esHoy),
+      proximas: proximas.sort((a, b) => a.fecha.localeCompare(b.fecha)),
+      enRiesgo,
+      porRegistrar: sinRegistrar,
+      dondeRinde,
+      // Para que el agente no arme un mensaje cuando no hay nada que contar.
+      hayAlgoQueContar: !!(proximas.length || enRiesgo.length || sinRegistrar.length),
+    };
+  }
+
+  if (nombre === 'simular') {
+    return simular(ramos, args);
   }
 
   if (nombre === 'que_necesito_para_aprobar') {

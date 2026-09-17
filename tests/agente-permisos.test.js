@@ -45,12 +45,21 @@ chk('ninguna de escritura declara que agrega o guarda notas', declaraEscribirNot
 // una propuesta. Sin esto, cambiarle el tipo a 'escritura' a proponer_notas
 // pasaría sin que nada se queje.
 const conNotas = HERRAMIENTAS.filter(h => Object.keys(h.args || {}).some(a => /^(nota|notas|valor|calificacion)$/i.test(a)));
-chk('toda herramienta que recibe notas es del tipo propuesta',
-  conNotas.length > 0 && conNotas.every(h => h.tipo === 'propuesta'));
+chk('ninguna herramienta que recibe notas es de escritura',
+  conNotas.length > 0 && conNotas.every(h => h.tipo === 'propuesta' || h.tipo === 'lectura'));
 // Y tiene que decirle al agente que no las está guardando, porque es lo único
-// que lo frena de prometerle al estudiante que ya quedaron.
+// que lo frena de prometerle al estudiante que ya quedaron. Vale igual para las
+// hipotéticas de `simular`: recibe notas para calcular con ellas y botarlas.
 chk('y su resumen dice que no las guarda',
-  conNotas.every(h => /no las guarda|queda[n]? pendiente|acepta|confirm/i.test(h.resumen)));
+  conNotas.every(h => /no las guarda|no guarda|queda[n]? pendiente|acepta|confirm/i.test(h.resumen)));
+// La que recibe notas SIN ser propuesta solo puede ser de lectura, y lo que
+// las lecturas pueden hacer está acotado por dónde se despachan: `despachar()`
+// recibe el estado ya autorizado y los argumentos, nunca el token, así que
+// ninguna de ellas tiene con qué escribir en Supabase aunque quisiera.
+const fuenteEndpoint = fs.readFileSync(path.join(raiz, 'functions/mcp/[[ruta]].js'), 'utf8');
+chk('las lecturas no reciben el token: no tienen con qué escribir',
+  conNotas.filter(h => h.tipo === 'lectura').every(h => new RegExp(`if \\(nombre === '${h.nombre}'\\)`).test(fuenteEndpoint)) &&
+  /function despachar\(nombre, estado, args\)/.test(fuenteEndpoint));
 if (declaraEscribirNotas.length) declaraEscribirNotas.forEach(h => console.log('       → ' + h.nombre));
 chk('la lista de lo prohibido nombra las notas', PROHIBIDO.some(p => /notas/i.test(p)));
 chk('y nombra el borrado de la cuenta', PROHIBIDO.some(p => /borrar la cuenta/i.test(p)));

@@ -4206,6 +4206,14 @@ function pintarUrlAgente(){
     <button type="button" class="agent-refresh" onclick="copiarUrlAgente()">Copiar URL del conector</button>
   </div>`;
 }
+// El repaso semanal no es una función de la app: es una frase que el estudiante
+// le pide a su agente. Se copia lista para pegar porque escribirla completa es
+// justo la fricción que hace que nadie lo configure.
+const PROMPT_REPASO_AGENTE = 'Revisa mi GradeHub cada domingo y dime qué se viene, qué está en riesgo y qué nota me falta registrar.';
+async function copiarRepasoAgente(){
+  try{await navigator.clipboard.writeText(PROMPT_REPASO_AGENTE);showToast('Mensaje copiado. Pégaselo a tu agente.');}
+  catch{showToast('No se pudo copiar. Selecciona el texto y cópialo a mano.');}
+}
 async function copiarUrlAgente(){
   if(!agenteUrlActual)return;
   try{await navigator.clipboard.writeText(agenteUrlActual);showToast('URL copiada');}
@@ -4720,7 +4728,7 @@ function openSettings(){
     if(section==='agentes')return currentUser?`
       <div class="agent-explainer">
         <b>Qué puede hacer un agente conectado</b>
-        <span>Ver tus ramos, notas, ponderaciones y fechas. Agregar un ramo. Proponerte una pauta, que no se aplica hasta que la confirmes.</span>
+        <span>Ver tus ramos, notas, ponderaciones y fechas. Simular qué pasa si te va de cierta forma y decirte dónde rinde estudiar. Agregar un ramo. Proponerte una pauta, que no se aplica hasta que la confirmes.</span>
         <span class="agent-explainer-no">No puede escribir tus notas ni borrar nada.</span>
       </div>
 
@@ -4743,6 +4751,8 @@ function openSettings(){
       <div class="agent-list-heading"><label class="modal-label">Agentes conectados</label><span>Los puedes desconectar cuando quieras.</span></div>
       <button type="button" class="agent-refresh" onclick="cargarAgentesConectados()">Actualizar lista</button>
       <div id="s-agent-list" class="agent-list" aria-live="polite"></div>
+
+      <div class="agent-proposal-entry"><div><b>Pídele un repaso</b><span>Copia esto en el chat de tu agente: «Revisa mi GradeHub cada domingo y dime qué se viene, qué está en riesgo y qué nota me falta registrar». Los agentes que tienen tareas programadas lo hacen solos.</span></div><button type="button" class="agent-refresh" onclick="copiarRepasoAgente()">Copiar</button></div>
 
       <div class="agent-proposal-entry"><div><b>Pautas por revisar</b><span>Si un agente te propuso una pauta, la revisas acá. Nada cambia hasta que la confirmes.</span></div><button type="button" class="agent-refresh" onclick="cargarPropuestasPautaAgente({mostrar:true,avisar:true})">Ver propuestas</button></div>`
       :`<div class="feedback-empty"><b>Necesitas iniciar sesión</b><p>La conexión queda atada a tu cuenta para que puedas ver y desconectar tus agentes.</p></div>`;
