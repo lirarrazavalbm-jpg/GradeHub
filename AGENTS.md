@@ -255,7 +255,21 @@ oscuro; `SEMAFORO` conserva el significado académico. No los mezcles: elegir un
 fondo o acento no puede cambiar aprobado, al borde o reprobado.
 
 `oculto:true` en `TENANTS` saca una universidad del selector sin borrar nada.
-Hoy UAI y UANDES están ocultas: se lanza con FEN y UC.
+**Hoy no hay ninguna oculta**: se ofrecen FEN, UC, UAI y UAndes. Decía lo
+contrario hasta el 2026-09-17 y mandó a encender algo que ya estaba encendido.
+Lo que las separa no es el selector sino cuánto contenido tienen detrás:
+
+| | Carreras declarables | Mallas | Ramos únicos | Con pauta |
+|---|---|---|---|---|
+| UC | 71 | 2 (ING-PC, COM) | 49 en malla + catálogo completo | 45 |
+| FEN | 3 | 3 | 88 | 12 |
+| UAI | 23, todas con malla | 23 | 530 | 6 |
+| UAndes | 5 + "Otra" | ninguna | — | — |
+
+La UAI no publica siglas ni créditos de sus asignaturas, así que sus ramos no
+ponderan el promedio por créditos y el consenso de reportes los agrupa por
+nombre. Sus programas viven en Webcursos, detrás de sesión: la única vía a
+escala es que cada estudiante se los pase a su agente.
 
 ## Cómo trabajamos en paralelo
 
