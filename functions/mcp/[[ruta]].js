@@ -15,7 +15,7 @@
 // pueda pegar en el lugar equivocado, y desconectar desde Ajustes lo corta de
 // verdad.
 
-import { HERRAMIENTAS, NOMBRES, validarPropuestaPauta, validarPropuestaNotas, validarPropuestaFechas } from './herramientas.js';
+import { HERRAMIENTAS, NOMBRES, validarPropuestaPauta, validarPropuestaNotas, validarPropuestaRamos, validarPropuestaFechas } from './herramientas.js';
 import motorCompartido from '../../engine.js';
 
 const SUPABASE_URL = 'https://lsulsnswzesyekpsvlql.supabase.co';
@@ -236,6 +236,47 @@ async function guardarPropuestaPauta(token, estado, args) {
     if (!r.ok) return { error: errorPropuesta(await r.json().catch(() => null)) };
     const data = await r.json();
     return { id: data, ramo: ramo.nombre, mensaje: 'Propuesta guardada. La persona la revisará en GradeHub antes de aplicarla.' };
+  } catch {
+    return { error: 'No se pudo conectar con GradeHub para guardar la propuesta.' };
+  }
+}
+
+// Los ramos del horario. Es la única propuesta que no cae sobre un ramo que ya
+// existe —justamente propone los que faltan—, así que lo que se comprueba acá
+// es lo contrario: que no venga proponiendo lo que la persona ya tiene.
+async function guardarPropuestaRamos(token, estado, args) {
+  const invalida = validarPropuestaRamos(args);
+  if (invalida) return { error: invalida };
+  const actuales = Array.isArray(estado.ramos) ? estado.ramos : [];
+  const yaTiene = r => actuales.some(x =>
+    norm(x.nombre) === norm(r.nombre) || (r.sigla && siglaDeRamo(x) === String(r.sigla).trim().toUpperCase()));
+  const repetidos = args.ramos.filter(yaTiene).map(r => String(r.nombre).trim());
+  const nuevos = args.ramos.filter(r => !yaTiene(r)).map(r => {
+    const fila = { nombre: String(r.nombre).trim() };
+    const sigla = r.sigla == null ? '' : String(r.sigla).trim();
+    if (sigla) fila.sigla = sigla.toUpperCase();
+    if (Number.isInteger(r.seccion)) fila.seccion = r.seccion;
+    return fila;
+  });
+  if (!nuevos.length) {
+    return { error: `Ya tiene todos esos ramos en su semestre: ${repetidos.join(', ')}. No hay nada que proponer.` };
+  }
+  try {
+    const r = await rpc('proponer_ramos_agente', {
+      p_token: token,
+      p_ramos: nuevos,
+      p_fuente: String(args.fuente || '').trim(),
+    });
+    if (!r.ok) return { error: errorPropuesta(await r.json().catch(() => null)) };
+    const data = await r.json();
+    return {
+      id: data,
+      ramos: nuevos.length,
+      // Se dicen los que se dejaron fuera: el agente le puede avisar en vez de
+      // que la persona note después que faltaba uno.
+      yaLosTenia: repetidos,
+      mensaje: 'Ramos propuestos. NO están agregados: la persona los revisa y acepta en GradeHub, y ahí se les carga la pauta oficial si existe.',
+    };
   } catch {
     return { error: 'No se pudo conectar con GradeHub para guardar la propuesta.' };
   }
@@ -669,6 +710,12 @@ export async function onRequestPost({ request, params }) {
     const argumentos = args.arguments || {};
     if (nombre === 'proponer_fechas') {
       const propuesta = await guardarPropuestaFechas(token, estado, argumentos);
+      if (propuesta.error) return error(id, -32602, propuesta.error);
+      return respuesta(id, { content: [{ type: 'text', text: JSON.stringify(propuesta) }] });
+    }
+
+    if (nombre === 'proponer_ramos') {
+      const propuesta = await guardarPropuestaRamos(token, estado, argumentos);
       if (propuesta.error) return error(id, -32602, propuesta.error);
       return respuesta(id, { content: [{ type: 'text', text: JSON.stringify(propuesta) }] });
     }

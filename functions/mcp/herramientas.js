@@ -183,6 +183,35 @@ export const HERRAMIENTAS = [
     },
   },
   {
+    // Idea: el horario que entrega la universidad trae sigla y sección de todos
+    // los ramos, y pasarlos a mano es justo lo que nadie hace. Es una propuesta
+    // y no una escritura por lo mismo que las otras: el semestre vive en un
+    // JSON que la app sincroniza entero, así que escribirlo desde el servidor
+    // pisaría lo que la persona tenga abierto.
+    nombre: 'proponer_ramos',
+    tipo: 'propuesta',
+    resumen: 'Propone los ramos del semestre a partir de un horario o de la lista de inscripción: nombre, sigla y sección. No los agrega: quedan pendientes y la persona los revisa y acepta en GradeHub, que ahí les carga su pauta oficial si la hay. Úsala cuando te peguen un horario o cuando la cuenta esté vacía.',
+    args: {
+      ramos: {
+        type: 'array',
+        description: 'Los ramos leídos del horario. Sin notas.',
+        minItems: 1,
+        maxItems: 20,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['nombre'],
+          properties: {
+            nombre: { type: 'string', description: 'Nombre del ramo como aparece en el horario' },
+            sigla: { type: 'string', description: 'Sigla o código del curso, si el horario lo trae' },
+            seccion: { type: 'integer', minimum: 1, maximum: 999, description: 'Número de sección, si el horario lo trae' },
+          },
+        },
+      },
+      fuente: 'De dónde salió la lista: el horario de la universidad, el correo de inscripción, la captura',
+    },
+  },
+  {
     nombre: 'agregar_ramo',
     tipo: 'escritura',
     resumen: 'Agrega un ramo al semestre. Sin notas: solo el ramo y, si se sabe, su pauta.',
@@ -285,5 +314,30 @@ export function validarPropuestaPauta(args) {
     nombres.add(clave);suma += peso;
   }
   if (Math.abs(suma - 100) >= 0.05) return `Propuesta inválida: los pesos suman ${suma}; deben sumar 100.`;
+  return null;
+}
+
+// Los ramos que propone un agente: nombre y, si el horario los trae, sigla y
+// sección. Nada de notas ni ponderaciones — para eso están proponer_pauta y
+// proponer_notas, cada una con su confirmación.
+export function validarPropuestaRamos(args) {
+  const fuente = String(args && args.fuente || '').trim();
+  const ramos = args && args.ramos;
+  if (!fuente) return 'Propuesta inválida: di de dónde salió la lista (el horario, el correo de inscripción).';
+  if (!Array.isArray(ramos) || ramos.length < 1 || ramos.length > 20) return 'Propuesta inválida: entrega entre 1 y 20 ramos.';
+  const vistos = new Set();
+  for (const r of ramos) {
+    const nombre = String(r && r.nombre || '').trim();
+    const sigla = r && r.sigla == null ? '' : String(r.sigla).trim();
+    const seccion = r && r.seccion;
+    if (!nombre || nombre.length > 120) return 'Propuesta inválida: cada ramo necesita un nombre de hasta 120 caracteres.';
+    if (sigla.length > 40) return `Propuesta inválida: la sigla de "${nombre}" es demasiado larga.`;
+    if (seccion != null && (!Number.isInteger(seccion) || seccion < 1 || seccion > 999)) {
+      return `Propuesta inválida: la sección de "${nombre}" tiene que ser un entero entre 1 y 999.`;
+    }
+    const clave = normalizarNombre(sigla) || normalizarNombre(nombre);
+    if (vistos.has(clave)) return `Propuesta inválida: "${nombre}" viene dos veces en la lista.`;
+    vistos.add(clave);
+  }
   return null;
 }

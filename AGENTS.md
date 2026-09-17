@@ -793,10 +793,12 @@ existe entero —`submitNewPassword` en `app-session.js`— pero solo se alcanza
 por el correo de recuperación, en `screen-reset`. Falta la puerta en Ajustes,
 no la función.
 
-**3. Sección del ramo, opcional.** Pedida por Lucas el 2026-09-12. **El campo
-ya existe**: `seccion` se escribe en Editar ramo y la ficha la muestra. Lo que
-queda es la idea para llenarla sola: el horario de BuscaCursos trae `SIGLA-SECCIÓN` de todos los
-ramos, y el estudiante lo tiene a mano. Validar cada sigla contra
+**3. Sección del ramo, opcional.** Pedida por Lucas el 2026-09-12. **Hecha**:
+`seccion` se escribe en Editar ramo, la ficha la muestra, y un agente puede
+proponer el semestre entero con sigla y sección desde el horario
+(`proponer_ramos`, con su bandeja en Inicio). Lo que queda de esa idea es
+reconocer el horario sin agente, dentro de la app: el de BuscaCursos trae
+`SIGLA-SECCIÓN` de todos los ramos, y el estudiante lo tiene a mano. Validar cada sigla contra
 `cursos-uc.js` hace el reconocimiento robusto: lo que no sea una sigla real se
 descarta solo. De las 6 siglas de un horario de prueba, 5 estaban en el
 catálogo. La sección también le daría sentido a la comparación por curso
