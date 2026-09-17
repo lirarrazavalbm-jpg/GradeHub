@@ -1059,13 +1059,14 @@ const PRESETS_UC={
       ['Examen final escrito',40],
     ],
   },
-  'Introducción a la Microeconomía':{
-    evals:[
-      ['Guías semanales',20,{lista:true}],
-      ['Pruebas',45,{lista:true}],
-      ['Examen',35],
-    ],
-  },
+  // INTRO A LA MICROECONOMÍA (EAE1110) NO ENTRA, a propósito. El catálogo la
+  // publica como Guías 20 / Pruebas 45 / Examen 35, pero dos estudiantes de
+  // Comercial reportaron por su cuenta, en septiembre de 2026, la misma otra
+  // estructura: Examen 30, Prueba 1 y Prueba 2 de 22,5 y Trabajo grupal 5, y
+  // difieren solo en cómo se reparte el 20% restante. Dos personas que cursan
+  // el ramo hoy pesan más que una ficha genérica sin período: cargarla les
+  // pondría a todos una pauta equivocada con cara de oficial. Queda sin pauta
+  // hasta que aparezca el programa del semestre o el consenso llegue a tres.
   'Análisis Económico: La Experiencia Chilena':{
     evals:[
       ['Pruebas',25,{slots:2}],
@@ -1386,7 +1387,6 @@ const PRESETS_UC_COM=[
   'Marketing Analytics',
   'Estrategia de la Organización',
   'Estrategia Competitiva',
-  'Introducción a la Microeconomía',
   'Análisis Económico: La Experiencia Chilena',
   'Microeconomía I',
   'Microeconomía II',
