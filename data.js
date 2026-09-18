@@ -1915,6 +1915,10 @@ const SIGLAS_UC={
 // algún día? Si sí, `noCalcula`. Si no, `reglasDelCurso`.
 const PRESETS_FEN={
   'Métodos Matemáticos II':{
+    // Fechas del calendario 2026-2 entregado por Martín el 2026-09-18. El
+    // examen lo fija la Facultad y no tiene fecha; la segunda fecha del examen
+    // (3 dic) no es una evaluación aparte, así que no va como fila.
+    periodo:'2026-2',
     creditos:6,
     noCalcula:['Examen de Segunda Fecha para quien saque bajo 3,0 en el examen pero tenga promedio ≥ 3,95'],
     // El programa lista los tres solemnes por separado: van como filas propias,
@@ -1927,7 +1931,7 @@ const PRESETS_FEN={
     // descarta y se repondera sobre lo evaluado — que es lo que hace el motor con
     // cualquier otra categoría vacía. Con un solo solemne rendido la diferencia
     // llega a más de un punto. Se eligió la forma consistente con el resto.
-    evals:[['Solemne 1',20],['Solemne 2',20],['Solemne 3',20],['Examen Final',40,{min:3.0,cap:3.9}]],
+    evals:[['Solemne 1',20,{fecha:'2026-08-28'}],['Solemne 2',20,{fecha:'2026-09-26'}],['Solemne 3',20,{fecha:'2026-11-06'}],['Examen Final',40,{min:3.0,cap:3.9}]],
   },
   // Introducción a la Microeconomía · ENMIC155 · programa oficial actualizado
   // julio 2026. Los tres controles van en filas propias porque el programa los
@@ -1964,7 +1968,9 @@ const PRESETS_FEN={
       'Copiar o plagiar reprueba el ramo de inmediato con 1,0',
     ],
     evals:[
-      ['Solemne',30],
+      // La solemne y los controles traen fecha del calendario; el examen lo
+      // fija la Escuela dentro de un rango (18 nov–2 dic) y un rango no es fecha.
+      ['Solemne',30,{fecha:'2026-09-30'}],
       ['Control 1',10,{fecha:'2026-08-21'}],
       ['Control 2',10,{fecha:'2026-10-16'}],
       ['Control 3',10,{fecha:'2026-11-06'}],
@@ -2071,7 +2077,8 @@ const PRESETS_FEN={
       // semestre" es el único número que el programa no fija, y son los únicos
       // con descarte (se elimina el 25% de los rendidos).
       ['Controles Sorpresa',5,{lista:true,min:1.5,cap:3.9,dropLowest:{fraction:0.25}}],
-      ['Solemne',20,{min:1.5,cap:3.9}],
+      ['Solemne',20,{fecha:'2026-09-22',min:1.5,cap:3.9}],
+      // El examen lo fija la Escuela entre el 18 nov y el 2 dic: sin fecha.
       ['Examen',25,{min:3.0,cap:3.4}],
     ],
   },
@@ -2094,10 +2101,11 @@ const PRESETS_FEN={
   // Los Controles sí llevan `slots:2`: el número no se dedujo, el programa dice
   // "dos controles en el semestre" y define NC como su promedio.
   //
-  // OJO con las fechas: el programa las da como rangos que fijan las Escuelas de
-  // Pregrado (solemne 1 entre el 21 de septiembre y el 3 de octubre; examen entre
-  // el 18 de noviembre y el 2 de diciembre) y la solemne 2 está por confirmar.
-  // Un rango no es una fecha, así que no va ninguna a la agenda.
+  // OJO con las fechas: el programa las daba como rangos que fijan las Escuelas
+  // de Pregrado. La solemne 1 ya quedó fijada (25 de septiembre, calendario
+  // entregado por Martín el 2026-09-18); el examen sigue en rango (18 nov–2 dic)
+  // y la solemne 2 está por confirmar. Un rango no es una fecha, así que esas
+  // dos no van a la agenda.
   'Tecnología y Sistemas de Información':{
     periodo:'2026-2',
     creditos:6,
@@ -2112,7 +2120,7 @@ const PRESETS_FEN={
       ['Just in Time Teaching',5],
       ['Controles',10,{slots:2}],
       ['Trabajo Final',15],
-      ['Solemne 1',20],
+      ['Solemne 1',20,{fecha:'2026-09-25'}],
       ['Solemne 2',20],
       ['Examen',30],
     ],
@@ -2267,7 +2275,12 @@ const PRESETS_FEN={
   // es supuesto nuestro: el calendario no da el peso individual.
   // El Entrepreneurship Project sí trae su reparto explícito, 40% Business Plan
   // y 60% Business Pitch sobre su 15%, o sea 6 y 9 puntos.
+  //
+  // Solo el Midterm lleva fecha: el calendario ubica Quizzes, Business Plan y
+  // Pitch por número de clase ("clases 8–10"), que no es una fecha, y el Final
+  // Exam cae en el rango que fija la Escuela (18 nov–2 dic).
   'Inglés IV':{
+    periodo:'2026-2',
     noCalcula:[
       'El Busuu es reprobatorio: hay que completar las 169 actividades del Complete English Intermediate B2, con un mínimo de 117, y su nota se arma con 70% actividades y 30% certificado',
     ],
@@ -2280,7 +2293,7 @@ const PRESETS_FEN={
       ['Lab 3',5],
       ['Business Plan',6],
       ['Business Pitch',9],
-      ['Midterm',15],
+      ['Midterm',15,{fecha:'2026-09-21'}],
       ['Final Exam',30],
     ],
   },
