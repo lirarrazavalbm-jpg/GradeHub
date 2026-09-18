@@ -6512,7 +6512,7 @@ function renderSimulador(){
   document.getElementById('sim-cats').innerHTML=r.categorias.map(c=>{
     const catAvg=simCatAvg(c);
     const realChips=c.notas.map(n=>`<span class="sim-chip real">${esc(n.nombre)}: ${fmt(n.valor)}</span>`).join('');
-    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':''}${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
+    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':c.directNota&&!(c.slots>1)?esc(c.nombre)+': ':''}${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
     return `
       <div class="sim-cat">
         <div class="sim-cat-head">
@@ -6520,20 +6520,29 @@ function renderSimulador(){
           <div class="sim-cat-avg" style="color:${getColor(catAvg)}">${fmt(catAvg)}</div>
         </div>
         ${(realChips||hypChips)?`<div class="sim-chips">${realChips}${hypChips}</div>`:''}
-        <div class="sim-add">
+        ${simCatLlena(c)?'':`<div class="sim-add">
           <input type="text" inputmode="decimal" id="sim-in-${c.id}" placeholder="Nota hipotética (1.0–7.0)" onkeydown="if(event.key==='Enter')simAddNota('${c.id}')"/>
           <button onclick="simAddNota('${c.id}')">+ Agregar</button>
-        </div>
+        </div>`}
       </div>`;
   }).join('');
 }
 
+// Una evaluación de nota única (Solemne, Examen) es UNA nota: si ya la tiene,
+// real o hipotética, no hay nada más que simular ahí. Antes se podía "agregar"
+// un 7.0 encima del 5.5 real y el simulador promediaba los dos; al guardar, la
+// categoría quedaba con dos notas que la ficha muestra como una sola casilla.
+function simCatLlena(cat){
+  if(!cat.directNota||(Number.isInteger(cat.slots)&&cat.slots>1))return false;
+  return (cat.notas||[]).some(n=>n.valor!=null)||((simState[cat.id]||[]).length>0);
+}
 function simAddNota(catId){
   const inp=document.getElementById('sim-in-'+catId);if(!inp)return;
   const val=parseNota(inp.value);
   if(isNaN(val)){showToast('Ingresa una nota entre 1.0 y 7.0',true);return;}
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r&&(r.categorias||[]).find(c=>c.id===catId);if(!cat)return;
+  if(simCatLlena(cat)){showToast(`${cat.nombre} es una sola nota y ya la tiene`,true);return;}
   if(!simState[catId])simState[catId]=[];
   const tieneCasillas=Number.isInteger(cat.slots)&&cat.slots>1;
   let slot;
