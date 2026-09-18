@@ -46,6 +46,10 @@ function renderHome(){
     if(simGlobalBtn)simGlobalBtn.style.display='none';
     const mb=document.getElementById('gpa-malla-btn');
     if(mb)mb.style.display=mallaFaltantes().length?'inline-flex':'none';
+    // Las insight cards se pintan más abajo; al salir acá quedaban las del
+    // semestre recién archivado, apuntando a ramos que ya no existen.
+    const ins=document.getElementById('home-insights');
+    if(ins){ins.innerHTML='';ins.style.display='none';}
     ramosHd.style.display='none';document.getElementById('home-ramos').innerHTML='';return;
   }
   emptyHint.style.display='none';gpaSub.style.display='block';ramosHd.style.display='flex';
@@ -489,7 +493,7 @@ function renderRamo(){
     if(ausencias.activas.length)bloques.push(`<b>Ausencia justificada aplicada.</b><br>${ausencias.activas.map(etiqueta).join('<br>')}`);
     if(ausencias.pendientes.length)bloques.push(`<b>La ausencia quedó anotada, pero todavía no se aplica.</b><br>${ausencias.pendientes.map(x=>`Falta la nota de <b>${esc(porId.get(x.haciaId)||'la evaluación de reemplazo')}</b>.`).join('<br>')}`);
     if(ausencias.inactivas.length)bloques.push(`<b>Tu declaración se conserva, pero ya no se aplica.</b><br>${ausencias.inactivas.map(x=>x.motivo==='tiene_nota'?`<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> ahora tiene una nota. <button type="button" onclick="corregirAusenciaJustificada('${esc(x.desdeId)}')">Corregir declaración</button>`:'La pauta cambió y ya no podemos ubicar esa evaluación.').join('<br>')}`);
-    if(disponibles.length)bloques.push(`<b>¿Faltaste con justificativo aprobado?</b><br>${disponibles.map(x=>`<button type="button" onclick="declararAusenciaJustificada('${esc(x.desdeId)}')">${esc(porId.get(x.desdeId)||'Marcar ausencia')}</button>`).join(' ')}`);
+    if(disponibles.length)bloques.push(`<b>¿Faltaste con justificativo aprobado?</b><br>${disponibles.map(x=>`<button type="button" onclick="declararAusenciaJustificada('${esc(x.desdeId)}')">${esc(porId.get(x.desdeId)||'Marcar ausencia')}</button>`).join(' <span aria-hidden="true">·</span> ')}`);
     if(bloques.length){aw.style.display='flex';aw.className='weight-setup-nudge';aw.style.width='auto';aw.style.margin='12px 20px';aw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}</div>`;}
     else{aw.style.display='none';aw.innerHTML='';}
   }else if(aw){aw.style.display='none';aw.innerHTML='';}
@@ -536,8 +540,11 @@ function renderRamo(){
       // buena. A esa persona no se le pregunta si algo no calza —ya no calzó—,
       // se le pide el dato. El resto sigue viendo la pregunta de siempre.
       const txt=document.getElementById('ramo-report-text');
+      // Un ramo armado a mano no tiene pauta del catálogo que "no calce":
+      // lo que se le ofrece es compartir la suya.
       if(txt)txt.textContent=pautaEditada(r)
         ?'Corregiste esta pauta · compártela con tu curso'
+        :!r.origen?'¿Armaste esta pauta? Compártela con tu curso'
         :'¿Esta pauta no calza con tu curso? Repórtala';
     }else{rep.style.display='none';rep.onclick=null;}
   }
@@ -741,8 +748,8 @@ function renderStats(){
           <path d="M8 56h48"/><rect x="12" y="34" width="8" height="18" rx="1.5"/><rect x="28" y="22" width="8" height="30" rx="1.5"/><rect x="44" y="14" width="8" height="38" rx="1.5"/>
         </svg>
       </div>
-      <div class="ag-empty-title">Tu semestre todavía está empezando.</div>
-      <div class="ag-empty-desc">Ya tienes ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'} y ${evaluaciones} ${evaluaciones===1?'evaluación configurada':'evaluaciones configuradas'}. Cuando llegue tu primera nota, acá vas a ver qué ramo pide más atención y cuánto necesitas en cada uno.</div>
+      <div class="ag-empty-title">${S.ramos.length?'Tu semestre todavía está empezando.':'Todavía no hay ramos este semestre.'}</div>
+      <div class="ag-empty-desc">${S.ramos.length?`Ya tienes ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'} y ${evaluaciones} ${evaluaciones===1?'evaluación configurada':'evaluaciones configuradas'}. `:'Agrégalos desde Inicio. '}Cuando llegue tu primera nota, acá vas a ver qué ramo pide más atención y cuánto necesitas en cada uno.</div>
       ${ramosConPauta<S.ramos.length?`<div class="ag-empty-desc" style="margin-top:8px;">${S.ramos.length-ramosConPauta} ${S.ramos.length-ramosConPauta===1?'ramo todavía no tiene':'ramos todavía no tienen'} pauta para poder estimar lo que falta.</div>`:''}
     </div>`;
   } else {

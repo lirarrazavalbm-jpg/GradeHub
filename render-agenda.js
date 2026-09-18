@@ -72,7 +72,8 @@ function focoAgendaCopy(e){
   if(e.dias===0)return 'Es hoy. Revisa lo esencial y llega con lo importante resuelto.';
   if(e.dias<=2)return `Faltan ${e.dias} día${e.dias!==1?'s':''}: es lo que más te conviene atender ahora.`;
   if(e.necesita!==null&&e.necesita>5.0)return `Te exige ${nf(e.necesita)} en lo pendiente para aprobar: adelántate.`;
-  return `${cuandoTexto(e.dias)} · combina cercanía, peso y cómo vas en el ramo.`;
+  // Sin el "cuándo": la tarjeta ya lo dice en su propia línea justo arriba.
+  return 'Destacada por cercanía, peso y cómo vas en el ramo.';
 }
 
 function razonDestacadaAgenda(e){

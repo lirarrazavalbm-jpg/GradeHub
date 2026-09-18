@@ -4657,7 +4657,7 @@ async function cargarPropuestasPautaAgente(opts){
   }finally{propuestasPautaCargando=false;}
 }
 function filasPropuestaPauta(propuesta){
-  return propuesta.evaluaciones.map(e=>`<li><b>${esc(e.nombre)}</b><span>${r2(e.peso)}%${e.casillas?` · ${e.casillas} notas`:''}</span></li>`).join('');
+  return propuesta.evaluaciones.map(e=>`<li><b>${esc(e.nombre)}</b><span>${r2(e.peso)}%${e.casillas?` · ${e.casillas} nota${e.casillas!==1?'s':''}`:''}</span></li>`).join('');
 }
 function abrirPropuestasPautaAgente(){
   if(!propuestasPautaAgente.length){showToast('No tienes pautas pendientes');return;}
