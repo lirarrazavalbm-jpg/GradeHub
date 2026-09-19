@@ -73,6 +73,41 @@ servicio claros, precio de la clase visible, modalidad, contacto válido y nada 
 garantías de aprobación, suplantación institucional o alusiones a las notas de
 quien lo recibe.
 
+## Un borrador que se entiende solo
+
+La muestra local (`node bin/preview-marketplace.js`) ordena cada anuncio en
+tres pasos cortos:
+
+1. **Tu clase:** título, explicación, precio, formato, lugar, contacto y flyer.
+2. **Público y presupuesto:** universidad, siglas, promedio máximo, avance mínimo
+   y cotización completa antes de pagar.
+3. **Revisión:** la misma tarjeta que verá el estudiante y un resumen de público,
+   vigencia y costo. El único botón final es “Enviar a revisión”.
+
+La muestra usa cuentas sintéticas: **no guarda ni envía anuncios reales**. El
+recorrido final aún debe crear la fila `borrador` al avanzar, guardar los
+cambios con estados visibles “Guardando”, “Guardado” o “No se pudo guardar”,
+reabrir el último borrador y enviar a revisión con respuesta del servidor.
+Un error de red nunca se puede disfrazar de guardado. Nada de eso queda
+implementado por la maqueta.
+
+El flyer es **opcional**. Se elige dentro del primer paso, se previsualiza en la
+tarjeta y puede quitarse sin eliminar el anuncio. Solo se aceptan JPG, PNG y WebP
+de hasta 5 MB; SVG queda fuera. El nombre original no se guarda. Los archivos
+viven en el bucket privado `tutor-flyers`, bajo
+`<user_id>/<anuncio_id>/<uuid>.<ext>`. RLS permite subir y borrar únicamente al
+dueño de un borrador cuyo perfil esté aprobado y obliga a que el path guardado
+corresponda a ese mismo anuncio. Los demás solo obtienen una URL firmada cuando
+el anuncio está publicado y el profesor sigue aprobado. La URL dura un minuto:
+una suspensión impide generar otra, pero una URL ya emitida vive hasta vencer.
+
+Para cambiar o quitar el flyer publicado hay que volver **explícitamente** el
+anuncio a borrador; la subida no lo hace en silencio. Primero se confirma el
+nuevo archivo y después se elimina el anterior, para que una caída no deje al
+anuncio sin imagen. Una eliminación fallida puede dejar un objeto privado
+huérfano: el paso de borrado de cuenta debe limpiar Storage por separado; la FK
+de la fila no borra los bytes del bucket.
+
 ## Decisión al crear la cuenta
 
 En el registro se amplía la casilla obligatoria que ya acepta los términos; no

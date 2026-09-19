@@ -26,6 +26,34 @@ chk('la métrica usa una lista blanca de tres claves',
 chk('el módulo no ofrece identidad, correo, ramos ni notas en la métrica',
   !Object.keys(payload||{}).some(k=>/user|email|correo|nota|ramo(s)?$|device/i.test(k)));
 
+console.log('\n=== El flyer es opcional y no acepta contenido activo ===');
+const validaFlyer=val("typeof validarFlyerClase==='function'");
+chk('existe una validación antes de intentar subirlo',validaFlyer);
+if(validaFlyer){
+  ctx.flyerBueno={type:'image/webp',size:480000};
+  ctx.flyerPesado={type:'image/jpeg',size:5*1024*1024+1};
+  ctx.flyerSvg={type:'image/svg+xml',size:12000};
+  chk('un anuncio puede seguir sin flyer',val('validarFlyerClase(null).ok===true&&validarFlyerClase(null).opcional===true'));
+  chk('JPG, PNG y WebP bajo 5 MB son válidos',
+    val("validarFlyerClase({type:'image/jpeg',size:100}).ok&&validarFlyerClase({type:'image/png',size:100}).ok&&validarFlyerClase(flyerBueno).ok"));
+  chk('un archivo sobre 5 MB se rechaza explicando el límite',
+    val("!validarFlyerClase(flyerPesado).ok&&validarFlyerClase(flyerPesado).error.includes('5 MB')"));
+  chk('SVG se rechaza aunque pese poco',val('validarFlyerClase(flyerSvg).ok===false'));
+  chk('el path generado no reutiliza el nombre original del archivo',
+    !/file\.name|\.name\b/.test(val('subirFlyerClase.toString()')));
+}
+const demo=fs.readFileSync(process.env.GRADEHUB_MARKETPLACE_DEMO||path.join(raiz,'bin/marketplace-demo.html'),'utf8');
+chk('el borrador guía clase, público y revisión en ese orden',
+  demo.indexOf('1 · Tu clase')<demo.indexOf('2 · Público y presupuesto')&&
+  demo.indexOf('2 · Público y presupuesto')<demo.indexOf('3 · Revisión'));
+chk('el formulario muestra que sigue siendo borrador y termina en revisión',
+  /Borrador · no publicado/.test(demo)&&/id="submit-review"[^>]*>Enviar a revisión</.test(demo));
+chk('el flyer se ofrece como opcional con los mismos formatos validados',
+  /Flyer <span class="muted">· opcional/.test(demo)&&
+  /accept="image\/jpeg,image\/png,image\/webp"/.test(demo)&&/máximo 5 MB/.test(demo));
+chk('la vista del estudiante usa el flyer y el texto que escribió el profesor',
+  /className='ad-flyer'/.test(demo)&&/\$\('title'\)\.value/.test(demo)&&/\$\('description'\)\.value/.test(demo));
+
 console.log('\n=== La segmentación ocurre localmente ===');
 const anuncios=[
   {id:'a',tenant:'uc',ramos_siglas:['MAT1610','FIS1523']},
@@ -61,6 +89,40 @@ vm.runInContext(`
   S.ramos=[{nombre:'Cálculo II',notas:[{valor:1.5}],origen:{ramoKey:'MAT1620'}}];
 `,ctx);
 (async()=>{
+  if(validaFlyer){
+    const uid='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',ad='bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
+    ctx.clienteAntes=val('supabaseClient');
+    ctx.flyerArchivo={name:'nombre-original.png',type:'image/png',size:1200};
+    ctx.crypto={randomUUID:()=> 'cccccccc-cccc-4ccc-cccc-cccccccccccc'};
+    ctx.operaciones=[];
+    vm.runInContext(`
+      currentUser={id:'${uid}'};
+      let estadoFlyer='publicado',archivoPrevio='${uid}/${ad}/dddddddd-dddd-4ddd-dddd-dddddddddddd.png';
+      supabaseClient={
+        from(tabla){return {
+          mutacion:false,select(){return this;},eq(){return this;},update(datos){this.mutacion=true;operaciones.push(['update',datos]);return this;},
+          single(){return Promise.resolve(this.mutacion?{data:{flyer_path:operaciones.find(o=>o[0]==='update')[1].flyer_path},error:null}:
+            {data:{estado:estadoFlyer,flyer_path:archivoPrevio},error:null});}
+        };},
+        storage:{from(){return {
+          upload(path){operaciones.push(['upload',path]);return Promise.resolve({error:null});},
+          remove(paths){operaciones.push(['remove',paths[0]]);return Promise.resolve({error:null});},
+          createSignedUrl(path,ttl){operaciones.push(['sign',ttl]);return Promise.resolve({data:{signedUrl:'firmada'},error:null});}
+        };}}
+      };
+    `,ctx);
+    const publicado=await val(`subirFlyerClase('${ad}',flyerArchivo)`);
+    chk('un anuncio publicado no sube un flyer ni cambia de estado a escondidas',
+      !publicado.ok&&ctx.operaciones.length===0&&/borrador/.test(publicado.error));
+    vm.runInContext("estadoFlyer='borrador'",ctx);
+    const subido=await val(`subirFlyerClase('${ad}',flyerArchivo)`);
+    chk('el borrador enlaza el archivo nuevo antes de quitar el anterior, sin usar su nombre',
+      subido.ok&&ctx.operaciones.map(o=>o[0]).join(',')==='upload,update,remove'&&
+      !subido.path.includes('nombre-original')&&ctx.operaciones[2][1].includes('dddddddd'));
+    const firmada=await val(`urlFlyerClase('${uid}/${ad}/cccccccc-cccc-4ccc-cccc-cccccccccccc.png')`);
+    chk('la URL temporal del flyer vence pronto',firmada==='firmada'&&ctx.operaciones.at(-1)[1]===60);
+    vm.runInContext('supabaseClient=clienteAntes',ctx);
+  }
   await val("cargarAnunciosClases('uc')");
   const consulta=vm.runInContext('consultas[0]',ctx);
   const serie=JSON.stringify(consulta);
@@ -173,6 +235,21 @@ vm.runInContext(`
   chk('suspender al profesor oculta también sus anuncios publicados',
     /tutor_anuncios_select_publicados_o_propios[\s\S]*?estado = 'publicado'[\s\S]*?tutor_aprobado\(autor_id\)/.test(sql)&&
     /where user_id = p_user_id and estado = 'aprobado'/.test(sql));
+  chk('el bucket del flyer es privado, raster y de máximo 5 MB',
+    /values \('tutor-flyers', 'tutor-flyers', false, 5242880,[\s\S]*?image\/jpeg[\s\S]*?image\/png[\s\S]*?image\/webp/.test(sql)&&
+    !/allowed_mime_types[\s\S]{0,180}?image\/svg/.test(sql));
+  chk('el título se persiste sin exigirlo a anuncios antiguos',
+    /add column if not exists titulo text/.test(sql)&&/grant insert \([^)]*titulo/.test(sql)&&
+    /grant select \([^)]*titulo/.test(sql));
+  chk('un aviso no puede apuntar al flyer de otra cuenta o anuncio',
+    /split_part\(flyer_path, '\/', 1\) = autor_id::text/.test(sql)&&
+    /split_part\(flyer_path, '\/', 2\) = id::text/.test(sql));
+  chk('solo el dueño de un borrador aprobado puede subir o borrar su flyer',
+    /tutor_flyers_insert_propio[\s\S]*?flyer_clase_editable\(name, \(select auth\.uid\(\)\)\)/.test(sql)&&
+    /tutor_flyers_delete_propio[\s\S]*?flyer_clase_editable\(name, \(select auth\.uid\(\)\)\)/.test(sql)&&
+    /a\.autor_id = p_user_id[\s\S]*?a\.estado in \('borrador','en_revision','pausado'\)[\s\S]*?tutor_aprobado\(p_user_id\)/.test(sql));
+  chk('un flyer ajeno solo se lee si su anuncio y profesor están aprobados',
+    /flyer_clase_visible[\s\S]*?a\.flyer_path = p_path[\s\S]*?a\.estado = 'publicado'[\s\S]*?tutor_aprobado\(a\.autor_id\)/.test(sql));
   chk('un tutor no puede publicarse ni marcarse pago desde el cliente',
     /grant insert \(autor_id,[\s\S]{0,300}?\)\s*on public\.tutor_anuncios to authenticated/i.test(sql)&&
     /tutor_anuncios_insert_borrador_propio[\s\S]*?with check \([\s\S]*?estado = 'borrador'[\s\S]*?\);/i.test(sql)&&

@@ -125,6 +125,22 @@ alter table public.tutor_anuncios add column if not exists criterios jsonb
     end
   );
 
+-- El título es aditivo: un anuncio antiguo sin él conserva su descripción.
+alter table public.tutor_anuncios add column if not exists titulo text
+  check (titulo is null or char_length(btrim(titulo)) between 5 and 90);
+
+-- El flyer es opcional y vive en un bucket privado. La fila guarda solo el
+-- path; nunca una URL firmada que vaya a vencer ni el nombre que subió la
+-- persona. La carpeta tiene que corresponder a ESTA fila y su dueño.
+alter table public.tutor_anuncios add column if not exists flyer_path text
+  check (
+    flyer_path is null or (
+      flyer_path ~ '^[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}\.(jpg|png|webp)$'
+      and split_part(flyer_path, '/', 1) = autor_id::text
+      and split_part(flyer_path, '/', 2) = id::text
+    )
+  );
+
 create index if not exists tutor_anuncios_publicados_por_tenant
   on public.tutor_anuncios (tenant, publicado_at desc)
   where estado = 'publicado';
@@ -137,13 +153,14 @@ alter table public.tutor_anuncios enable row level security;
 -- Aun así no se entrega autor_id ni las marcas internas de revisión/pago:
 -- los permisos de columna de abajo dejan fuera esos campos.
 revoke all on public.tutor_anuncios from public, anon, authenticated;
-grant select (id, tenant, ramos_siglas, criterios, modalidad, ubicacion, precio_clp, descripcion,
+grant select (id, tenant, ramos_siglas, criterios, modalidad, ubicacion, precio_clp, titulo, descripcion,
+              flyer_path,
               contacto_tipo, contacto_valor, estado, publicado_at, vence_at, created_at)
   on public.tutor_anuncios to anon, authenticated;
 grant insert (autor_id, tenant, ramos_siglas, criterios, modalidad, ubicacion, precio_clp,
-              descripcion, contacto_tipo, contacto_valor)
+              titulo, descripcion, contacto_tipo, contacto_valor)
   on public.tutor_anuncios to authenticated;
-grant update (ramos_siglas, criterios, modalidad, ubicacion, precio_clp, descripcion,
+grant update (ramos_siglas, criterios, modalidad, ubicacion, precio_clp, titulo, descripcion, flyer_path,
               contacto_tipo, contacto_valor, estado)
   on public.tutor_anuncios to authenticated;
 
@@ -184,6 +201,85 @@ with check (
   (select auth.uid()) = autor_id
   and public.tutor_aprobado((select auth.uid()))
   and estado in ('borrador', 'en_revision', 'pausado')
+);
+
+-- Storage privado: 5 MB y solo formatos raster. SVG queda fuera porque puede
+-- contener scripts y no hace falta aceptar ese riesgo para mostrar un flyer.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('tutor-flyers', 'tutor-flyers', false, 5242880,
+        array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+create or replace function public.flyer_clase_editable(p_path text, p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, storage
+as $$
+  select p_user_id is not null
+    and p_user_id = auth.uid()
+    and (storage.foldername(p_path))[1] = p_user_id::text
+    and exists (
+      select 1 from public.tutor_anuncios a
+      where a.id::text = (storage.foldername(p_path))[2]
+        and a.autor_id = p_user_id
+        and a.estado in ('borrador','en_revision','pausado')
+        and public.tutor_aprobado(p_user_id)
+    );
+$$;
+
+create or replace function public.flyer_clase_visible(p_path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.tutor_anuncios a
+    where a.flyer_path = p_path
+      and a.estado = 'publicado'
+      and (a.vence_at is null or a.vence_at > now())
+      and public.tutor_aprobado(a.autor_id)
+  );
+$$;
+
+revoke all on function public.flyer_clase_editable(text, uuid) from public;
+revoke all on function public.flyer_clase_visible(text) from public;
+-- La política SELECT se evalúa también para visitantes anónimos. Con uid
+-- nulo esta función devuelve false; sin EXECUTE la lectura pública fallaría.
+grant execute on function public.flyer_clase_editable(text, uuid) to anon, authenticated;
+grant execute on function public.flyer_clase_visible(text) to anon, authenticated;
+
+drop policy if exists tutor_flyers_insert_propio on storage.objects;
+create policy tutor_flyers_insert_propio
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'tutor-flyers'
+  and public.flyer_clase_editable(name, (select auth.uid()))
+);
+
+drop policy if exists tutor_flyers_select_visible_o_propio on storage.objects;
+create policy tutor_flyers_select_visible_o_propio
+on storage.objects for select to anon, authenticated
+using (
+  bucket_id = 'tutor-flyers'
+  and (
+    public.flyer_clase_visible(name)
+    or public.flyer_clase_editable(name, (select auth.uid()))
+  )
+);
+
+drop policy if exists tutor_flyers_delete_propio on storage.objects;
+create policy tutor_flyers_delete_propio
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'tutor-flyers'
+  and public.flyer_clase_editable(name, (select auth.uid()))
 );
 
 -- Cada fila suma eventos, no personas. La dimensión es deliberadamente gruesa:

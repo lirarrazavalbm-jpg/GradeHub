@@ -7,7 +7,61 @@
 // dispositivo para segmentar anuncios.
 
 const METRICAS_ANUNCIO = new Set(['impresion', 'clic', 'contacto']);
-const CAMPOS_PUBLICOS_ANUNCIO = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,descripcion,contacto_tipo,contacto_valor,estado,publicado_at,vence_at,created_at';
+const FLYER_CLASE_MAX_BYTES = 5*1024*1024;
+const FLYER_CLASE_TIPOS = new Set(['image/jpeg','image/png','image/webp']);
+const CAMPOS_PUBLICOS_ANUNCIO = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,publicado_at,vence_at,created_at';
+
+function validarFlyerClase(file){
+  if(!file)return {ok:true,opcional:true};
+  if(!FLYER_CLASE_TIPOS.has(String(file.type||'').toLowerCase()))return {ok:false,error:'Usa una imagen JPG, PNG o WebP.'};
+  if(!Number.isFinite(file.size)||file.size<=0)return {ok:false,error:'No pudimos leer ese archivo.'};
+  if(file.size>FLYER_CLASE_MAX_BYTES)return {ok:false,error:'El flyer no puede pesar más de 5 MB.'};
+  return {ok:true,opcional:false};
+}
+
+function extensionFlyerClase(tipo){
+  return tipo==='image/png'?'png':tipo==='image/webp'?'webp':'jpg';
+}
+
+// El anuncio tiene que existir primero: así la RLS puede comprobar tanto la
+// carpeta del usuario como el borrador al que pertenece. Nunca se conserva el
+// nombre original del archivo.
+async function subirFlyerClase(anuncioId,file){
+  const valido=validarFlyerClase(file);
+  if(!valido.ok)return {ok:false,error:valido.error};
+  if(valido.opcional)return {ok:true,path:null};
+  if(!supabaseClient||!currentUser||!anuncioId)return {ok:false,error:'Primero guarda el borrador del anuncio.'};
+  const id=String(anuncioId).trim(),uid=String(currentUser.id||'').trim();
+  if(!/^[0-9a-f-]{36}$/i.test(id)||!/^[0-9a-f-]{36}$/i.test(uid))return {ok:false,error:'No pudimos identificar el borrador.'};
+  const {data:anuncio,error:lecturaError}=await supabaseClient.from('tutor_anuncios')
+    .select('flyer_path,estado').eq('id',id).eq('autor_id',uid).single();
+  if(lecturaError||!anuncio)return {ok:false,error:'No encontramos tu borrador. Vuelve a abrirlo antes de subir el flyer.'};
+  if(anuncio.estado!=='borrador')return {ok:false,error:'Vuelve el anuncio a borrador antes de cambiar su flyer.'};
+  const aleatorio=typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'';
+  if(!aleatorio)return {ok:false,error:'Tu navegador no pudo preparar un nombre seguro para el flyer.'};
+  const path=`${uid}/${id}/${aleatorio}.${extensionFlyerClase(file.type)}`;
+  const {error:subidaError}=await supabaseClient.storage.from('tutor-flyers').upload(path,file,{contentType:file.type,upsert:false});
+  if(subidaError)return {ok:false,error:subidaError.message||'No pudimos subir el flyer.'};
+  const {data:guardado,error:anuncioError}=await supabaseClient.from('tutor_anuncios')
+    .update({flyer_path:path}).eq('id',id).eq('autor_id',uid).eq('estado','borrador')
+    .select('flyer_path').single();
+  if(anuncioError||!guardado||guardado.flyer_path!==path){
+    await supabaseClient.storage.from('tutor-flyers').remove([path]);
+    return {ok:false,error:'El flyer subió, pero no pudimos unirlo al borrador. Intenta de nuevo.'};
+  }
+  const anterior=String(anuncio.flyer_path||'').trim();
+  if(anterior&&anterior!==path)await supabaseClient.storage.from('tutor-flyers').remove([anterior]);
+  return {ok:true,path};
+}
+
+async function urlFlyerClase(path){
+  const limpio=String(path||'').trim();
+  if(!supabaseClient||!limpio||limpio.includes('..')||!limpio.includes('/'))return '';
+  // Las URLs firmadas no son revocables en el acto: se limitan a un minuto.
+  const {data,error}=await supabaseClient.storage.from('tutor-flyers').createSignedUrl(limpio,60);
+  if(error)return '';
+  return String(data&&data.signedUrl||'');
+}
 
 function siglaAnuncio(sigla){
   return String(sigla||'').trim().toUpperCase();
