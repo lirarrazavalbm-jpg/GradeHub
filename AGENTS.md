@@ -85,7 +85,7 @@ Sin build, sin frameworks. Los archivos de la app se despliegan tal cual:
 | `engine.js` | El motor: `calculateFinalGrade`, `solveForTarget`, compuertas y descartes |
 | `app.js` | Estado, navegación, editor y adaptadores de cálculo |
 | `app-session.js` | Auth, recuperación, persistencia local y sync con Supabase |
-| `marketplace.js` | Avisos, segmentación local y cotización; interfaz y cobro aún sin activar |
+| `marketplace.js` | Avisos, segmentación local, cotización pura y espacio privado de profesor; publicidad y cobro aún sin activar |
 | `render-main.js` | `renderHome`, `renderRamo` y `renderStats` |
 | `render-agenda.js` | `renderAgenda`, separado de `app.js` por tamaño |
 | `styles.css` | Estilos y la base neutra compartida |

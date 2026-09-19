@@ -54,16 +54,18 @@ adelante sin cambiar el modelo ni abrir la aprobación a los estudiantes.
 
 Después de iniciar sesión, el menú de la cuenta ofrece **Espacio de profesor**.
 Si todavía no tiene ficha, ahí puede postular; no se crea otro login ni se mezcla
-el formulario con las notas. La postulación pide nombre público, una presentación
-breve, universidad o vínculo académico, ramos que ofrece por sigla, modalidad,
-contacto y al menos un antecedente que Lucas pueda revisar. Ningún campo aprueba
-automáticamente a la persona.
+el formulario con las notas. La postulación actual pide nombre público y una
+presentación donde cuenta qué ramos enseña y su experiencia. La universidad,
+siglas, modalidad y contacto se piden después, en el anuncio. Hoy no hay carga
+de antecedentes: Lucas revisa manualmente el texto de la ficha y puede pedir
+información adicional antes de aprobar. Ningún campo aprueba automáticamente.
 
 Lucas decide la postulación completa, no una puntuación automática. `rechazado`
-permite corregir y volver a postular; `suspendido` corta el acceso comercial hasta
-una revisión manual. La aplicación estudiantil sigue funcionando en ambos casos.
-Toda negativa muestra un motivo breve: un estado que cambia sin explicación no
-le permite a la persona corregir nada.
+y `suspendido` cortan el acceso comercial hasta una revisión manual; la
+aplicación estudiantil sigue funcionando. El SQL actual no guarda el motivo de
+rechazo ni ofrece una segunda postulación autónoma: la pantalla remite a
+Sugerencias para pedir revisión. No se debe prometer una corrección dentro del
+portal hasta añadir ese flujo y su motivo visible.
 
 Para aprobar una ficha, Lucas comprueba que la identidad y el contacto sean
 plausibles y que exista algún antecedente académico o docente relacionado con
@@ -84,20 +86,19 @@ tres pasos cortos:
 3. **Revisión:** la misma tarjeta que verá el estudiante y un resumen de público,
    vigencia y costo. El único botón final es “Enviar a revisión”.
 
-La muestra usa cuentas sintéticas: **no guarda ni envía anuncios reales**. El
-recorrido final aún debe crear la fila `borrador` al avanzar, guardar los
-cambios con estados visibles “Guardando”, “Guardado” o “No se pudo guardar”,
-reabrir el último borrador y enviar a revisión con respuesta del servidor.
-Un error de red nunca se puede disfrazar de guardado. Nada de eso queda
-implementado por la maqueta.
+La muestra usa cuentas sintéticas: **no guarda ni envía anuncios reales**. En
+la app, el Espacio de profesor ya permite postular, ver el estado de la ficha,
+crear un borrador completo, reabrirlo, editarlo, adjuntar o quitar el flyer y
+enviarlo a revisión con respuesta del servidor. Un error de red no se disfraza
+de guardado. No hay publicación automática ni cobro desde la app.
 
 La capa de datos ya puede validar una clase completa y crearla como borrador,
 reabrir el último borrador propio, editarlo mientras sigue en ese estado y
 enviarlo explícitamente a revisión (`guardarBorradorClase`,
 `abrirBorradorClase`, `enviarBorradorClase`). Filtra solo por campos visibles y
 deja el aislamiento entre cuentas a RLS: `autor_id` no se concede para lectura
-pública. Una caída de red devuelve error y no finge un guardado. Todavía falta
-conectar esa capa a una pantalla autenticada. **No hay autoguardado parcial**:
+pública. Una caída de red devuelve error y no finge un guardado. **No hay
+autoguardado parcial**:
 la tabla actual exige título, descripción, precio, ramo y contacto antes de
 crear la fila. La cotización de presupuesto en la maqueta tampoco se persiste,
 por lo que no debe iniciarse un pago desde ella.
@@ -254,8 +255,9 @@ cuenta calza con dos ramos se cuenta una vez. El ejemplo usa el motor real y
 extrae `ramoProgress` desde `app.js`, en vez de mantener otra cuenta de pesos.
 
 El generador y la plantilla viven en `bin/`, excluido del deploy. La muestra se
-genera fuera del repo. No hay formulario público de tutor ni tarjeta activada en
-Inicio todavía: la segmentación y cotización quedan preparadas para esa interfaz.
+genera fuera del repo. El formulario privado de tutor sí existe; todavía no
+hay tarjeta activada en Inicio ni una cotización real en el portal. La
+segmentación y la cotización quedan preparadas para esas etapas.
 
 ## Frontera de datos y métricas
 

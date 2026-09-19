@@ -1,8 +1,7 @@
 // ─── CLASES PARTICULARES · DATOS Y PRIVACIDAD ───────────────────────────────
 //
-// Este archivo no pinta interfaz ni publica anuncios todavía. Solo es la
-// frontera de datos para la sección futura: trae el catálogo completo de
-// anuncios activos de una universidad y decide LOCALMENTE qué ramos calzan.
+// Incluye el espacio privado de profesor, pero no publica anuncios: trae el
+// catálogo de avisos activos y decide LOCALMENTE qué ramos calzan.
 // La lista de ramos, las notas y cualquier señal de rendimiento no salen del
 // dispositivo para segmentar anuncios.
 
@@ -43,6 +42,33 @@ function validarBorradorClase(entrada){
 
 function sesionProfesorClase(){
   return supabaseClient&&currentUser&&currentUser.id?String(currentUser.id):'';
+}
+
+async function perfilProfesorActual(){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para entrar al espacio de profesor.'};
+  try{
+    const {data,error}=await supabaseClient.from('tutor_perfiles')
+      .select('nombre_publico,presentacion,estado,solicitado_at,revisado_at')
+      .eq('user_id',uid).maybeSingle();
+    if(error)return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};
+    return {ok:true,perfil:data||null};
+  }catch(e){return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};}
+}
+
+async function postularProfesor(nombre,presentacion){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para postular.'};
+  const publico=String(nombre||'').trim(),texto=String(presentacion||'').trim();
+  if(publico.length<2||publico.length>100)return {ok:false,campo:'nombre',error:'Escribe un nombre público de 2 a 100 caracteres.'};
+  if(texto.length<20||texto.length>1500)return {ok:false,campo:'presentacion',error:'Cuéntanos qué ramos enseñas y tu experiencia (20 a 1500 caracteres).'};
+  try{
+    const {data,error}=await supabaseClient.from('tutor_perfiles')
+      .insert({user_id:uid,nombre_publico:publico,presentacion:texto})
+      .select('nombre_publico,presentacion,estado,solicitado_at,revisado_at').single();
+    if(error||!data||data.estado!=='pendiente')return {ok:false,error:'No pudimos enviar tu postulación. Intenta de nuevo.'};
+    return {ok:true,perfil:data};
+  }catch(e){return {ok:false,error:'No pudimos enviar tu postulación. Intenta de nuevo.'};}
 }
 
 async function abrirBorradorClase(id){
@@ -145,6 +171,26 @@ async function urlFlyerClase(path){
   const {data,error}=await supabaseClient.storage.from('tutor-flyers').createSignedUrl(limpio,60);
   if(error)return '';
   return String(data&&data.signedUrl||'');
+}
+
+async function quitarFlyerClase(anuncioId){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para editar el flyer.'};
+  const abierto=await abrirBorradorClase(anuncioId);
+  if(!abierto.ok)return abierto;
+  if(!abierto.anuncio)return {ok:false,error:'Vuelve el anuncio a borrador antes de quitar el flyer.'};
+  const anterior=abierto.anuncio.flyer_path;
+  if(!anterior)return {ok:true};
+  try{
+    const {data,error}=await supabaseClient.from('tutor_anuncios').update({flyer_path:null})
+      .eq('id',anuncioId).eq('estado','borrador').select('id,flyer_path').single();
+    if(error||!data||data.flyer_path!==null)return {ok:false,error:'No pudimos quitar el flyer. Intenta de nuevo.'};
+    // El anuncio ya no lo muestra aunque falle la limpieza de Storage.
+    try{
+      const {error:borradoError}=await supabaseClient.storage.from('tutor-flyers').remove([anterior]);
+      return borradoError?{ok:true,aviso:'Flyer quitado del anuncio; quedó una copia privada por limpiar.'}:{ok:true};
+    }catch(e){return {ok:true,aviso:'Flyer quitado del anuncio; quedó una copia privada por limpiar.'};}
+  }catch(e){return {ok:false,error:'No pudimos quitar el flyer. Intenta de nuevo.'};}
 }
 
 function siglaAnuncio(sigla){
@@ -292,4 +338,146 @@ async function resumenMetricasAnuncio(anuncioId){
   const {data,error}=await supabaseClient.rpc('resumen_metricas_anuncio',{p_anuncio_id:anuncioId});
   if(error){console.warn('No se pudieron cargar las métricas del anuncio:',error.message||error);return [];}
   return Array.isArray(data)?data:[];
+}
+
+// Espacio separado de las notas. El SQL es manual: si todavía no existe,
+// esta puerta explica el fallo y no interviene en el arranque de GradeHub.
+async function openEspacioProfesor(){
+  const raiz=document.getElementById('modal-content');
+  raiz.innerHTML='<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="status">Revisando tu acceso…</p>';
+  openModal();
+  const ficha=await perfilProfesorActual();
+  if(!ficha.ok){raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="alert">${esc(ficha.error)}</p>`;return;}
+  if(!ficha.perfil){renderPostulacionProfesor(raiz);return;}
+  if(ficha.perfil.estado!=='aprobado'){
+    const avisos={pendiente:'Tu postulación está esperando revisión. Todavía no puedes ofrecer clases.',rechazado:'Tu postulación no fue aprobada. Puedes escribirnos desde Sugerencias para revisar el motivo.',suspendido:'Tu acceso de profesor está suspendido. Tus notas como estudiante siguen disponibles.'};
+    raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="status">${esc(avisos[ficha.perfil.estado]||'Tu perfil necesita revisión.')}</p>`;
+    return;
+  }
+  const borrador=await abrirBorradorClase();
+  if(!borrador.ok){raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="alert">${esc(borrador.error)}</p>`;return;}
+  if(!borrador.anuncio){
+    try{
+      const {data,error}=await supabaseClient.from('tutor_anuncios').select('id,titulo,estado')
+        .eq('estado','en_revision').order('created_at',{ascending:false}).limit(1).maybeSingle();
+      if(error)throw error;
+      if(data){raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="status">Tu anuncio ${esc(data.titulo||'')} está en revisión. No se publica hasta que GradeHub lo apruebe.</p>`;return;}
+    }catch(e){raiz.innerHTML='<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="alert">No pudimos consultar tus anuncios. Intenta de nuevo.</p>';return;}
+  }
+  renderBorradorProfesor(raiz,borrador.anuncio);
+}
+
+function renderPostulacionProfesor(raiz){
+  raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Postula para ofrecer clases</div>
+    <p class="profesor-info">Tu cuenta de estudiante sigue igual. Lucas revisará tu postulación antes de que puedas preparar anuncios.</p>
+    <form class="profesor-form" id="profesor-postular">
+      <label class="modal-label" for="profesor-nombre">Nombre público</label><input id="profesor-nombre" type="text" maxlength="100" minlength="2" required autocomplete="name">
+      <label class="modal-label" for="profesor-presentacion">Qué ramos enseñas y qué experiencia tienes</label><textarea id="profesor-presentacion" minlength="20" maxlength="1500" required></textarea>
+      <p class="profesor-info">Nadie verá tus notas. Cada anuncio que prepares necesitará otra aprobación.</p>
+      <button class="btn-confirm" type="submit">Enviar postulación</button><p class="profesor-estado" role="status" aria-live="polite"></p>
+    </form>`;
+  const form=raiz.querySelector('#profesor-postular'),estado=form.querySelector('.profesor-estado');
+  let enviando=false;
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();
+    if(enviando)return;
+    if(!form.reportValidity())return;
+    enviando=true;
+    const boton=form.querySelector('button');boton.disabled=true;estado.textContent='Enviando postulación…';
+    const resultado=await postularProfesor(form.querySelector('#profesor-nombre').value,form.querySelector('#profesor-presentacion').value);
+    if(resultado.ok){raiz.innerHTML='<div class="modal-title" id="modal-titulo">Postulación enviada</div><p class="profesor-info" role="status">Quedó pendiente de revisión. Aún no puedes publicar clases; vuelve a este espacio para ver su estado.</p>';return;}
+    estado.textContent=resultado.error;boton.disabled=false;enviando=false;
+    if(resultado.campo)form.querySelector(resultado.campo==='nombre'?'#profesor-nombre':'#profesor-presentacion').focus();
+  });
+}
+
+function renderBorradorProfesor(raiz,anuncio){
+  let id=anuncio&&anuncio.id||null,flyerActual=anuncio&&anuncio.flyer_path||null;
+  const valor=(campo,defecto='')=>esc(anuncio&&anuncio[campo]!=null?anuncio[campo]:defecto);
+  const elegir=(opciones,actual)=>opciones.map(([clave,texto])=>`<option value="${clave}"${actual===clave?' selected':''}>${texto}</option>`).join('');
+  raiz.innerHTML=`<div class="modal-title" id="modal-titulo">${id?'Edita tu borrador':'Prepara tu clase'}</div>
+    <p class="profesor-info">Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.</p>
+    <form class="profesor-form" id="profesor-borrador">
+      <h3>1. Tu clase</h3>
+      <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
+      <label class="modal-label" for="pr-descripcion">Qué van a trabajar</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required>${valor('descripcion')}</textarea>
+      <label class="modal-label" for="pr-precio">Precio por clase · CLP</label><input id="pr-precio" type="number" min="1000" max="500000" step="1" required value="${valor('precio_clp')}">
+      <label class="modal-label" for="pr-modalidad">Formato</label><select id="pr-modalidad">${elegir([['individual','Individual'],['grupal','Grupal']],anuncio&&anuncio.modalidad)}</select>
+      <label class="modal-label" for="pr-ubicacion">Dónde</label><select id="pr-ubicacion">${elegir([['online','Online'],['presencial','Presencial'],['hibrido','Híbrido']],anuncio&&anuncio.ubicacion)}</select>
+      <label class="modal-label" for="pr-contacto-tipo">Cómo te contactarán</label><select id="pr-contacto-tipo">${elegir([['whatsapp','WhatsApp'],['instagram','Instagram'],['email','Correo']],anuncio&&anuncio.contacto_tipo)}</select>
+      <label class="modal-label" for="pr-contacto">Tu contacto</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required value="${valor('contacto_valor')}">
+      <label class="modal-label" for="pr-flyer">Flyer · opcional</label><input id="pr-flyer" type="file" accept="image/jpeg,image/png,image/webp"><p class="profesor-info">JPG, PNG o WebP · máximo 5 MB. Primero se guarda el borrador y después se sube la imagen.</p>
+      <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
+      <button class="btn-cancel" id="pr-quitar-flyer" type="button" ${flyerActual?'':'hidden'}>Quitar flyer guardado</button>
+      <h3>2. Público</h3>
+      <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
+      <label class="modal-label" for="pr-siglas">Siglas de los ramos · separadas por coma</label><input id="pr-siglas" type="text" required placeholder="MAT1610, FIS1514" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
+      <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
+      <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">
+      <p class="profesor-info">GradeHub calcula el público sin mostrarte notas ni identidades. Esta pantalla aún no cotiza ni cobra campañas.</p>
+      <h3>3. Revisa antes de enviar</h3><div class="profesor-vista"><small>Publicidad · Clase particular</small><strong></strong><p></p></div>
+      <div class="modal-btns"><button class="btn-cancel" id="pr-guardar" type="button">Guardar borrador</button><button class="btn-confirm" id="pr-enviar" type="button">Enviar a revisión</button></div>
+      <p class="profesor-estado" role="status" aria-live="polite">${id?'Borrador recuperado. Puedes seguir editándolo.':'Completa la clase para guardar el primer borrador.'}</p>
+    </form>`;
+  const form=raiz.querySelector('#profesor-borrador'),campo=id=>form.querySelector('#pr-'+id),estado=form.querySelector('.profesor-estado');
+  let procesando=false;
+  const vista=form.querySelector('.profesor-vista');
+  const actualizarVista=()=>{vista.querySelector('strong').textContent=campo('titulo').value.trim()||'Tu clase';vista.querySelector('p').textContent=campo('descripcion').value.trim()||'Aquí aparecerá lo que ofreces.';};
+  form.addEventListener('input',actualizarVista);actualizarVista();
+  const preview=form.querySelector('.profesor-flyer-preview');
+  if(flyerActual)urlFlyerClase(flyerActual).then(url=>{if(url&&preview.isConnected){preview.querySelector('img').src=url;preview.hidden=false;}});
+  campo('flyer').addEventListener('change',()=>{
+    const file=campo('flyer').files&&campo('flyer').files[0],validacion=validarFlyerClase(file);
+    if(!validacion.ok){campo('flyer').value='';estado.textContent=validacion.error;return;}
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{if(!preview.isConnected)return;preview.querySelector('img').src=String(reader.result||'');preview.hidden=false;estado.textContent='Flyer listo para subir cuando guardes.';};
+    reader.onerror=()=>{estado.textContent='No pudimos leer ese flyer. Elige otra imagen.';};
+    reader.readAsDataURL(file);
+  });
+  form.querySelector('#pr-quitar-flyer').addEventListener('click',async()=>{
+    if(!id||procesando)return;
+    procesando=true;
+    estado.textContent='Quitando flyer…';
+    const resultado=await quitarFlyerClase(id);procesando=false;
+    estado.textContent=resultado.ok?resultado.aviso||'Flyer quitado del borrador.':resultado.error;
+    if(resultado.ok){flyerActual=null;campo('flyer').value='';preview.hidden=true;form.querySelector('#pr-quitar-flyer').hidden=true;}
+  });
+  const procesar=async enviar=>{
+    if(procesando)return;
+    if(!form.reportValidity())return;
+    const file=campo('flyer').files&&campo('flyer').files[0],validacion=validarFlyerClase(file);
+    if(!validacion.ok){estado.textContent=validacion.error;campo('flyer').focus();return;}
+    const datos={tenant:campo('tenant').value,ramos_siglas:campo('siglas').value.split(',').map(s=>s.trim()),
+      criterios:{promedioMenorA:Number(campo('promedio').value),avanceMinimo:Number(campo('avance').value)},
+      titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:Number(campo('precio').value),
+      modalidad:campo('modalidad').value,ubicacion:campo('ubicacion').value,
+      contacto_tipo:campo('contacto-tipo').value,contacto_valor:campo('contacto').value};
+    procesando=true;
+    const botones=[form.querySelector('#pr-guardar'),form.querySelector('#pr-enviar')];botones.forEach(b=>b.disabled=true);
+    estado.textContent='Guardando borrador…';
+    try{
+      const guardado=await guardarBorradorClase(datos,id);
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
+      id=guardado.anuncio.id;
+      if(file){estado.textContent='Borrador guardado. Subiendo flyer…';const subida=await subirFlyerClase(id,file);
+        if(!subida.ok){estado.textContent='Borrador guardado, pero '+subida.error;return;}
+        flyerActual=subida.path;campo('flyer').value='';form.querySelector('#pr-quitar-flyer').hidden=false;
+      }
+      if(enviar){estado.textContent='Enviando a revisión…';const respuesta=await enviarBorradorClase(id);
+        if(!respuesta.ok){estado.textContent=respuesta.error;return;}
+        raiz.innerHTML='<div class="modal-title" id="modal-titulo">En revisión</div><p class="profesor-info" role="status">Recibimos tu anuncio. Nadie lo verá hasta que GradeHub lo revise y apruebe.</p>';return;
+      }
+      estado.textContent='Borrador guardado. Puedes volver después o enviarlo a revisión.';
+    }catch(e){estado.textContent='No pudimos completar la acción. Revisa si tu borrador quedó guardado e intenta de nuevo.';
+    }finally{procesando=false;botones.forEach(b=>{if(b.isConnected)b.disabled=false;});}
+  };
+  form.addEventListener('submit',e=>{e.preventDefault();procesar(false);});
+  form.querySelector('#pr-guardar').addEventListener('click',()=>procesar(false));
+  form.querySelector('#pr-enviar').addEventListener('click',()=>procesar(true));
+}
+
+if(typeof document!=='undefined'){
+  const entradaProfesor=document.getElementById('um-profesor');
+  if(entradaProfesor)entradaProfesor.addEventListener('click',()=>umGo(openEspacioProfesor));
 }
