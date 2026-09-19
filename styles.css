@@ -660,7 +660,19 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .profesor-flyer-preview{border:1px solid var(--border);border-radius:10px;overflow:hidden;max-height:220px;}
 .profesor-flyer-preview[hidden],.profesor-form button[hidden]{display:none;}
 .profesor-flyer-preview img{display:block;width:100%;max-height:220px;object-fit:contain;}
-.profesor-vista{border:1px solid var(--border2);border-radius:12px;padding:14px;min-width:0;}
+.profesor-vista{position:relative;isolation:isolate;overflow:hidden;border:1px solid var(--border2);border-radius:12px;padding:14px 14px 14px 20px;min-width:0;}
+/* La vista previa repite la línea editorial de Inicio, no el levantamiento de
+   una tarjeta clickeable: aquí se revisa contenido, no se abre otra pantalla. */
+.profesor-vista::before{content:'';position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--primary);pointer-events:none;transform:scaleY(.6);transform-origin:center;transition:transform var(--motion-fast) var(--ease-out),filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
+@media(hover:hover) and (pointer:fine){
+  .profesor-vista:hover::before{transform:scaleX(1.65) scaleY(1);filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--primary) 35%,transparent);}
+}
+@media(prefers-reduced-motion:reduce){
+  .profesor-vista::before{transform:none;transition:filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
+}
+@media(prefers-reduced-motion:reduce) and (hover:hover) and (pointer:fine){
+  .profesor-vista:hover::before{transform:none;filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--primary) 35%,transparent);}
+}
 .profesor-vista small{display:block;color:var(--fg3);font-size:.6875rem;margin-bottom:8px;}
 .profesor-vista strong{display:block;color:var(--fg);overflow-wrap:anywhere;}
 .profesor-vista p{margin:6px 0 0;color:var(--fg2);font-size:.8125rem;line-height:1.45;overflow-wrap:anywhere;}
