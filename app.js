@@ -7070,11 +7070,16 @@ function buildICS(){
     'X-WR-TIMEZONE:America/Santiago',
   ];
   evs.forEach(e=>{
-    const peso=r2(e.cat.peso||0);
-    const titulo=`${e.cat.nombre} — ${e.ramo.nombre}`;
+    // Una casilla con fecha propia ("Control 2" dentro de "Controles") es un
+    // evento aparte: con el nombre y el peso de la casilla, y con UID propio.
+    // Antes todas las casillas de una categoría salían con el mismo UID y el
+    // mismo título, y el calendario se quedaba con una sola.
+    const pesoEv=pesoEventoAgenda(e);
+    const peso=r2(pesoEv==null?(e.cat.peso||0):pesoEv);
+    const titulo=`${nombreEventoAgenda(e)} — ${e.ramo.nombre}`;
     const desc=`Vale ${peso}% de ${e.ramo.nombre}.`+(e.pending?'':' Ya evaluada.');
     lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${e.cat.id}-${e.ramo.id}@gradehub.app`);
+    lines.push(`UID:${e.cat.id}-${e.ramo.id}${e.nota?'-'+e.nota.id:''}@gradehub.app`);
     lines.push(`DTSTAMP:${stamp}`);
     // Con hora, el evento deja de ser de día completo. Se emite como hora
     // LOCAL FLOTANTE —sin Z y sin TZID—, que el RFC define como "la hora del
