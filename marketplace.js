@@ -10,6 +10,90 @@ const METRICAS_ANUNCIO = new Set(['impresion', 'clic', 'contacto']);
 const FLYER_CLASE_MAX_BYTES = 5*1024*1024;
 const FLYER_CLASE_TIPOS = new Set(['image/jpeg','image/png','image/webp']);
 const CAMPOS_PUBLICOS_ANUNCIO = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,publicado_at,vence_at,created_at';
+const CAMPOS_BORRADOR_CLASE = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,created_at';
+
+// Un borrador en Supabase es una clase COMPLETA, todavía no un formulario a
+// medio escribir: la tabla exige estos campos. No se añade nada a gradehub_v1.
+function validarBorradorClase(entrada){
+  if(!entrada||typeof entrada!=='object'||Array.isArray(entrada))return {ok:false,campo:'clase',error:'Completa los datos de tu clase.'};
+  const tenant=String(entrada.tenant||'').trim();
+  if(!['uc','fen','uai','uandes'].includes(tenant))return {ok:false,campo:'tenant',error:'Elige una universidad.'};
+  const titulo=String(entrada.titulo||'').trim();
+  if(titulo.length<5||titulo.length>90)return {ok:false,campo:'titulo',error:'Ponle un título de 5 a 90 caracteres.'};
+  const descripcion=String(entrada.descripcion||'').trim();
+  if(descripcion.length<20||descripcion.length>1500)return {ok:false,campo:'descripcion',error:'Cuenta qué harás en la clase (20 a 1500 caracteres).'};
+  const siglas=Array.isArray(entrada.ramos_siglas)?entrada.ramos_siglas.map(s=>String(s||'').trim().toUpperCase()):[];
+  if(siglas.length<1||siglas.length>12||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s))||new Set(siglas).size!==siglas.length)
+    return {ok:false,campo:'ramos_siglas',error:'Elige entre 1 y 12 ramos, sin repetir siglas.'};
+  if(!criteriosClaseValidos(entrada.criterios))return {ok:false,campo:'criterios',error:'Revisa el promedio y el avance elegidos para tu público.'};
+  const modalidad=String(entrada.modalidad||''),ubicacion=String(entrada.ubicacion||'');
+  if(!['individual','grupal'].includes(modalidad))return {ok:false,campo:'modalidad',error:'Elige si la clase es individual o grupal.'};
+  if(!['online','presencial','hibrido'].includes(ubicacion))return {ok:false,campo:'ubicacion',error:'Indica dónde haces la clase.'};
+  if(!Number.isSafeInteger(entrada.precio_clp)||entrada.precio_clp<1000||entrada.precio_clp>500000)
+    return {ok:false,campo:'precio_clp',error:'Indica el precio de la clase en pesos, entre $1.000 y $500.000.'};
+  const contacto_tipo=String(entrada.contacto_tipo||''),contacto_valor=String(entrada.contacto_valor||'').trim();
+  if(!['whatsapp','instagram','email'].includes(contacto_tipo))return {ok:false,campo:'contacto_tipo',error:'Elige cómo te contactarán.'};
+  if(contacto_valor.length<3||contacto_valor.length>160)return {ok:false,campo:'contacto_valor',error:'Revisa el dato de contacto.'};
+  // Lista blanca: nunca aceptar un estado de publicación, marcas de pago ni
+  // datos académicos del estudiante enviados junto con el formulario.
+  return {ok:true,datos:{tenant,ramos_siglas:siglas,
+    criterios:{promedioMenorA:entrada.criterios.promedioMenorA,avanceMinimo:entrada.criterios.avanceMinimo},
+    modalidad,ubicacion,precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
+}
+
+function sesionProfesorClase(){
+  return supabaseClient&&currentUser&&currentUser.id?String(currentUser.id):'';
+}
+
+async function abrirBorradorClase(id){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para ver tus borradores.'};
+  if(id&&!/^[0-9a-f-]{36}$/i.test(String(id)))return {ok:false,error:'No encontramos ese borrador.'};
+  try{
+    // RLS delimita al dueño. autor_id no tiene SELECT público: filtrarlo aquí
+    // provocaría un error de permisos o expondría identidades si se concediera.
+    let consulta=supabaseClient.from('tutor_anuncios').select(CAMPOS_BORRADOR_CLASE)
+      .eq('estado','borrador');
+    consulta=id?consulta.eq('id',id):consulta.order('created_at',{ascending:false}).limit(1);
+    const {data,error}=await consulta.maybeSingle();
+    if(error)return {ok:false,error:'No pudimos abrir tu borrador. Intenta de nuevo.'};
+    return {ok:true,anuncio:data||null};
+  }catch(e){return {ok:false,error:'No pudimos abrir tu borrador. Intenta de nuevo.'};}
+}
+
+async function guardarBorradorClase(entrada,id){
+  const valido=validarBorradorClase(entrada);
+  if(!valido.ok)return valido;
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para guardar el borrador.'};
+  if(id&&!/^[0-9a-f-]{36}$/i.test(String(id)))return {ok:false,error:'No encontramos ese borrador.'};
+  try{
+    let consulta=id
+      ?supabaseClient.from('tutor_anuncios').update(valido.datos).eq('id',id).eq('estado','borrador')
+      :supabaseClient.from('tutor_anuncios').insert({...valido.datos,autor_id:uid});
+    const {data,error}=await consulta.select(CAMPOS_BORRADOR_CLASE).single();
+    if(error||!data||data.estado!=='borrador')return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};
+    return {ok:true,anuncio:data};
+  }catch(e){return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};}
+}
+
+async function enviarBorradorClase(id){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para enviar tu anuncio.'};
+  if(!/^[0-9a-f-]{36}$/i.test(String(id||'')))return {ok:false,error:'Guarda el borrador antes de enviarlo.'};
+  const abierto=await abrirBorradorClase(id);
+  if(!abierto.ok)return abierto;
+  if(!abierto.anuncio)return {ok:false,error:'Este anuncio ya no es un borrador. Vuelve a abrirlo.'};
+  const valido=validarBorradorClase(abierto.anuncio);
+  if(!valido.ok)return valido;
+  try{
+    const {data,error}=await supabaseClient.from('tutor_anuncios')
+      .update({estado:'en_revision'}).eq('id',id).eq('estado','borrador')
+      .select('id,estado').single();
+    if(error||!data||data.estado!=='en_revision')return {ok:false,error:'No se envió a revisión. Tu borrador sigue disponible.'};
+    return {ok:true,anuncio:data};
+  }catch(e){return {ok:false,error:'No se envió a revisión. Tu borrador sigue disponible.'};}
+}
 
 function validarFlyerClase(file){
   if(!file)return {ok:true,opcional:true};
@@ -34,7 +118,7 @@ async function subirFlyerClase(anuncioId,file){
   const id=String(anuncioId).trim(),uid=String(currentUser.id||'').trim();
   if(!/^[0-9a-f-]{36}$/i.test(id)||!/^[0-9a-f-]{36}$/i.test(uid))return {ok:false,error:'No pudimos identificar el borrador.'};
   const {data:anuncio,error:lecturaError}=await supabaseClient.from('tutor_anuncios')
-    .select('flyer_path,estado').eq('id',id).eq('autor_id',uid).single();
+    .select('flyer_path,estado').eq('id',id).single();
   if(lecturaError||!anuncio)return {ok:false,error:'No encontramos tu borrador. Vuelve a abrirlo antes de subir el flyer.'};
   if(anuncio.estado!=='borrador')return {ok:false,error:'Vuelve el anuncio a borrador antes de cambiar su flyer.'};
   const aleatorio=typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'';
@@ -43,7 +127,7 @@ async function subirFlyerClase(anuncioId,file){
   const {error:subidaError}=await supabaseClient.storage.from('tutor-flyers').upload(path,file,{contentType:file.type,upsert:false});
   if(subidaError)return {ok:false,error:subidaError.message||'No pudimos subir el flyer.'};
   const {data:guardado,error:anuncioError}=await supabaseClient.from('tutor_anuncios')
-    .update({flyer_path:path}).eq('id',id).eq('autor_id',uid).eq('estado','borrador')
+    .update({flyer_path:path}).eq('id',id).eq('estado','borrador')
     .select('flyer_path').single();
   if(anuncioError||!guardado||guardado.flyer_path!==path){
     await supabaseClient.storage.from('tutor-flyers').remove([path]);

@@ -91,6 +91,17 @@ reabrir el último borrador y enviar a revisión con respuesta del servidor.
 Un error de red nunca se puede disfrazar de guardado. Nada de eso queda
 implementado por la maqueta.
 
+La capa de datos ya puede validar una clase completa y crearla como borrador,
+reabrir el último borrador propio, editarlo mientras sigue en ese estado y
+enviarlo explícitamente a revisión (`guardarBorradorClase`,
+`abrirBorradorClase`, `enviarBorradorClase`). Filtra solo por campos visibles y
+deja el aislamiento entre cuentas a RLS: `autor_id` no se concede para lectura
+pública. Una caída de red devuelve error y no finge un guardado. Todavía falta
+conectar esa capa a una pantalla autenticada. **No hay autoguardado parcial**:
+la tabla actual exige título, descripción, precio, ramo y contacto antes de
+crear la fila. La cotización de presupuesto en la maqueta tampoco se persiste,
+por lo que no debe iniciarse un pago desde ella.
+
 El flyer es **opcional**. Se elige dentro del primer paso, se previsualiza en la
 tarjeta y puede quitarse sin eliminar el anuncio. Solo se aceptan JPG, PNG y WebP
 de hasta 5 MB; SVG queda fuera. El nombre original no se guarda. Los archivos
