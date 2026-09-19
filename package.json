@@ -7,9 +7,11 @@
   },
   "scripts": {
     "test": "node bin/tests.js",
-    "deploy": "npx --no-install wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true"
+    "deploy": "npx --no-install wrangler pages deploy . --project-name gradehub --branch=main --commit-dirty=true",
+    "sql": "node bin/sql.js"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.16",
     "wrangler": "4.123.0"
   }
 }
