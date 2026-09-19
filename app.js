@@ -5476,7 +5476,7 @@ function pasoRamosSemestreAnterior(){
     <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="m-hist-buscar" type="text" placeholder="Nombre o sigla" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     <div id="m-hist-resultados"></div>
     ${filas?`<label class="modal-label" style="margin-top:14px;">Tus ramos de ese semestre</label><div class="rep-box">${filas}</div>`:''}
-    <div class="modal-actions">
+    <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" ${histManual.ramos.length?'':'disabled'} onclick="pasarANotasSemestreAnterior()">Continuar</button>
     </div>`;
@@ -5541,7 +5541,7 @@ function pasoNotasSemestreAnterior(){
     </p>
     <div class="rep-box">${filas}</div>
     <p class="rep-balance" id="m-hist-aviso" role="status" aria-live="polite">${textoAvisoSemestreAnterior()}</p>
-    <div class="modal-actions">
+    <div class="modal-btns">
       <button class="btn-cancel" onclick="histManual.paso=1;renderSemestreAnteriorModal()">Atr\u00e1s</button>
       <button class="btn-confirm" onclick="guardarSemestreAnterior()">Guardar semestre</button>
     </div>`;
