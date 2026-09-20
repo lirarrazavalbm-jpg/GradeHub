@@ -186,18 +186,55 @@ alcance único efectivo, con un máximo de presupuesto por campaña:
 - **Precio de la clase:** lo que cobra el tutor por enseñar (`precio_clp` en el aviso).
 - **Tarifa publicitaria:** lo que cobra GradeHub por cada cuenta alcanzada. Es aparte.
 
-`cotizarCampanaClases` recibe conteos agregados y una tabla configurable de tarifas.
-No recibe notas ni listas de estudiantes. Si cumplen varios tramos toma la tarifa
-más alta; una tarifa específica exige ambos criterios. Así la tarifa de bajo 4,0
-y al menos 40% no se aplica a bajo 4,0 con solo 20%.
+`cotizarCampanaClases` recibe conteos agregados y una tarifa configurable. No
+recibe notas ni listas de estudiantes.
 
-El piloto parte con dos tarifas. Son una decisión comercial configurable por
-GradeHub, no un precio que el profesor pueda editar:
+**Se cobran dos cosas distintas, y no son la misma.** Decisión de Lucas del
+2026-09-20.
 
-| Segmentación | Elegibles | Tarifa por alcance | Si todos lo ven | Si solo lo ven 12 |
-|---|---:|---:|---:|---:|
-| Bajo 5,0 y ≥20% | 30 | $1.000 | $30.000 | $12.000 |
-| Bajo 4,0 y ≥40% | 20 | $2.000 | $40.000 | $24.000 |
+**1. Un cargo fijo por publicar.** $3.000 más $1.000 por cada ramo además del
+primero. Se paga aunque el aviso no lo vea nadie: cubre la revisión humana de
+cada anuncio, y cada ramo extra abre otro público y otra revisión. Un aviso de
+un ramo cuesta $3.000; uno de doce, $14.000.
+
+**2. Un precio por cuenta alcanzada, que sube con lo exigente que sea el
+público.** Antes eran dos tramos y entre medio no pasaba nada. Ahora es continuo:
+
+```
+precio = base × (1 + recargo por nota + recargo por avance)
+  recargo por nota   = (5,5 − promedioMenorA) / 2,5    acotado a 0…1
+  recargo por avance = avanceMinimo / 100              acotado a 0…1
+```
+
+Las dos palancas encarecen por motivos distintos. Pedir un promedio **más bajo**
+estrecha el público a quien de verdad está complicado en ese ramo: es el aviso
+que más sirve y el que menos gente ve. Pedir **más % evaluado** no estrecha
+tanto, pero compra certeza: con medio semestre corregido el promedio ya
+significa algo, y el anunciante no le paga a GradeHub por alcanzar a alguien con
+dos notas.
+
+La fórmula **reproduce exactas las dos tarifas que ya tenía el piloto**, así que
+generaliza los tramos en vez de reemplazarlos por otro precio:
+
+| Segmentación | Por persona | Cargo por publicar (1 ramo) | 20 personas lo ven |
+|---|---:|---:|---:|
+| Sin filtrar (7,0 y 0%) | $1.000 | $3.000 | $23.000 |
+| Bajo 5,0 y ≥20% | $1.400 | $3.000 | $31.000 |
+| Bajo 4,5 y ≥30% | $1.700 | $3.000 | $37.000 |
+| Bajo 4,0 y ≥40% | $2.000 | $3.000 | $43.000 |
+| Bajo 4,0 y ≥60% | $2.200 | $3.000 | $47.000 |
+| Bajo 3,0 y ≥90% | $2.900 | $3.000 | $61.000 |
+
+El techo son tres veces la base: un recargo entero por cada palanca. Un promedio
+sobre 5,5 no cobra recargo porque no estrecha a nadie.
+
+**El presupuesto limita el alcance, no el cargo fijo**, que ya se pagó al
+publicar. Descontarlo del presupuesto haría que agregar un ramo bajara a cuánta
+gente llega el aviso, que es justo al revés de lo que el anunciante pidió.
+
+Las cuatro cifras (`base`, `cargoFijo`, `porRamoExtra`, `redondeo`) viven en
+`TARIFA_CLASES` y se cambian sin tocar la fórmula. Son una decisión comercial de
+GradeHub, no un precio que el profesor pueda editar.
 
 El anunciante propone el público y el presupuesto; Lucas puede corregir ambos
 antes de aprobar. La cotización definitiva queda congelada cuando el profesor
