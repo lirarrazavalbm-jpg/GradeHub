@@ -258,8 +258,9 @@ function normalize(data) {
     (c.notas||[]).forEach(n=>{
       if(Number.isInteger(n.slot)&&n.slot>=0&&n.slot<c.slots)return;
       const nombre=normName(n.nombre||'');
+      const inicio=detalleCasillas(r,c).inicio;
       const slot=Array.from({length:c.slots},(_,i)=>i)
-        .find(i=>normName(etiquetaCasilla(r,c,i))===nombre);
+        .find(i=>normName(etiquetaCasilla(r,c,i))===nombre||normName(`${c.nombre} ${inicio+i}`)===nombre);
       if(slot!==undefined)n.slot=slot;
     });
     // Y el destrozo que dejó ese mismo defecto: mientras `slot` se perdía,
@@ -849,6 +850,33 @@ function definicionPresetDelRamo(ramo){
   const nombre=claveUc(ramo.nombre);
   return nombre?PRESETS_UC[nombre]:null;
 }
+// singularHuella() agrupa reportes y puede dejar palabras feas; acá el nombre
+// se muestra al estudiante. Solo flexionamos vocabulario conocido y dejamos
+// intacto lo ambiguo. `slotLabel` sigue siendo la salida para nombres propios.
+const SINGULARES_CASILLA={controles:'control',pruebas:'prueba',interrogaciones:'interrogación',
+  tareas:'tarea',talleres:'taller',informes:'informe',laboratorios:'laboratorio',
+  evaluaciones:'evaluación',solemnes:'solemne',trabajos:'trabajo',
+  presentaciones:'presentación',exámenes:'examen',casos:'caso',ensayos:'ensayo'};
+const ADJETIVOS_CASILLA={prácticos:'práctico',prácticas:'práctica',teóricos:'teórico',
+  teóricas:'teórica',escritos:'escrito',escritas:'escrita',cortos:'corto',cortas:'corta',
+  finales:'final',parciales:'parcial',orales:'oral',grupales:'grupal',
+  individuales:'individual',semanales:'semanal'};
+function singularEtiquetaCasilla(nombre){
+  const palabras=String(nombre||'').trim().split(/\s+/);
+  const primero=palabras[0],base=SINGULARES_CASILLA[primero.toLowerCase()];
+  if(!base||palabras.some(p=>p.toLowerCase()==='y'))return nombre;
+  const de=palabras.findIndex(p=>p.toLowerCase()==='de');
+  const hasta=de<0?palabras.length:de;
+  for(let i=1;i<hasta;i++){
+    const p=palabras[i],adjetivo=ADJETIVOS_CASILLA[p.toLowerCase()];
+    if(adjetivo)palabras[i]=p===p.toUpperCase()?adjetivo.toUpperCase():
+      p[0]===p[0].toUpperCase()?adjetivo[0].toUpperCase()+adjetivo.slice(1):adjetivo;
+    else if(/s$/i.test(p))return nombre; // no crear "Trabajo desconocidos"
+  }
+  palabras[0]=primero===primero.toUpperCase()?base.toUpperCase():
+    primero[0]===primero[0].toUpperCase()?base[0].toUpperCase()+base.slice(1):base;
+  return palabras.join(' ');
+}
 // El nombre colectivo de una categoría no siempre es el de cada entrega.
 // Ejemplo oficial: el Lab de Dinámica tiene la categoría "Informes", pero sus
 // casillas son Informe 0 a Informe 5 porque también existe el Lab 0 online.
@@ -859,13 +887,21 @@ function detalleCasillas(ramo,cat){
   const evals=Array.isArray(def)?def:(def&&def.evals||[]);
   const extra=(evals.find(([nombre])=>normName(nombre)===normName(cat&&cat.nombre))||[])[2]||{};
   return {
-    nombre:typeof cat?.slotLabel==='string'?cat.slotLabel:(typeof extra.slotLabel==='string'?extra.slotLabel:cat.nombre),
+    nombre:typeof cat?.slotLabel==='string'?cat.slotLabel:(typeof extra.slotLabel==='string'?extra.slotLabel:singularEtiquetaCasilla(cat.nombre)),
     inicio:Number.isInteger(cat?.slotStart)?cat.slotStart:(Number.isInteger(extra.slotStart)?extra.slotStart:1),
   };
 }
 function etiquetaCasilla(ramo,cat,slot){
   const detalle=detalleCasillas(ramo,cat);
   return `${detalle.nombre} ${detalle.inicio+slot}`;
+}
+// Una nota antigua puede guardar el nombre colectivo ("Controles 1"). Se ve
+// con el singular sin reescribirla; si la persona la renombró, su nombre manda.
+function nombreNotaCasilla(ramo,cat,nota){
+  if(!nota||!Number.isInteger(nota.slot)||!(cat&&cat.slots>1))return nota&&nota.nombre||'';
+  const inicio=detalleCasillas(ramo,cat).inicio;
+  return normName(nota.nombre)===normName(`${cat.nombre} ${inicio+nota.slot}`)
+    ?etiquetaCasilla(ramo,cat,nota.slot):nota.nombre;
 }
 // El navegador entrega las dependencias que el motor no puede conocer por sí
 // mismo (estado actual y catálogo). La misma fábrica queda importable desde
@@ -6228,7 +6264,7 @@ function openEditNotaModal(catId,notaId){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar nota</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(n.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-nota-error"/></div>
+    <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(nombreNotaCasilla(r,cat,n))}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-nota-error"/></div>
     <p id="m-nota-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
@@ -6594,7 +6630,7 @@ function renderSimulador(){
 
   document.getElementById('sim-cats').innerHTML=r.categorias.map(c=>{
     const catAvg=simCatAvg(c);
-    const realChips=c.notas.map(n=>`<span class="sim-chip real">${esc(n.nombre)}: ${fmt(n.valor)}</span>`).join('');
+    const realChips=c.notas.map(n=>`<span class="sim-chip real">${esc(nombreNotaCasilla(r,c,n))}: ${fmt(n.valor)}</span>`).join('');
     const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':c.directNota&&!(c.slots>1)?esc(c.nombre)+': ':''}${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
     return `
       <div class="sim-cat">
@@ -6759,7 +6795,7 @@ function ramoProgress(r){
 }
 function ramoRecienCerrado(anterior,actual){return Number.isFinite(anterior)&&anterior<100&&actual===100;}
 
-function nombreEventoAgenda(e){return e.nota?e.nota.nombre:e.cat.nombre;}
+function nombreEventoAgenda(e){return e.nota?nombreNotaCasilla(e.ramo,e.cat,e.nota):e.cat.nombre;}
 function pesoEventoAgenda(e){
   const c=e.cat,peso=Number(c.peso)||0;
   const fechadas=(c.notas||[]).filter(n=>n.fecha);
@@ -6936,7 +6972,7 @@ function destinosIcs(){
   return out;
 }
 function etiquetaDestinoIcs(target){
-  return target.ramo.nombre+' · '+(target.nota?target.nota.nombre:target.cat.nombre);
+  return target.ramo.nombre+' · '+(target.nota?nombreNotaCasilla(target.ramo,target.cat,target.nota):target.cat.nombre);
 }
 function prefijosEvaluacionIcs(nombre){
   const normal=normName(nombre).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
@@ -6962,7 +6998,8 @@ function coincidenciaIcs(evento,targets){
     const ramo=normName(target.ramo.nombre);
     if(!ramo||!title.endsWith(ramo))return false;
     const prefijo=title.slice(0,title.length-ramo.length).trim();
-    return prefijosEvaluacionIcs(target.nota?target.nota.nombre:target.cat.nombre).includes(prefijo);
+    const nombres=target.nota?[target.nota.nombre,nombreNotaCasilla(target.ramo,target.cat,target.nota)]:[target.cat.nombre];
+    return nombres.some(nombre=>prefijosEvaluacionIcs(nombre).includes(prefijo));
   });
   return matches.length===1?claveDestinoIcs(matches[0]):null;
 }

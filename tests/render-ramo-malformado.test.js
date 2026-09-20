@@ -88,8 +88,9 @@ error=null;try{val('renderRamo')();}catch(e){error=e;}
 const controlesFijos=byId('cat-list').children[0];
 chk('una categoría guardada con cantidad se repara como casillas fijas',
   error===null&&reparada.ramos[0].categorias[0].directNota===true);
-chk('la ficha muestra las tres casillas esperadas para Controles',
-  /Controles 1/.test(controlesFijos?.innerHTML||'')&&/Controles 2/.test(controlesFijos?.innerHTML||'')&&/Controles 3/.test(controlesFijos?.innerHTML||''));
+chk('la ficha muestra las tres casillas esperadas para Controles, en singular',
+  /Control 1/.test(controlesFijos?.innerHTML||'')&&/Control 2/.test(controlesFijos?.innerHTML||'')&&/Control 3/.test(controlesFijos?.innerHTML||'')
+    &&!/Controles 1/.test(controlesFijos?.innerHTML||''));
 
 console.log('\n=== El Lab de Dinámica conserva el nombre y número de cada entrega ===');
 const pautaLab=val("presetRamo('Laboratorio de Dinámica','uc','ING-PC')");
