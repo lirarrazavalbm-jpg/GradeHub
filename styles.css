@@ -1765,12 +1765,13 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    avisos siguen visibles, incluidas las evaluaciones pasadas sin nota. */
 .agenda-topline{border-bottom:1px solid var(--border);padding-bottom:18px;}
 .ag-priority-card,.ag-event-priority-sec>.ag-priority-card{border:1px solid var(--border);border-radius:8px;background:var(--card);box-shadow:none;padding:17px 16px 16px 20px;}
-.ag-priority-bar{inset:16px auto 16px 0;width:2px;height:auto;}
+.ag-priority-bar{inset:0 auto 0 0;width:2px;height:auto;}
 .ag-priority-rank{color:var(--fg3);font-weight:600;}
 .ag-priority-name{font-weight:550;}
 .ag-priority-weight{font-weight:500;}
 .ag-row{border-radius:6px;border:0;border-bottom:1px solid var(--border);background:transparent;box-shadow:none;}
 .ag-row-bar{width:2px;top:15px;bottom:15px;}
+.ag-row>.ag-row-bar{top:0;bottom:0;}
 .ag-row-peso,.ag-row-peso.heavy{border:0;background:var(--muted);color:var(--fg2);font-weight:500;}
 .ag-event-detail{border-radius:0 0 8px 8px;}
 .ag-waiting{border-radius:8px;background:var(--card);}
@@ -1907,41 +1908,40 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
   color:var(--fg3);font-size:0.6875rem;font-weight:650;letter-spacing:.01em;}
 .auth-ultimo::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--primary);flex-shrink:0;}
 
-/* ══════════════════════════════════════════════════════════════════════
-   LA BANDA DEL RAMO REACCIONA IGUAL EN TODAS PARTES
-   En Inicio, pasar el mouse sobre un ramo ensancha su banda de color y la
-   enciende. Es el gesto que le da identidad a la fila —el color del ramo
-   respondiendo— y estaba solo ahí: en la Agenda y en la comparación las
-   barras eran del mismo color pero no se movían, así que la misma idea se
-   sentía viva en una pantalla y muerta en la de al lado.
-   ══════════════════════════════════════════════════════════════════════ */
-.ag-priority-bar,.ag-row-bar,.stats-curso-color{
+/* El gesto de Inicio pertenece a las tarjetas que abren detalle, no a la
+   comparación estática de Estadísticas ni a los avisos sin fecha de Agenda. */
+.ag-priority-bar,.ag-row>.ag-row-bar{
+  transform:scaleY(.6);
+  transform-origin:center;
   transition:transform var(--motion-fast) var(--ease-out),
              filter var(--motion-fast) var(--ease-out),
              box-shadow var(--motion-fast) var(--ease-out);
 }
-/* Las barras verticales crecen a lo ancho, igual que la de Inicio. Se declara
-   el origen para que engorden hacia afuera y no desplacen el texto. */
-.ag-row-bar,.stats-curso-color{transform-origin:left center;}
-.ag-priority-bar{transform-origin:left center;}
-
 @media(hover:hover) and (pointer:fine){
-  .ag-row:hover .ag-row-bar,
-  .ag-priority-card:hover .ag-priority-bar,
-  .stats-curso-row:hover .stats-curso-color{
-    transform:scaleX(1.65);
+  .ag-row:hover>.ag-row-bar,
+  .ag-priority-card:hover>.ag-priority-bar{
+    transform:scaleX(1.65) scaleY(1);
     filter:brightness(1.2);
-    box-shadow:0 0 6px color-mix(in srgb,currentColor 35%,transparent);
+    box-shadow:0 0 6px color-mix(in srgb,var(--ag-course) 35%,transparent);
   }
 }
-/* Quien pidió menos movimiento recibe el cambio de color, no el crecimiento: la
-   fila sigue respondiendo, sin animación de tamaño. Va anidado dentro de
-   `hover:hover` a propósito — un `:hover` con transform fuera de esa guarda se
-   dispara en pantallas táctiles y deja el efecto pegado tras el toque. */
-@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){
-  .ag-row:hover .ag-row-bar,
-  .ag-priority-card:hover .ag-priority-bar,
-  .stats-curso-row:hover .stats-curso-color{transform:none;box-shadow:none;}
+.ag-row:focus-visible>.ag-row-bar,.ag-row:active>.ag-row-bar,
+.ag-priority-card:focus-visible>.ag-priority-bar,.ag-priority-card:active>.ag-priority-bar{
+  transform:scaleX(1.65) scaleY(1);
+  filter:brightness(1.2);
+  box-shadow:0 0 6px color-mix(in srgb,var(--ag-course) 35%,transparent);
+}
+/* Menos movimiento conserva el cambio de brillo, sin desplazamiento. El hover
+   queda gateado para que un toque en pantalla táctil no deje la línea pegada. */
+@media(prefers-reduced-motion:reduce){
+  .ag-priority-bar,.ag-row>.ag-row-bar{
+    transition:filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);
+  }
+  .ag-row:focus-visible>.ag-row-bar,.ag-row:active>.ag-row-bar,
+  .ag-priority-card:focus-visible>.ag-priority-bar,.ag-priority-card:active>.ag-priority-bar{transform:scaleY(.6);}
+}
+@media(prefers-reduced-motion:reduce) and (hover:hover) and (pointer:fine){
+  .ag-row:hover>.ag-row-bar,.ag-priority-card:hover>.ag-priority-bar{transform:scaleY(.6);}
 }
 
 /* ── Editar las secciones de Estadísticas ────────────────────────────────── */

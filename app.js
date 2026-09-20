@@ -7383,7 +7383,7 @@ function agendaItemHTML(e){
   } else if(e.necesita!==null&&e.necesita>7.05){
     alerta=`<div class="ag-alert bad"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Ya no alcanza para aprobar este ramo</div>`;
   }
-  return `<button class="ag-row ${e.nivel}" onclick="openRamo('${esc(e.ramo.id)}')">
+  return `<button class="ag-row ${e.nivel}" style="--ag-course:${esc(e.ramo.color)}" onclick="openRamo('${esc(e.ramo.id)}')">
     <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
     <div class="ag-row-main">
       <div class="ag-row-top">
