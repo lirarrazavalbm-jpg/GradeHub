@@ -613,6 +613,7 @@ function cargarCursosUC(){
       const ok=!!cursosUcExtra();
       if(!ok)_cursosUcPendiente=null;
       resolve(ok);
+      if(ok)completarCreditosUCTrasCarga();
     };
     s.onerror=()=>{_cursosUcPendiente=null;resolve(false);};
     document.head.appendChild(s);
@@ -631,6 +632,24 @@ function cursoUcCompleto(nombre,sigla){
     if(!Array.isArray(f))return false;
     return (ns&&normName(f[0]||'')===ns)||(!ns&&nn&&normName(f[1]||'')===nn);
   })||null;
+}
+// El archivo grande llega después de normalize() y también puede llegar mientras
+// alguien agrega un ramo desde el catálogo mínimo. Solo completamos créditos
+// ausentes de ramos UC con procedencia; nunca corregimos un valor ya guardado.
+function completarCreditosUCTrasCarga(){
+  if(S.tenant!=='uc'||!S.onboardingDone||!cursosUcExtra())return false;
+  let agregados=0;
+  (S.ramos||[]).forEach(r=>{
+    if(!r.origen||r.origen.tenant!=='uc'||(r.creditos!==null&&r.creditos!==undefined))return;
+    sellarDatosCatalogo(r,'uc');
+    if(typeof r.creditos==='number')agregados++;
+  });
+  if(!agregados)return false;
+  // Una sola escritura/sync para la carga completa, no una por ramo. save()
+  // mantiene intacta la clave y el camino habitual de respaldo.
+  save();
+  renderHome();renderStats();
+  return true;
 }
 function repintarAlCargarCursosUC(tenant,repintar){
   if(tenant!=='uc'||cursosUcExtra())return;
@@ -1471,6 +1490,13 @@ function showMainApp(){
   document.querySelector('.app').classList.add('tab-mode');
   renderHome();renderStats();renderAgenda(); // los 3 siempre montados
   showTab('home');
+  // En una cuenta existente el catálogo puede no haberse pedido nunca: si un
+  // ramo UC del catálogo quedó sin SCT, hay que traerlo incluso sin abrir el
+  // buscador. Si ya se cargó durante onboarding, completa de inmediato.
+  if(S.tenant==='uc'&&(S.ramos||[]).some(r=>r.origen&&r.origen.tenant==='uc'&&(r.creditos===null||r.creditos===undefined))){
+    if(cursosUcExtra())completarCreditosUCTrasCarga();
+    else cargarCursosUC();
+  }
 }
 const NAV_TABS=['stats','home','agenda']; // orden izq→der para swipe
 let currentTab='home';
