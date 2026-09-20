@@ -217,6 +217,57 @@ async function cambiarCorreoCuenta(){
   }
 }
 
+function estadoCambioClave(mensaje,esError,campo){
+  const aviso=document.getElementById('s-account-pass-status');
+  if(aviso){aviso.textContent=mensaje||'';aviso.hidden=!mensaje;aviso.style.color=esError?'var(--red)':'var(--fg2)';}
+  ['s-account-pass','s-account-pass2'].forEach(id=>{
+    const input=document.getElementById(id);if(!input)return;
+    if(esError&&(!campo||campo===id))input.setAttribute('aria-invalid','true');
+    else input.removeAttribute('aria-invalid');
+  });
+}
+function errorCambioClave(e){
+  const codigo=e&&e.code,nombre=e&&e.name;
+  if(nombre==='AuthSessionMissingError'||['session_expired','session_not_found','refresh_token_not_found','refresh_token_already_used'].includes(codigo))
+    return 'Tu sesión venció. Vuelve a iniciar sesión para cambiar tu contraseña. Tus notas siguen guardadas.';
+  if(codigo==='reauthentication_needed')
+    return 'El servidor exige una verificación adicional por correo para este cambio. No se guardó la contraseña; contáctanos si no puedes recibir ese correo.';
+  if(codigo==='same_password')return 'Elige una contraseña distinta a la que ya usas.';
+  if(codigo==='user_sso_managed')return 'Esta cuenta no permite crear una contraseña. Sigue entrando con tu proveedor de acceso.';
+  return traduceAuthError(e);
+}
+async function cambiarClaveCuenta(){
+  const primero=document.getElementById('s-account-pass');
+  const segundo=document.getElementById('s-account-pass2');
+  const btn=document.getElementById('s-account-pass-save');
+  const clave=primero&&primero.value||'';
+  estadoCambioClave('',false);
+  const politica=passwordPolicyError(clave);
+  if(politica){estadoCambioClave(politica,true,'s-account-pass');if(primero)primero.focus();return false;}
+  if(clave!==(segundo&&segundo.value||'')){
+    estadoCambioClave('Las contraseñas no coinciden.',true,'s-account-pass2');if(segundo)segundo.focus();return false;
+  }
+  if(!supabaseClient||!supabaseClient.auth||!currentUser){
+    estadoCambioClave('Necesitas iniciar sesión para cambiar tu contraseña.',true);return false;
+  }
+  const original=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Guardando…';}
+  try{
+    const {data,error}=await supabaseClient.auth.updateUser({password:clave});
+    if(error)throw error;
+    if(!data||!data.user)throw new Error('Respuesta incompleta al cambiar la contraseña');
+    currentUser=data.user;
+    primero.value='';segundo.value='';
+    estadoCambioClave('Contraseña actualizada. Ya puedes usarla para entrar con tu correo.',false);
+    return true;
+  }catch(e){
+    estadoCambioClave(errorCambioClave(e),true);
+    return false;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=original;}
+  }
+}
+
 async function submitAuth(){
   const email=(document.getElementById('auth-user').value||'').trim().toLowerCase();
   const p=document.getElementById('auth-pass').value;

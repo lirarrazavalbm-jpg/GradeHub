@@ -4849,7 +4849,7 @@ function openSettings(){
     arrow:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>'
   };
   const sections=[
-    ['Tu cuenta','perfil','Perfil','Tu nombre y correo de acceso','cambiar nombre correo email'],
+    ['Tu cuenta','perfil','Perfil','Tu nombre, correo y contraseña','cambiar nombre correo email contraseña clave password'],
     ['Tu cuenta','agentes','Agentes conectados','Conectar o desconectar un agente','chatgpt claude gemini inteligencia artificial url revocar permisos'],
     ['Tu cuenta','datos','Datos y cuenta','Respaldos, reinicio y eliminación','exportar importar copia respaldo borrar eliminar cuenta reiniciar dispositivo privacidad terminos'],
     ['Tu semestre','academico','Información académica','Universidad, carrera y semestre','cambiar carrera universidad agregar semestre anterior historial'],
@@ -4874,6 +4874,15 @@ function openSettings(){
         <p class="settings-help" id="s-account-email-help" style="margin:7px 0 10px;">Cámbialo al tiro. Revisa que esté bien escrito: lo usarás para entrar y recuperar tu cuenta.</p>
         <p id="s-account-email-status" role="alert" aria-live="polite" hidden style="margin:0 0 10px;font-size:0.75rem;line-height:1.4;"></p>
         <button type="button" class="settings-reset-btn" id="s-account-email-save" onclick="cambiarCorreoCuenta()">Cambiar correo</button>
+        <div class="settings-password-access">
+          <label class="modal-label" for="s-account-pass">Nueva contraseña</label>
+          <div class="modal-input"><input type="password" id="s-account-pass" maxlength="60" autocomplete="new-password" aria-describedby="s-account-pass-help s-account-pass-status"/></div>
+          <label class="modal-label" for="s-account-pass2">Repite la contraseña</label>
+          <div class="modal-input"><input type="password" id="s-account-pass2" maxlength="60" autocomplete="new-password" aria-describedby="s-account-pass-status"/></div>
+          <p class="settings-help" id="s-account-pass-help">Mínimo ${PASS_MIN} caracteres, con una letra y un número. Si entras con Google, también puedes crear una contraseña para entrar con tu correo.</p>
+          <p id="s-account-pass-status" role="alert" aria-live="polite" hidden></p>
+          <button type="button" class="settings-reset-btn" id="s-account-pass-save" onclick="cambiarClaveCuenta()">Crear o cambiar contraseña</button>
+        </div>
       </div>`:''}`;
     if(section==='academico')return `
       <div class="modal-label">Universidad</div>
