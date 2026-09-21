@@ -262,11 +262,17 @@ anteriores y tiene al menos una nota vigente en el ramo. La marca de actividad e
 solo una fecha, no un historial de sesiones. Sin esa señal la cuenta no infla la
 cotización, aunque su semestre antiguo siga guardado.
 
-Para deduplicar de verdad, el lanzamiento necesita una tabla privada de alcance
-con `(anuncio_id, user_id)` único, ambas FK con `ON DELETE CASCADE`. Solo una RPC
-`security definer` escribe en ella usando `auth.uid()`; no hay permisos directos
-de lectura para el profesor. Las filas se eliminan 90 días después de terminar la
-campaña. Esto permite cobrar una vez sin entregar la identidad al anunciante.
+**El registro de alcance único ya está construido**: `anuncio_alcance`, con
+`(anuncio_id, user_id)` como llave y las dos FK con `ON DELETE CASCADE`. Solo
+`registrar_alcance_anuncio()` escribe, con `auth.uid()`, y nadie tiene permiso de
+lectura: el profesor recibe un total por `alcance_anuncio()` y nada más.
+`limpiar_alcance_anuncios()` borra las filas 90 días después de que la campaña
+venció. Así se cobra una vez por cuenta sin entregarle identidad al anunciante.
+
+La fila guarda cuenta, campaña y día. **No guarda con qué criterio se eligió el
+aviso**, ni el ramo, ni la nota: sin eso, saber que una cuenta vio un aviso no
+dice nada de cómo le va. Lo que falta para cobrar de verdad es la tarifa fijada
+al publicar y el presupuesto exigido en el servidor.
 
 El conteo de elegibles se calcula dentro de GradeHub con el mismo motor académico
 y devuelve únicamente un total agregado. No se implementa de nuevo la aritmética
