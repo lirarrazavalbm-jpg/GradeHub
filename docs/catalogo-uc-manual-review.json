@@ -1,0 +1,66 @@
+{
+  "reviewedAt": "2026-09-21T22:42:13Z",
+  "parserVersion": "uc-catalogo-3",
+  "reviews": [
+    {
+      "courseCode": "AAZ206",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "El texto oficial completo declara 35% interrogación teórico-práctica, 35% defensa de seminario y 30% examen oral; la extracción coincide y no hay reglas adicionales."
+    },
+    {
+      "courseCode": "AQD1203",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "El bloque oficial declara 20% ejercicios parciales, 30% portafolio final y 50% examen final; no aparecen condiciones ni fórmulas alternativas fuera del bloque."
+    },
+    {
+      "courseCode": "DER104E",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "Las cinco evaluaciones y sus pesos 20/10/25/20/25 coinciden con la estrategia evaluativa oficial; no se encontraron requisitos de aprobación adicionales."
+    },
+    {
+      "courseCode": "EAA2092",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "La estrategia oficial explicita prueba 30%, ejercicios 30%, participación 10% e informe final 30%; la mención narrativa a tareas no agrega otra ponderación."
+    },
+    {
+      "courseCode": "FIS0103",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "Interrogaciones 30%, ensayos 35% y controles rápidos 35% coinciden con el texto completo; no hay examen condicionado ni mínimos."
+    },
+    {
+      "courseCode": "IEE2713",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "El programa oficial contiene únicamente interrogaciones 80%, asistencia 10% y tareas/proyectos 10% como ponderaciones; la extracción es completa."
+    },
+    {
+      "courseCode": "LET132E",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "Los informes 45%, análisis crítico 25% y ensayo 30% coinciden con la sección oficial; el programa no declara cantidad de informes ni otra regla, por lo que no se inventan casillas."
+    },
+    {
+      "courseCode": "OCU802A",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "Pruebas 30%, informes escritos 40% y ECOE 30% son las únicas ponderaciones oficiales y no tienen condiciones adicionales detectables en el texto completo."
+    },
+    {
+      "courseCode": "SUS2161",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "Análisis de caso 30%, guías de terreno 20%, póster 25% y examen 25% coinciden con la descripción y la tabla oficial, sin reglas ocultas."
+    },
+    {
+      "courseCode": "VRA1322",
+      "officialTextChecked": true,
+      "verdict": "correct",
+      "notes": "Fichas de lectura 30%, proyecto de investigación 40% y presentación de póster 30% coinciden con el programa completo; no se encontraron mínimos ni fórmulas alternativas."
+    }
+  ]
+}
