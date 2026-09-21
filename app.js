@@ -6116,13 +6116,36 @@ function openModal(){
   sheet.scrollTop=0;
   cancelAnimationFrame(_sheetRaf);ov.classList.remove('settling');
   let startY=0,curY=0,startT=0,dragging=false,historia=[];
+  // ¿El puntero empezó dentro de una caja con scroll propio que YA está abajo?
+  // Solo se arrastra el sheet cuando la lista de adentro está en su tope: es la
+  // regla de cualquier bottom sheet, y es lo que separa "quiero leer más arriba"
+  // de "quiero cerrar esto". Vive acá adentro a propósito: el arrastre se prueba
+  // extrayendo openModal sola, y una ayudante suelta no viajaría con ella.
+  const scrollInternoEnElTope=destino=>{
+    let el=destino;
+    while(el&&el!==sheet&&el.nodeType===1){
+      // Alto de más y overflow que scrollea: esa es la caja que manda.
+      if(el.scrollHeight>el.clientHeight+1){
+        const desborde=typeof getComputedStyle==='function'?getComputedStyle(el).overflowY:'';
+        if(desborde==='auto'||desborde==='scroll')return el.scrollTop<=0;
+      }
+      el=el.parentElement;
+    }
+    return true;
+  };
   sheet.onpointerdown=e=>{
     if(e.pointerType==='mouse'&&e.button!==0)return;
     // La etiqueta también activa su campo: el riel visible de un switch vive
     // dentro de un label. Capturar ahí el puntero le roba el clic al checkbox.
     if(e.target.closest('input,textarea,select,button,a,label,[contenteditable]'))return;
     cancelAnimationFrame(_sheetRaf);ov.classList.remove('settling');
-    startY=e.clientY;curY=startY;startT=Date.now();dragging=sheet.scrollTop<=0;
+    // `sheet.scrollTop<=0` no basta: varios modales llevan una LISTA con scroll
+    // propio adentro —el simulador, buscar ramo, las bandejas del agente— y el
+    // sheet nunca se mueve, así que su scrollTop es siempre 0. Resultado: el
+    // dedo bajaba la lista para volver arriba, eso contaba como arrastrar el
+    // sheet, y la ventana se cerraba sola a media edición.
+    startY=e.clientY;curY=startY;startT=Date.now();
+    dragging=sheet.scrollTop<=0&&scrollInternoEnElTope(e.target);
     historia=[{y:e.clientY,t:performance.now()}];
     if(dragging){ov.classList.add('dragging');try{sheet.setPointerCapture(e.pointerId);}catch(_){}}
   };
