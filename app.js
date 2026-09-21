@@ -5119,7 +5119,7 @@ function openSettings(){
       <div class="sem-grid" id="s-sem-grid"></div>
       ${guardarBtn()}`;
     if(section==='calendario')return `
-      <p class="settings-help settings-help-top">Suscribe tus evaluaciones a Google Calendar, Apple Calendar u Outlook. Se agrega una vez y después se actualiza sola: si cambias una fecha acá, se corrige allá.</p>
+      <p class="settings-help settings-help-top">Suscribe tus evaluaciones a Google Calendar, Apple Calendar u Outlook. Se agrega una vez y después se actualiza sola: si cambias una fecha acá, se corrige allá. No al instante — tu calendario relee la suscripción cada varias horas.</p>
       ${currentUser?`
       <label class="modal-label">Tu URL de suscripción</label>
       <div class="modal-input"><input type="text" id="s-cal-url" readonly value="Generando…" onclick="this.select()"/></div>
@@ -7404,7 +7404,7 @@ function openAgendaCalendarOptions(){
   const tieneEventos=agendaEvents().length>0;
   const opcionesSalida=tieneEventos?`
     <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0 0 14px;">
-      La suscripción es la opción recomendada: <b>se actualiza sola</b> cuando cambias una fecha y queda como un calendario separado.
+      La suscripción es la opción recomendada: <b>se actualiza sola</b> cuando cambias una fecha —en unas horas, no al instante— y queda como un calendario separado.
     </p>
     <button class="btn-primary" type="button" onclick="openCalendarSubscriptionFromAgenda()">Suscribirme al calendario</button>
     <div style="height:1px;background:var(--border);margin:20px 0 16px;"></div>
