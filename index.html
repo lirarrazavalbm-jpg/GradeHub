@@ -374,6 +374,15 @@
     <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg>
     Ramos de mi malla
   </button>
+  <!-- Escondido hasta que el SQL del marketplace esté aplicado en Supabase y la
+       postulación tenga su lugar definitivo, que Lucas decidió el 2026-09-21 que
+       es un botón en Ajustes y no este menú. Sin las tablas, abrirlo solo dice
+       "todavía no está disponible": una puerta muerta para todos. Quitar el
+       hidden es la única línea que hace falta para encenderlo. -->
+  <button class="user-menu-item" role="menuitem" id="um-profesor" hidden>
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h7"/></svg>
+    Espacio de profesor
+  </button>
   <button class="user-menu-item" role="menuitem" id="um-archivar" onclick="umGo(confirmArchiveSemester)">
     <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
     Archivar semestre
@@ -434,6 +443,7 @@
 <script src="engine.js?v=__ASSET_VERSION__"></script>
 <script src="app.js?v=__ASSET_VERSION__"></script>
 <script src="app-session.js?v=__ASSET_VERSION__"></script>
+<script src="marketplace.js?v=__ASSET_VERSION__"></script>
 <script src="render-main.js?v=__ASSET_VERSION__"></script>
 <script src="render-agenda.js?v=__ASSET_VERSION__"></script>
 </body>
