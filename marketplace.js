@@ -486,17 +486,12 @@ async function renderEspacioProfesor(raiz,{titulo=true}={}){
     raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="status">${esc(avisos[ficha.perfil.estado]||'Tu perfil necesita revisión.')}</p>`+salida();
     return;
   }
-  const borrador=await abrirBorradorClase();
-  if(!borrador.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(borrador.error)}</p>`+salida();return;}
-  if(!borrador.anuncio){
-    try{
-      const {data,error}=await supabaseClient.from('tutor_anuncios').select('id,titulo,estado')
-        .eq('estado','en_revision').order('created_at',{ascending:false}).limit(1).maybeSingle();
-      if(error)throw error;
-      if(data){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="status">Tu anuncio ${esc(data.titulo||'')} está en revisión. No se publica hasta que GradeHub lo apruebe.</p>`+salida();return;}
-    }catch(e){raiz.innerHTML=cabecera('Espacio de profesor')+'<p class="profesor-info" role="alert">No pudimos consultar tus anuncios. Intenta de nuevo.</p>'+salida();return;}
-  }
-  renderBorradorProfesor(raiz,borrador.anuncio);
+  const mios=await misAnunciosClase();
+  if(!mios.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(mios.error)}</p>`+salida();return;}
+  // Sin ningún anuncio todavía, no hay panel que mostrar: se entra derecho a
+  // preparar el primero, que es lo único que esa persona puede hacer.
+  if(!mios.anuncios.length){renderBorradorProfesor(raiz,null);return;}
+  await renderPanelProfesor(raiz,mios.anuncios,{cabecera,salida});
 }
 
 // La puerta desde Ajustes: solo la postulación, sin el espacio completo. Quien
@@ -539,6 +534,123 @@ function renderPostulacionProfesor(raiz){
     estado.textContent=resultado.error;boton.disabled=false;enviando=false;
     if(resultado.campo)form.querySelector(resultado.campo==='nombre'?'#profesor-nombre':'#profesor-presentacion').focus();
   });
+}
+
+// Los anuncios de quien mira. La RLS ya delimita al dueño —un profesor ve los
+// suyos en cualquier estado y de los demás solo los publicados—, así que no se
+// filtra por autor_id acá: esa columna no tiene SELECT público y pedirla daría
+// un error de permisos.
+async function misAnunciosClase(){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para ver tus clases.'};
+  try{
+    const {data,error}=await supabaseClient.from('tutor_anuncios')
+      .select(CAMPOS_PUBLICOS_ANUNCIO)
+      .order('created_at',{ascending:false});
+    if(error)throw error;
+    // Los publicados de otros tutores también pasan la RLS: se descartan por
+    // los que uno puede editar, que son los únicos con métricas propias.
+    return {ok:true,anuncios:Array.isArray(data)?data:[]};
+  }catch(e){return {ok:false,error:'No pudimos consultar tus clases. Intenta de nuevo.'};}
+}
+
+const ESTADOS_ANUNCIO={
+  borrador:['Borrador','Nadie lo ve todavía.'],
+  en_revision:['En revisión','No se publica hasta que lo aprobemos.'],
+  publicado:['Publicado','Se está mostrando a tu público.'],
+  pausado:['Pausado','Dejó de mostrarse.'],
+  expirado:['Terminado','La campaña llegó a su fin.'],
+};
+
+// Lo que se cobra son PERSONAS DISTINTAS alcanzadas, así que ese es el número
+// grande. Los cortes por día y tipo vienen del servidor solo cuando superan los
+// quince eventos: por debajo no se devuelven, y decir "0 clics" ahí sería
+// mentir. Con pocos datos se dice que son pocos, no que son cero.
+// Solo un anuncio que ALCANZÓ a publicarse puede tener números. Un borrador o
+// uno esperando aprobación no los vio nadie, y mostrarle "23 personas · va
+// costando $49.000" a quien todavía espera el visto bueno es inventarle un
+// gasto que no existe.
+const ANUNCIO_YA_SE_MOSTRO=new Set(['publicado','pausado','expirado']);
+async function metricasDeAnuncio(anuncio){
+  const salida={alcance:null,cortes:[]};
+  if(!anuncio||!ANUNCIO_YA_SE_MOSTRO.has(anuncio.estado))return salida;
+  try{
+    const {data,error}=await supabaseClient.rpc('alcance_anuncio',{p_anuncio_id:anuncio.id});
+    if(!error&&Number.isInteger(data))salida.alcance=data;
+  }catch(e){}
+  try{
+    const {data,error}=await supabaseClient.rpc('resumen_metricas_anuncio',{p_anuncio_id:anuncio.id});
+    if(!error&&Array.isArray(data))salida.cortes=data;
+  }catch(e){}
+  return salida;
+}
+
+function totalesDeCortes(cortes){
+  const por={impresion:0,clic:0,contacto:0};
+  (cortes||[]).forEach(c=>{if(por[c.tipo]!==undefined)por[c.tipo]+=Number(c.eventos)||0;});
+  return por;
+}
+
+// Lo que lleva gastado esta campaña, con la misma tarifa que cotiza al armarla.
+// Solo se muestra cuando hay alcance medido: inventar un costo sobre un número
+// que no existe es peor que no mostrarlo.
+function costoDeAnuncio(anuncio,alcance){
+  if(alcance===null||!criteriosClaseValidos(anuncio&&anuncio.criterios))return null;
+  const ramos=Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.length:1;
+  return cotizarCampanaClases(anuncio.criterios,null,{alcanzados:alcance,ramos});
+}
+
+async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
+  const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
+  const borrador=anuncios.find(a=>a.estado==='borrador');
+  raiz.innerHTML=cabecera('Espacio de profesor')+
+    `<p class="profesor-info">Tus clases y cómo les va. Los números son de cuentas distintas, nunca de personas con nombre.</p>
+     <div class="clase-lista">${anuncios.map(a=>{
+        const [etiqueta,detalle]=ESTADOS_ANUNCIO[a.estado]||[a.estado,''];
+        return `<article class="clase-card" data-anuncio="${esc(a.id)}">
+          <div class="clase-card-top">
+            <strong>${esc(a.titulo||'Sin título')}</strong>
+            <span class="clase-estado clase-estado-${esc(a.estado)}">${esc(etiqueta)}</span>
+          </div>
+          <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
+          <p class="clase-card-detalle">${esc(detalle)}</p>
+          <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
+        </article>`;
+      }).join('')}</div>
+     <div class="modal-btns">
+       <button type="button" class="btn-confirm" id="clase-nueva">${borrador?'Seguir con mi borrador':'Preparar otra clase'}</button>
+     </div>`+salida();
+  const nueva=raiz.querySelector('#clase-nueva');
+  if(nueva)nueva.addEventListener('click',()=>renderBorradorProfesor(raiz,borrador||null));
+
+  // Las métricas se piden después de pintar: son una consulta por anuncio y la
+  // lista ya está en pantalla. Si alguna falla, esa tarjeta lo dice y las otras
+  // siguen andando.
+  for(const a of anuncios){
+    const caja=raiz.querySelector(`[data-metricas="${a.id}"]`);
+    if(!caja)continue;
+    if(!ANUNCIO_YA_SE_MOSTRO.has(a.estado)){
+      caja.innerHTML=`<p class="clase-sin-datos">${a.estado==='en_revision'
+        ?'Cuando lo aprobemos y empiece a mostrarse, sus números aparecen acá.'
+        :'Todavía no se publica, así que no hay nada que medir.'}</p>`;
+      continue;
+    }
+    caja.innerHTML='<p class="clase-sin-datos">Cargando…</p>';
+    const m=await metricasDeAnuncio(a);
+    if(!caja.isConnected)return;
+    const t=totalesDeCortes(m.cortes);
+    const costo=costoDeAnuncio(a,m.alcance);
+    const filas=[];
+    filas.push(`<div class="clase-num"><span>Personas alcanzadas</span><b>${m.alcance===null?'—':m.alcance}</b></div>`);
+    if(m.cortes.length){
+      filas.push(`<div class="clase-num"><span>Clics</span><b>${t.clic}</b></div>`);
+      filas.push(`<div class="clase-num"><span>Contactos</span><b>${t.contacto}</b></div>`);
+    }
+    if(costo)filas.push(`<div class="clase-num"><span>Va costando</span><b>${pesos(costo.totalPorAlcance)}</b></div>`);
+    caja.innerHTML=`<div class="clase-nums">${filas.join('')}</div>`+
+      (m.cortes.length?'':'<p class="clase-sin-datos">Los cortes por día y por ramo aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
+      (costo?`<p class="clase-sin-datos">${pesos(costo.cargoFijo)} de publicación${costo.alcanzados?` + ${pesos(costo.precioPorCuenta)} por cada una de las ${costo.alcanzados} personas`:''}.</p>`:'');
+  }
 }
 
 function renderBorradorProfesor(raiz,anuncio){

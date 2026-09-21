@@ -732,6 +732,22 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .profesor-vista small{display:block;color:var(--fg3);font-size:.6875rem;margin-bottom:8px;}
 .profesor-vista strong{display:block;color:var(--fg);overflow-wrap:anywhere;}
 .profesor-vista p{margin:6px 0 0;color:var(--fg2);font-size:.8125rem;line-height:1.45;overflow-wrap:anywhere;}
+/* La página de Clases: la lista de anuncios con sus números. */
+.clase-lista{display:grid;gap:12px;margin:4px 0 16px;}
+.clase-card{border:1px solid var(--border);border-radius:14px;padding:14px;min-width:0;}
+.clase-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.clase-card-top strong{font-size:0.9375rem;color:var(--fg);overflow-wrap:anywhere;}
+.clase-estado{flex:none;font-size:0.6875rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+  padding:3px 8px;border-radius:999px;border:1px solid var(--border2);color:var(--fg3);}
+/* El estado publicado es el único que se destaca: es el que está gastando. */
+.clase-estado-publicado{color:var(--primary);border-color:var(--primary);}
+.clase-card-meta{margin:6px 0 0;font-size:0.8125rem;color:var(--fg2);overflow-wrap:anywhere;}
+.clase-card-detalle{margin:2px 0 0;font-size:0.75rem;color:var(--fg3);}
+.clase-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px;margin-top:12px;}
+.clase-num{display:flex;flex-direction:column;gap:2px;}
+.clase-num span{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fg3);}
+.clase-num b{font-size:1.25rem;font-weight:800;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.clase-sin-datos{margin:10px 0 0;font-size:0.75rem;line-height:1.45;color:var(--fg3);}
 .profesor-estado{min-height:20px;color:var(--fg2);font-size:.75rem;line-height:1.45;margin:8px 0 0;}
 .btn-cancel{flex:1;padding:12px;background:var(--muted);color:var(--fg2);border:none;border-radius:10px;font-size:0.875rem;font-weight:600;cursor:pointer;}
 .btn-confirm{flex:2;padding:12px;background:var(--primary);color:var(--primary-fg);border:none;border-radius:10px;font-size:0.875rem;font-weight:700;cursor:pointer;}
@@ -1171,9 +1187,13 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
    más ancha (una tablet en vertical, un monitor) los vecinos asomaban por los
    costados. En teléfono quedaban fuera de pantalla y no se notaba. */
 .app.tab-mode{overflow-x:hidden;}
+/* Las pantallas del carrusel se listan por id. La de Clases entra acá o queda
+   sin posicionar y con display:none heredado, que es lo que pasó al agregarla:
+   el contenido se dibujaba y la pantalla medía 0 por 0. */
 .app.tab-mode #screen-stats,
 .app.tab-mode #screen-home,
-.app.tab-mode #screen-agenda{
+.app.tab-mode #screen-agenda,
+.app.tab-mode #screen-profesor{
   position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;bottom:0;
   display:flex!important;flex-direction:column;
   will-change:transform;animation:none;
@@ -1181,9 +1201,15 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
      más que `--motion-base`, y queda nombrado para no volver a ser un .35s suelto. */
   transition:transform var(--motion-screen) var(--ease-out);
 }
+/* El `display:flex!important` de arriba le gana a `hidden`, así que la pantalla
+   de Clases quedaba ENCIMA de Inicio para quien no es profesor: en blanco y
+   tapando todo, porque además no la mueve `setTabTransforms` al no estar en
+   NAV_TABS. Esta regla la devuelve a su sitio. */
+.app.tab-mode #screen-profesor[hidden]{display:none!important;}
 .app.tab-mode.dragging #screen-stats,
 .app.tab-mode.dragging #screen-home,
-.app.tab-mode.dragging #screen-agenda{transition:none;}
+.app.tab-mode.dragging #screen-agenda,
+.app.tab-mode.dragging #screen-profesor{transition:none;}
 /* Overlay screens (auth, onboard, reset, ramo): pisan a los tab-screens cuando active */
 .app.tab-mode #screen-auth.active,
 .app.tab-mode #screen-onboard.active,
