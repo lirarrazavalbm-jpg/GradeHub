@@ -472,24 +472,29 @@ async function openEspacioProfesor(){
 }
 async function renderEspacioProfesor(raiz,{titulo=true}={}){
   const cabecera=t=>titulo?`<div class="modal-title" id="modal-titulo">${t}</div>`:'';
+  // Toda pantalla que termina acá tiene que poder cerrarse. Desde que el modal
+  // no se cierra ni arrastrándolo ni tocando fuera, una ventana sin botón deja a
+  // la persona encerrada — y estas son de una sola línea, sin formulario ni
+  // botones propios. En la pestaña no va: ahí no hay nada que cerrar.
+  const salida=()=>titulo?'<div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeModal()">Cerrar</button></div>':'';
   raiz.innerHTML=cabecera('Espacio de profesor')+'<p class="profesor-info" role="status">Revisando tu acceso…</p>';
   const ficha=await perfilProfesorActual();
-  if(!ficha.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(ficha.error)}</p>`;return;}
+  if(!ficha.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(ficha.error)}</p>`+salida();return;}
   if(!ficha.perfil){renderPostulacionProfesor(raiz);return;}
   if(ficha.perfil.estado!=='aprobado'){
     const avisos={pendiente:'Tu postulación está esperando revisión. Todavía no puedes ofrecer clases.',rechazado:'Tu postulación no fue aprobada. Puedes escribirnos desde Sugerencias para revisar el motivo.',suspendido:'Tu acceso de profesor está suspendido. Tus notas como estudiante siguen disponibles.'};
-    raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="status">${esc(avisos[ficha.perfil.estado]||'Tu perfil necesita revisión.')}</p>`;
+    raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="status">${esc(avisos[ficha.perfil.estado]||'Tu perfil necesita revisión.')}</p>`+salida();
     return;
   }
   const borrador=await abrirBorradorClase();
-  if(!borrador.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(borrador.error)}</p>`;return;}
+  if(!borrador.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(borrador.error)}</p>`+salida();return;}
   if(!borrador.anuncio){
     try{
       const {data,error}=await supabaseClient.from('tutor_anuncios').select('id,titulo,estado')
         .eq('estado','en_revision').order('created_at',{ascending:false}).limit(1).maybeSingle();
       if(error)throw error;
-      if(data){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="status">Tu anuncio ${esc(data.titulo||'')} está en revisión. No se publica hasta que GradeHub lo apruebe.</p>`;return;}
-    }catch(e){raiz.innerHTML=cabecera('Espacio de profesor')+'<p class="profesor-info" role="alert">No pudimos consultar tus anuncios. Intenta de nuevo.</p>';return;}
+      if(data){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="status">Tu anuncio ${esc(data.titulo||'')} está en revisión. No se publica hasta que GradeHub lo apruebe.</p>`+salida();return;}
+    }catch(e){raiz.innerHTML=cabecera('Espacio de profesor')+'<p class="profesor-info" role="alert">No pudimos consultar tus anuncios. Intenta de nuevo.</p>'+salida();return;}
   }
   renderBorradorProfesor(raiz,borrador.anuncio);
 }
@@ -509,7 +514,8 @@ function renderPostulacionProfesor(raiz){
       <label class="modal-label" for="profesor-nombre">Nombre público</label><input id="profesor-nombre" type="text" maxlength="100" minlength="2" required autocomplete="name">
       <label class="modal-label" for="profesor-presentacion">Qué ramos enseñas y qué experiencia tienes</label><textarea id="profesor-presentacion" minlength="20" maxlength="1500" required></textarea>
       <p class="profesor-info">Nadie verá tus notas. Cada anuncio que prepares necesitará otra aprobación.</p>
-      <button class="btn-confirm" type="submit">Enviar postulación</button><p class="profesor-estado" role="status" aria-live="polite"></p>
+      <div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button><button class="btn-confirm" type="submit">Enviar postulación</button></div>
+      <p class="profesor-estado" role="status" aria-live="polite"></p>
     </form>`;
   const form=raiz.querySelector('#profesor-postular'),estado=form.querySelector('.profesor-estado');
   let enviando=false;
@@ -527,7 +533,7 @@ function renderPostulacionProfesor(raiz){
       if(typeof cargarPerfilProfesor==='function')cargarPerfilProfesor().then(()=>{
         if(typeof renderSettingsSiAbierto==='function')renderSettingsSiAbierto();
       }).catch(()=>{});
-      raiz.innerHTML='<div class="modal-title" id="modal-titulo">Postulación enviada</div><p class="profesor-info" role="status">Quedó pendiente de revisión. Aún no puedes publicar clases. En Ajustes · Clases particulares puedes ver en qué va.</p>';
+      raiz.innerHTML='<div class="modal-title" id="modal-titulo">Postulación enviada</div><p class="profesor-info" role="status">Quedó pendiente de revisión. Aún no puedes publicar clases. En Ajustes · Clases particulares puedes ver en qué va.</p><div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeModal()">Cerrar</button></div>';
       return;
     }
     estado.textContent=resultado.error;boton.disabled=false;enviando=false;
