@@ -1,9 +1,9 @@
 <!doctype html>
 <!--
-GradeHub · tarjeta social editorial. Fuente de ../og-v2.png.
+GradeHub · tarjeta social editorial. Fuente de ../og-v3.png.
 Composición: marca como cabecera, titular y bajada en dos columnas,
 claim subordinado en el pie. Sin notas ficticias ni colores del semáforo.
-Los tokens vienen del tema oscuro de styles.css. El ícono es el original.
+Los tokens vienen del tema oscuro de styles.css. El ícono viene de icon.svg.
 BlinkMacSystemFont primero: -apple-system sola puede caer en serif en headless.
 
 Desde la raíz del repo, en macOS (Chrome y sips):
@@ -13,7 +13,7 @@ Desde la raíz del repo, en macOS (Chrome y sips):
     --user-data-dir="$OG_TMP/profile" --force-device-scale-factor=2 \
     --window-size=1200,630 --screenshot="$OG_TMP/og-2x.png" \
     "file://$PWD/bin/og-editorial.html"
-  sips -z 630 1200 "$OG_TMP/og-2x.png" --out og-v2.png
+  sips -z 630 1200 "$OG_TMP/og-2x.png" --out og-v3.png
 
 Esperado: 1200 × 630, PNG de menos de 200 000 bytes.
 Este HTML es fuente de diseño offline; bin/ ya está excluido de dist/.
@@ -59,7 +59,7 @@ Este HTML es fuente de diseño offline; bin/ ya está excluido de dist/.
 <body>
   <main class="sheet">
     <header class="masthead">
-      <div class="brand"><img src="../icon-512.png" alt=""><span class="brand-name">GradeHub</span></div>
+      <div class="brand"><img src="../icon.svg" alt=""><span class="brand-name">GradeHub</span></div>
       <span class="domain">gradehub.cl</span>
     </header>
     <section class="story">

@@ -4,6 +4,9 @@
 -- llama a estas RPC. Cloudflare Pages despliega los archivos estáticos, pero
 -- no ejecuta migraciones de Supabase por sí sola.
 --
+-- REAPLICAR el 2026-09-19 (o después): `calendar_feed_data` cambió para incluir
+-- las casillas con fecha propia. Basta con correr el archivo entero.
+--
 -- QUÉ RESUELVE. El .ics que la app descarga es una foto: si después cambias una
 -- fecha, el archivo ya bajado no se entera. Un feed es una URL que Google
 -- consulta cada 8–24 horas, así que la suscripción se hace una vez y queda.
@@ -120,7 +123,53 @@ as $$
   cross join lateral jsonb_array_elements(coalesce(r->'categorias', '[]'::jsonb)) c
   where f.token = p_token
     and nullif(c->>'fecha', '') is not null
-  order by c->>'fecha', coalesce(c->>'hora', '');
+    -- Si TODAS las casillas del grupo ya tienen fecha propia, la del grupo no
+    -- aporta: mostraría lo mismo en otro día. `agendaEvents` en app.js corta por
+    -- lo mismo, así que el .ics que se descarga ya lo hacía y el feed no: el
+    -- calendario suscrito mostraba un "Controles" de más.
+    and not (
+      (select count(*) from jsonb_array_elements(coalesce(c->'notas','[]'::jsonb)) x
+        where nullif(x->>'fecha','') is not null) > 0
+      and (select count(*) from jsonb_array_elements(coalesce(c->'notas','[]'::jsonb)) x
+            where nullif(x->>'fecha','') is null) = 0
+      and coalesce(nullif(c->>'slots','')::int, 0) <=
+          (select count(*) from jsonb_array_elements(coalesce(c->'notas','[]'::jsonb)) x
+            where nullif(x->>'fecha','') is not null)
+    )
+  union all
+  -- Una casilla con fecha propia ("Control 2" dentro de "Controles") es un
+  -- evento aparte, con su nombre. Antes el feed solo miraba la fecha de la
+  -- categoría y estas fechas, que la app sí muestra en su Agenda, nunca
+  -- llegaban al calendario suscrito. De la nota se toma SOLO nombre, fecha y
+  -- hora: el valor se queda acá, igual que siempre.
+  -- El peso de la casilla es el del grupo repartido en partes iguales cuando
+  -- el grupo declara cuántas casillas tiene y no descarta ninguna; si no, null,
+  -- que es lo que devuelve `pesoEventoAgenda` en ese caso.
+  select
+    r->>'nombre'                       as ramo,
+    -- Sin nombre propio hereda el del grupo. Vacío dejaba el título del evento
+    -- en "null — Cálculo I".
+    coalesce(nullif(n->>'nombre',''), c->>'nombre') as evaluacion,
+    -- `dropLowest: false` NO es descartar: solo 'true' lo es. Y cuando el peso
+    -- individual no se puede saber va null, no el del grupo: decir que un
+    -- laboratorio vale el 30% que se reparten tres es un número falso, y es
+    -- justo lo que `pesoEventoAgenda` evita devolviendo null.
+    case
+      when (c->>'slots') ~ '^[1-9][0-9]*$' and (c->'dropLowest') is distinct from 'true'::jsonb
+        then round(coalesce((c->>'peso')::numeric, 0) / (c->>'slots')::numeric, 2)
+      else null
+    end                                as peso,
+    n->>'fecha'                        as fecha,
+    nullif(n->>'hora', '')             as hora
+  from public.calendar_feeds f
+  join public.user_ramos u on u.user_id = f.user_id
+  cross join lateral jsonb_array_elements(coalesce(u.data->'ramos', '[]'::jsonb)) r
+  cross join lateral jsonb_array_elements(coalesce(r->'categorias', '[]'::jsonb)) c
+  cross join lateral jsonb_array_elements(coalesce(c->'notas', '[]'::jsonb)) n
+  where f.token = p_token
+    and nullif(n->>'fecha', '') is not null
+  -- Por posición: tras un UNION, ORDER BY solo acepta columnas de salida.
+  order by 4, 5 nulls first;
 $$;
 
 revoke all on function public.calendar_feed_data(text) from public;

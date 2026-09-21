@@ -275,20 +275,71 @@ function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.
 // pueda administrarlos sin duplicar la regla dentro de esta función.
 // Esto no factura: los eventos actuales no miden alcance único. Sin medición
 // real, null significa desconocido y nunca se transforma en cero usuarios.
-function cotizarCampanaClases(criterios,tarifas,{elegibles=null,alcanzados=null,presupuestoClp=null}={}){
-  if(!criteriosClaseValidos(criterios)||!Array.isArray(tarifas))return null;
+// La tarifa del piloto. Es una decisión comercial de GradeHub, no un precio que
+// el profesor pueda editar, y vive acá para poder cambiarla sin tocar la
+// fórmula. Decidida por Lucas el 2026-09-20.
+const TARIFA_CLASES={
+  base:1000,          // $ por cuenta alcanzada con el público más amplio posible
+  cargoFijo:3000,     // $ por publicar, cubre la revisión humana de cada aviso
+  porRamoExtra:1000,  // $ por cada ramo además del primero
+  redondeo:50,        // el precio por persona sale redondo, no con decimales
+};
+// De qué nota para abajo empieza a cobrarse el recargo, y cuánto rango cubre.
+// 5,5 es donde un promedio deja de ser "cualquiera" y empieza a ser alguien a
+// quien le puede servir una clase; 2,5 puntos más abajo (3,0) es el máximo.
+const NOTA_SIN_RECARGO=5.5,RANGO_NOTA_RECARGO=2.5;
+
+// Cuánto más caro es un público más exigente, entre 0 (nada) y 2 (el doble del
+// recargo máximo por cada lado). Dos palancas, porque encarecen por motivos
+// distintos:
+//
+// - Pedir un promedio MÁS BAJO estrecha el público a quien de verdad está
+//   complicado en ese ramo. Es el aviso que más sirve y el que menos gente ve.
+// - Pedir MÁS % evaluado no estrecha tanto, pero compra certeza: con medio
+//   semestre corregido el promedio ya significa algo, y el anunciante no le
+//   está pagando a GradeHub por alcanzar a alguien con dos notas.
+//
+// La fórmula reproduce los dos precios que ya estaban acordados para el piloto:
+// sin filtro (7,0 y 0%) da 1x = $1.000, y bajo 4,0 con 40% evaluado da 2x =
+// $2.000. O sea generaliza los dos tramos en vez de reemplazarlos por otra cosa.
+function exigenciaCriteriosClase(criterios){
+  const porNota=Math.min(Math.max((NOTA_SIN_RECARGO-criterios.promedioMenorA)/RANGO_NOTA_RECARGO,0),1);
+  const porAvance=Math.min(Math.max(criterios.avanceMinimo/100,0),1);
+  return porNota+porAvance;
+}
+
+// Esto no factura: los eventos actuales no miden alcance único. Sin medición
+// real, null significa desconocido y nunca se transforma en cero usuarios.
+//
+// Devuelve dos cobros que son cosas distintas y no se suman a ciegas: un cargo
+// fijo por publicar, que se paga aunque el aviso no lo vea nadie, y un precio
+// por cuenta alcanzada. `totalEstimado` es la suma solo cuando hay una medición
+// que sumar.
+function cotizarCampanaClases(criterios,tarifa,{elegibles=null,alcanzados=null,presupuestoClp=null,ramos=1}={}){
+  if(!criteriosClaseValidos(criterios))return null;
   if([elegibles,alcanzados,presupuestoClp].some(n=>n!==null&&(!Number.isSafeInteger(n)||n<0)))return null;
-  const aplicables=tarifas.filter(t=>t&&criteriosClaseValidos(t.criterios)&&
-    Number.isSafeInteger(t.precioPorCuenta)&&t.precioPorCuenta>0&&
-    criterios.promedioMenorA<=t.criterios.promedioMenorA&&criterios.avanceMinimo>=t.criterios.avanceMinimo);
-  if(!aplicables.length)return null;
-  const precioPorCuenta=Math.max(...aplicables.map(t=>t.precioPorCuenta));
+  if(!Number.isSafeInteger(ramos)||ramos<1||ramos>12)return null;
+  const t={...TARIFA_CLASES,...(tarifa&&typeof tarifa==='object'&&!Array.isArray(tarifa)?tarifa:{})};
+  if(!['base','cargoFijo','porRamoExtra','redondeo'].every(k=>Number.isSafeInteger(t[k])&&t[k]>=0))return null;
+  if(t.base<=0||t.redondeo<=0)return null;
+
+  const precioCrudo=t.base*(1+exigenciaCriteriosClase(criterios));
+  const precioPorCuenta=Math.round(precioCrudo/t.redondeo)*t.redondeo;
+  // Publicar cuesta lo mismo aunque no lo vea nadie: paga la revisión humana.
+  // Cada ramo extra abre otro público y otra revisión, así que sube parejo.
+  const cargoFijo=t.cargoFijo+t.porRamoExtra*(ramos-1);
+
+  // El presupuesto cubre el alcance, no el cargo fijo: ese ya se pagó al
+  // publicar. Descontarlo acá haría que subir un ramo bajara el alcance.
   const cupo=presupuestoClp===null?null:Math.floor(presupuestoClp/precioPorCuenta);
   const alcanceCotizado=elegibles===null?null:Math.min(elegibles,cupo??Infinity);
   const costoEstimado=alcanceCotizado===null?null:alcanceCotizado*precioPorCuenta;
   const costoPorAlcance=alcanzados===null?null:Math.min(alcanzados,cupo??Infinity)*precioPorCuenta;
-  if([costoEstimado,costoPorAlcance].some(n=>n!==null&&!Number.isSafeInteger(n)))return null;
-  return {precioPorCuenta,elegibles,alcanzados,alcanceCotizado,costoEstimado,costoPorAlcance,presupuestoClp};
+  const totalEstimado=costoEstimado===null?null:cargoFijo+costoEstimado;
+  const totalPorAlcance=costoPorAlcance===null?null:cargoFijo+costoPorAlcance;
+  if([costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance].some(n=>n!==null&&!Number.isSafeInteger(n)))return null;
+  return {precioPorCuenta,cargoFijo,ramos,elegibles,alcanzados,alcanceCotizado,
+    costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance,presupuestoClp};
 }
 
 // Pide solo el catálogo público de una universidad. No recibe `ramos` como
@@ -402,7 +453,7 @@ async function openEspacioProfesor(){
 
 function renderPostulacionProfesor(raiz){
   raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Postula para ofrecer clases</div>
-    <p class="profesor-info">Tu cuenta de estudiante sigue igual. Lucas revisará tu postulación antes de que puedas preparar anuncios.</p>
+    <p class="profesor-info">Tu cuenta de estudiante sigue igual. Un miembro de nuestro equipo revisará tu postulación antes de que puedas preparar anuncios.</p>
     <form class="profesor-form" id="profesor-postular">
       <label class="modal-label" for="profesor-nombre">Nombre público</label><input id="profesor-nombre" type="text" maxlength="100" minlength="2" required autocomplete="name">
       <label class="modal-label" for="profesor-presentacion">Qué ramos enseñas y qué experiencia tienes</label><textarea id="profesor-presentacion" minlength="20" maxlength="1500" required></textarea>

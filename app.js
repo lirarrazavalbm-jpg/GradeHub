@@ -258,8 +258,9 @@ function normalize(data) {
     (c.notas||[]).forEach(n=>{
       if(Number.isInteger(n.slot)&&n.slot>=0&&n.slot<c.slots)return;
       const nombre=normName(n.nombre||'');
+      const inicio=detalleCasillas(r,c).inicio;
       const slot=Array.from({length:c.slots},(_,i)=>i)
-        .find(i=>normName(etiquetaCasilla(r,c,i))===nombre);
+        .find(i=>normName(etiquetaCasilla(r,c,i))===nombre||normName(`${c.nombre} ${inicio+i}`)===nombre);
       if(slot!==undefined)n.slot=slot;
     });
     // Y el destrozo que dejó ese mismo defecto: mientras `slot` se perdía,
@@ -613,6 +614,7 @@ function cargarCursosUC(){
       const ok=!!cursosUcExtra();
       if(!ok)_cursosUcPendiente=null;
       resolve(ok);
+      if(ok)completarCreditosUCTrasCarga();
     };
     s.onerror=()=>{_cursosUcPendiente=null;resolve(false);};
     document.head.appendChild(s);
@@ -631,6 +633,24 @@ function cursoUcCompleto(nombre,sigla){
     if(!Array.isArray(f))return false;
     return (ns&&normName(f[0]||'')===ns)||(!ns&&nn&&normName(f[1]||'')===nn);
   })||null;
+}
+// El archivo grande llega después de normalize() y también puede llegar mientras
+// alguien agrega un ramo desde el catálogo mínimo. Solo completamos créditos
+// ausentes de ramos UC con procedencia; nunca corregimos un valor ya guardado.
+function completarCreditosUCTrasCarga(){
+  if(S.tenant!=='uc'||!S.onboardingDone||!cursosUcExtra())return false;
+  let agregados=0;
+  (S.ramos||[]).forEach(r=>{
+    if(!r.origen||r.origen.tenant!=='uc'||(r.creditos!==null&&r.creditos!==undefined))return;
+    sellarDatosCatalogo(r,'uc');
+    if(typeof r.creditos==='number')agregados++;
+  });
+  if(!agregados)return false;
+  // Una sola escritura/sync para la carga completa, no una por ramo. save()
+  // mantiene intacta la clave y el camino habitual de respaldo.
+  save();
+  renderHome();renderStats();
+  return true;
 }
 function repintarAlCargarCursosUC(tenant,repintar){
   if(tenant!=='uc'||cursosUcExtra())return;
@@ -849,6 +869,33 @@ function definicionPresetDelRamo(ramo){
   const nombre=claveUc(ramo.nombre);
   return nombre?PRESETS_UC[nombre]:null;
 }
+// singularHuella() agrupa reportes y puede dejar palabras feas; acá el nombre
+// se muestra al estudiante. Solo flexionamos vocabulario conocido y dejamos
+// intacto lo ambiguo. `slotLabel` sigue siendo la salida para nombres propios.
+const SINGULARES_CASILLA={controles:'control',pruebas:'prueba',interrogaciones:'interrogación',
+  tareas:'tarea',talleres:'taller',informes:'informe',laboratorios:'laboratorio',
+  evaluaciones:'evaluación',solemnes:'solemne',trabajos:'trabajo',
+  presentaciones:'presentación',exámenes:'examen',casos:'caso',ensayos:'ensayo'};
+const ADJETIVOS_CASILLA={prácticos:'práctico',prácticas:'práctica',teóricos:'teórico',
+  teóricas:'teórica',escritos:'escrito',escritas:'escrita',cortos:'corto',cortas:'corta',
+  finales:'final',parciales:'parcial',orales:'oral',grupales:'grupal',
+  individuales:'individual',semanales:'semanal'};
+function singularEtiquetaCasilla(nombre){
+  const palabras=String(nombre||'').trim().split(/\s+/);
+  const primero=palabras[0],base=SINGULARES_CASILLA[primero.toLowerCase()];
+  if(!base||palabras.some(p=>p.toLowerCase()==='y'))return nombre;
+  const de=palabras.findIndex(p=>p.toLowerCase()==='de');
+  const hasta=de<0?palabras.length:de;
+  for(let i=1;i<hasta;i++){
+    const p=palabras[i],adjetivo=ADJETIVOS_CASILLA[p.toLowerCase()];
+    if(adjetivo)palabras[i]=p===p.toUpperCase()?adjetivo.toUpperCase():
+      p[0]===p[0].toUpperCase()?adjetivo[0].toUpperCase()+adjetivo.slice(1):adjetivo;
+    else if(/s$/i.test(p))return nombre; // no crear "Trabajo desconocidos"
+  }
+  palabras[0]=primero===primero.toUpperCase()?base.toUpperCase():
+    primero[0]===primero[0].toUpperCase()?base[0].toUpperCase()+base.slice(1):base;
+  return palabras.join(' ');
+}
 // El nombre colectivo de una categoría no siempre es el de cada entrega.
 // Ejemplo oficial: el Lab de Dinámica tiene la categoría "Informes", pero sus
 // casillas son Informe 0 a Informe 5 porque también existe el Lab 0 online.
@@ -859,13 +906,21 @@ function detalleCasillas(ramo,cat){
   const evals=Array.isArray(def)?def:(def&&def.evals||[]);
   const extra=(evals.find(([nombre])=>normName(nombre)===normName(cat&&cat.nombre))||[])[2]||{};
   return {
-    nombre:typeof cat?.slotLabel==='string'?cat.slotLabel:(typeof extra.slotLabel==='string'?extra.slotLabel:cat.nombre),
+    nombre:typeof cat?.slotLabel==='string'?cat.slotLabel:(typeof extra.slotLabel==='string'?extra.slotLabel:singularEtiquetaCasilla(cat.nombre)),
     inicio:Number.isInteger(cat?.slotStart)?cat.slotStart:(Number.isInteger(extra.slotStart)?extra.slotStart:1),
   };
 }
 function etiquetaCasilla(ramo,cat,slot){
   const detalle=detalleCasillas(ramo,cat);
   return `${detalle.nombre} ${detalle.inicio+slot}`;
+}
+// Una nota antigua puede guardar el nombre colectivo ("Controles 1"). Se ve
+// con el singular sin reescribirla; si la persona la renombró, su nombre manda.
+function nombreNotaCasilla(ramo,cat,nota){
+  if(!nota||!Number.isInteger(nota.slot)||!(cat&&cat.slots>1))return nota&&nota.nombre||'';
+  const inicio=detalleCasillas(ramo,cat).inicio;
+  return normName(nota.nombre)===normName(`${cat.nombre} ${inicio+nota.slot}`)
+    ?etiquetaCasilla(ramo,cat,nota.slot):nota.nombre;
 }
 // El navegador entrega las dependencias que el motor no puede conocer por sí
 // mismo (estado actual y catálogo). La misma fábrica queda importable desde
@@ -1471,6 +1526,13 @@ function showMainApp(){
   document.querySelector('.app').classList.add('tab-mode');
   renderHome();renderStats();renderAgenda(); // los 3 siempre montados
   showTab('home');
+  // En una cuenta existente el catálogo puede no haberse pedido nunca: si un
+  // ramo UC del catálogo quedó sin SCT, hay que traerlo incluso sin abrir el
+  // buscador. Si ya se cargó durante onboarding, completa de inmediato.
+  if(S.tenant==='uc'&&(S.ramos||[]).some(r=>r.origen&&r.origen.tenant==='uc'&&(r.creditos===null||r.creditos===undefined))){
+    if(cursosUcExtra())completarCreditosUCTrasCarga();
+    else cargarCursosUC();
+  }
 }
 const NAV_TABS=['stats','home','agenda']; // orden izq→der para swipe
 let currentTab='home';
@@ -2256,6 +2318,7 @@ function openAddRamoModal(){
     <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="${ejemploRamo}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none" aria-describedby="m-ramo-error"/></div>
     <p id="m-ramo-error" role="alert" hidden style="margin:7px 0 0;font-size:0.75rem;line-height:1.4;color:var(--red);"></p>
     ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
+    ${S.tenant==='uc'?'<button type="button" class="horario-importar-link" onclick="abrirImportarHorarioBuscacursos()">Pegar horario de BuscaCursos</button>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()">Agregar ramo</button>
@@ -2311,12 +2374,16 @@ function addFromCatalogCodificado(nombre,sigla){
 // Devuelve el ramo creado para quien necesite completarlo (la sección, por
 // ejemplo, que el catálogo no conoce).
 function crearRamoDesdeCatalogo(nombre,sigla){
-  const presetName=findPresetName(nombre,S.tenant,S.carrera);
+  const candidato=findPresetName(nombre,S.tenant,S.carrera);
+  // Dos cursos UC pueden compartir nombre y tener siglas distintas. El
+  // horario trae la sigla exacta: nunca adjuntar la pauta de un homónimo.
+  const siglaPreset=candidato&&S.tenant==='uc'?siglaDePreset(candidato):null;
+  const presetName=sigla&&siglaPreset&&normName(sigla)!==normName(siglaPreset)?null:candidato;
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const fila=S.tenant==='uc'?cursoUcCompleto(nombre,sigla):null;
   const creditos=fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
   const ramo={
-    id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
+    id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),sigla:sigla||null,
     creditos,origen:origenActual(presetName||nombre,sigla),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
   };
@@ -2328,6 +2395,124 @@ function addFromCatalog(nombre,sigla){
   save();track('add_ramo_catalogo',{preset:!!(ramo.categorias||[]).length});
   closeModal();renderHome();
   showToast((ramo.categorias||[]).length?'Agregado con sus ponderaciones':'Ramo agregado');
+}
+
+// BuscaCursos repite SIGLA-SECCIÓN en cada bloque del horario. Extraer no
+// significa aceptar: las siglas se validan contra cursos-uc.js después.
+function extraerCodigosHorarioBuscacursos(texto){
+  const encontrados=new Map();
+  // Incluye las siglas atípicas que existen en el catálogo oficial: EDU21DC,
+  // ESM01AD y UC_0001. La forma sola nunca autoriza un ramo: manda el catálogo.
+  const patron=/(^|[^A-Z0-9_])([A-Z]{2,5}\d{2,4}[A-Z]{0,2}|UC_\d{4})\s*[-‐‑‒–—]\s*(\d{1,3})(?![A-Z0-9])/gi;
+  for(const match of String(texto||'').matchAll(patron)){
+    const sigla=match[2].toUpperCase(),seccion=seccionValida(Number(match[3]));
+    if(seccion===null)continue;
+    const clave=sigla+'-'+seccion;
+    if(!encontrados.has(clave))encontrados.set(clave,{sigla,seccion});
+  }
+  return [...encontrados.values()];
+}
+let _horarioUCReconocido=null,_horarioTextoPegado='';
+function abrirImportarHorarioBuscacursos(conservarTexto=false){
+  if(S.tenant!=='uc')return;
+  if(!conservarTexto)_horarioTextoPegado='';
+  _horarioUCReconocido=null;
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Pegar horario de BuscaCursos</div>
+    <p class="modal-desc">Copia tu horario y pégalo acá. Buscaremos las siglas y secciones; podrás revisar los ramos antes de agregarlos.</p>
+    <label class="modal-label" for="m-horario-texto">Tu horario</label>
+    <textarea id="m-horario-texto" class="horario-importar-texto" rows="7" maxlength="20000" placeholder="Ej.: MAT1610-1, IIC2333-2" aria-describedby="m-horario-estado"></textarea>
+    <p id="m-horario-estado" class="horario-importar-estado" role="status" aria-live="polite">Solo se reconocerán siglas verificadas en el catálogo UC.</p>
+    <div class="modal-btns">
+      <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="btn-confirm" id="m-horario-reconocer" onclick="reconocerHorarioBuscacursos()">Revisar ramos</button>
+    </div>`;
+  openModal();
+  const entrada=document.getElementById('m-horario-texto');
+  entrada.value=_horarioTextoPegado;
+  entrada.focus();
+}
+async function reconocerHorarioBuscacursos(){
+  if(S.tenant!=='uc')return false;
+  const entrada=document.getElementById('m-horario-texto');
+  if(!entrada)return false;
+  const boton=document.getElementById('m-horario-reconocer');
+  if(!boton||boton.disabled)return false;
+  _horarioTextoPegado=entrada.value;
+  const codigos=extraerCodigosHorarioBuscacursos(entrada.value);
+  const estado=document.getElementById('m-horario-estado');
+  _horarioUCReconocido=null;
+  if(!codigos.length){estado.textContent='No encontramos siglas con sección, como MAT1610-1. Revisa lo que pegaste.';entrada.focus();return false;}
+  boton.disabled=true;
+  estado.textContent='Cargando el catálogo UC para comprobar las siglas…';
+  let cargado=false;
+  try{cargado=await cargarCursosUC();}catch(e){}
+  // El estudiante puede cerrar el modal mientras llegan los ~660 KB. En ese
+  // caso la respuesta tardía no abre una propuesta ni modifica el semestre.
+  if(document.getElementById('m-horario-texto')!==entrada)return false;
+  boton.disabled=false;
+  const filas=cursosUcExtra();
+  if(!cargado||!filas){estado.textContent='No pudimos cargar el catálogo UC. Revisa tu conexión e intenta de nuevo; tu horario sigue aquí.';return false;}
+
+  const porSigla=new Map(filas.filter(f=>Array.isArray(f)&&typeof f[0]==='string').map(f=>[f[0].toUpperCase(),f]));
+  const secciones=new Map();
+  codigos.forEach(({sigla,seccion})=>{
+    if(!secciones.has(sigla))secciones.set(sigla,new Set());
+    secciones.get(sigla).add(seccion);
+  });
+  const ambiguas=[...secciones].filter(([,s])=>s.size>1).map(([sigla])=>sigla);
+  const desconocidas=[...secciones.keys()].filter(sigla=>!porSigla.has(sigla));
+  // El catálogo combinado decide qué nombre corresponde al preset cuando la
+  // malla y el archivo completo llaman distinto al mismo ramo.
+  const catalogoPorSigla=new Map(indiceBusquedaCatalogo('uc',S.carrera).todos
+    .filter(r=>r.sigla).map(r=>[r.sigla.toUpperCase(),r]));
+  _horarioUCReconocido=[...secciones].filter(([sigla,s])=>s.size===1&&porSigla.has(sigla))
+    .map(([sigla,s])=>{
+      const oficial=porSigla.get(sigla),catalogo=catalogoPorSigla.get(sigla);
+      return {sigla,seccion:[...s][0],nombre:(catalogo&&catalogo.nombre)||oficial[1]};
+    }).filter(r=>!ramoPropuestoYaEsta(r));
+
+  const yaTienes=[...secciones].filter(([sigla,s])=>s.size===1&&porSigla.has(sigla)
+    &&ramoPropuestoYaEsta({sigla,nombre:(catalogoPorSigla.get(sigla)||{}).nombre||porSigla.get(sigla)[1]})).length;
+  const avisos=[];
+  if(desconocidas.length)avisos.push(`No reconocimos: ${desconocidas.map(esc).join(', ')}.`);
+  if(ambiguas.length)avisos.push(`Aparecen varias secciones para ${ambiguas.map(esc).join(', ')}; agrégalo a mano para elegir la correcta.`);
+  if(yaTienes)avisos.push(`${yaTienes} ${yaTienes===1?'ramo ya está':'ramos ya están'} en tu semestre.`);
+  const lista=_horarioUCReconocido.map((r,i)=>`<label class="agent-ramo-row">
+    <input type="checkbox" class="agent-ramo-check horario-ramo-check" data-i="${i}" checked/>
+    <span><b>${esc(r.nombre)}</b><small>${esc(r.sigla)} · Sección ${r.seccion}</small></span>
+  </label>`).join('');
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Ramos reconocidos</div>
+    <p class="modal-desc">Revisa lo que encontramos en el catálogo UC. <b>Todavía no agregamos nada.</b> Desmarca los que no llevas.</p>
+    ${avisos.length?`<p class="horario-importar-estado" role="status">${avisos.join(' ')}</p>`:''}
+    ${lista?`<div class="agent-ramo-list">${lista}</div>`:'<p class="cat-empty">No hay ramos nuevos para agregar. Puedes corregir el texto o agregarlos uno por uno.</p>'}
+    <div class="modal-btns">
+      <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="btn-cancel" onclick="abrirImportarHorarioBuscacursos(true)">Corregir</button>
+      ${lista?'<button type="button" class="btn-confirm" onclick="aplicarHorarioBuscacursos()">Agregar los marcados</button>':''}
+    </div>`;
+  return true;
+}
+function aplicarHorarioBuscacursos(){
+  if(S.tenant!=='uc'||!Array.isArray(_horarioUCReconocido))return false;
+  const marcados=[...document.querySelectorAll('.horario-ramo-check')]
+    .filter(c=>c.checked).map(c=>_horarioUCReconocido[Number(c.dataset.i)]).filter(Boolean);
+  if(!marcados.length){showToast('No marcaste ningún ramo',true);return false;}
+  let puestos=0;
+  marcados.forEach(r=>{
+    if(ramoPropuestoYaEsta(r))return;
+    const creado=crearRamoDesdeCatalogo(r.nombre,r.sigla);
+    if(!creado)return;
+    creado.seccion=r.seccion;
+    puestos++;
+  });
+  if(!puestos){showToast('Ya tienes esos ramos en tu semestre',true);return false;}
+  save();track('ramos_horario_agregados',{cantidad:puestos});
+  _horarioUCReconocido=null;_horarioTextoPegado='';
+  closeModal();renderHome();
+  showToast(puestos===1?'Ramo agregado desde tu horario':`${puestos} ramos agregados desde tu horario`);
+  return true;
 }
 function renderModalColors(){
   const c=document.getElementById('m-colors');if(!c)return;c.innerHTML='';
@@ -2455,6 +2640,9 @@ function sellarDatosCatalogo(r,tenant){
 }
 function siglaDeRamo(r,tenant){
   if(!r||!r.nombre)return null;
+  // La sigla elegida explícitamente en el catálogo o leída del horario
+  // identifica el curso mejor que su nombre (hay homónimos oficiales).
+  if(typeof r.sigla==='string'&&r.sigla)return r.sigla;
   // En el onboarding la universidad todavía no está en `S`: se está eligiendo,
   // y vive en `selectedTenant`. Por eso se puede pasar explícita.
   tenant=tenant||(r.origen&&r.origen.tenant)||S.tenant;
@@ -3147,7 +3335,9 @@ async function cargarPosicionesCurso(){
       const fila=Array.isArray(data)?data[0]:data;
       // Sin fila = todavia no son cinco. No se distingue de "fallo la red" a
       // proposito: en los dos casos no hay nada que mostrar.
-      if(fila&&typeof fila.mejor_que==='number')out[r.id]={total:fila.total,mejorQue:fila.mejor_que};
+      // Los dos tienen que ser numero: la frase le resta 1 al total para hablar
+      // de companeros, y un total que no lo sea la deja diciendo "NaN".
+      if(fila&&typeof fila.mejor_que==='number'&&typeof fila.total==='number')out[r.id]={total:fila.total,mejorQue:fila.mejor_que};
     }catch(e){}
   }
   _posCursoCache=out;
@@ -3411,6 +3601,42 @@ async function aplicarConsensoAuto(){
   });
   if(puestas)save();
   return puestas;
+}
+
+// LA OTRA DIRECCIÓN DEL CONSENSO: lo que esta persona sabe y el catálogo no.
+//
+// Quien arma la pauta de un ramo que el catálogo trae SIN pauta es la única
+// persona cuyo dato el consenso puede usar: `aplicarConsensoAuto` solo escribe
+// donde no hay nada que pisar, o sea exactamente en esos ramos. Y era justo a
+// quien no se le pedía: el botón del pie le preguntaba "¿esta pauta no calza
+// con tu curso?" sobre una pauta que GradeHub nunca le dio. Con 3 reportes en
+// dos meses, el problema no era que nadie quisiera reportar.
+//
+// Decisión de Lucas del 2026-09-21: a esa persona no se le pregunta, se aporta
+// solo. Es el mismo camino que ya usa aceptar la pauta de un agente.
+//
+// QUÉ VIAJA: nombre, porcentaje, casillas y compuertas de cada evaluación. Las
+// notas no — `estructuraDe` no las mira y la RPC manda `p_nota` en null. Es la
+// pauta del curso, que el programa del ramo publica.
+//
+// QUÉ NO SE APORTA: un ramo escrito a mano fuera del catálogo (no hay con qué
+// agruparlo: nadie más tiene un "Electivo de cine"), uno con programa oficial
+// transcrito (ese manda) y una pauta a medio armar, que `estadoReporte` filtra.
+//
+// Se manda una vez por versión: `consensoAportado` guarda la huella de lo
+// último enviado, así que editar la pauta vuelve a aportar y abrir la app no.
+// La RPC hace upsert por (persona, ramo), así que reenviar no duplica a nadie.
+async function aportarPautasAlCatalogo(){
+  if(!supabaseClient||!currentUser)return 0;
+  let n=0;
+  for(const r of (S.ramos||[])){
+    if(!pautaCatalogoSinOficial(r))continue;
+    const huella=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
+    if(!huella||r.consensoAportado===huella)continue;
+    if(await aportarPropuestaAlCatalogo(r)){r.consensoAportado=huella;n++;}
+  }
+  if(n)save();
+  return n;
 }
 
 // \u00bfEl ramo viene de otro cat\u00e1logo que el actual? (el estudiante se cambi\u00f3 de
@@ -4376,8 +4602,11 @@ function propuestaRamosLimpia(valor){
 // Un ramo propuesto que la persona ya agregó (desde la app, o aceptando otra
 // propuesta) no se vuelve a ofrecer: agregarlo dos veces le duplica el ramo.
 function ramoPropuestoYaEsta(r){
-  return (S.ramos||[]).some(x=>normName(x.nombre)===normName(r.nombre)
-    ||(r.sigla&&normName(siglaDeRamo(x)||'')===normName(r.sigla)));
+  return (S.ramos||[]).some(x=>{
+    const existente=x.sigla||siglaDeRamo(x);
+    if(r.sigla&&existente)return normName(existente)===normName(r.sigla);
+    return normName(x.nombre)===normName(r.nombre);
+  });
 }
 function propuestasFechasDeRamo(ramo){
   if(!ramo)return [];
@@ -5001,7 +5230,10 @@ function openSettings(){
   function renderSettings(){
     const current=sections.find(x=>x[1]===activeSection);
     document.getElementById('modal-content').innerHTML=`
-      <div id="modal-titulo" class="modal-title settings-modal-title${activeSection?' settings-mobile-hidden':''}">Ajustes</div>
+      <div class="settings-modal-head${activeSection?' settings-mobile-hidden':''}">
+        <div id="modal-titulo" class="modal-title settings-modal-title">Ajustes</div>
+        <button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button>
+      </div>
       <div class="settings-shell${activeSection?' settings-detail-open':''}">
         <nav class="settings-nav" aria-label="Secciones de Ajustes">
           <label class="settings-search-label" for="settings-search">Buscar en Ajustes</label>
@@ -5474,7 +5706,7 @@ function pasoRamosSemestreAnterior(){
     <div class="course-picker-search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="m-hist-buscar" type="text" placeholder="Nombre o sigla" maxlength="${NOMBRE_MAX}" autocomplete="off"/></div>
     <div id="m-hist-resultados"></div>
     ${filas?`<label class="modal-label" style="margin-top:14px;">Tus ramos de ese semestre</label><div class="rep-box">${filas}</div>`:''}
-    <div class="modal-actions">
+    <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" ${histManual.ramos.length?'':'disabled'} onclick="pasarANotasSemestreAnterior()">Continuar</button>
     </div>`;
@@ -5539,7 +5771,7 @@ function pasoNotasSemestreAnterior(){
     </p>
     <div class="rep-box">${filas}</div>
     <p class="rep-balance" id="m-hist-aviso" role="status" aria-live="polite">${textoAvisoSemestreAnterior()}</p>
-    <div class="modal-actions">
+    <div class="modal-btns">
       <button class="btn-cancel" onclick="histManual.paso=1;renderSemestreAnteriorModal()">Atr\u00e1s</button>
       <button class="btn-confirm" onclick="guardarSemestreAnterior()">Guardar semestre</button>
     </div>`;
@@ -5787,57 +6019,16 @@ function confirmResetApp(){
   },{label:'Reiniciar'});
 }
 
-// La vuelta la maneja un resorte, no una transición de duración fija: arranca
-// del valor que hay en pantalla y hereda la velocidad del dedo, así no se nota
-// la costura entre arrastrar y soltar. Amortiguación .8 y respuesta .3s son los
-// valores de un drawer; el rebote leve se justifica porque atrás hubo un gesto
-// con impulso.
-let _sheetRaf=null,_sheetFin=null;
-function sheetResorte(sheet,desde,velocidad){
-  const ov=document.getElementById('modal');
-  const w=2*Math.PI/0.3,z=0.8;
-  let x=desde,v=velocidad,ultimo=performance.now();
-  ov.classList.add('settling');
-  const terminar=()=>{
-    cancelAnimationFrame(_sheetRaf);_sheetFin=null;
-    sheet.style.transform='';
-    ov.classList.remove('settling');
-  };
-  _sheetFin=terminar;
-  const paso=ahora=>{
-    const dt=Math.min((ahora-ultimo)/1000,1/30);ultimo=ahora;
-    v+=(-w*w*x-2*z*w*v)*dt;x+=v*dt;
-    if(Math.abs(x)<0.5&&Math.abs(v)<20){terminar();return;}
-    sheet.style.transform=`translateY(${x}px)`;
-    _sheetRaf=requestAnimationFrame(paso);
-  };
-  _sheetRaf=requestAnimationFrame(paso);
-}
-// Con la pestaña escondida requestAnimationFrame se detiene y el sheet quedaría
-// congelado a media altura hasta que el estudiante vuelva.
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&_sheetFin)_sheetFin();});
-
-// Pasado el borde superior no hay a dónde ir. Frenar en seco se lee como "se
-// colgó"; ceder cada vez menos se lee como "hasta acá llega".
-function sheetGoma(exceso,alto){return (exceso*alto*0.55)/(alto+0.55*Math.abs(exceso));}
-
-// Velocidad de los últimos ~100ms: lo que importa es cómo venía el dedo al
-// soltar, no cómo empezó. Dos guardas — una ventana casi de cero divide por nada
-// y manda el resorte fuera de pantalla, y ningún dedo pasa de unos 4000 px/s.
-function sheetVelocidad(historia){
-  const n=historia.length;
-  if(n<2)return 0;
-  const fin=historia[n-1];
-  let ini=historia[n-2];
-  for(let i=n-2;i>=0;i--){if(fin.t-historia[i].t>100)break;ini=historia[i];}
-  const dt=(fin.t-ini.t)/1000;
-  if(dt<0.008)return 0;
-  return Math.max(-4000,Math.min(4000,(fin.y-ini.y)/dt));
-}
-
-// Pointer Events en vez de touch: el mismo código sirve para dedo, mouse y
-// trackpad —en el escritorio el tirador no hacía nada—, y el capture mantiene
-// el seguimiento aunque el puntero se salga del sheet.
+// El sheet NO se arrastra para cerrarlo. Se probó y se sacó el 2026-09-21:
+// varios modales llevan una lista con scroll propio adentro —el simulador, el
+// buscador de ramos, las bandejas del agente— y el gesto de recorrer esa lista
+// es el mismo que el de cerrar. Se intentó afinarlo dos veces (solo con la
+// lista abajo, después solo fuera de la lista) y seguía cerrándose a media
+// edición. Un modal que se cierra solo mientras alguien escribe notas le borra
+// el trabajo; poder cerrarlo con un gesto no vale eso.
+//
+// Se cierra con el botón, o con Escape. Nada más.
+//
 // Tres cosas que un modal necesita y que no se ven mirando la pantalla:
 //
 //   1. Anunciarse por su nombre. La hoja decía aria-label="Ventana", así que un
@@ -5885,39 +6076,6 @@ function openModal(){
   }
   etiquetarCamposDelModal(contenido);
   sheet.scrollTop=0;
-  cancelAnimationFrame(_sheetRaf);ov.classList.remove('settling');
-  let startY=0,curY=0,startT=0,dragging=false,historia=[];
-  sheet.onpointerdown=e=>{
-    if(e.pointerType==='mouse'&&e.button!==0)return;
-    // La etiqueta también activa su campo: el riel visible de un switch vive
-    // dentro de un label. Capturar ahí el puntero le roba el clic al checkbox.
-    if(e.target.closest('input,textarea,select,button,a,label,[contenteditable]'))return;
-    cancelAnimationFrame(_sheetRaf);ov.classList.remove('settling');
-    startY=e.clientY;curY=startY;startT=Date.now();dragging=sheet.scrollTop<=0;
-    historia=[{y:e.clientY,t:performance.now()}];
-    if(dragging){ov.classList.add('dragging');try{sheet.setPointerCapture(e.pointerId);}catch(_){}}
-  };
-  sheet.onpointermove=e=>{
-    curY=e.clientY;
-    if(!dragging)return;
-    historia.push({y:e.clientY,t:performance.now()});
-    if(historia.length>6)historia.shift();
-    const dy=curY-startY;
-    sheet.style.transform=`translateY(${dy>=0?dy:-sheetGoma(-dy,sheet.offsetHeight)}px)`;
-  };
-  const soltar=e=>{
-    if(!dragging)return;dragging=false;
-    ov.classList.remove('dragging');
-    try{sheet.releasePointerCapture(e.pointerId);}catch(_){}
-    const dy=curY-startY, ms=Math.max(1,Date.now()-startT);
-    // Cierra por VELOCIDAD o por distancia, no solo por distancia. Antes exigía
-    // 90px fijos: un flick rápido y corto —que es como se cierra un sheet en
-    // serio— rebotaba en vez de cerrar. 0.11 px/ms es el umbral del playbook.
-    if(dy/ms>0.11||dy>110)closeModal();
-    else sheetResorte(sheet,dy>=0?dy:-sheetGoma(-dy,sheet.offsetHeight),sheetVelocidad(historia));
-  };
-  sheet.onpointerup=soltar;
-  sheet.onpointercancel=soltar;
 }
 // El cierre no necesita JavaScript: `transition-behavior:allow-discrete` en el
 // overlay hace que `display:none` se aplique AL FINAL de la transición, así que
@@ -5925,10 +6083,6 @@ function openModal(){
 // La versión anterior de este arreglo llevaba una clase `.cerrando` y un
 // `transitionend`; sobraba entera.
 function closeModal(){
-  const sheet=document.querySelector('.modal-sheet');
-  cancelAnimationFrame(_sheetRaf);_sheetFin=null;
-  document.getElementById('modal').classList.remove('settling','dragging');
-  sheet.style.transform='';   // suelta lo que dejó el arrastre
   document.getElementById('modal').classList.remove('open');
   // El foco vuelve a quien abrió, salvo que ese elemento ya no exista (un
   // botón de una lista que se volvió a dibujar). Ahí se deja como está: mandarlo
@@ -5938,7 +6092,6 @@ function closeModal(){
     try{volver.focus({preventScroll:true});}catch(e){volver.focus();}
   }
 }
-function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 // Cerrar con tecla Escape (confirmación tiene prioridad sobre el modal)
 // Un <div role="button"> no responde al teclado por su cuenta: el navegador solo
 // le da comportamiento de botón a <button>. Sin esto, el elemento se enfoca con
@@ -6226,7 +6379,7 @@ function openEditNotaModal(catId,notaId){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Editar nota</div>
     <label class="modal-label">Nombre</label>
-    <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(n.nombre)}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-nota-error"/></div>
+    <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(nombreNotaCasilla(r,cat,n))}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-nota-error"/></div>
     <p id="m-nota-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
     <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
@@ -6543,7 +6696,11 @@ function openSimuladorModal(){
 
 // Combina notas reales (con su peso) + hipotéticas (peso 1) de una categoría
 function simCombinadas(c){
-  return [...c.notas, ...((simState[c.id]||[]).map(s=>({
+  // Sin la guarda, una categoría a la que le falte el arreglo de notas revienta
+  // acá —y como simCatAvg se llama al pintar, la ventana del simulador quedaba
+  // rota apenas se abría. normalize() lo garantiza al cargar, pero no una
+  // categoría creada en esta sesión por un camino que lo olvide.
+  return [...(Array.isArray(c.notas)?c.notas:[]), ...((simState[c.id]||[]).map(s=>({
     valor:s.valor,peso:1,
     ...(Number.isInteger(s.slot)?{slot:s.slot}:{}),
   })))];
@@ -6592,7 +6749,17 @@ function renderSimulador(){
 
   document.getElementById('sim-cats').innerHTML=r.categorias.map(c=>{
     const catAvg=simCatAvg(c);
-    const realChips=c.notas.map(n=>`<span class="sim-chip real">${esc(n.nombre)}: ${fmt(n.valor)}</span>`).join('');
+    // `c.notas` puede no venir: normalize() lo garantiza al cargar, pero una
+    // categoría recién creada en esta sesión por un camino que lo olvide llega
+    // sin el arreglo, y ahí `c.notas.map` reventaba al ABRIR el simulador —o
+    // sea la ventana quedaba rota sin decir por qué. El resto del archivo ya usa
+    // esta guarda; acá faltaba.
+    const notasReales=Array.isArray(c.notas)?c.notas:[];
+    // Una casilla con fecha y sin nota todavía no es una nota: desde que cada
+    // casilla puede tener su propia fecha existen notas con `valor` en null, y
+    // se colaban como una etiqueta vacía ("Laboratorio 1: ").
+    const realChips=notasReales.filter(n=>n&&n.valor!==null&&n.valor!==undefined)
+      .map(n=>`<span class="sim-chip real">${esc(nombreNotaCasilla(r,c,n))}: ${fmt(n.valor)}</span>`).join('');
     const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':c.directNota&&!(c.slots>1)?esc(c.nombre)+': ':''}${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
     return `
       <div class="sim-cat">
@@ -6757,7 +6924,7 @@ function ramoProgress(r){
 }
 function ramoRecienCerrado(anterior,actual){return Number.isFinite(anterior)&&anterior<100&&actual===100;}
 
-function nombreEventoAgenda(e){return e.nota?e.nota.nombre:e.cat.nombre;}
+function nombreEventoAgenda(e){return e.nota?nombreNotaCasilla(e.ramo,e.cat,e.nota):e.cat.nombre;}
 function pesoEventoAgenda(e){
   const c=e.cat,peso=Number(c.peso)||0;
   const fechadas=(c.notas||[]).filter(n=>n.fecha);
@@ -6934,7 +7101,7 @@ function destinosIcs(){
   return out;
 }
 function etiquetaDestinoIcs(target){
-  return target.ramo.nombre+' · '+(target.nota?target.nota.nombre:target.cat.nombre);
+  return target.ramo.nombre+' · '+(target.nota?nombreNotaCasilla(target.ramo,target.cat,target.nota):target.cat.nombre);
 }
 function prefijosEvaluacionIcs(nombre){
   const normal=normName(nombre).replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
@@ -6960,7 +7127,8 @@ function coincidenciaIcs(evento,targets){
     const ramo=normName(target.ramo.nombre);
     if(!ramo||!title.endsWith(ramo))return false;
     const prefijo=title.slice(0,title.length-ramo.length).trim();
-    return prefijosEvaluacionIcs(target.nota?target.nota.nombre:target.cat.nombre).includes(prefijo);
+    const nombres=target.nota?[target.nota.nombre,nombreNotaCasilla(target.ramo,target.cat,target.nota)]:[target.cat.nombre];
+    return nombres.some(nombre=>prefijosEvaluacionIcs(nombre).includes(prefijo));
   });
   return matches.length===1?claveDestinoIcs(matches[0]):null;
 }
@@ -7068,11 +7236,22 @@ function buildICS(){
     'X-WR-TIMEZONE:America/Santiago',
   ];
   evs.forEach(e=>{
-    const peso=r2(e.cat.peso||0);
-    const titulo=`${e.cat.nombre} — ${e.ramo.nombre}`;
-    const desc=`Vale ${peso}% de ${e.ramo.nombre}.`+(e.pending?'':' Ya evaluada.');
+    // Una casilla con fecha propia ("Control 2" dentro de "Controles") es un
+    // evento aparte: con el nombre y el peso de la casilla, y con UID propio.
+    // Antes todas las casillas de una categoría salían con el mismo UID y el
+    // mismo título, y el calendario se quedaba con una sola.
+    const pesoEv=pesoEventoAgenda(e);
+    const titulo=`${nombreEventoAgenda(e)} — ${e.ramo.nombre}`;
+    // `pesoEventoAgenda` devuelve null cuando el porcentaje de UNA entrega no se
+    // puede saber: el grupo descarta la más baja, o no dice cuántas son. Poner
+    // ahí el peso del grupo afirma que ese control vale el 30% que se reparten
+    // tres, que es un número falso en el calendario del estudiante. La Agenda no
+    // lo hace —muestra "Peso variable"— y esto tampoco.
+    const desc=(pesoEv==null
+      ?`Parte de «${e.cat.nombre}», que vale ${r2(e.cat.peso||0)}% de ${e.ramo.nombre}.`
+      :`Vale ${r2(pesoEv)}% de ${e.ramo.nombre}.`)+(e.pending?'':' Ya evaluada.');
     lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${e.cat.id}-${e.ramo.id}@gradehub.app`);
+    lines.push(`UID:${e.cat.id}-${e.ramo.id}${e.nota?'-'+e.nota.id:''}@gradehub.app`);
     lines.push(`DTSTAMP:${stamp}`);
     // Con hora, el evento deja de ser de día completo. Se emite como hora
     // LOCAL FLOTANTE —sin Z y sin TZID—, que el RFC define como "la hora del
@@ -7184,7 +7363,8 @@ function openAgendaCalendarOptions(){
     <p class="settings-help" style="margin-top:0;">Trae fechas desde Apple, Google u Outlook. Revisas cada coincidencia antes de agregarla.</p>
     <div class="settings-data-actions" style="margin-bottom:0;">
       <button${tieneEventos?'':' class="btn-primary"'} type="button" onclick="abrirImportarCalendario()">Importar fechas</button>
-    </div>`;
+    </div>
+    <div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeModal()">Cerrar</button></div>`;
   openModal();
   track('calendar_options_opened');
 }
@@ -7376,7 +7556,7 @@ function agendaItemHTML(e){
   } else if(e.necesita!==null&&e.necesita>7.05){
     alerta=`<div class="ag-alert bad"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Ya no alcanza para aprobar este ramo</div>`;
   }
-  return `<button class="ag-row ${e.nivel}" onclick="openRamo('${esc(e.ramo.id)}')">
+  return `<button class="ag-row ${e.nivel}" style="--ag-course:${esc(e.ramo.color)}" onclick="openRamo('${esc(e.ramo.id)}')">
     <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
     <div class="ag-row-main">
       <div class="ag-row-top">

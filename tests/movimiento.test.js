@@ -244,11 +244,17 @@ chk('la salida deja participar a display', /transition:[^;]*display[^;]*allow-di
 // Y con eso el cierre no necesita JS: ni clase extra ni transitionend.
 chk('closeModal no necesita maquinaria', !/transitionend/.test(app) && !/cerrando/.test(app));
 
-console.log('\n=== El arrastre cierra por velocidad ===');
-// Antes exigía 90px fijos: un flick rápido y corto —que es como se cierra un
-// sheet en serio— rebotaba en vez de cerrar.
-chk('descarta por velocidad, no solo por distancia', /dy\/ms>0\.11/.test(app));
-chk('mide el tiempo del gesto', /startT=Date\.now\(\)/.test(app));
+console.log('\n=== El sheet ya no se arrastra para cerrarlo ===');
+// Se retiró el 2026-09-21. Varios modales llevan una lista con scroll propio
+// adentro y el gesto de recorrerla es el mismo que el de cerrar: se afinó dos
+// veces y seguía cerrándose a media edición. Un modal que se cierra solo
+// mientras alguien escribe notas le borra el trabajo.
+chk('no quedó física de arrastre en el sheet',
+  !/sheetResorte|sheetGoma|sheetVelocidad/.test(app));
+chk('ni manejadores de puntero en el sheet',
+  !/sheet\.onpointerdown|sheet\.onpointermove|sheet\.onpointerup/.test(app));
+chk('ni el tirador que lo insinuaba', !/modal-drag/.test(app));
+chk('tampoco cierra al tocar fuera del sheet', !/closeModalOutside/.test(app));
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

@@ -199,22 +199,69 @@ vm.runInContext(`
   const cotiza=val("typeof cotizarCampanaClases==='function'");
   chk('existe una cotización configurable, sin convertir eventos en personas',cotiza);
   if(cotiza){
-    ctx.tarifas=[{criterios:{promedioMenorA:7,avanceMinimo:0},precioPorCuenta:1000},
-      {criterios:{promedioMenorA:4,avanceMinimo:40},precioPorCuenta:2000}];
-    const cotizar=(c,datos)=>{ctx.criterios=c;ctx.datos=datos;return val('cotizarCampanaClases(criterios,tarifas,datos)');};
+    const cotizar=(c,datos)=>{ctx.criterios=c;ctx.datos=datos;return val('cotizarCampanaClases(criterios,null,datos)');};
     const general={promedioMenorA:5,avanceMinimo:20},especifico={promedioMenorA:4,avanceMinimo:40};
+
+    // Las dos anclas que el piloto ya tenía acordadas. La fórmula continua las
+    // reproduce exactas: si alguien la cambia y estas dos se mueven, cambió el
+    // precio del piloto, no un detalle de implementación.
+    chk('sin filtrar nada se cobra la tarifa base de $1.000',
+      cotizar({promedioMenorA:7,avanceMinimo:0},{elegibles:1}).precioPorCuenta===1000);
+    chk('bajo 4,0 con 40% evaluado se cobra $2.000, como decía el piloto',
+      cotizar(especifico,{elegibles:1}).precioPorCuenta===2000);
+
+    // Lo que cambió: entre medio ya no hay un escalón. Pedir un público más
+    // exigente cuesta más, y cada palanca sube por su lado.
+    chk('un público intermedio cuesta entre medio, no lo mismo que el más amplio',
+      cotizar(general,{elegibles:1}).precioPorCuenta===1400);
+    chk('exigir más avance encarece aunque la nota no cambie',
+      cotizar({promedioMenorA:5,avanceMinimo:40},{elegibles:1}).precioPorCuenta===1600);
+    chk('exigir menos nota encarece aunque el avance no cambie',
+      cotizar({promedioMenorA:4,avanceMinimo:20},{elegibles:1}).precioPorCuenta===1800);
+    chk('pedir una nota sobre 5,5 no cobra recargo: no estrecha a nadie',
+      cotizar({promedioMenorA:6.5,avanceMinimo:0},{elegibles:1}).precioPorCuenta===1000);
+    // El techo son tres veces la base: un recargo entero por cada palanca.
+    chk('el recargo tiene techo: el público más exigente no se dispara',
+      cotizar({promedioMenorA:1.5,avanceMinimo:99},{elegibles:1}).precioPorCuenta===3000);
+    chk('el precio por persona sale redondo, sin decimales ni pesos sueltos',
+      [7,6,5,4.4,4,3.2].every(n=>cotizar({promedioMenorA:n,avanceMinimo:35},{elegibles:1}).precioPorCuenta%50===0));
+
+    // Publicar cuesta aunque no lo vea nadie: paga la revisión humana del aviso.
+    const solo=cotizar(general,{elegibles:0,ramos:1});
+    chk('el cargo fijo por publicar existe y no depende de cuántos lo vean',
+      solo.cargoFijo===3000&&solo.costoEstimado===0&&solo.totalEstimado===3000);
+    chk('cada ramo extra sube el cargo fijo, porque abre otro público',
+      cotizar(general,{elegibles:0,ramos:1}).cargoFijo===3000&&
+      cotizar(general,{elegibles:0,ramos:6}).cargoFijo===8000&&
+      cotizar(general,{elegibles:0,ramos:12}).cargoFijo===14000);
+    chk('un número de ramos imposible no cotiza',
+      cotizar(general,{elegibles:1,ramos:0})===null&&cotizar(general,{elegibles:1,ramos:13})===null);
+
     const a=cotizar(general,{elegibles:30,alcanzados:12});
-    chk('30 elegibles cotizan $30.000, pero 12 alcanzados representan $12.000',a.costoEstimado===30000&&a.costoPorAlcance===12000);
-    const b=cotizar(especifico,{elegibles:10,alcanzados:6});
-    chk('el perfil exigente usa $2.000: 10 cotizan $20.000, seis cuestan $12.000',b.precioPorCuenta===2000&&b.costoEstimado===20000&&b.costoPorAlcance===12000);
-    chk('bajar la nota sin exigir el avance no toma la tarifa de ambos criterios',cotizar({promedioMenorA:4,avanceMinimo:20},{elegibles:10}).precioPorCuenta===1000);
+    chk('30 elegibles a $1.400 cotizan $42.000, y 12 alcanzados representan $16.800',
+      a.costoEstimado===42000&&a.costoPorAlcance===16800);
+    chk('el total suma el cargo fijo una sola vez',
+      a.totalEstimado===a.cargoFijo+a.costoEstimado&&a.totalPorAlcance===a.cargoFijo+a.costoPorAlcance);
+
+    // El presupuesto limita el alcance, no el cargo fijo: ese ya se pagó. Si lo
+    // descontara acá, agregar un ramo bajaría a cuánta gente llega el aviso.
     const limitado=cotizar(especifico,{elegibles:30,alcanzados:20,presupuestoClp:15000});
-    chk('un tope de $15.000 a $2.000 por persona permite siete alcances, no ocho',limitado.alcanceCotizado===7&&limitado.costoEstimado===14000&&limitado.costoPorAlcance===14000);
-    chk('sin medición no inventa cero cuentas ni un cobro',cotizar(general,{}).costoEstimado===null&&cotizar(general,{}).costoPorAlcance===null);
-    chk('cero elegibles sí significa cotización cero',cotizar(general,{elegibles:0}).costoEstimado===0);
-    chk('conteos negativos o fraccionarios se rechazan',cotizar(general,{elegibles:-1})===null&&cotizar(general,{alcanzados:1.5})===null);
-    chk('una tarifa cambiada se respeta sin editar el motor',
-      val('cotizarCampanaClases({promedioMenorA:5,avanceMinimo:20},[{criterios:{promedioMenorA:7,avanceMinimo:0},precioPorCuenta:500}],{elegibles:10}).costoEstimado')===5000);
+    chk('un tope de $15.000 a $2.000 por persona permite siete alcances, no ocho',
+      limitado.alcanceCotizado===7&&limitado.costoEstimado===14000&&limitado.costoPorAlcance===14000);
+    chk('el cargo fijo no se descuenta del presupuesto de alcance',
+      cotizar(especifico,{elegibles:30,presupuestoClp:15000,ramos:9}).alcanceCotizado===7);
+
+    chk('sin medición no inventa cero cuentas ni un cobro',
+      cotizar(general,{}).costoEstimado===null&&cotizar(general,{}).costoPorAlcance===null&&
+      cotizar(general,{}).totalEstimado===null);
+    chk('cero elegibles sí significa cotización cero de alcance',cotizar(general,{elegibles:0}).costoEstimado===0);
+    chk('conteos negativos o fraccionarios se rechazan',
+      cotizar(general,{elegibles:-1})===null&&cotizar(general,{alcanzados:1.5})===null);
+    chk('una tarifa cambiada se respeta sin editar la fórmula',
+      val("cotizarCampanaClases({promedioMenorA:7,avanceMinimo:0},{base:500,cargoFijo:0},{elegibles:10}).totalEstimado")===5000);
+    chk('una tarifa con números imposibles no cotiza en vez de cobrar cualquier cosa',
+      val("cotizarCampanaClases({promedioMenorA:5,avanceMinimo:20},{base:0},{elegibles:1})")===null&&
+      val("cotizarCampanaClases({promedioMenorA:5,avanceMinimo:20},{cargoFijo:-1},{elegibles:1})")===null);
   }
 
   console.log('\n=== RLS, borrado y métricas agregadas ===');

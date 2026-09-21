@@ -79,10 +79,11 @@ chk('la sección se puede esconder como cualquier otra',
   /\{id:'curso',\s*titulo:'Cómo vas en tus ramos'\}/.test(app) && /function toggleSeccionStats/.test(app));
 chk('y escondida no se consulta al servidor',
   /if\(!seccionOculta\('curso'\)\)pintarPosicionesCurso\(\)/.test(render));
-// El total va al lado del porcentaje: con cinco participantes "75%" solo puede
-// ser 0, 25, 50, 75 o 100, y sin saber cuántos son suena más fino de lo que es.
+// La cuenta va en la misma frase que el porcentaje: con cinco participantes
+// "75%" solo puede ser 0, 25, 50, 75 o 100, y sin saber cuántos son suena más
+// fino de lo que es. Cómo se redacta lo fija tests/curso-posicion-texto.test.js.
 chk('el porcentaje nunca va solo, siempre con cuántos son',
-  /\$\{p\.total\} llevan este ramo/.test(render));
+  /frasePosicionCurso\(p\.mejorQue,p\.total\)/.test(render));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);

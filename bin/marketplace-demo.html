@@ -3,7 +3,7 @@
 <style>
 :root{color-scheme:light dark;--bg:#f8f8fa;--card:#fff;--fg:#18181b;--muted:#656570;--line:#dedee4;--accent:#0d7a6b;--soft:#eeeff2;--red:#b32540;--amber:#886008;--green:#167342;font-family:BlinkMacSystemFont,-apple-system,"Segoe UI",sans-serif}
 @media(prefers-color-scheme:dark){:root{--bg:#080809;--card:#111113;--fg:#f1f1f3;--muted:#b4b4bd;--line:#303034;--soft:#1b1b20;--accent:#2dd4bf;--red:#ff5f7a;--amber:#ffc94d;--green:#62d99a}}
-*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--fg)}main{width:100%;max-width:1080px;margin:auto;padding:24px 20px 60px}header{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:20px}header strong{font-size:22px;letter-spacing:-1px}small,.muted{color:var(--muted)}.tag{font-size:12px;border:1px solid var(--line);border-radius:20px;padding:7px 11px}h1{font-size:clamp(27px,4vw,38px);letter-spacing:-1.3px;margin:30px 0 10px;max-width:690px;overflow-wrap:anywhere}p{line-height:1.55;font-size:14px}.intro{max-width:660px;color:var(--muted);margin-bottom:18px}.steps{display:flex;max-width:100%;gap:8px;overflow:auto;margin:0 0 22px;padding:0;list-style:none}.steps li{white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:12px;color:var(--muted)}.steps li:first-child{color:var(--fg);border-color:var(--accent)}.layout{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:20px}.panel,.stack,.form-grid,.form-grid>*,.pair,.pair>*{min-width:0}.panel{border:1px solid var(--line);border-radius:16px;padding:20px;background:var(--card)}.wide{grid-column:auto}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.panel-head .tag{flex:none}h2{font-size:18px;margin:0 0 18px;letter-spacing:-.4px}label{display:block;font-size:13px;font-weight:600;margin:18px 0 7px}label:first-of-type{margin-top:0}input,select,textarea{display:block;width:100%;min-width:0;max-width:100%;min-height:44px;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:var(--bg);color:var(--fg);font:inherit;font-size:16px}textarea{min-height:96px;resize:vertical;line-height:1.45}input[type=range]{padding:0;accent-color:var(--accent)}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,.upload:focus-within{outline:2px solid var(--accent);outline-offset:3px}output{font-variant-numeric:tabular-nums}.pair,.form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.pair label{margin-top:16px}.span2{grid-column:1/-1}.help{font-size:12px;color:var(--muted);margin:8px 0 18px}.rule{padding:12px;background:var(--soft);border-radius:9px;font-size:13px;line-height:1.5;margin:16px 0}.upload{display:grid;grid-template-columns:74px minmax(0,1fr);align-items:center;gap:14px;border:1px dashed var(--line);border-radius:12px;padding:12px;cursor:pointer;margin:0}.upload-thumb{width:74px;aspect-ratio:4/5;border-radius:8px;background:var(--soft);display:grid;place-items:center;overflow:hidden;color:var(--muted);font-size:23px}.upload-thumb img{width:100%;height:100%;object-fit:cover}.upload strong{display:block;font-size:14px;margin-bottom:4px;overflow-wrap:anywhere}.upload span{display:block;font-size:12px;color:var(--muted);line-height:1.4}.numbers{display:grid;grid-template-columns:1fr 1fr;gap:20px 12px}.number{font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-1px;display:block;margin:6px 0}.numbers span{font-size:12px;color:var(--muted)}.total{border-top:1px solid var(--line);margin-top:20px;padding-top:16px;display:flex;justify-content:space-between;gap:10px;align-items:center}.total b{font-size:25px;font-variant-numeric:tabular-nums;letter-spacing:-.6px}.stack{display:grid;gap:20px;align-content:start}details{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}summary{cursor:pointer;font-size:13px;color:var(--muted);padding:5px 0}.ad{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:16px;margin:15px 0 0;overflow:hidden}.ad.has-flyer{padding:0}.ad-copy{padding:16px}.ad-flyer{display:block;width:100%;max-height:260px;object-fit:cover;background:var(--soft)}.ad h3{font-size:19px;margin:10px 0 8px;letter-spacing:-.3px}.ad p{margin:7px 0}.ad small{font-size:11px;letter-spacing:.05em;text-transform:uppercase}.ad-meta{color:var(--muted);font-size:13px}.empty{padding:20px 0 8px;color:var(--muted);font-size:14px;line-height:1.6}.metric{font-variant-numeric:tabular-nums;font-weight:600}.status{color:var(--muted);font-size:13px;min-height:22px}.bad{color:var(--red)}.mid{color:var(--amber)}.good{color:var(--green)}button{min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--soft);color:var(--fg);font:inherit;font-size:14px;width:100%;margin-top:12px;cursor:pointer}.primary{background:var(--accent);border-color:var(--accent);color:#041412;font-weight:700}.ghost{width:auto;margin:8px 0 0;padding:7px 10px;min-height:36px}.caption{margin:16px 0 0;font-size:12px;color:var(--muted)}@media(min-width:760px){.layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.wide{grid-column:1/-1}main{padding-top:32px}.panel{padding:24px}.form-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.flyer-field{grid-column:2;grid-row:1/span 3}}@media(max-width:570px){.pair,.form-grid{grid-template-columns:minmax(0,1fr)}.span2,.flyer-field{grid-column:auto}.panel-head{display:block}.panel-head .tag{display:inline-block;margin-bottom:14px}}@media(max-width:390px){.number{font-size:28px}.total b{font-size:22px}}
+*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}body{margin:0;background:var(--bg);color:var(--fg)}main{width:100%;max-width:1080px;margin:auto;padding:24px 20px 60px}header{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:20px}header strong{font-size:22px;letter-spacing:-1px}small,.muted{color:var(--muted)}.tag{font-size:12px;border:1px solid var(--line);border-radius:20px;padding:7px 11px}h1{font-size:clamp(27px,4vw,38px);letter-spacing:-1.3px;margin:30px 0 10px;max-width:690px;overflow-wrap:anywhere}p{line-height:1.55;font-size:14px}.intro{max-width:660px;color:var(--muted);margin-bottom:18px}.steps{display:flex;max-width:100%;gap:8px;overflow:auto;margin:0 0 22px;padding:0;list-style:none}.steps a{display:block;white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:12px;color:var(--muted);text-decoration:none;cursor:pointer}.steps a:hover,.steps a:focus-visible{color:var(--fg);border-color:var(--accent)}.steps a[aria-current="true"]{color:var(--fg);border-color:var(--accent)}html{scroll-behavior:smooth}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}.panel:target{outline:2px solid var(--accent);outline-offset:4px}.layout{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:20px}.panel,.stack,.form-grid,.form-grid>*,.pair,.pair>*{min-width:0}.panel{border:1px solid var(--line);border-radius:16px;padding:20px;background:var(--card)}.wide{grid-column:auto}.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.panel-head .tag{flex:none}h2{font-size:18px;margin:0 0 18px;letter-spacing:-.4px}label{display:block;font-size:13px;font-weight:600;margin:18px 0 7px}label:first-of-type{margin-top:0}input,select,textarea{display:block;width:100%;min-width:0;max-width:100%;min-height:44px;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:var(--bg);color:var(--fg);font:inherit;font-size:16px}textarea{min-height:96px;resize:vertical;line-height:1.45}input[type=range]{padding:0;accent-color:var(--accent)}input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,.upload:focus-within{outline:2px solid var(--accent);outline-offset:3px}output{font-variant-numeric:tabular-nums}.pair,.form-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.pair label{margin-top:16px}.span2{grid-column:1/-1}.money{position:relative}.money>.cl{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;pointer-events:none}.money input{padding-left:25px}.help{font-size:12px;color:var(--muted);margin:8px 0 18px}.results{display:grid;gap:4px;margin-top:8px}.results:empty{margin:0}.results button{width:100%;margin:0;text-align:left;min-height:38px;padding:8px 11px;font-size:13px;background:transparent}.results button:hover{background:var(--soft)}.results .sig{color:var(--muted);font-size:12px}.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.chips button{width:auto;margin:0;min-height:32px;padding:5px 9px;font-size:12px;border-radius:999px;display:inline-flex;gap:7px;align-items:center}.chips button .x{color:var(--muted);font-size:14px;line-height:1}.rule{padding:12px;background:var(--soft);border-radius:9px;font-size:13px;line-height:1.5;margin:16px 0}.upload{display:grid;grid-template-columns:74px minmax(0,1fr);align-items:center;gap:14px;border:1px dashed var(--line);border-radius:12px;padding:12px;cursor:pointer;margin:0}.upload-thumb{width:74px;aspect-ratio:4/5;border-radius:8px;background:var(--soft);display:grid;place-items:center;overflow:hidden;color:var(--muted);font-size:23px}.upload-thumb img{width:100%;height:100%;object-fit:cover}.upload strong{display:block;font-size:14px;margin-bottom:4px;overflow-wrap:anywhere}.upload span{display:block;font-size:12px;color:var(--muted);line-height:1.4}.numbers{display:grid;grid-template-columns:1fr 1fr;gap:20px 12px}.number{font-size:32px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-1px;display:block;margin:6px 0}.numbers span{font-size:12px;color:var(--muted)}.total{border-top:1px solid var(--line);margin-top:20px;padding-top:16px;display:flex;justify-content:space-between;gap:10px;align-items:center}.total b{font-size:25px;font-variant-numeric:tabular-nums;letter-spacing:-.6px}.stack{display:grid;gap:20px;align-content:start}details{border-top:1px solid var(--line);margin-top:20px;padding-top:16px}summary{cursor:pointer;font-size:13px;color:var(--muted);padding:5px 0}.ad{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:16px;margin:15px 0 0;overflow:hidden}.ad.has-flyer{padding:0}.ad-copy{padding:16px}.ad-flyer{display:block;width:100%;max-height:260px;object-fit:cover;background:var(--soft)}.ad h3{font-size:19px;margin:10px 0 8px;letter-spacing:-.3px}.ad p{margin:7px 0}.ad small{font-size:11px;letter-spacing:.05em;text-transform:uppercase}.ad-meta{color:var(--muted);font-size:13px}.empty{padding:20px 0 8px;color:var(--muted);font-size:14px;line-height:1.6}.metric{font-variant-numeric:tabular-nums;font-weight:600}.status{color:var(--muted);font-size:13px;min-height:22px}.bad{color:var(--red)}.mid{color:var(--amber)}.good{color:var(--green)}button{min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--soft);color:var(--fg);font:inherit;font-size:14px;width:100%;margin-top:12px;cursor:pointer}.primary{background:var(--accent);border-color:var(--accent);color:#041412;font-weight:700}.ghost{width:auto;margin:8px 0 0;padding:7px 10px;min-height:36px}.caption{margin:16px 0 0;font-size:12px;color:var(--muted)}@media(min-width:760px){.layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.wide{grid-column:1/-1}main{padding-top:32px}.panel{padding:24px}.form-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.flyer-field{grid-column:2;grid-row:1/span 3}}@media(max-width:570px){.pair,.form-grid{grid-template-columns:minmax(0,1fr)}.span2,.flyer-field{grid-column:auto}.panel-head{display:block}.panel-head .tag{display:inline-block;margin-bottom:14px}}@media(max-width:390px){.number{font-size:28px}.total b{font-size:22px}}
 </style>
 <style>
 /* La tarjeta del anuncio copia solo la línea de Inicio. Los paneles son
@@ -24,28 +24,28 @@
 <header><strong>GradeHub</strong><span class="tag">Muestra · datos simulados</span></header>
 <h1>Prepara tu anuncio sin publicarlo por accidente.</h1>
 <p class="intro">Completa tu clase, elige a quién puede servirle y revisa el resultado. Todo queda como borrador hasta que lo envías y GradeHub lo aprueba.</p>
-<ol class="steps" aria-label="Pasos del borrador"><li>1 · Tu clase</li><li>2 · Público y presupuesto</li><li>3 · Revisión</li></ol>
-<div class="layout"><section class="panel wide"><div class="panel-head"><div><h2>1. Cuenta qué clase ofreces</h2><p class="help">Esto es lo que leerá el estudiante. Puedes volver y editarlo antes de enviar.</p></div><span class="tag">Borrador · no publicado</span></div>
+<ol class="steps" aria-label="Pasos del borrador"><li><a href="#p1" aria-current="true">1 · Tu clase</a></li><li><a href="#p2">2 · Público y presupuesto</a></li><li><a href="#p3">3 · Revisión</a></li></ol>
+<div class="layout"><section class="panel wide" id="p1"><div class="panel-head"><div><h2>1. Cuenta qué clase ofreces</h2><p class="help">Esto es lo que leerá el estudiante. Puedes volver y editarlo antes de enviar.</p></div><span class="tag">Borrador · no publicado</span></div>
 <div class="form-grid"><div><label for="title">Título del anuncio</label><input id="title" type="text" maxlength="90" value="Clases de Cálculo I" required>
 <label for="description">Qué vas a trabajar</label><textarea id="description" maxlength="500" required>Repaso de materia, resolución de ejercicios y preparación para la próxima evaluación.</textarea>
-<div class="pair"><div><label for="class-price">Precio por clase</label><input id="class-price" type="number" value="15000" min="1000" max="500000" step="1000" required></div><div><label for="location">Dónde</label><select id="location"><option value="Online">Online</option><option value="Presencial">Presencial</option><option value="Híbrido">Híbrido</option></select></div></div>
+<div class="pair"><div><label for="class-price">Precio por clase</label><div class="money"><span class="cl">$</span><input id="class-price" type="number" value="15000" min="1000" max="500000" step="1000" required></div></div><div><label for="location">Dónde</label><select id="location"><option value="Online">Online</option><option value="Presencial">Presencial</option><option value="Híbrido">Híbrido</option></select></div></div>
 <div class="pair"><div><label for="modality">Formato</label><select id="modality"><option value="Individual">Individual</option><option value="Grupal">Grupal</option></select></div><div><label for="contact">Contacto</label><input id="contact" type="text" maxlength="160" value="WhatsApp · +56 9 1234 5678" required></div></div></div>
 <div class="flyer-field"><label for="flyer">Flyer <span class="muted">· opcional</span></label><label class="upload" for="flyer"><span class="upload-thumb" id="flyer-thumb" aria-hidden="true">＋</span><span><strong id="flyer-label">Subir una imagen</strong><span>JPG, PNG o WebP · máximo 5 MB. Podrás verla antes de enviar.</span></span></label><input id="flyer" type="file" accept="image/jpeg,image/png,image/webp"><button class="ghost" id="remove-flyer" type="button" hidden>Quitar flyer</button><p class="status" id="flyer-status" role="status"></p></div></div>
-</section><section class="panel"><h2>2. Define el público</h2>
+</section><section class="panel" id="p2"><h2>2. Define el público</h2>
 <label for="tenant">Universidad</label><select id="tenant"><option value="uc">Universidad Católica</option><option value="fen">FEN · Universidad de Chile</option><option value="uai">Universidad Adolfo Ibáñez</option></select>
-<label for="course">Ramo</label><select id="course"></select>
+<label for="course">Ramos a los que apunta</label><input id="course" type="search" autocomplete="off" placeholder="Busca por nombre o sigla — «cálculo», «MAT1610»"><div id="course-results" class="results" role="listbox" aria-label="Resultados del catálogo"></div><div id="course-chips" class="chips"></div><p class="help" id="course-help"></p>
 <label for="grade">Promedio menor a <output id="grade-value">5.0</output></label><input id="grade" type="range" min="2" max="7" step=".1" value="5">
 <label for="progress">Al menos <output id="progress-value">20</output>% evaluado</label><input id="progress" type="range" min="0" max="90" step="5" value="20">
 <p class="help">La regla se guarda por aviso. La app considera las casillas rendidas y sus pesos; no trata una categoría incompleta como terminada.</p>
 <div class="rule" id="rule"></div>
-<label for="budget">Presupuesto máximo de la campaña (CLP)</label><input id="budget" type="number" value="30000" min="0" max="1000000" step="1000">
-<details><summary>Probar otras tarifas · solo en esta muestra</summary><p class="help">El piloto parte en $1.000 por alcance y $2.000 para bajo 4.0 con al menos 40% evaluado. GradeHub administra las tarifas; el profesor cambia su público y presupuesto, no el precio unitario.</p><div class="pair"><div><label for="base-price">Tarifa base del piloto</label><input id="base-price" type="number" value="1000" min="100" max="100000" step="100"></div><div><label for="specific-price">Bajo 4.0 y ≥40%</label><input id="specific-price" type="number" value="2000" min="100" max="100000" step="100"></div></div></details>
+<label for="budget">Presupuesto máximo de la campaña</label><div class="money"><span class="cl">$</span><input id="budget" type="number" value="30000" min="0" max="1000000" step="1000"></div><p class="help">Solo limita el alcance. El cargo por publicar se paga igual.</p>
+<details><summary>Probar otras tarifas · solo en esta muestra</summary><p class="help">El piloto parte en $1.000 por persona con el público más amplio y sube según lo exigente que sea el criterio, hasta $3.000. Publicar cuesta $3.000 fijos más $1.000 por cada ramo extra. GradeHub administra las tarifas; el profesor cambia su público y su presupuesto, no el precio unitario.</p><div class="pair"><div><label for="base-price">Tarifa base por persona</label><div class="money"><span class="cl">$</span><input id="base-price" type="number" value="1000" min="100" max="100000" step="100"></div></div><div><label for="fixed-price">Cargo fijo por publicar</label><div class="money"><span class="cl">$</span><input id="fixed-price" type="number" value="3000" min="0" max="100000" step="500"></div></div><div><label for="extra-ramo">Por cada ramo extra</label><div class="money"><span class="cl">$</span><input id="extra-ramo" type="number" value="1000" min="0" max="100000" step="500"></div></div></div></details>
 </section><div class="stack"><section class="panel"><h2>Tu cotización</h2><div class="numbers" aria-live="polite"><div><span>Cuentas que cumplen · simuladas</span><output class="number" id="audience">—</output></div><div><span>Por persona alcanzada · piloto</span><output class="number" id="rate">—</output></div></div>
 <div class="total"><span>Si todas vieran el aviso*</span><b id="quote">—</b></div><p id="cap" class="help"></p>
 <label for="reach">Personas que lo vieron: <output id="reach-value">0</output></label><input id="reach" type="range" value="0" min="0" max="30" step="1">
-<div class="total"><span>Costo según alcance simulado</span><b id="cost">—</b></div><p class="caption">*Con el límite de presupuesto. Ver el aviso varias veces no debería cobrar varias veces. Esta muestra no factura ni mide personas reales.</p><p id="quote-status" class="status" role="status"></p>
-</section><section class="panel"><h2>3. Revisa antes de enviar</h2><label for="student">Perfil de prueba</label><select id="student"></select><p id="student-stats" class="help"></p><div id="student-view" aria-live="polite"></div><button id="dismiss" type="button">Probar cómo se cierra</button><button class="primary" id="submit-review" type="button">Enviar a revisión</button><p id="draft-status" class="status" role="status"></p>
-<p class="caption">Nada se publica al apretar este botón en la muestra. En GradeHub quedará pendiente hasta que Lucas apruebe al profesor y este anuncio.</p></section></div></div>
+<div class="total"><span>Costo según alcance simulado</span><b id="cost">—</b></div><div class="total"><span>Cargo por publicar <small id="fixed-why"></small></span><b id="fixed">—</b></div><div class="total"><span><strong>Total de la campaña</strong></span><b id="grand">—</b></div><p class="caption">*Con el límite de presupuesto. Ver el aviso varias veces no debería cobrar varias veces. El cargo por publicar se paga aunque no lo vea nadie. Esta muestra no factura ni mide personas reales.</p><p id="quote-status" class="status" role="status"></p>
+</section><section class="panel" id="p3"><h2>3. Revisa antes de enviar</h2><p class="help">Así se ve tu aviso dentro de GradeHub. Cambia de perfil para mirarlo con los ojos de distintos estudiantes simulados, incluidos los que NO cumplen tu regla: a esos no les aparece nada.</p><label for="student">Mirarlo como</label><select id="student"></select><p id="student-stats" class="help"></p><div id="student-view" aria-live="polite"></div><button id="dismiss" type="button">Probar cómo se cierra</button><p class="help" id="dismiss-help">El estudiante puede cerrar un aviso y no volver a verlo en esa visita.</p><button class="primary" id="submit-review" type="button">Enviar a revisión</button><p id="draft-status" class="status" role="status"></p>
+<p class="caption">Nada se publica al apretar este botón en la muestra. En GradeHub quedará pendiente hasta que un miembro de nuestro equipo apruebe al profesor y este anuncio.</p></section></div></div>
 </main><script>
 __ENGINE__
 __PROGRESS__
@@ -53,50 +53,149 @@ __MARKETPLACE__
 const normName=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 const {ramoAvg,categoriasVigentes}=gh_crearCalculoRamo({normName,ramos:()=>[],copiarRecuperativo:()=>null,definicionPresetDelRamo:()=>null});
 const siglaDeRamo=()=>null;
-const cursos={uc:[['MAT1610','Cálculo I'],['FIS1514','Dinámica']],fen:[['CON1005','Contabilidad'],['TEST102','Ramo de ejemplo']],uai:[['TEST201','Ramo de ejemplo A'],['TEST202','Ramo de ejemplo B']]};
-// 120 cuentas SINTÉTICAS. Cada una tiene dos ramos; calzar con dos no cuenta dos veces.
-const cuentas=Object.keys(cursos).flatMap((tenant,t)=>Array.from({length:40},(_,i)=>({id:t*40+i,tenant,ramos:cursos[tenant].map(([sigla,nombre],j)=>{
+// El catálogo REAL, resuelto al generar este archivo con la misma función que
+// alimenta el buscador de la app. Antes acá había dos ramos inventados por
+// universidad ("TEST102 · Ramo de ejemplo"): elegir el ramo no se parecía en
+// nada a elegirlo en GradeHub, y tapaba el problema de fondo — la segmentación
+// calza por SIGLA, y hay universidades donde los ramos no tienen.
+const CATALOGO=__CATALOGO__;
+const MAX_RAMOS=12,POBLACION=40;
+const conSigla=tenant=>(CATALOGO[tenant]||[]).filter(([,sigla])=>sigla);
+
+// Cuentas SINTÉTICAS armadas alrededor de los ramos elegidos. Se regeneran al
+// cambiar la selección: si fueran fijas, buscar un ramo del catálogo daría
+// siempre cero público y la muestra no mostraría nada.
+//
+// Una de cada cinco cuentas lleva OTRO ramo a propósito, para que exista el caso
+// "este perfil no cumple la regla" y se pueda mirar. Todo es determinista: la
+// misma selección da siempre los mismos números.
+function ramoSintetico(tenant,nombre,sigla,i,j){
   const n=(i+j)%7,valor=2.8+((i*7+j*3)%37)/10;
-  return {id:sigla,nombre,sigla,origen:{tenant,ramoKey:sigla},gates:[],categorias:[{id:'informes',nombre:'Informes',peso:70,slots:6,directNota:true,notas:Array.from({length:n},(_,slot)=>({id:'n'+slot,nombre:'Informe '+slot,slot,valor,peso:1}))},{id:'examen',nombre:'Examen',peso:30,directNota:true,notas:[]}]};
-})})));
+  return {id:sigla+'-'+i,nombre,sigla,origen:{tenant,ramoKey:sigla},gates:[],
+    categorias:[{id:'informes',nombre:'Informes',peso:70,slots:6,directNota:true,
+      notas:Array.from({length:n},(_,slot)=>({id:'n'+slot,nombre:'Informe '+slot,slot,valor,peso:1}))},
+      {id:'examen',nombre:'Examen',peso:30,directNota:true,notas:[]}]};
+}
+function poblacion(tenant,elegidos){
+  const otros=conSigla(tenant).filter(([,sigla])=>!elegidos.some(e=>e.sigla===sigla));
+  if(!elegidos.length)return [];
+  return Array.from({length:POBLACION},(_,i)=>{
+    const fuera=i%5===4&&otros.length;
+    const propio=fuera?otros[i%otros.length]:null;
+    const elegido=elegidos[i%elegidos.length];
+    const principal=fuera
+      ?ramoSintetico(tenant,propio[0],propio[1],i,0)
+      :ramoSintetico(tenant,elegido.nombre,elegido.sigla,i,0);
+    const relleno=otros.length?otros[(i+3)%otros.length]:null;
+    const ramos=[principal];
+    if(relleno)ramos.push(ramoSintetico(tenant,relleno[0],relleno[1],i,1));
+    return {id:i,tenant,ramos};
+  });
+}
 const $=id=>document.getElementById(id),pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
-let cerrados=[],actuales=[],aviso,flyerData='';
+let cerrados=[],actuales=[],aviso,flyerData='',elegidos=[],cuentas=[];
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+function buscarRamos(){
+  const tenant=$('tenant').value,q=norm($('course').value),caja=$('course-results');
+  caja.replaceChildren();
+  const disponibles=conSigla(tenant);
+  if(!disponibles.length){
+    $('course-help').textContent='Los ramos de esta universidad no tienen sigla publicada, y la segmentación calza por sigla. Un aviso acá no llegaría a nadie.';
+    return;
+  }
+  if(elegidos.length>=MAX_RAMOS){$('course-help').textContent='Máximo '+MAX_RAMOS+' ramos por aviso.';return;}
+  $('course-help').textContent=elegidos.length?'':'Elige al menos un ramo: el aviso se vincula a ese ramo exacto, por su sigla.';
+  if(q.length<2)return;
+  const hit=disponibles.filter(([nombre,sigla])=>
+    (norm(nombre).includes(q)||norm(sigla).includes(q))&&!elegidos.some(e=>e.sigla===sigla)).slice(0,6);
+  if(!hit.length){caja.append(Object.assign(document.createElement('p'),{className:'help',textContent:'Nada en el catálogo de esta universidad con «'+$('course').value.trim()+'».'}));return;}
+  for(const [nombre,sigla] of hit){
+    const b=document.createElement('button');b.type='button';
+    b.append(Object.assign(document.createElement('span'),{textContent:nombre+' '}),
+      Object.assign(document.createElement('span'),{className:'sig',textContent:sigla}));
+    b.addEventListener('click',()=>{elegidos.push({nombre,sigla});$('course').value='';cerrados=[];pintarChips();buscarRamos();render();});
+    caja.append(b);
+  }
+}
+function pintarChips(){
+  const caja=$('course-chips');caja.replaceChildren();
+  for(const r of elegidos){
+    const b=document.createElement('button');b.type='button';
+    b.title='Quitar '+r.nombre;
+    b.append(Object.assign(document.createElement('span'),{textContent:r.nombre+' · '+r.sigla}),
+      Object.assign(document.createElement('span'),{className:'x',textContent:'×','ariaHidden':'true'}));
+    b.addEventListener('click',()=>{elegidos=elegidos.filter(e=>e.sigla!==r.sigla);cerrados=[];pintarChips();buscarRamos();render();});
+    caja.append(b);
+  }
+}
+// El ramo que trae puesto la muestra al abrirla, para que se vea algo funcionando.
+function ramosPorDefecto(){
+  const d=conSigla($('tenant').value);
+  elegidos=d.length?[{nombre:d[0][0],sigla:d[0][1]}]:[];
+  pintarChips();buscarRamos();
+}
+// Cada perfil dice qué lo hace distinto. "Estudiante de prueba 27" no decía nada
+// y no se podía elegir con criterio cuál mirar.
 function opciones(){
-  $('course').replaceChildren(...cursos[$('tenant').value].map(([value,texto])=>new Option(texto+' · '+value,value)));
-  const todas=new Option('Todos los ramos del ejemplo','*');$('course').append(todas);
-  const lista=cuentas.filter(c=>c.tenant===$('tenant').value);
-  $('student').replaceChildren(...lista.map(c=>new Option('Estudiante de prueba '+(c.id+1),String(c.id))));
+  $('student').replaceChildren(...cuentas.map(c=>{
+    const r=c.ramos[0],prom=ramoAvg(r),av=ramoProgress(r);
+    const calza=actuales.some(a=>a.id===c.id);
+    return new Option((calza?'✓ ':'· ')+r.nombre+' — '+(prom===null?'sin notas':prom.toFixed(1))+' · '+av.pct+'% evaluado'+(calza?'':' — no le calza'),String(c.id));
+  }));
 }
 function render(){
   const tenant=$('tenant').value,criterios={promedioMenorA:Number($('grade').value),avanceMinimo:Number($('progress').value)};
   $('grade-value').value=criterios.promedioMenorA.toFixed(1);$('progress-value').value=criterios.avanceMinimo;
-  const siglas=$('course').value==='*'?cursos[tenant].map(c=>c[0]):[$('course').value];
+  const siglas=elegidos.map(r=>r.sigla);
   aviso={id:'demo',tenant,ramos_siglas:siglas,criterios,estado:'publicado',vence_at:null};
+  cuentas=poblacion(tenant,elegidos);
   actuales=cuentas.filter(c=>seleccionarClaseApoyo([aviso],c.ramos,tenant));
-  if(actuales.length&&!actuales.some(c=>String(c.id)===$('student').value))$('student').value=String(actuales[0].id);
-  $('rule').textContent='Solo '+$('tenant').selectedOptions[0].text+': '+$('course').selectedOptions[0].text+', promedio menor a '+criterios.promedioMenorA.toFixed(1)+' y al menos '+criterios.avanceMinimo+'% evaluado.';
-  const tarifas=[{criterios:{promedioMenorA:7,avanceMinimo:0},precioPorCuenta:Number($('base-price').value)},{criterios:{promedioMenorA:4,avanceMinimo:40},precioPorCuenta:Number($('specific-price').value)}];
-  const precioValido=['budget','base-price','specific-price'].every(id=>$(id).value!==''&&$(id).checkValidity());
-  let q=precioValido?cotizarCampanaClases(criterios,tarifas,{elegibles:actuales.length,presupuestoClp:Number($('budget').value)}):null;
+  const antes=$('student').value;
+  opciones();
+  $('student').value=cuentas.some(c=>String(c.id)===antes)?antes:String((actuales[0]||cuentas[0]||{id:0}).id);
+  $('rule').textContent=elegidos.length
+    ?'Solo '+$('tenant').selectedOptions[0].text+': '+elegidos.map(r=>r.nombre+' ('+r.sigla+')').join(', ')+', promedio menor a '+criterios.promedioMenorA.toFixed(1)+' y al menos '+criterios.avanceMinimo+'% evaluado.'
+    :'Elige al menos un ramo para definir a quién le puede servir esta clase.';
+  const tarifa={base:Number($('base-price').value),cargoFijo:Number($('fixed-price').value),porRamoExtra:Number($('extra-ramo').value)};
+  const precioValido=['budget','base-price','fixed-price','extra-ramo'].every(id=>$(id).value!==''&&$(id).checkValidity());
+  const datos={elegibles:actuales.length,presupuestoClp:Number($('budget').value),ramos:siglas.length};
+  let q=(precioValido&&elegidos.length)?cotizarCampanaClases(criterios,tarifa,datos):null;
   $('audience').value=actuales.length;
   if(q){
     $('reach').max=q.alcanceCotizado;$('reach').value=Math.min(Number($('reach').value),q.alcanceCotizado);
-    q=cotizarCampanaClases(criterios,tarifas,{elegibles:actuales.length,alcanzados:Number($('reach').value),presupuestoClp:Number($('budget').value)});
+    q=cotizarCampanaClases(criterios,tarifa,{...datos,alcanzados:Number($('reach').value)});
     $('rate').value=pesos(q.precioPorCuenta);$('quote').textContent=pesos(q.costoEstimado);$('cost').textContent=pesos(q.costoPorAlcance);$('reach-value').value=q.alcanzados;
+    $('fixed').textContent=pesos(q.cargoFijo);
+    $('fixed-why').textContent=q.ramos>1?'· '+q.ramos+' ramos':'· 1 ramo';
+    $('grand').textContent=pesos(q.totalPorAlcance);
     $('cap').textContent='Tu presupuesto cubre hasta '+q.alcanceCotizado+' personas de este público simulado.';
-    $('quote-status').textContent='Tarifas iniciales del piloto. No hay campaña publicada.';
+    // Por qué el precio por persona es el que es: las dos palancas del criterio.
+    $('quote-status').textContent='Tarifas iniciales del piloto. Un público más exigente —menos nota, más evaluado— sube el precio por persona. No hay campaña publicada.';
   }else{
-    ['rate','quote','cost'].forEach(id=>$(id).textContent='—');$('cap').textContent='';$('quote-status').textContent='Revisa los precios y el presupuesto: usa pesos enteros positivos.';
+    ['rate','quote','cost','fixed','grand'].forEach(id=>$(id).textContent='—');
+    $('fixed-why').textContent='';$('cap').textContent='';
+    $('quote-status').textContent='Revisa los precios y el presupuesto: usa pesos enteros positivos.';
   }
   renderEstudiante();
 }
 function renderEstudiante(){
-  const cuenta=cuentas.find(c=>String(c.id)===$('student').value),r=cuenta.ramos.find(r=>aviso.ramos_siglas.includes(r.sigla))||cuenta.ramos[0];
+  const cuenta=cuentas.find(c=>String(c.id)===$('student').value);
+  if(!cuenta){
+    $('student-stats').textContent='';$('dismiss').hidden=true;$('dismiss-help').hidden=true;
+    $('student-view').replaceChildren(Object.assign(document.createElement('p'),{className:'empty',textContent:'Elige un ramo para ver el aviso con los ojos de un estudiante.'}));
+    return;
+  }
+  const r=cuenta.ramos.find(r=>aviso.ramos_siglas.includes(r.sigla))||cuenta.ramos[0];
   const promedio=ramoAvg(r),avance=ramoProgress(r);
   $('student-stats').textContent=r.nombre+' · Promedio '+(promedio===null?'sin notas':promedio.toFixed(1))+' · '+avance.pct+'% evaluado (datos de prueba).';
   const seleccion=seleccionarClaseApoyo([aviso],cuenta.ramos,cuenta.tenant,{descartados:cerrados});
-  $('student-view').replaceChildren();$('dismiss').hidden=!seleccion;
-  if(!seleccion){const p=document.createElement('p');p.className='empty';p.textContent=cerrados.length?'Cerraste el aviso en esta vista.':'Este perfil no cumple la regla de este aviso. Su GradeHub sigue igual.';$('student-view').append(p);return;}
+  // El botón es un interruptor. Antes cerraba y no había cómo volver a abrirlo
+  // sin mover otra cosa, así que la prueba se sentía como un error.
+  const puedeVerlo=!!seleccionarClaseApoyo([aviso],cuenta.ramos,cuenta.tenant);
+  $('student-view').replaceChildren();
+  $('dismiss').hidden=!puedeVerlo;$('dismiss-help').hidden=!puedeVerlo;
+  $('dismiss').textContent=cerrados.length?'Volver a mostrarlo':'Probar cómo se cierra';
+  if(!seleccion){const p=document.createElement('p');p.className='empty';p.textContent=cerrados.length?'Lo cerró: no vuelve a verlo en esta visita. Aprieta «Volver a mostrarlo» para deshacerlo.':'Este perfil no cumple la regla de este aviso. Su GradeHub sigue igual.';$('student-view').append(p);return;}
   const card=document.createElement('article');card.className='ad'+(flyerData?' has-flyer':'');
   if(flyerData){const img=document.createElement('img');img.className='ad-flyer';img.src=flyerData;img.alt='Flyer del anuncio';card.append(img);}
   const copy=document.createElement('div');copy.className='ad-copy';
@@ -114,10 +213,10 @@ $('flyer').addEventListener('change',()=>{
   reader.readAsDataURL(file);
 });
 $('remove-flyer').addEventListener('click',()=>{flyerData='';$('flyer').value='';$('flyer-thumb').textContent='＋';$('flyer-label').textContent='Subir una imagen';$('remove-flyer').hidden=true;$('flyer-status').textContent='Flyer quitado. El anuncio puede seguir sin imagen.';$('flyer-status').className='status';renderEstudiante();});
-$('tenant').addEventListener('change',()=>{cerrados=[];opciones();render();});
+$('tenant').addEventListener('change',()=>{cerrados=[];$('course').value='';ramosPorDefecto();render();});
 $('student').addEventListener('change',()=>{cerrados=[];renderEstudiante();});
-$('dismiss').addEventListener('click',()=>{cerrados=['demo'];renderEstudiante();});
-['course','grade','progress','budget','base-price','specific-price','reach'].forEach(id=>$(id).addEventListener('input',()=>{cerrados=[];render();}));
+$('dismiss').addEventListener('click',()=>{cerrados=cerrados.length?[]:['demo'];renderEstudiante();});
+['grade','progress','budget','base-price','fixed-price','extra-ramo','reach'].forEach(id=>$(id).addEventListener('input',()=>{cerrados=[];render();}));
 ['title','description','class-price','location','modality','contact'].forEach(id=>$(id).addEventListener('input',renderEstudiante));
 $('submit-review').addEventListener('click',()=>{
   const requeridos=['title','description','class-price','contact'].map(id=>$(id));
@@ -125,5 +224,17 @@ $('submit-review').addEventListener('click',()=>{
   if(invalido){invalido.reportValidity();invalido.focus();$('draft-status').textContent='Completa lo marcado antes de enviar.';$('draft-status').className='status bad';return;}
   $('draft-status').textContent='Borrador completo: quedaría pendiente de revisión, no publicado.';$('draft-status').className='status good';
 });
-opciones();render();
+$('course').addEventListener('input',buscarRamos);
+ramosPorDefecto();render();
+// Marca el paso que se está mirando, para que los tres de arriba sirvan de mapa
+// y no solo de botón.
+const paneles=['p1','p2','p3'].map(id=>$(id)).filter(Boolean);
+if(window.IntersectionObserver&&paneles.length){
+  const obs=new IntersectionObserver(entradas=>{
+    const visible=entradas.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+    if(!visible)return;
+    document.querySelectorAll('.steps a').forEach(a=>a.setAttribute('aria-current',String(a.getAttribute('href')==='#'+visible.target.id)));
+  },{rootMargin:'-20% 0px -60% 0px',threshold:[0,.25,.5]});
+  paneles.forEach(p=>obs.observe(p));
+}
 </script></body></html>

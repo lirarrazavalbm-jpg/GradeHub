@@ -98,7 +98,14 @@ function buildICS(filas) {
       lines.push(`DTEND;VALUE=DATE:${diaSiguiente(f.fecha)}`);
     }
     lines.push(icsFold(`SUMMARY:${icsEscape(titulo)}`));
-    lines.push(icsFold(`DESCRIPTION:${icsEscape(`Vale ${f.peso}% de ${f.ramo}.`)}`));
+    // `peso` viene null cuando el porcentaje de esa entrega no se puede saber:
+    // su grupo descarta la más baja o no declara cuántas son. Se dice así en vez
+    // de repetir el del grupo, que afirmaría que una entrega vale lo que valen
+    // todas juntas.
+    const cuanto = f.peso === null || f.peso === undefined
+      ? `Parte de un grupo de evaluaciones de ${f.ramo}.`
+      : `Vale ${f.peso}% de ${f.ramo}.`;
+    lines.push(icsFold(`DESCRIPTION:${icsEscape(cuanto)}`));
     lines.push('TRANSP:TRANSPARENT');
     lines.push('BEGIN:VALARM');
     lines.push(hora ? 'TRIGGER:-P1D' : 'TRIGGER:-P1DT9H');
