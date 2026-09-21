@@ -1229,7 +1229,30 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .sim-delta.up{background:var(--green-bg);color:var(--green);}
 .sim-delta.down{background:var(--red-bg);color:var(--red);}
 .sim-delta.flat{background:var(--muted);color:var(--fg3);}
-.sim-cats{max-height:36vh;overflow-y:auto;margin-bottom:12px;}
+/* El simulador toma la pantalla entera, y por eso el ramo es el título y no un
+   subtítulo: al cubrirlo todo, la cabecera de la ficha que decía "Cálculo II"
+   deja de verse, así que esta ventana tiene que decir sola de qué ramo habla.
+   Quedó a medias en el primer intento —tapaba el 90% y dejaba una franja
+   inútil del nombre de atrás—; o se cubre todo y se hace cargo, o no se cubre. */
+.modal-overlay:has(.sim-cats){align-items:stretch;}
+.modal-sheet:has(.sim-cats){max-height:none;border-radius:0;}
+.sim-kicker{display:flex;align-items:center;gap:6px;font-size:0.6875rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);margin:0 0 8px;}
+.sim-kicker .ic{width:15px;height:15px;}
+.sim-ramo{margin-bottom:4px;overflow-wrap:anywhere;}
+.sim-intro{font-size:0.8125rem;color:var(--fg2);margin:0 0 14px;line-height:1.45;}
+/* Eran 36vh fijos: un tercio de la pantalla para la lista, y con cinco
+   evaluaciones obligaba a scrollear todo el rato en una caja chica. Ahora la
+   ventana usa el alto que hay: con dos evaluaciones sigue siendo baja, con
+   cinco llena la pantalla.
+   El 330px es lo que ocupa todo lo que NO es la lista —título, ramo, bajada, el
+   número proyectado y los botones—, y por eso va en píxeles y no en vh: ese
+   bloque mide casi lo mismo en cualquier teléfono, mientras que el sheet ahora
+   ocupa la pantalla entera. Restarlo deja a la lista todo lo que sobra sin empujar los
+   botones fuera de pantalla, que desde que el modal se cierra solo con su
+   botón sería dejar a la persona sin salida. El piso de 150px es para una
+   pantalla muy baja o el teclado abierto. */
+.sim-cats{max-height:max(150px,calc(100dvh - 330px));overflow-y:auto;margin-bottom:12px;}
 .sim-cat{border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:8px;}
 .sim-cat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
 .sim-cat-name{font-size:0.875rem;font-weight:600;color:var(--fg);}
