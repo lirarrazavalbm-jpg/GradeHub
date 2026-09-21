@@ -50,17 +50,24 @@ const a=arrastrar(listaScrolleada(),200);
 chk('con la lista scrolleada, el gesto no arrastra el sheet',!a.empezoAArrastrar);
 chk('y la ventana sigue abierta',!a.cerro);
 
-console.log('\n=== Pero el sheet se sigue pudiendo cerrar ===');
-// Es la regla de cualquier bottom sheet: con la lista en su tope, tirar hacia
-// abajo cierra. Si esto se rompe, el arreglo dejó la ventana sin salida.
+console.log('\n=== Tampoco cierra desde el tope de la lista ===');
+// La regla clásica del bottom sheet permite cerrar cuando la lista está arriba
+// del todo. Se probó y no sirve acá: `.sim-cats` mide 36vh, el dedo choca con el
+// tope a cada rato, y la ventana se cerraba igual a media simulación.
 const b=arrastrar(listaEnSuTope(),200);
-chk('con la lista en su tope, tirar hacia abajo cierra',b.empezoAArrastrar&&b.cerro);
+chk('con la lista en su tope tampoco arrastra el sheet',!b.empezoAArrastrar&&!b.cerro);
+
+console.log('\n=== Pero el sheet se sigue pudiendo cerrar ===');
+// Si esto se rompe, la ventana queda sin salida por gesto.
 const c=arrastrar(sinLista(),200);
 chk('en un modal sin lista adentro, cierra como siempre',c.empezoAArrastrar&&c.cerro);
 // Y al revés: desde una lista scrolleada no cierra ni con un tirón largo, que
 // es lo que pasaba cuando alguien recorría una pauta de cinco evaluaciones.
 const d=arrastrar(listaScrolleada(),400);
 chk('desde una lista scrolleada no cierra ni con un tirón largo',!d.empezoAArrastrar&&!d.cerro);
+// El tirador vive fuera de la lista, así que sigue siendo el camino directo.
+const e=arrastrar(nodo({},null),200);
+chk('el tirador de arriba cierra igual que siempre',e.empezoAArrastrar&&e.cerro);
 
 console.log('\n=== Las listas que dependen de esto ===');
 // Si alguien agrega otra caja con scroll dentro de un modal, la guarda la cubre
@@ -71,6 +78,8 @@ console.log('\n=== Las listas que dependen de esto ===');
 });
 chk('la guarda mira el overflow calculado y no una lista de clases',
   /desborde==='auto'\|\|desborde==='scroll'/.test(app));
+chk('y una lista con scroll bloquea el arrastre sin mirar dónde va',
+  /if\(desborde==='auto'\|\|desborde==='scroll'\)return false;/.test(app));
 
 console.log('\nPASS: '+ok+'   FAIL: '+fail);
 process.exit(fail?1:0);
