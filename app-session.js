@@ -82,6 +82,24 @@ function showAuthScreen(){
   document.getElementById('bottom-nav').style.display='none';
   document.getElementById('screen-auth').classList.add('active');
   marcarUltimoLogin();
+  cargarEstadisticasPublicas();
+}
+// "1.240 estudiantes ya llevan sus notas acá". Sale de una RPC pública que
+// devuelve solo agregados (supabase/estadisticas_publicas.sql). Con pocas
+// cuentas la línea juega en contra —"12 estudiantes" suena a nadie—, así que
+// bajo el mínimo no se muestra nada. Si la RPC falla, tampoco: es adorno.
+const MINIMO_CUENTAS_PARA_MOSTRAR=100;
+async function cargarEstadisticasPublicas(){
+  const el=document.getElementById('auth-stats');
+  if(!el||!supabaseClient)return;
+  try{
+    const {data,error}=await supabaseClient.rpc('estadisticas_publicas');
+    if(error||!data||!(data.cuentas>=MINIMO_CUENTAS_PARA_MOSTRAR))return;
+    const n=x=>Number(x||0).toLocaleString('es-CL');
+    const tile=(v,l)=>`<div class="auth-stat"><b>${n(v)}</b><span>${l}</span></div>`;
+    el.innerHTML=tile(data.cuentas,'estudiantes')+(data.ramos>0?tile(data.ramos,'ramos'):'')+(data.notas>0?tile(data.notas,'notas'):'');
+    el.hidden=false;
+  }catch(e){}
 }
 // Una sesión válida que falla al dibujarse no es un error de login. Esta
 // pantalla conserva esa distinción: no expone el stack, no cierra la sesión y
