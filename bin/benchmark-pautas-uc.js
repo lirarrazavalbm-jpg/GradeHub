@@ -22,9 +22,9 @@ const SIGNALS={
   minimum_each_interrogacion:['minimum_or_cap_rule_detected'],
   conditional_exam:['conditional_exam_rule_detected'],
   alternative_final_grade_formula:['alternative_final_grade_formula_detected'],
-  minimum_attendance_75:['approval_requirement_detected','minimum_or_cap_rule_detected'],
-  minimum_attendance_80:['approval_requirement_detected','minimum_or_cap_rule_detected'],
-  minimum_attendance_100:['approval_requirement_detected','minimum_or_cap_rule_detected'],
+  minimum_attendance_75:['attendance_requirement_detected'],
+  minimum_attendance_80:['attendance_requirement_detected'],
+  minimum_attendance_100:['attendance_requirement_detected'],
   minimum_six_lab_experiences:['minimum_or_cap_rule_detected'],
 };
 
@@ -194,15 +194,101 @@ function markdown(result){
   return lines.join('\n')+'\n';
 }
 
+function markdownFase3(result){
+  const m=result.metrics;
+  const dangerous=result.rows.filter(r=>r.parserStatus==='auto_importable'&&r.goldStatus!=='auto_importable');
+  const signals=result.rows.flatMap(r=>(r.goldComplexRules||[]).map(signal=>({courseCode:r.courseCode,signal,detected:!r.missedComplexRules.includes(signal)})));
+  const reasonDescriptions={
+    aggregate_category_detected:'una categoría agrupa varias evaluaciones sin desglose seguro',
+    conditional_rule_detected:'la línea expresa una condición general',
+    conditional_exam_rule_detected:'el examen depende de una condición',
+    exemption_rule_detected:'el texto declara eximición',
+    minimum_or_cap_rule_detected:'hay un mínimo, máximo o tope',
+    attendance_requirement_detected:'la asistencia es requisito y no peso de nota',
+    alternative_final_grade_formula_detected:'hay una fórmula alternativa de nota final',
+    replacement_rule_detected:'una evaluación reemplaza o sustituye otra',
+    ambiguous_percentage_detected:'varios porcentajes vienen incrustados en prosa',
+    relevant_unparsed_line:'queda texto evaluativo relevante sin interpretar',
+    weights_do_not_sum_100:'los pesos explícitos no suman 100',
+    source_program_unavailable:'la fuente oficial dice que el programa no está disponible',
+    program_not_found:'la fuente oficial dice que el programa no fue encontrado',
+    evaluation_section_not_found:'el programa existe, pero no trae sección evaluativa reconocible',
+    course_code_mismatch:'la sigla declarada no coincide con la consultada',
+    duplicate_evaluation_name:'dos categorías normalizan al mismo nombre',
+    invalid_weight_or_name:'una categoría tiene nombre o peso inválido',
+    multiple_final_grade_formulas_detected:'se encontraron varias fórmulas alternativas',
+  };
+  const lines=[
+    '# Parser UC — Fase 3','',
+    '## Resumen','',
+    `El parser \`${result.parserVersion}\` corrige los tres patrones medidos en Fase 2 sin ampliar el dataset ni interpretar reglas complejas como reglas calculables. Sobre los mismos 30 programas alcanza **${m.exactClassificationCount}/30 clasificaciones**, **${m.exactWeightsCount}/30 extracciones de pesos** y **${m.complexRuleSignalCount-m.missedComplexRuleSignalCount}/${m.complexRuleSignalCount} señales complejas**, manteniendo **${m.falseAutoImportableCount} falsos \`auto_importable\`**.`,
+    '', '## Cinco fallos originales','',
+    '| Sigla | Gold | Parser anterior | Pesos esperados | Pesos anteriores | Señales esperadas | Señales anteriores | Causa |',
+    '|---|---|---|---|---|---|---|---|',
+    '| MED101A | not_found | insufficient_information | — | — | — | — | “Programa de curso no disponible” no estaba reconocido. |',
+    '| QIM100 | not_found | insufficient_information | — | — | — | — | Mismo mensaje oficial no reconocido. |',
+    '| GEO1002 | needs_review | insufficient_information | 30/30/40 | — | asistencia mínima 75% | — | Filas numeradas sin dos puntos cortaban la sección. |',
+    '| AGL007 | needs_review | insufficient_information | 20/40/40 | — | asistencia 100% | — | Pesos entre paréntesis con punto final y asistencia ambigua. |',
+    '| ICE1513 | needs_review | insufficient_information | 30/70 | — | agregado; mínimo seis experiencias | — | Dos porcentajes venían dentro de una misma frase. |',
+    '', 'Los cinco se agrupan en tres patrones: ausencia oficial, filas con formatos reales no reconocidos y porcentajes múltiples en prosa.',
+    '', '## Patrones implementados','',
+    '- Filas con porcentaje entre paréntesis, punto final o numeración inicial, solo en las formas presentes en AGL007 y GEO1002.',
+    '- Desglose parentético con varias categorías (`30% laboratorio, 70% nota de cátedra`), marcado siempre ambiguo y enviado a revisión.',
+    '- Asistencia mínima u obligatoria separada de las evaluaciones; una categoría real como `Participación/asistencia: 10%` se conserva.',
+    '- Respuesta oficial “Programa de curso no disponible” como `not_found`, separada de errores de transporte.',
+    '- Lenguaje medido de eximición, fórmula alternativa y mínimos; se conserva la línea exacta y no se genera ninguna regla calculable.',
+    '', '## Cambios de código','',
+    '- `filaConPorcentaje` sigue resolviendo una fila simple.',
+    '- `filasEnProsaConPorcentajes` atiende únicamente el desglose parentético medido.',
+    '- `asistenciaEsRequisito` interpreta contexto después de extraer candidatos y antes de sumar pesos.',
+    '- `senalesComplejidad` detecta la prosa y entrega reasons sin convertirla al modelo GradeHub.',
+    '- `extraerEstructura` conserva separadas extracción, señales, validación y clasificación.',
+    '', '## Métricas antes y después','',
+    '| Métrica | Antes · Fase 2 | Después · Fase 3 |',
+    '|---|---:|---:|',
+    `| Exactitud de clasificación | 25/30 (83,3%) | ${m.exactClassificationCount}/30 (${pct(m.exactClassificationAccuracy)}) |`,
+    `| Pesos explícitos exactos | 26/30 (86,7%) | ${m.exactWeightsCount}/30 (${pct(m.exactWeightsAccuracy)}) |`,
+    `| Señales complejas | 8/15 (53,3%) | ${m.complexRuleSignalCount-m.missedComplexRuleSignalCount}/15 (${pct(m.complexRuleSignalRecall||0)}) |`,
+    `| Falsos auto-importable | 0 | ${m.falseAutoImportableCount} |`,
+    '', '## Tabla de los 30 casos después de Fase 3','',
+    '| Sigla | Gold | Parser | Clase | Pesos | Razones del parser | Problema |',
+    '|---|---|---|---:|---:|---|---|',
+    ...result.rows.map(r=>`| ${r.courseCode} | ${r.goldStatus} | ${r.parserStatus} | ${r.classificationMatch?'sí':'NO'} | ${r.weightsMatch?'sí':'NO'} | ${mdCell(r.parserReasons.join(', ')||'—')} | ${mdCell(r.problem||'—')} |`),
+    '', '## Signals complejas','',
+    '| Sigla | Gold signal | Detectada |',
+    '|---|---|---:|',
+    ...signals.map(s=>`| ${s.courseCode} | ${s.signal} | ${s.detected?'sí':'NO'} |`),
+    '', '## Falsos auto-importable',''
+  ];
+  lines.push(dangerous.length?dangerous.map(r=>`- **${r.courseCode}:** ${r.goldReason}`).join('\n'):'`false_auto_importable_count = 0`. Ningún caso peligroso en la muestra congelada.');
+  lines.push('', '## Tests','',
+    '- `tests/catalogo-uc-patrones-fase3.test.js` cubre porcentaje normal, whitespace, paréntesis, numeración, prosa 30/70, asistencia requisito/categoría, ausencia oficial, mínimo, condición, fórmula y eximición.',
+    '- `tests/catalogo-uc-benchmark.test.js` fija 30/30, 30/30, 15/15 y cero falsos automáticos.',
+    '- El test nuevo contra `dc84a02` falla como corresponde: 5/13 pasan, 8 fallan, exit code 1.',
+    '- El mismo test con Fase 3 pasa 13/13, exit code 0.',
+    '- `npm test`: 139 tests, exit code 0.',
+    '', '## Reasons finales disponibles','');
+  Object.entries(reasonDescriptions).forEach(([reason,description])=>lines.push(`- \`${reason}\`: ${description}.`));
+  lines.push('', '## Riesgos restantes','',
+    '- El benchmark sigue teniendo 30 programas: no prueba tablas partidas entre celdas ni todos los formatos históricos del catálogo.',
+    '- No apareció reemplazo ni descarte en las fuentes congeladas; no se amplió esa heurística sin evidencia.',
+    '- El desglose con varios porcentajes solo se extrae dentro de paréntesis y siempre queda en `needs_review`.',
+    '- Las reglas complejas se detectan como texto, pero todavía no se traducen a `grupos`, `gates`, eximiciones ni reemplazos calculables.',
+    '', '## Próxima fase recomendada','',
+    'Ampliar el benchmark de forma dirigida con programas oficiales que contengan tablas partidas, reemplazo y descarte. Solo después medir si los mismos reasons generalizan; no implementar todavía la traducción automática de prosa a reglas del motor.'
+  );
+  return lines.join('\n')+'\n';
+}
+
 function main(){
   const options=args(process.argv);
   if(options.help){console.log('Uso: node bin/benchmark-pautas-uc.js [--json salida] [--markdown informe]');return;}
   const result=ejecutarBenchmark();
-  const report=markdown(result);
+  const report=PARSER_VERSION==='uc-catalogo-3'?markdownFase3(result):markdown(result);
   if(options.json){fs.mkdirSync(path.dirname(path.resolve(options.json)),{recursive:true});fs.writeFileSync(path.resolve(options.json),JSON.stringify(result,null,2)+'\n');}
   if(options.markdown){fs.mkdirSync(path.dirname(path.resolve(options.markdown)),{recursive:true});fs.writeFileSync(path.resolve(options.markdown),report);}
   console.log(report);
 }
 
 if(require.main===module){try{main();}catch(error){console.error(error.message);process.exitCode=1;}}
-module.exports={ejecutarBenchmark,markdown,canonicalWeights,sameWeights};
+module.exports={ejecutarBenchmark,markdown,markdownFase3,canonicalWeights,sameWeights};

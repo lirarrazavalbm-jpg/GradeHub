@@ -26,7 +26,7 @@ const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
 const CATALOGO = 'https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=';
 const USER_AGENT = 'Mozilla/5.0 (compatible; GradeHubCatalogReview/1.0; +https://gradehub.cl)';
-const PARSER_VERSION = 'uc-catalogo-2';
+const PARSER_VERSION = 'uc-catalogo-3';
 
 function normalizar(valor) {
   return String(valor || '')
@@ -117,7 +117,10 @@ function bloqueEvaluaciones(texto) {
   const contenido = [];
   for (let i = inicio + 1; i < lineas.length; i++) {
     const linea = lineas[i].trim();
-    if (linea && esEncabezadoEstructural(linea) && !esEncabezadoEvaluacion(linea)) break;
+    // GEO1002 enumera cada evaluación como “1. ... 30%”. El número al inicio
+    // parece un encabezado estructural, pero el porcentaje final demuestra que
+    // sigue siendo una fila de esta sección.
+    if (linea && esEncabezadoEstructural(linea) && !esEncabezadoEvaluacion(linea) && !filaConPorcentaje(linea)) break;
     if (linea) contenido.push(linea);
   }
   return { encabezado: lineas[inicio].trim(), lineas: contenido, inicio };
@@ -126,6 +129,7 @@ function bloqueEvaluaciones(texto) {
 function nombreLimpio(nombre) {
   return nombre
     .replace(/^[\s•*\-–—]+/, '')
+    .replace(/^\d+\s*[.)-]\s*/, '')
     .replace(/[\s:;,(\[]+$/, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -137,7 +141,7 @@ function filaConPorcentaje(linea) {
   // única forma segura de proponer una categoría.
   const porcentajes = [...String(linea || '').matchAll(/\d{1,3}(?:[.,]\d+)?\s*%/g)];
   if (porcentajes.length !== 1) return null;
-  const final = linea.match(/^(.*?)(?:\(?\s*)(\d{1,3}(?:[.,]\d+)?)\s*%\s*\)?(?:\s*(?:c\/?u|cada\s+una?))?\s*$/i);
+  const final = linea.match(/^(.*?)(?:\(?\s*)(\d{1,3}(?:[.,]\d+)?)\s*%\s*\)?(?:\s*(?:c\/?u|cada\s+una?))?\s*[.;]?\s*$/i);
   if (!final) return null;
   const nombre = nombreLimpio(final[1]);
   const pesoUnitario = Number(final[2].replace(',', '.'));
@@ -151,6 +155,45 @@ function filaConPorcentaje(linea) {
     detalleDetectado: cantidad ? { cantidad: Number(cantidad[1]), ...(cadaUna ? { pesoCadaUna: pesoUnitario } : {}) } : undefined,
     linea: linea.trim()
   };
+}
+
+// ICE1513 trae la pauta como una frase y encierra el desglose completo entre
+// paréntesis: “(30% laboratorio, 70% nota de cátedra)”. Solo se interpreta esa
+// forma medida; una fórmula 70/30 escrita en prosa fuera de paréntesis sigue
+// siendo evidencia compleja y nunca se convierte en categorías.
+function filasEnProsaConPorcentajes(linea) {
+  const grupos = String(linea || '').match(/\([^()]*\)/g) || [];
+  const grupo = grupos.find(g => (g.match(/\d{1,3}(?:[.,]\d+)?\s*%/g) || []).length > 1);
+  if (!grupo) return [];
+  const interior = grupo.slice(1, -1);
+  const partes = interior.split(/\s*[,;]\s*/);
+  if (partes.length < 2) return [];
+  const filas = partes.map(parte => {
+    const match = parte.match(/^(\d{1,3}(?:[.,]\d+)?)\s*%\s+(.+)$/i);
+    if (!match) return null;
+    const peso = Number(match[1].replace(',', '.'));
+    const nombre = nombreLimpio(match[2]);
+    if (!nombre || !Number.isFinite(peso) || peso <= 0 || peso > 100) return null;
+    return { nombre, peso, linea: String(linea).trim(), origen: 'prosa_multiple' };
+  });
+  return filas.every(Boolean) ? filas : [];
+}
+
+function filasConPorcentaje(linea) {
+  const simple = filaConPorcentaje(linea);
+  return simple ? [simple] : filasEnProsaConPorcentajes(linea);
+}
+
+function asistenciaEsRequisito(linea, filas, otrasFilas) {
+  const n = normalizar(linea);
+  if (!/\basistencia\b/.test(n)) return false;
+  if (/\b(?:asistencia minima|asistencia obligatoria|requisito de asistencia|porcentaje de asistencia|debera asistir|para aprobar)\b/.test(n)) return true;
+  // AGL007 dice solo “Asistencia: 100%”, pero las otras tres evaluaciones ya
+  // suman 100. En ese contexto no puede ser otro peso sin llevar la pauta a
+  // 200; es una condición. “Participación/asistencia: 10%” no entra acá.
+  const soloAsistencia = filas.length === 1 && normalizar(filas[0].nombre) === 'asistencia';
+  const totalOtras = otrasFilas.reduce((suma, fila) => suma + fila.peso, 0);
+  return soloAsistencia && otrasFilas.length > 0 && Math.abs(totalOtras - 100) < 0.000001;
 }
 
 function esAgregado(nombre) {
@@ -183,17 +226,19 @@ function lineaIgnorable(linea) {
     || /^[\s|+_=-]+$/.test(linea);
 }
 
-function senalesComplejidad(linea, fueFila) {
-  if (fueFila) return [];
+function senalesComplejidad(linea, opciones = {}) {
   const n = normalizar(linea);
   const razones = [];
   const condicional = /\b(?:si|en caso de|siempre que|cuando)\b/.test(n);
-  const formula = /\b(?:nota final|promedio final|se calculara|sera calculada|ponderara|pasara a ponderar)\b/.test(n);
+  const formula = /\b(?:nota final|promedio final|se calculara|sera calculada|ponderara|pasara a ponderar|equivale?|correspondera)\b/.test(n);
   const porcentajes = (linea.match(/\d{1,3}(?:[.,]\d+)?\s*%/g) || []).length;
+  if (opciones.asistenciaRequisito) razones.push('attendance_requirement_detected');
+  if (opciones.prosaMultiple) razones.push('ambiguous_percentage_detected');
+  if (opciones.fueFila && !opciones.asistenciaRequisito && !opciones.prosaMultiple) return razones;
   if (/\b(?:para aprobar|requisito para aprobar|condicion de aprobacion)\b/.test(n)) razones.push('approval_requirement_detected');
-  if (/\b(?:eximid[oa]s?|eximicion|exencion|podra eximirse)\b/.test(n)) razones.push('exemption_rule_detected');
+  if (/\b(?:eximid[oa]s?|eximible|eximicion|exencion|podra eximirse|se exime|se eximen)\b/.test(n)) razones.push('exemption_rule_detected');
   if (/\b(?:reemplaza|reemplazara|se reemplazara|sustituye|sustituira)\b/.test(n)) razones.push('replacement_rule_detected');
-  if (/\b(?:nota minima|promedio minimo|minimo para aprobar|al menos|mayor o igual|inferior a|superior a|minimo entre|maximo entre|tope)\b/.test(n)) razones.push('minimum_or_cap_rule_detected');
+  if (/\b(?:nota minima|promedio minimo|minimo para aprobar|nota igual o superior a|promedio .{0,30} debera ser|al menos|mayor o igual|inferior a|superior a|minimo entre|maximo entre|minimo de (?:\d+|seis)|tope)\b/.test(n)) razones.push('minimum_or_cap_rule_detected');
   if (/\bexamen\b/.test(n) && (condicional || /\b(?:obligatorio|optativo|exim)/.test(n))) razones.push('conditional_exam_rule_detected');
   if (formula && (porcentajes >= 2 || condicional || /\b(?:alternativ|en cambio|o bien)\b/.test(n))) razones.push('alternative_final_grade_formula_detected');
   if (condicional && !razones.length) razones.push('conditional_rule_detected');
@@ -213,16 +258,23 @@ function extraerEstructura(html, opciones = {}) {
   const texto = htmlATexto(html);
   const nTexto = normalizar(texto);
   const noEncontrado = /\b(?:programa|curso) no encontrado\b|\bno se encontraron resultados\b|\b404 not found\b/.test(nTexto);
+  const noDisponible = /\bprograma(?: de curso)? (?:no esta disponible|no disponible|no fue ingresado|no existe|no se encuentra disponible)\b/.test(nTexto);
   const bloque = bloqueEvaluaciones(texto);
   if (!bloque) {
-    const status = noEncontrado ? 'not_found' : 'insufficient_information';
-    return { status, estado: legadoEstado(status), reasons: [noEncontrado ? 'program_not_found' : 'evaluation_section_not_found'],
-      motivo: noEncontrado ? 'El catálogo indica que el programa no fue encontrado.' : 'No se encontró una sección evaluativa.',
+    const status = noEncontrado || noDisponible ? 'not_found' : 'insufficient_information';
+    const reason = noDisponible ? 'source_program_unavailable' : noEncontrado ? 'program_not_found' : 'evaluation_section_not_found';
+    return { status, estado: legadoEstado(status), reasons: [reason],
+      motivo: status === 'not_found' ? 'El catálogo indica que el programa no está disponible.' : 'No se encontró una sección evaluativa.',
       texto, evaluationSourceText: '', parsedLines: [], unparsedLines: [], complexRuleLines: [], filas: [], total: 0 };
   }
   const evaluationSourceText = [bloque.encabezado, ...bloque.lineas].join('\n');
-  const interpretadas = bloque.lineas.map(linea => ({ linea, fila: filaConPorcentaje(linea) }));
-  const filas = quitarPadresDesglosados(interpretadas.map(x => x.fila).filter(Boolean));
+  const interpretadas = bloque.lineas.map(linea => ({ linea, filas: filasConPorcentaje(linea) }));
+  interpretadas.forEach(actual => {
+    const otras = interpretadas.filter(x => x !== actual).flatMap(x => x.filas);
+    actual.asistenciaRequisito = asistenciaEsRequisito(actual.linea, actual.filas, otras);
+    actual.prosaMultiple = actual.filas.some(f => f.origen === 'prosa_multiple');
+  });
+  const filas = quitarPadresDesglosados(interpretadas.flatMap(x => x.asistenciaRequisito ? [] : x.filas));
   const parsedSet = new Set(filas.map(f => f.linea));
   const parsedLines = bloque.lineas.filter(linea => parsedSet.has(linea));
   const complejas = [];
@@ -231,14 +283,16 @@ function extraerEstructura(html, opciones = {}) {
   if (opciones.courseCode && codigoDeclarado && normalizar(opciones.courseCode) !== normalizar(codigoDeclarado)) {
     reasons.push('course_code_mismatch');
   }
-  interpretadas.forEach(({ linea, fila }) => {
-    const señales = senalesComplejidad(linea, !!fila);
+  interpretadas.forEach(({ linea, filas: filasLinea, asistenciaRequisito, prosaMultiple }) => {
+    const señales = senalesComplejidad(linea, { fueFila: filasLinea.length > 0, asistenciaRequisito, prosaMultiple });
     if (señales.length) complejas.push({ line: linea, reasons: señales });
     reasons.push(...señales);
   });
+  interpretadas.filter(x => x.prosaMultiple && /\bminimo de (?:\d+|seis) experiencias\b/.test(normalizar(x.linea)))
+    .forEach(() => reasons.push('aggregate_category_detected'));
   filas.filter(f => esAgregado(f.nombre) || (f.detalleDetectado && f.detalleDetectado.cantidad > 1 && !f.detalleDetectado.pesoCadaUna))
     .forEach(() => reasons.push('aggregate_category_detected'));
-  const unparsedLines = bloque.lineas.filter(linea => !interpretadas.some(x => x.linea === linea && x.fila) && !lineaIgnorable(linea));
+  const unparsedLines = bloque.lineas.filter(linea => !interpretadas.some(x => x.linea === linea && x.filas.length) && !lineaIgnorable(linea));
   if (unparsedLines.some(linea => !complejas.some(c => c.line === linea))) reasons.push('relevant_unparsed_line');
   const duplicado = filas.find((fila, indice) => filas.findIndex(otra => normalizar(otra.nombre) === normalizar(fila.nombre)) !== indice);
   const total = filas.reduce((suma, fila) => suma + fila.peso, 0);
@@ -451,5 +505,6 @@ if (require.main === module) {
 
 module.exports = {
   PARSER_VERSION, decodificarCatalogo, htmlATexto, esEncabezadoEvaluacion, bloqueEvaluaciones,
-  filaConPorcentaje, extraerEstructura, cursosDeMallaUC, generarBorrador, normalizar
+  filaConPorcentaje, filasConPorcentaje, asistenciaEsRequisito, senalesComplejidad,
+  extraerEstructura, cursosDeMallaUC, generarBorrador, normalizar
 };

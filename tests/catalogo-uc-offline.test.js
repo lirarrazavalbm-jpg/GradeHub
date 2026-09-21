@@ -28,8 +28,8 @@ chk('QIM100F conserva el candidato inicial 70/15/15',qim.filas.map(f=>f.peso).jo
 chk('QIM100F nunca queda auto-importable',qim.status==='needs_review');
 chk('QIM100F detecta examen condicional y mínimos publicados',
   reason(qim,'conditional_exam_rule_detected')&&reason(qim,'minimum_or_cap_rule_detected'));
-chk('QIM100F conserva completa la fórmula alternativa aunque aún no la clasifique',
-  qim.complexRuleLines.length===2&&/examen equivale al 30%/.test(qim.complexRuleLines[1].line)&&qim.unparsedLines.includes(qim.complexRuleLines[1].line));
+chk('QIM100F conserva completa y clasifica la fórmula alternativa',
+  reason(qim,'alternative_final_grade_formula_detected')&&qim.complexRuleLines.length===2&&/examen equivale al 30%/.test(qim.complexRuleLines[1].line)&&qim.unparsedLines.includes(qim.complexRuleLines[1].line));
 
 console.log('\n=== Encabezados y límites de sección ===');
 ['EVALUACIÓN','evaluaciones','VI. EVALUACION DE APRENDIZAJES','IX. EVALUACIONES DEL APRENDIZAJE','ESTRATEGIAS EVALUATIVAS','Sistema de Evaluación']
