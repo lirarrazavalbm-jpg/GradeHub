@@ -433,6 +433,11 @@ async function afterLogin(){
     renderHome();
     showToast(n===1?'Agregamos una pauta reportada por otros estudiantes':`Agregamos ${n} pautas reportadas por otros estudiantes`);
   }).catch(()=>{});
+  // La otra dirección: las pautas que esta persona armó para ramos que el
+  // catálogo trae vacíos. No avisa ni pregunta —viaja la pauta, nunca las
+  // notas— y no bloquea nada. Va después del consenso a propósito: si una pauta
+  // acaba de llegar de otros, no tiene sentido devolvérsela.
+  if(typeof aportarPautasAlCatalogo==='function')aportarPautasAlCatalogo().catch(()=>{});
   // Es una bandeja de revisión, no una sincronización del semestre: se lee
   // aparte y nunca bloquea entrar. Si llega una propuesta, se muestra completa
   // para que la persona la aplique o descarte en vez de mover su promedio sola.

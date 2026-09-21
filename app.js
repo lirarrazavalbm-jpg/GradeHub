@@ -3415,6 +3415,42 @@ async function aplicarConsensoAuto(){
   return puestas;
 }
 
+// LA OTRA DIRECCIÓN DEL CONSENSO: lo que esta persona sabe y el catálogo no.
+//
+// Quien arma la pauta de un ramo que el catálogo trae SIN pauta es la única
+// persona cuyo dato el consenso puede usar: `aplicarConsensoAuto` solo escribe
+// donde no hay nada que pisar, o sea exactamente en esos ramos. Y era justo a
+// quien no se le pedía: el botón del pie le preguntaba "¿esta pauta no calza
+// con tu curso?" sobre una pauta que GradeHub nunca le dio. Con 3 reportes en
+// dos meses, el problema no era que nadie quisiera reportar.
+//
+// Decisión de Lucas del 2026-09-21: a esa persona no se le pregunta, se aporta
+// solo. Es el mismo camino que ya usa aceptar la pauta de un agente.
+//
+// QUÉ VIAJA: nombre, porcentaje, casillas y compuertas de cada evaluación. Las
+// notas no — `estructuraDe` no las mira y la RPC manda `p_nota` en null. Es la
+// pauta del curso, que el programa del ramo publica.
+//
+// QUÉ NO SE APORTA: un ramo escrito a mano fuera del catálogo (no hay con qué
+// agruparlo: nadie más tiene un "Electivo de cine"), uno con programa oficial
+// transcrito (ese manda) y una pauta a medio armar, que `estadoReporte` filtra.
+//
+// Se manda una vez por versión: `consensoAportado` guarda la huella de lo
+// último enviado, así que editar la pauta vuelve a aportar y abrir la app no.
+// La RPC hace upsert por (persona, ramo), así que reenviar no duplica a nadie.
+async function aportarPautasAlCatalogo(){
+  if(!supabaseClient||!currentUser)return 0;
+  let n=0;
+  for(const r of (S.ramos||[])){
+    if(!pautaCatalogoSinOficial(r))continue;
+    const huella=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
+    if(!huella||r.consensoAportado===huella)continue;
+    if(await aportarPropuestaAlCatalogo(r)){r.consensoAportado=huella;n++;}
+  }
+  if(n)save();
+  return n;
+}
+
 // \u00bfEl ramo viene de otro cat\u00e1logo que el actual? (el estudiante se cambi\u00f3 de
 // universidad o de carrera y arrastr\u00f3 ramos del anterior)
 function ramoEsDeOtroCatalogo(r){
