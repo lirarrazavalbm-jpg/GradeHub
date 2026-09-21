@@ -96,9 +96,19 @@ async function cargarEstadisticasPublicas(){
     const {data,error}=await supabaseClient.rpc('estadisticas_publicas');
     if(error||!data||!(data.cuentas>=MINIMO_CUENTAS_PARA_MOSTRAR))return;
     const n=x=>Number(x||0).toLocaleString('es-CL');
-    const tile=(v,l)=>`<div class="auth-stat"><b>${n(v)}</b><span>${l}</span></div>`;
+    const tile=(v,l)=>`<div class="auth-stat"><b data-final="${Number(v)||0}">${n(v)}</b><span>${l}</span></div>`;
     el.innerHTML=tile(data.cuentas,'estudiantes')+(data.ramos>0?tile(data.ramos,'ramos'):'')+(data.notas>0?tile(data.notas,'notas'):'');
     el.hidden=false;
+    // Los números suben desde 0 en ~700 ms. Es adorno: con reduced-motion se
+    // quedan como están, y el texto final ya estaba pintado por si el rAF no corre.
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const t0=performance.now();
+    const paso=t=>{
+      const p=Math.min(1,(t-t0)/700),e=1-Math.pow(1-p,3);
+      el.querySelectorAll('b[data-final]').forEach(b=>{b.textContent=n(Math.round(Number(b.dataset.final)*e));});
+      if(p<1)requestAnimationFrame(paso);
+    };
+    requestAnimationFrame(paso);
   }catch(e){}
 }
 // Una sesión válida que falla al dibujarse no es un error de login. Esta
