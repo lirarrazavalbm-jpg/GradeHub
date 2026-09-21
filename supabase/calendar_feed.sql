@@ -143,8 +143,8 @@ as $$
   -- llegaban al calendario suscrito. De la nota se toma SOLO nombre, fecha y
   -- hora: el valor se queda acá, igual que siempre.
   -- El peso de la casilla es el del grupo repartido en partes iguales cuando
-  -- el grupo declara cuántas casillas tiene y no descarta ninguna; si no, el
-  -- del grupo, que es lo mismo que hace la Agenda en el navegador.
+  -- el grupo declara cuántas casillas tiene y no descarta ninguna; si no, null,
+  -- que es lo que devuelve `pesoEventoAgenda` en ese caso.
   select
     r->>'nombre'                       as ramo,
     -- Sin nombre propio hereda el del grupo. Vacío dejaba el título del evento
