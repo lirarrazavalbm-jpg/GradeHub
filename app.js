@@ -6772,7 +6772,11 @@ function openSimuladorModal(){
 
 // Combina notas reales (con su peso) + hipotéticas (peso 1) de una categoría
 function simCombinadas(c){
-  return [...c.notas, ...((simState[c.id]||[]).map(s=>({
+  // Sin la guarda, una categoría a la que le falte el arreglo de notas revienta
+  // acá —y como simCatAvg se llama al pintar, la ventana del simulador quedaba
+  // rota apenas se abría. normalize() lo garantiza al cargar, pero no una
+  // categoría creada en esta sesión por un camino que lo olvide.
+  return [...(Array.isArray(c.notas)?c.notas:[]), ...((simState[c.id]||[]).map(s=>({
     valor:s.valor,peso:1,
     ...(Number.isInteger(s.slot)?{slot:s.slot}:{}),
   })))];
@@ -6821,7 +6825,17 @@ function renderSimulador(){
 
   document.getElementById('sim-cats').innerHTML=r.categorias.map(c=>{
     const catAvg=simCatAvg(c);
-    const realChips=c.notas.map(n=>`<span class="sim-chip real">${esc(nombreNotaCasilla(r,c,n))}: ${fmt(n.valor)}</span>`).join('');
+    // `c.notas` puede no venir: normalize() lo garantiza al cargar, pero una
+    // categoría recién creada en esta sesión por un camino que lo olvide llega
+    // sin el arreglo, y ahí `c.notas.map` reventaba al ABRIR el simulador —o
+    // sea la ventana quedaba rota sin decir por qué. El resto del archivo ya usa
+    // esta guarda; acá faltaba.
+    const notasReales=Array.isArray(c.notas)?c.notas:[];
+    // Una casilla con fecha y sin nota todavía no es una nota: desde que cada
+    // casilla puede tener su propia fecha existen notas con `valor` en null, y
+    // se colaban como una etiqueta vacía ("Laboratorio 1: ").
+    const realChips=notasReales.filter(n=>n&&n.valor!==null&&n.valor!==undefined)
+      .map(n=>`<span class="sim-chip real">${esc(nombreNotaCasilla(r,c,n))}: ${fmt(n.valor)}</span>`).join('');
     const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':c.directNota&&!(c.slots>1)?esc(c.nombre)+': ':''}${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
     return `
       <div class="sim-cat">
