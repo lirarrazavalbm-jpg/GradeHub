@@ -202,11 +202,11 @@ function agendaEventoHTML(e,contenido,pendientes,tipo='row'){
 function agendaRendidaHTML(e){
   const a=avgPond(e.notas);
   const f=formatEventDate(e.fecha);
-  return `<button type="button" class="ag-row done">
+  return `<button type="button" class="ag-row done" style="--ag-course:${esc(e.ramo.color)}">
     <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
     <div class="ag-row-main">
       <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span><span class="ag-row-peso">${pesoEventoAgendaTexto(e)}</span></div>
-      <div class="ag-row-name">${esc(e.nota?e.nota.nombre:e.cat.nombre)}</div>
+      <div class="ag-row-name">${esc(nombreEventoAgenda(e))}</div>
       <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
     </div>
     ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${fmt(a)}</span>`:""}
@@ -362,7 +362,7 @@ function agendaFechasPasadasHTML(eventos){
         <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
         <div class="ag-waiting-copy">
           <span class="ag-waiting-meta">${revisar?'<b>Revisar fecha</b>':''}<span>${cuandoTexto(e.dias)} · ${f.day} ${f.mon}</span></span>
-          <strong>${esc(e.nota?e.nota.nombre:e.cat.nombre)}</strong>
+          <strong>${esc(nombreEventoAgenda(e))}</strong>
           <span>${esc(e.ramo.nombre)}</span>
         </div>
         <div class="ag-waiting-actions">

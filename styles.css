@@ -196,6 +196,10 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
 .ob-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;padding:24px 20px calc(24px + env(safe-area-inset-bottom,0px));overflow-y:auto;}
 .ob-icon{width:72px;height:72px;border-radius:20px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:20px;box-shadow:0 8px 24px rgba(37,99,235,.3);}
 .ob-icon-logo{background:#0a0e14;box-shadow:0 10px 28px -6px rgba(10,14,20,.5);overflow:hidden;}
+/* La marca es transparente: la superficie sigue el modo elegido en Ajustes,
+   también cuando contradice al sistema. Los tres colores del logo no cambian. */
+.ob-icon-brand{background:var(--card);box-shadow:inset 0 0 0 1px var(--border);}
+.ob-icon-brand img{padding:11px;}
 .ob-title{font-size:2.125rem;font-weight:800;letter-spacing:-.035em;text-align:center;margin-bottom:8px;line-height:1.05;max-width:360px;}
 .ob-title-accent{background-image:linear-gradient(var(--gradient-accent),var(--primary) 0%,var(--accent) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
 .ob-brand{font-family:var(--font-ui);font-size:0.75rem;font-weight:800;color:var(--primary);text-align:center;letter-spacing:.15em;text-transform:uppercase;margin-bottom:16px;}
@@ -363,6 +367,55 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .auth-link-primary{color:var(--primary);font-weight:700;margin-top:2px;}
 .auth-link-primary:hover{color:var(--primary);background:color-mix(in srgb,var(--primary),transparent 88%);}
 .auth-legal{margin:14px 0 0;text-align:center;font-size:0.71875rem;line-height:1.5;color:var(--fg3);}
+/* Tres cifras bajo el subtítulo del login: estudiantes, ramos, notas. Van en
+   una banda suave, cada una con el número grande y la palabra chica, separadas
+   por una línea fina. El número sube desde 0 al aparecer (ver
+   cargarEstadisticasPublicas); con reduced-motion se pinta directo. */
+.auth-stats{display:flex;justify-content:center;width:100%;max-width:360px;margin:-2px auto 18px;padding:12px 6px;border:1px solid var(--border);border-radius:14px;background:var(--muted);}
+.auth-stat{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 8px;}
+.auth-stat+.auth-stat{border-left:1px solid var(--border);}
+.auth-stat b{font-size:1.375rem;font-weight:650;letter-spacing:-.025em;line-height:1.1;color:var(--primary);font-variant-numeric:tabular-nums;}
+.auth-stat span{font-size:0.625rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);}
+
+/* Muestra de la ficha de un ramo en el login. Es la ficha real en miniatura,
+   pintada con los tokens de la app: sigue el modo y el acento. En móvil va
+   compacta bajo las cifras (dos filas); en escritorio ocupa la columna
+   izquierda, con las cuatro filas y un leve giro que se endereza al pasar el
+   mouse. */
+.auth-preview{width:100%;max-width:360px;margin:0 auto 22px;}
+.ap-card{position:relative;padding:16px 16px 6px;border:1px solid var(--border);border-radius:18px;background:var(--card);box-shadow:var(--shadow-lg);}
+.ap-card::before{content:"";position:absolute;inset:-28px;z-index:-1;border-radius:40px;background:radial-gradient(60% 60% at 50% 40%,color-mix(in srgb,var(--primary),transparent 82%),transparent 70%);pointer-events:none;}
+.ap-head{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:start;}
+.ap-name{font-size:0.9375rem;font-weight:650;letter-spacing:-.02em;line-height:1.2;color:var(--fg);}
+.ap-meta{grid-column:1;font-size:0.6875rem;color:var(--fg3);}
+.ap-sigla{font-weight:600;color:var(--fg2);}
+.ap-official{grid-column:2;grid-row:1;font-size:0.625rem;font-weight:700;letter-spacing:.02em;color:var(--primary);white-space:nowrap;}
+.ap-hero{display:flex;align-items:center;gap:12px;margin-top:12px;}
+.ap-avg{font-size:2.5rem;font-weight:700;letter-spacing:-.05em;line-height:1;color:var(--yellow);font-variant-numeric:tabular-nums;}
+.ap-pill{font-size:0.6875rem;font-weight:600;line-height:1.3;padding:6px 9px;border-radius:9px;background:var(--yellow-bg);color:var(--yellow);}
+.ap-bar{height:3px;margin:12px 0 6px;border-radius:3px;background:var(--muted);overflow:hidden;}
+.ap-bar i{display:block;height:100%;width:40%;border-radius:3px;background:var(--primary);}
+.ap-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--border);}
+.ap-row-info b{display:block;font-size:0.8125rem;font-weight:600;color:var(--fg);}
+.ap-row-info small{font-size:0.6875rem;color:var(--fg3);}
+.ap-val{min-width:44px;padding:6px 0;border:1.5px solid color-mix(in srgb,var(--c,var(--border2)),transparent 40%);border-radius:9px;text-align:center;font-size:0.9375rem;font-weight:700;color:var(--c,var(--fg));background:var(--bg2);font-variant-numeric:tabular-nums;}
+.ap-val-empty{color:var(--fg3);font-weight:400;border-color:var(--border2);}
+.ap-row-extra{display:none;}
+/* En móvil la muestra compite con el formulario por la primera pantalla: sin
+   la línea de meta y con menos aire, el botón de Google queda a la vista. */
+@media(max-width:899px){.ap-meta{display:none;}.ap-card{padding:14px 14px 2px;}.ap-hero{margin-top:8px;}.ap-avg{font-size:2.125rem;}.ap-bar{margin:10px 0 2px;}.ap-row{padding:7px 0;}.auth-preview{margin-bottom:16px;}}
+@media(min-width:900px){
+  /* Dos columnas sin envolver nada: cada hijo del wrap cae en la columna
+     derecha y la muestra ocupa toda la izquierda, centrada verticalmente. */
+  #screen-auth .ob-wrap{display:grid;grid-template-columns:minmax(0,400px) minmax(0,400px);column-gap:64px;justify-content:center;align-content:center;}
+  #screen-auth .ob-wrap>*{grid-column:2;}
+  #screen-auth .auth-preview{grid-column:1;grid-row:1/span 20;align-self:center;max-width:400px;margin:0;}
+  .ap-card{padding:20px 20px 8px;transform:perspective(1200px) rotateY(7deg);transition:transform .45s var(--ease-out);}
+  .ap-row-extra{display:flex;}
+  .ap-avg{font-size:3rem;}
+}
+@media(min-width:900px) and (hover:hover) and (pointer:fine){.ap-card:hover{transform:perspective(1200px) rotateY(0deg);}}
+@media(prefers-reduced-motion:reduce){.ap-card{transform:none;transition:none;}}
 .auth-legal a{color:var(--fg2);text-decoration:underline;text-underline-offset:2px;}
 .auth-legal a:hover{color:var(--primary);}
 /* GPA — hero protagonista, con color propio (gradient teal) y contexto único */
@@ -624,14 +677,16 @@ body.ramo-drag-active{overflow:hidden;-webkit-user-select:none;user-select:none;
 /* Mientras el dedo o el resorte mandan, la transición CSS estorba: cada
    escritura de transform arrancaría una animación encima y el sheet dejaría de
    seguir al dedo. */
-.modal-overlay.dragging .modal-sheet,.modal-overlay.settling .modal-sheet{transition:none;}
 .modal-sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:16px 20px calc(28px + env(safe-area-inset-bottom,0px));width:100%;max-width:430px;box-shadow:0 -4px 32px rgba(0,0,0,.2);max-height:92vh;max-height:92dvh;overflow-y:auto;
   touch-action:pan-y;overscroll-behavior-y:contain;}
-/* El tirador promete que esto se puede agarrar: al tomarlo lo confirma. */
-.modal-drag{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px;
-  transition:background-color var(--motion-press) var(--ease-standard),transform var(--motion-press) var(--ease-standard);}
-.modal-overlay.dragging .modal-drag{background-color:var(--fg3);transform:scaleX(1.15);}
 .modal-title{font-size:1.0625rem;font-weight:700;color:var(--fg);margin-bottom:16px;}
+/* Ajustes y el modal de calendario eran los dos únicos sin salida propia: se
+   cerraban tocando fuera del sheet. Desde que eso se retiró, necesitan la suya. */
+.settings-modal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+.settings-modal-head .modal-title{margin-bottom:16px;}
+.settings-cerrar{background:none;border:none;padding:4px 2px;margin:0;font:inherit;font-size:0.875rem;font-weight:600;color:var(--fg2);cursor:pointer;flex:none;}
+.settings-cerrar:hover{color:var(--fg);}
+.settings-cerrar:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:6px;}
 .modal-label{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin-bottom:6px;display:block;}
 .modal-input{margin-bottom:14px;}
 .slider-wrap{margin-bottom:14px;}
@@ -1030,6 +1085,11 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .agent-ramo-row b{overflow-wrap:anywhere;}
 .agent-ramo-row small{color:var(--fg3);font-size:.75rem;font-variant-numeric:tabular-nums;}
 .agent-ramo-check{width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);}
+.horario-importar-link{display:block;width:100%;margin:12px 0 4px;padding:11px 13px;border:1px solid var(--border2);border-radius:10px;background:var(--card);color:var(--fg);font:600 .8125rem var(--font-ui);text-align:left;cursor:pointer;}
+.horario-importar-link:hover{border-color:var(--primary);}
+.horario-importar-texto{display:block;width:100%;box-sizing:border-box;min-height:132px;padding:12px;border:1px solid var(--border2);border-radius:10px;background:var(--card);color:var(--fg);font:400 .875rem/1.45 var(--font-ui);resize:vertical;}
+.horario-importar-texto:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.horario-importar-estado{margin:9px 0 13px;color:var(--fg2);font-size:.78125rem;line-height:1.45;overflow-wrap:anywhere;}
 .agent-proposal-list{margin:11px 0 0;padding:0;list-style:none;border-top:1px solid var(--border);}
 .agent-proposal-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.78125rem;line-height:1.35;}
 .agent-proposal-list b{min-width:0;color:var(--fg);overflow-wrap:anywhere;}
@@ -1789,12 +1849,13 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    avisos siguen visibles, incluidas las evaluaciones pasadas sin nota. */
 .agenda-topline{border-bottom:1px solid var(--border);padding-bottom:18px;}
 .ag-priority-card,.ag-event-priority-sec>.ag-priority-card{border:1px solid var(--border);border-radius:8px;background:var(--card);box-shadow:none;padding:17px 16px 16px 20px;}
-.ag-priority-bar{inset:16px auto 16px 0;width:2px;height:auto;}
+.ag-priority-bar{inset:0 auto 0 0;width:2px;height:auto;}
 .ag-priority-rank{color:var(--fg3);font-weight:600;}
 .ag-priority-name{font-weight:550;}
 .ag-priority-weight{font-weight:500;}
 .ag-row{border-radius:6px;border:0;border-bottom:1px solid var(--border);background:transparent;box-shadow:none;}
 .ag-row-bar{width:2px;top:15px;bottom:15px;}
+.ag-row>.ag-row-bar{top:0;bottom:0;}
 .ag-row-peso,.ag-row-peso.heavy{border:0;background:var(--muted);color:var(--fg2);font-weight:500;}
 .ag-event-detail{border-radius:0 0 8px 8px;}
 .ag-waiting{border-radius:8px;background:var(--card);}
@@ -1920,8 +1981,9 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .stats-curso-main small{font-size:0.71875rem;color:var(--fg3);}
 /* El número NO usa el color del semáforo: no es una nota, es una posición, y
    teñir un 30% de rojo diría que vas mal cuando puede ser un curso exigente. */
-.stats-curso-val{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:1.0625rem;font-weight:750;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-.stats-curso-val small{font-size:0.59375rem;font-weight:700;letter-spacing:.035em;text-transform:uppercase;color:var(--fg3);}
+/* El porcentaje va dentro de la frase, no como número suelto a la derecha: se
+   destaca para poder barrer la lista con la vista, pero se lee con su contexto. */
+.stats-curso-frase b{font-weight:800;color:var(--fg);font-variant-numeric:tabular-nums;}
 
 /* La marca del metodo usado la vez anterior. Es una pista, no una recomendacion:
    no compite con el boton ni sugiere que ese camino sea el correcto, solo evita
@@ -1930,41 +1992,40 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
   color:var(--fg3);font-size:0.6875rem;font-weight:650;letter-spacing:.01em;}
 .auth-ultimo::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--primary);flex-shrink:0;}
 
-/* ══════════════════════════════════════════════════════════════════════
-   LA BANDA DEL RAMO REACCIONA IGUAL EN TODAS PARTES
-   En Inicio, pasar el mouse sobre un ramo ensancha su banda de color y la
-   enciende. Es el gesto que le da identidad a la fila —el color del ramo
-   respondiendo— y estaba solo ahí: en la Agenda y en la comparación las
-   barras eran del mismo color pero no se movían, así que la misma idea se
-   sentía viva en una pantalla y muerta en la de al lado.
-   ══════════════════════════════════════════════════════════════════════ */
-.ag-priority-bar,.ag-row-bar,.stats-curso-color{
+/* El gesto de Inicio pertenece a las tarjetas que abren detalle, no a la
+   comparación estática de Estadísticas ni a los avisos sin fecha de Agenda. */
+.ag-priority-bar,.ag-row>.ag-row-bar{
+  transform:scaleY(.6);
+  transform-origin:center;
   transition:transform var(--motion-fast) var(--ease-out),
              filter var(--motion-fast) var(--ease-out),
              box-shadow var(--motion-fast) var(--ease-out);
 }
-/* Las barras verticales crecen a lo ancho, igual que la de Inicio. Se declara
-   el origen para que engorden hacia afuera y no desplacen el texto. */
-.ag-row-bar,.stats-curso-color{transform-origin:left center;}
-.ag-priority-bar{transform-origin:left center;}
-
 @media(hover:hover) and (pointer:fine){
-  .ag-row:hover .ag-row-bar,
-  .ag-priority-card:hover .ag-priority-bar,
-  .stats-curso-row:hover .stats-curso-color{
-    transform:scaleX(1.65);
+  .ag-row:hover>.ag-row-bar,
+  .ag-priority-card:hover>.ag-priority-bar{
+    transform:scaleX(1.65) scaleY(1);
     filter:brightness(1.2);
-    box-shadow:0 0 6px color-mix(in srgb,currentColor 35%,transparent);
+    box-shadow:0 0 6px color-mix(in srgb,var(--ag-course) 35%,transparent);
   }
 }
-/* Quien pidió menos movimiento recibe el cambio de color, no el crecimiento: la
-   fila sigue respondiendo, sin animación de tamaño. Va anidado dentro de
-   `hover:hover` a propósito — un `:hover` con transform fuera de esa guarda se
-   dispara en pantallas táctiles y deja el efecto pegado tras el toque. */
-@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){
-  .ag-row:hover .ag-row-bar,
-  .ag-priority-card:hover .ag-priority-bar,
-  .stats-curso-row:hover .stats-curso-color{transform:none;box-shadow:none;}
+.ag-row:focus-visible>.ag-row-bar,.ag-row:active>.ag-row-bar,
+.ag-priority-card:focus-visible>.ag-priority-bar,.ag-priority-card:active>.ag-priority-bar{
+  transform:scaleX(1.65) scaleY(1);
+  filter:brightness(1.2);
+  box-shadow:0 0 6px color-mix(in srgb,var(--ag-course) 35%,transparent);
+}
+/* Menos movimiento conserva el cambio de brillo, sin desplazamiento. El hover
+   queda gateado para que un toque en pantalla táctil no deje la línea pegada. */
+@media(prefers-reduced-motion:reduce){
+  .ag-priority-bar,.ag-row>.ag-row-bar{
+    transition:filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);
+  }
+  .ag-row:focus-visible>.ag-row-bar,.ag-row:active>.ag-row-bar,
+  .ag-priority-card:focus-visible>.ag-priority-bar,.ag-priority-card:active>.ag-priority-bar{transform:scaleY(.6);}
+}
+@media(prefers-reduced-motion:reduce) and (hover:hover) and (pointer:fine){
+  .ag-row:hover>.ag-row-bar,.ag-priority-card:hover>.ag-priority-bar{transform:scaleY(.6);}
 }
 
 /* ── Editar las secciones de Estadísticas ────────────────────────────────── */

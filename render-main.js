@@ -542,9 +542,13 @@ function renderRamo(){
       const txt=document.getElementById('ramo-report-text');
       // Un ramo armado a mano no tiene pauta del catálogo que "no calce":
       // lo que se le ofrece es compartir la suya.
+      // A quien armó la pauta de un ramo que el catálogo trae vacío ya no se le
+      // pregunta nada: su pauta se aporta sola. El botón se queda para poder
+      // corregirla o mandar una nota, pero afirma en vez de preguntar.
       if(txt)txt.textContent=pautaEditada(r)
         ?'Corregiste esta pauta · compártela con tu curso'
         :!r.origen?'¿Armaste esta pauta? Compártela con tu curso'
+        :pautaCatalogoSinOficial(r)?'Tu pauta completa el catálogo de este ramo'
         :'¿Esta pauta no calza con tu curso? Repórtala';
     }else{rep.style.display='none';rep.onclick=null;}
   }
@@ -697,6 +701,23 @@ function renderRamo(){
 // Se pinta aparte porque depende de una respuesta del servidor. Mientras no
 // llega, la sección no existe: no se muestra un esqueleto ni un "cargando" para
 // algo que la mayoría de las veces no va a tener nada que decir.
+// Una frase entera, no un número suelto. Antes decía "75%" con "POR SOBRE"
+// debajo y no se entendía: podía leerse como un 75% por sobre alguien, o como
+// estar por sobre un 75. La frase completa no deja dónde equivocarse.
+//
+// Habla de COMPAÑEROS, no del total: `curso_posicion` calcula el porcentaje
+// contra los OTROS (total - 1), así que poner el total correría el denominador y
+// el número diría algo distinto de lo que es. La cuenta sigue a la vista a
+// propósito: con cinco participantes el porcentaje solo puede ser 0, 25, 50, 75
+// o 100, y sin saber cuántos son suena mucho más fino de lo que es.
+//
+// La frase es la misma para 0 y para 100. "Todos" o "ninguno" sería categórico
+// sobre un número redondeado: 199 de 200 también llega acá como 100.
+function frasePosicionCurso(mejorQue,total){
+  const otros=Math.max(Number(total)-1,0);
+  return `Por sobre el <b>${Number(mejorQue)}%</b> de tus ${otros} compañeros`;
+}
+
 async function pintarPosicionesCurso(){
   const box=document.getElementById('stats-curso');
   if(!box)return;
@@ -711,13 +732,9 @@ async function pintarPosicionesCurso(){
   }
   box.innerHTML=filas.map(r=>{
     const p=pos[r.id];
-    // El total va al lado del porcentaje a propósito. Con cinco participantes
-    // "mejor que el 75%" solo puede ser 0, 25, 50, 75 o 100, y sin saber cuántos
-    // son suena mucho más fino de lo que es.
     return `<div class="stats-curso-row">
       <span class="stats-curso-color" style="background:${esc(r.color)}"></span>
-      <span class="stats-curso-main"><strong>${esc(r.nombre)}</strong><small>${p.total} llevan este ramo</small></span>
-      <span class="stats-curso-val">${p.mejorQue}%<small>por sobre</small></span>
+      <span class="stats-curso-main"><strong>${esc(r.nombre)}</strong><small class="stats-curso-frase">${frasePosicionCurso(p.mejorQue,p.total)}</small></span>
     </div>`;
   }).join('');
 }

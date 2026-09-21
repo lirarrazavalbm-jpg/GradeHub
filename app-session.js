@@ -82,6 +82,34 @@ function showAuthScreen(){
   document.getElementById('bottom-nav').style.display='none';
   document.getElementById('screen-auth').classList.add('active');
   marcarUltimoLogin();
+  cargarEstadisticasPublicas();
+}
+// "1.240 estudiantes ya llevan sus notas acá". Sale de una RPC pública que
+// devuelve solo agregados (supabase/estadisticas_publicas.sql). Con pocas
+// cuentas la línea juega en contra —"12 estudiantes" suena a nadie—, así que
+// bajo el mínimo no se muestra nada. Si la RPC falla, tampoco: es adorno.
+const MINIMO_CUENTAS_PARA_MOSTRAR=100;
+async function cargarEstadisticasPublicas(){
+  const el=document.getElementById('auth-stats');
+  if(!el||!supabaseClient)return;
+  try{
+    const {data,error}=await supabaseClient.rpc('estadisticas_publicas');
+    if(error||!data||!(data.cuentas>=MINIMO_CUENTAS_PARA_MOSTRAR))return;
+    const n=x=>Number(x||0).toLocaleString('es-CL');
+    const tile=(v,l)=>`<div class="auth-stat"><b data-final="${Number(v)||0}">${n(v)}</b><span>${l}</span></div>`;
+    el.innerHTML=tile(data.cuentas,'estudiantes')+(data.ramos>0?tile(data.ramos,'ramos'):'')+(data.notas>0?tile(data.notas,'notas'):'');
+    el.hidden=false;
+    // Los números suben desde 0 en ~700 ms. Es adorno: con reduced-motion se
+    // quedan como están, y el texto final ya estaba pintado por si el rAF no corre.
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const t0=performance.now();
+    const paso=t=>{
+      const p=Math.min(1,(t-t0)/700),e=1-Math.pow(1-p,3);
+      el.querySelectorAll('b[data-final]').forEach(b=>{b.textContent=n(Math.round(Number(b.dataset.final)*e));});
+      if(p<1)requestAnimationFrame(paso);
+    };
+    requestAnimationFrame(paso);
+  }catch(e){}
 }
 // Una sesión válida que falla al dibujarse no es un error de login. Esta
 // pantalla conserva esa distinción: no expone el stack, no cierra la sesión y
@@ -433,6 +461,11 @@ async function afterLogin(){
     renderHome();
     showToast(n===1?'Agregamos una pauta reportada por otros estudiantes':`Agregamos ${n} pautas reportadas por otros estudiantes`);
   }).catch(()=>{});
+  // La otra dirección: las pautas que esta persona armó para ramos que el
+  // catálogo trae vacíos. No avisa ni pregunta —viaja la pauta, nunca las
+  // notas— y no bloquea nada. Va después del consenso a propósito: si una pauta
+  // acaba de llegar de otros, no tiene sentido devolvérsela.
+  if(typeof aportarPautasAlCatalogo==='function')aportarPautasAlCatalogo().catch(()=>{});
   // Es una bandeja de revisión, no una sincronización del semestre: se lee
   // aparte y nunca bloquea entrar. Si llega una propuesta, se muestra completa
   // para que la persona la aplique o descarte en vez de mover su promedio sola.
