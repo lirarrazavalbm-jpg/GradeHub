@@ -123,6 +123,19 @@ as $$
   cross join lateral jsonb_array_elements(coalesce(r->'categorias', '[]'::jsonb)) c
   where f.token = p_token
     and nullif(c->>'fecha', '') is not null
+    -- Si TODAS las casillas del grupo ya tienen fecha propia, la del grupo no
+    -- aporta: mostraría lo mismo en otro día. `agendaEvents` en app.js corta por
+    -- lo mismo, así que el .ics que se descarga ya lo hacía y el feed no: el
+    -- calendario suscrito mostraba un "Controles" de más.
+    and not (
+      (select count(*) from jsonb_array_elements(coalesce(c->'notas','[]'::jsonb)) x
+        where nullif(x->>'fecha','') is not null) > 0
+      and (select count(*) from jsonb_array_elements(coalesce(c->'notas','[]'::jsonb)) x
+            where nullif(x->>'fecha','') is null) = 0
+      and coalesce(nullif(c->>'slots','')::int, 0) <=
+          (select count(*) from jsonb_array_elements(coalesce(c->'notas','[]'::jsonb)) x
+            where nullif(x->>'fecha','') is not null)
+    )
   union all
   -- Una casilla con fecha propia ("Control 2" dentro de "Controles") es un
   -- evento aparte, con su nombre. Antes el feed solo miraba la fecha de la
@@ -134,11 +147,17 @@ as $$
   -- del grupo, que es lo mismo que hace la Agenda en el navegador.
   select
     r->>'nombre'                       as ramo,
-    n->>'nombre'                       as evaluacion,
+    -- Sin nombre propio hereda el del grupo. Vacío dejaba el título del evento
+    -- en "null — Cálculo I".
+    coalesce(nullif(n->>'nombre',''), c->>'nombre') as evaluacion,
+    -- `dropLowest: false` NO es descartar: solo 'true' lo es. Y cuando el peso
+    -- individual no se puede saber va null, no el del grupo: decir que un
+    -- laboratorio vale el 30% que se reparten tres es un número falso, y es
+    -- justo lo que `pesoEventoAgenda` evita devolviendo null.
     case
-      when (c->>'slots') ~ '^[1-9][0-9]*$' and c->'dropLowest' is null
+      when (c->>'slots') ~ '^[1-9][0-9]*$' and (c->'dropLowest') is distinct from 'true'::jsonb
         then round(coalesce((c->>'peso')::numeric, 0) / (c->>'slots')::numeric, 2)
-      else coalesce((c->>'peso')::numeric, 0)
+      else null
     end                                as peso,
     n->>'fecha'                        as fecha,
     nullif(n->>'hora', '')             as hora
