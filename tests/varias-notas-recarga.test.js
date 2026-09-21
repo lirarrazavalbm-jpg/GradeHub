@@ -36,14 +36,20 @@ run(`S={...freshState(),ramos:[{id:'r',nombre:'Ramo manual',color:'#6d5dd3',cate
   pautaDraft=[{id:null,nombre:'Controles',peso:60,tieneNotas:false,varias:true,cantidad:3},
     {id:null,nombre:'Prueba',peso:40,tieneNotas:false,varias:false,cantidad:null}];guardarPautaManual();`);
 const cat=run("S.ramos[0].categorias.find(c=>c.nombre==='Controles')");
-comprobar('declarar tres controles crea tres casillas visibles',cat.slots===3&&cat.directNota===true&&/Controles 1/.test(ficha())&&/Controles 3/.test(ficha()));
+// La etiqueta de cada casilla la decide la app —desde #414 va en singular,
+// "Control 1" y no "Controles 1"—, así que se le pregunta en vez de escribirla
+// acá. Lo que este test cuida es que las casillas se VEAN, no cómo se redactan:
+// con el nombre a mano, cambiar la redacción rompía esto sin que nada estuviera
+// roto. Pasó al juntar #411 con #414, los dos verdes por separado.
+const etiqueta=i=>run(`etiquetaCasilla(S.ramos[0],S.ramos[0].categorias.find(c=>c.nombre==='Controles'),${i})`);
+comprobar('declarar tres controles crea tres casillas visibles',cat.slots===3&&cat.directNota===true&&ficha().includes(etiqueta(0))&&ficha().includes(etiqueta(2)));
 ctx.__catId=cat.id;
 run("setSlotNota(__catId,0,'5.0');setSlotNota(__catId,1,'5.2');");
 comprobar('dos casillas guardan notas distintas',cat.notas.length===2&&cat.notas[0].slot===0&&cat.notas[1].slot===1);
 comprobar('el modelo conserva promedio 5,1 y avance 40%',run('ramoAvg(S.ramos[0])')===5.1&&run('ramoProgress(S.ramos[0]).pct')===40);
 recargar();
 let html=ficha();
-comprobar('al recargar aparecen ambas notas y la tercera casilla pendiente',/eval-group-body open/.test(html)&&/value="5\.0"/.test(html)&&/value="5\.2"/.test(html)&&/Controles 3/.test(html));
+comprobar('al recargar aparecen ambas notas y la tercera casilla pendiente',/eval-group-body open/.test(html)&&/value="5\.0"/.test(html)&&/value="5\.2"/.test(html)&&html.includes(etiqueta(2)));
 run('openPautaManualModal()');
 comprobar('el editor reabre la pauta como varias notas con tres casillas',run("pautaDraft.find(f=>f.nombre==='Controles')?.varias")===true&&run("pautaDraft.find(f=>f.nombre==='Controles')?.cantidad")===3);
 run('guardarPautaManual()');
