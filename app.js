@@ -7075,9 +7075,15 @@ function buildICS(){
     // Antes todas las casillas de una categoría salían con el mismo UID y el
     // mismo título, y el calendario se quedaba con una sola.
     const pesoEv=pesoEventoAgenda(e);
-    const peso=r2(pesoEv==null?(e.cat.peso||0):pesoEv);
     const titulo=`${nombreEventoAgenda(e)} — ${e.ramo.nombre}`;
-    const desc=`Vale ${peso}% de ${e.ramo.nombre}.`+(e.pending?'':' Ya evaluada.');
+    // `pesoEventoAgenda` devuelve null cuando el porcentaje de UNA entrega no se
+    // puede saber: el grupo descarta la más baja, o no dice cuántas son. Poner
+    // ahí el peso del grupo afirma que ese control vale el 30% que se reparten
+    // tres, que es un número falso en el calendario del estudiante. La Agenda no
+    // lo hace —muestra "Peso variable"— y esto tampoco.
+    const desc=(pesoEv==null
+      ?`Parte de «${e.cat.nombre}», que vale ${r2(e.cat.peso||0)}% de ${e.ramo.nombre}.`
+      :`Vale ${r2(pesoEv)}% de ${e.ramo.nombre}.`)+(e.pending?'':' Ya evaluada.');
     lines.push('BEGIN:VEVENT');
     lines.push(`UID:${e.cat.id}-${e.ramo.id}${e.nota?'-'+e.nota.id:''}@gradehub.app`);
     lines.push(`DTSTAMP:${stamp}`);
