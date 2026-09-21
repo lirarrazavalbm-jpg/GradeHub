@@ -1,0 +1,220 @@
+{
+  "version": 1,
+  "annotatedAt": "2026-09-21",
+  "basis": "Lectura humana del contenido oficial congelado; nunca generado desde el output del parser.",
+  "entries": [
+    {
+      "courseCode": "IIC1103",
+      "expectedStatus": "auto_importable",
+      "explicitWeights": [{"name":"Pruebas","weight":30},{"name":"Examen","weight":30},{"name":"Tareas","weight":30},{"name":"Nota de Participación","weight":10}],
+      "complexRules": [], "mustNotInfer": ["number_of_pruebas","semester"],
+      "reason": "Cuatro categorías explícitas suman 100 y no hay reglas adicionales en la sección."
+    },
+    {
+      "courseCode": "FIS1514",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Interrogaciones","weight":60},{"name":"Un Taller semanal","weight":10},{"name":"Examen","weight":30}],
+      "complexRules": ["aggregate_category"], "mustNotInfer": ["weight_per_interrogacion","semester"],
+      "reason": "El 60% pertenece al conjunto de tres interrogaciones y el programa no declara su reparto interno."
+    },
+    {
+      "courseCode": "QIM100F",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Evaluaciones parciales escritas","weight":70},{"name":"Talleres","weight":15},{"name":"Presentación trabajos grupales","weight":15}],
+      "explicitAlternativeWeights": [{"name":"Nota de presentación","weight":70},{"name":"Examen","weight":30}],
+      "complexRules": ["exemption_rule","minimum_average_required","minimum_each_interrogacion","conditional_exam","alternative_final_grade_formula","aggregate_category"],
+      "mustNotInfer": ["weight_per_interrogacion","semester"],
+      "reason": "La fórmula cambia si no hay eximición y la eximición combina promedio y mínimos por interrogación."
+    },
+    {
+      "courseCode": "BIO143M",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["weight_per_evaluacion","evaluation_names","semester"],
+      "reason": "Solo declara tres evaluaciones, sin nombres ni ponderaciones."
+    },
+    {
+      "courseCode": "MAT1610",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Evaluaciones sumativas","weight":60},{"name":"Actividades de laboratorio","weight":10},{"name":"Examen final escrito","weight":30}],
+      "complexRules": ["aggregate_category"], "mustNotInfer": ["sumativas_breakdown","semester"],
+      "reason": "El 60% de evaluaciones sumativas no viene desglosado."
+    },
+    {
+      "courseCode": "EAE1110",
+      "expectedStatus": "auto_importable",
+      "explicitWeights": [{"name":"Guías semanales","weight":20},{"name":"Pruebas","weight":45},{"name":"Examen","weight":35}],
+      "complexRules": [], "mustNotInfer": ["number_of_pruebas","number_of_guias","semester"],
+      "reason": "Las tres categorías explícitas suman 100."
+    },
+    {
+      "courseCode": "EAA100A",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["all_weights","number_of_evaluations","semester"],
+      "reason": "Enumera tipos de evaluación, pero no publica ponderaciones."
+    },
+    {
+      "courseCode": "FIL001",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["weight_per_paper","semester"],
+      "reason": "Declara tres papers, pero ningún porcentaje."
+    },
+    {
+      "courseCode": "TTF013",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["all_weights","semester"],
+      "reason": "Enumera prueba, informes, ensayo y examen sin ponderaciones."
+    },
+    {
+      "courseCode": "ARQ2000",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["evaluation_structure","all_weights","semester"],
+      "reason": "El programa no contiene una sección de evaluación."
+    },
+    {
+      "courseCode": "DER002C",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["all_weights","number_of_evaluations","semester"],
+      "reason": "Solo enumera modalidades orales, escritas, controles y trabajos."
+    },
+    {
+      "courseCode": "MED101A",
+      "expectedStatus": "not_found",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["evaluation_structure","all_weights","semester"],
+      "reason": "La fuente oficial responde explícitamente «Programa de curso no disponible»."
+    },
+    {
+      "courseCode": "ENF043A",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["evaluation_structure","all_weights"],
+      "reason": "El documento termina en metodología y bibliografía, sin pauta de evaluación."
+    },
+    {
+      "courseCode": "PSI1101",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Pruebas escritas","weight":99}],
+      "complexRules": ["weights_do_not_sum_100"], "mustNotInfer": ["missing_one_percent","semester"],
+      "reason": "Declara tres pruebas de 33% cada una: el total textual es 99 y no se puede inventar el 1% restante."
+    },
+    {
+      "courseCode": "LET0003",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Entrega escrita 1","weight":30},{"name":"Entrega escrita 2","weight":40},{"name":"Entrega oral","weight":30}],
+      "complexRules": ["minimum_attendance_80"], "mustNotInfer": ["effect_of_attendance_failure","semester"],
+      "reason": "Los pesos suman 100, pero el 80% de asistencia es un requisito, no otra evaluación."
+    },
+    {
+      "courseCode": "COM001",
+      "expectedStatus": "auto_importable",
+      "explicitWeights": [{"name":"Trabajo individual: Análisis de una experiencia relevante en Comunicación y Educación","weight":20},{"name":"Trabajo individual: Reflexión sobre un tema a elección del participante","weight":20},{"name":"Participación en actividades de clases","weight":20},{"name":"Trabajo final en grupo","weight":40}],
+      "complexRules": [], "mustNotInfer": ["semester"],
+      "reason": "Cuatro categorías explícitas suman 100."
+    },
+    {
+      "courseCode": "EDU0010",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["all_weights","number_of_evaluations","semester"],
+      "reason": "Describe tres modalidades, pero no publica porcentajes."
+    },
+    {
+      "courseCode": "ART001",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["summative_evaluation_structure","all_weights","semester"],
+      "reason": "Menciona evaluaciones formativas en metodología, sin pauta sumativa."
+    },
+    {
+      "courseCode": "GEO1002",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Controles bibliográficos, ejercicios y tareas","weight":30},{"name":"Controles parciales","weight":30},{"name":"Examen final o semestral","weight":40}],
+      "complexRules": ["minimum_attendance_75"], "mustNotInfer": ["effect_of_attendance_failure","internal_breakdown_first_category","semester"],
+      "reason": "Publica una pauta 30/30/40 y una asistencia mínima obligatoria de 75%."
+    },
+    {
+      "courseCode": "AGL007",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Controles","weight":20},{"name":"Nota personal de participación","weight":40},{"name":"Actividades en grupo","weight":40}],
+      "complexRules": ["minimum_attendance_100"], "mustNotInfer": ["effect_of_attendance_failure","number_of_controles","semester"],
+      "reason": "Las notas suman 100 y además exige 100% de asistencia; ese 100% no es peso académico."
+    },
+    {
+      "courseCode": "ICH1104",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["all_weights","which_evaluation_types_apply","semester"],
+      "reason": "Dice que puede haber pruebas, proyectos y/o tareas, sin confirmar cuáles ni sus pesos."
+    },
+    {
+      "courseCode": "ICE1513",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Laboratorio","weight":30},{"name":"Nota de cátedra","weight":70}],
+      "complexRules": ["aggregate_category","minimum_six_lab_experiences"],
+      "mustNotInfer": ["weight_per_lab_experience","catedra_breakdown","semester"],
+      "reason": "El párrafo fija 30/70 y al menos seis experiencias, pero no reparte el laboratorio ni la cátedra."
+    },
+    {
+      "courseCode": "FIS1503",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["all_weights","number_of_interrogaciones","number_of_controles","semester"],
+      "reason": "Enumera interrogaciones, controles y examen sin porcentajes."
+    },
+    {
+      "courseCode": "QIM100",
+      "expectedStatus": "not_found",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["evaluation_structure","all_weights","semester"],
+      "reason": "La fuente oficial responde explícitamente «Programa de curso no disponible»."
+    },
+    {
+      "courseCode": "BIO141C",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["all_weights","number_of_pruebas","number_of_controles","semester"],
+      "reason": "Solo declara pruebas y controles en ayudantías, sin pesos."
+    },
+    {
+      "courseCode": "MAT1620",
+      "expectedStatus": "needs_review",
+      "explicitWeights": [{"name":"Evaluaciones sumativas","weight":60},{"name":"Actividades de laboratorio","weight":10},{"name":"Examen final escrito","weight":30}],
+      "complexRules": ["aggregate_category"], "mustNotInfer": ["sumativas_breakdown","semester"],
+      "reason": "El 60% de evaluaciones sumativas no viene desglosado."
+    },
+    {
+      "courseCode": "ICS2563",
+      "expectedStatus": "auto_importable",
+      "explicitWeights": [{"name":"Pruebas escritas","weight":40},{"name":"Tareas computacionales grupales","weight":30},{"name":"Examen final escrito","weight":30}],
+      "complexRules": [], "mustNotInfer": ["number_of_pruebas","number_of_tareas","semester"],
+      "reason": "Tres categorías explícitas suman 100."
+    },
+    {
+      "courseCode": "ICS2121",
+      "expectedStatus": "auto_importable",
+      "explicitWeights": [{"name":"Tareas","weight":15},{"name":"Proyecto","weight":20},{"name":"Pruebas","weight":65}],
+      "complexRules": [], "mustNotInfer": ["number_of_tareas","number_of_pruebas","semester"],
+      "reason": "Tres categorías explícitas suman 100."
+    },
+    {
+      "courseCode": "ICT2904",
+      "expectedStatus": "insufficient_information",
+      "explicitWeights": [], "complexRules": [],
+      "mustNotInfer": ["all_weights","number_of_evaluations","semester"],
+      "reason": "Enumera pruebas, proyectos y tareas sin porcentajes."
+    },
+    {
+      "courseCode": "IIC2115",
+      "expectedStatus": "auto_importable",
+      "explicitWeights": [{"name":"Tareas","weight":45},{"name":"Proyecto semestral","weight":30},{"name":"Controles","weight":20},{"name":"Preguntas en clases (variable)","weight":5}],
+      "complexRules": [], "mustNotInfer": ["semester"],
+      "reason": "Cantidad y peso unitario están explícitos; el total calculable es 100."
+    }
+  ]
+}
