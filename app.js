@@ -652,6 +652,12 @@ function completarCreditosUCTrasCarga(){
   renderHome();renderStats();
   return true;
 }
+// El catálogo completo de la UC son 11.853 ramos en un archivo de ~660 KB que se
+// baja aparte. Mientras no llega, buscar una sigla no encuentra nada — y decirle
+// a alguien "no está, lo agregamos como ramo tuyo" en ese momento le hace crear
+// a mano un ramo que SÍ tenemos, perdiendo su sigla, sus créditos y su pauta.
+// Con 11 mil pautas en camino ese es justo el error que más cuesta.
+function catalogoUcEnCamino(tenant){return tenant==='uc'&&!cursosUcExtra();}
 function repintarAlCargarCursosUC(tenant,repintar){
   if(tenant!=='uc'||cursosUcExtra())return;
   cargarCursosUC().then(ok=>{if(ok)repintar();});
@@ -1373,7 +1379,12 @@ function renderObCourseResults(q){
   repintarAlCargarMallaPropia(selectedTenant,selectedCarrera,repintar);
   repintarAlCargarCursosUC(selectedTenant,repintar);
   const res=searchCatalog(term,selectedTenant,selectedCarrera,selectedSem).slice(0,6);
-  if(!res.length){box.innerHTML='<p class="course-picker-reassurance">No aparece en tu malla. Puedes agregarlo a mano.</p>';return;}
+  if(!res.length){
+    box.innerHTML=`<p class="course-picker-reassurance">${catalogoUcEnCamino(selectedTenant)
+      ?'Buscando en el catálogo de la UC…'
+      :'No aparece en tu malla. Puedes agregarlo a mano.'}</p>`;
+    return;
+  }
   box.innerHTML=res.map(r=>{
     const tengo=obTieneRamo(r.nombre,r.sigla),otro=r.semestre>0&&r.semestre!==selectedSem;
     return `<button class="course-picker-result" type="button" ${tengo?'disabled':`onclick="obAgregarCatalogoCodificado('${obCodificarNombre(r.nombre)}','${obCodificarNombre(r.sigla||'')}')"`}>
@@ -2349,7 +2360,10 @@ function renderCatalogResults(q){
   const yaTengo=new Set(S.ramos.map(r=>normName(r.nombre)));
   const res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre).slice(0,6);
   if(res.length===0){
-    box.innerHTML=`<div class="cat-empty">${q&&q.trim()?'No está en tu malla — lo agregamos como ramo tuyo.':'Sin ramos en el catálogo.'}</div>`;
+    const texto=!q||!q.trim()?'Sin ramos en el catálogo.'
+      :catalogoUcEnCamino(S.tenant)?'Buscando en el catálogo de la UC…'
+      :'No está en tu malla — lo agregamos como ramo tuyo.';
+    box.innerHTML=`<div class="cat-empty">${texto}</div>`;
     return;
   }
   box.innerHTML=res.map(r=>{
@@ -5735,7 +5749,9 @@ function renderBusquedaSemestreAnterior(q){
   repintarAlCargarCursosUC(S.tenant,repintar);
   const res=searchCatalog(texto,S.tenant,S.carrera,8)
     .filter(c=>!histManual.ramos.some(r=>normName(r.nombre)===normName(c.nombre)));
-  box.innerHTML=res.map(c=>`
+  box.innerHTML=(!res.length&&catalogoUcEnCamino(S.tenant)
+      ?'<p class="course-picker-reassurance">Buscando en el catálogo de la UC…</p>':'')
+    +res.map(c=>`
     <button type="button" class="course-picker-result" onclick="agregarRamoSemestreAnterior('${obCodificarNombre(c.nombre)}','${obCodificarNombre(c.sigla||'')}')">
       <span class="course-picker-result-name">${esc(c.nombre)}</span>
     </button>`).join('')
