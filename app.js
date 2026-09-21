@@ -6679,7 +6679,8 @@ function openSimuladorModal(){
   simState={};
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg> Simular escenario</div>
-    <p style="font-size:0.8125rem;color:var(--fg2);margin-bottom:14px;">Agrega notas hipotéticas y mira cómo quedaría tu promedio. No se guardan hasta que confirmes.</p>
+    <p class="sim-ramo">${esc(r.nombre)}${r.seccion?` · Sección ${r.seccion}`:''}</p>
+    <p class="sim-intro">Agrega notas hipotéticas y mira cómo quedaría tu promedio. No se guardan hasta que confirmes.</p>
     <div class="sim-proj">
       <div class="sim-proj-label">Promedio proyectado</div>
       <div class="sim-proj-num" id="sim-avg">—</div>
