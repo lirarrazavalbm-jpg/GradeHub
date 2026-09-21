@@ -44,7 +44,7 @@ check('la línea parte corta y al apuntar ocupa exactamente el alto de la fila',
 check('el hover no desplaza la fila ni su promedio por otra regla compartida',
   [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([,selectors])=>selectors.split(',').some(s=>s.trim()==='.ramo-row:hover'))
     .every(([,selectors,rule])=>!/transform\s*:\s*(?:translate|scale)/.test(rule)));
-const reduced=css.slice(css.lastIndexOf('@media(prefers-reduced-motion:reduce)'));
+const reduced=css.slice(css.indexOf('@media(prefers-reduced-motion:reduce){\n  .ramo-band'));
 check('con movimiento reducido la línea mantiene su largo y solo cambia brillo/halo',
   /\.ramo-row:hover \.ramo-band\{transform:scaleY\(\.6\);\}/.test(reduced)&&
   /\.ramo-band\{transition:filter[^}]*box-shadow[^}]*\}/.test(reduced));

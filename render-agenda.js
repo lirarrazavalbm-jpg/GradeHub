@@ -202,7 +202,7 @@ function agendaEventoHTML(e,contenido,pendientes,tipo='row'){
 function agendaRendidaHTML(e){
   const a=avgPond(e.notas);
   const f=formatEventDate(e.fecha);
-  return `<button type="button" class="ag-row done">
+  return `<button type="button" class="ag-row done" style="--ag-course:${esc(e.ramo.color)}">
     <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
     <div class="ag-row-main">
       <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span><span class="ag-row-peso">${pesoEventoAgendaTexto(e)}</span></div>
