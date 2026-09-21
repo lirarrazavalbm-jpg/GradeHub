@@ -367,6 +367,8 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .auth-link-primary{color:var(--primary);font-weight:700;margin-top:2px;}
 .auth-link-primary:hover{color:var(--primary);background:color-mix(in srgb,var(--primary),transparent 88%);}
 .auth-legal{margin:14px 0 0;text-align:center;font-size:0.71875rem;line-height:1.5;color:var(--fg3);}
+.auth-stats{margin:-6px 0 18px;text-align:center;font-size:0.8125rem;line-height:1.5;color:var(--fg3);}
+.auth-stats b{color:var(--fg);font-weight:650;}
 .auth-legal a{color:var(--fg2);text-decoration:underline;text-underline-offset:2px;}
 .auth-legal a:hover{color:var(--primary);}
 /* GPA — hero protagonista, con color propio (gradient teal) y contexto único */
