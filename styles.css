@@ -383,6 +383,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
    izquierda, con las cuatro filas y un leve giro que se endereza al pasar el
    mouse. */
 .auth-preview{width:100%;max-width:360px;margin:0 auto 22px;}
+.ap-caption{margin-top:10px;text-align:center;font-size:0.6875rem;color:var(--fg3);}
 .ap-card{position:relative;padding:16px 16px 6px;border:1px solid var(--border);border-radius:18px;background:var(--card);box-shadow:var(--shadow-lg);}
 .ap-card::before{content:"";position:absolute;inset:-28px;z-index:-1;border-radius:40px;background:radial-gradient(60% 60% at 50% 40%,color-mix(in srgb,var(--primary),transparent 82%),transparent 70%);pointer-events:none;}
 .ap-head{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:start;}
@@ -401,9 +402,9 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .ap-val{min-width:44px;padding:6px 0;border:1.5px solid color-mix(in srgb,var(--c,var(--border2)),transparent 40%);border-radius:9px;text-align:center;font-size:0.9375rem;font-weight:700;color:var(--c,var(--fg));background:var(--bg2);font-variant-numeric:tabular-nums;}
 .ap-val-empty{color:var(--fg3);font-weight:400;border-color:var(--border2);}
 .ap-row-extra{display:none;}
-/* En móvil la muestra compite con el formulario por la primera pantalla: sin
-   la línea de meta y con menos aire, el botón de Google queda a la vista. */
-@media(max-width:899px){.ap-meta{display:none;}.ap-card{padding:14px 14px 2px;}.ap-hero{margin-top:8px;}.ap-avg{font-size:2.125rem;}.ap-bar{margin:10px 0 2px;}.ap-row{padding:7px 0;}.auth-preview{margin-bottom:16px;}}
+/* En móvil va debajo del login, chica y sin resplandor: no compite con el
+   formulario. Sin la línea de meta, dos filas, menos aire. */
+@media(max-width:899px){.auth-preview{max-width:300px;margin:22px auto 4px;}.ap-card{padding:12px 12px 2px;box-shadow:var(--shadow);}.ap-card::before{display:none;}.ap-meta{display:none;}.ap-name{font-size:0.875rem;}.ap-hero{margin-top:8px;gap:10px;}.ap-avg{font-size:1.875rem;}.ap-pill{font-size:0.625rem;padding:5px 8px;}.ap-bar{margin:10px 0 2px;}.ap-row{padding:6px 0;}.ap-val{min-width:40px;padding:5px 0;font-size:0.875rem;}}
 @media(min-width:900px){
   /* Dos columnas sin envolver nada: cada hijo del wrap cae en la columna
      derecha y la muestra ocupa toda la izquierda, centrada verticalmente. */
