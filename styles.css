@@ -367,8 +367,13 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .auth-link-primary{color:var(--primary);font-weight:700;margin-top:2px;}
 .auth-link-primary:hover{color:var(--primary);background:color-mix(in srgb,var(--primary),transparent 88%);}
 .auth-legal{margin:14px 0 0;text-align:center;font-size:0.71875rem;line-height:1.5;color:var(--fg3);}
-.auth-stats{margin:-6px 0 18px;text-align:center;font-size:0.8125rem;line-height:1.5;color:var(--fg3);}
-.auth-stats b{color:var(--fg);font-weight:650;}
+/* Tres cifras bajo el subtítulo del login: estudiantes, ramos, notas. Un
+   número grande y una palabra chica cada una, separadas por una línea fina. */
+.auth-stats{display:flex;justify-content:center;margin:-4px 0 20px;}
+.auth-stat{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 18px;}
+.auth-stat+.auth-stat{border-left:1px solid var(--border);}
+.auth-stat b{font-size:1.25rem;font-weight:650;letter-spacing:-.02em;line-height:1.15;color:var(--fg);font-variant-numeric:tabular-nums;}
+.auth-stat span{font-size:0.6875rem;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);}
 .auth-legal a{color:var(--fg2);text-decoration:underline;text-underline-offset:2px;}
 .auth-legal a:hover{color:var(--primary);}
 /* GPA — hero protagonista, con color propio (gradient teal) y contexto único */

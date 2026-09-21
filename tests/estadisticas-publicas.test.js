@@ -15,7 +15,7 @@ chk('la RPC devuelve solo conteos (count/sum), nunca un campo', selects.length >
 chk('security definer + stable, y solo anon/authenticated pueden ejecutarla', /security definer/.test(sql) && /\bstable\b/.test(sql) && /grant execute on function public\.estadisticas_publicas\(\) to anon, authenticated/.test(sql));
 chk('la app llama a esa RPC desde la pantalla de login', /rpc\('estadisticas_publicas'\)/.test(app) && /cargarEstadisticasPublicas\(\);/.test(app.slice(app.indexOf('function showAuthScreen'))));
 chk('con pocas cuentas no se muestra nada', /MINIMO_CUENTAS_PARA_MOSTRAR=\d+/.test(app) && /data\.cuentas>=MINIMO_CUENTAS_PARA_MOSTRAR/.test(app));
-chk('el elemento parte oculto', /<p class="auth-stats" id="auth-stats" hidden>/.test(html));
+chk('el elemento parte oculto', /<div class="auth-stats" id="auth-stats" hidden/.test(html));
 
 console.log(`\n${ok} ok, ${fail} fail`);
 if (fail) process.exit(1);

@@ -96,7 +96,8 @@ async function cargarEstadisticasPublicas(){
     const {data,error}=await supabaseClient.rpc('estadisticas_publicas');
     if(error||!data||!(data.cuentas>=MINIMO_CUENTAS_PARA_MOSTRAR))return;
     const n=x=>Number(x||0).toLocaleString('es-CL');
-    el.innerHTML=`<b>${n(data.cuentas)}</b> estudiantes ya llevan sus notas acá`+(data.notas>0?` · <b>${n(data.notas)}</b> notas registradas`:'');
+    const tile=(v,l)=>`<div class="auth-stat"><b>${n(v)}</b><span>${l}</span></div>`;
+    el.innerHTML=tile(data.cuentas,'estudiantes')+(data.ramos>0?tile(data.ramos,'ramos'):'')+(data.notas>0?tile(data.notas,'notas'):'');
     el.hidden=false;
   }catch(e){}
 }
