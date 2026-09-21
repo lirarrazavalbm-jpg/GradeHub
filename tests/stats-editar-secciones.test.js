@@ -75,30 +75,29 @@ console.log('\n=== El arrastre del modal respeta el interruptor ===');
 // ese pointerdown redirige el click al sheet y el checkbox nunca cambia.
 // Se prueba el handler real instalado al abrir el modal, no una copia.
 let capturas=0;
-const classes={add(){},remove(){}};
-const sheet={scrollTop:0,classList:classes,setPointerCapture(){capturas++;}};
-const contenido={querySelector(){return null;}};
-const modalCtx={
-  document:{activeElement:null,getElementById:id=>id==='modal'?{classList:classes}:contenido,querySelector:()=>sheet},
-  cancelAnimationFrame(){},_sheetRaf:null,_quienAbrioModal:null,
-  etiquetarCamposDelModal(){},performance:{now:()=>0},
-};
-vm.createContext(modalCtx);
-vm.runInContext(app.match(/\nfunction openModal\([\s\S]*?\n\}/)[0],modalCtx);
-modalCtx.openModal();
-const target=tags=>({closest:selector=>tags.find(tag=>selector.split(',').includes(tag))||null});
-const down=tags=>sheet.onpointerdown({pointerType:'mouse',button:0,clientY:100,pointerId:1,target:target(tags)});
-down(['span','label','div']);
-chk('clic sobre el riel del switch no captura el puntero',capturas===0);
-capturas=0;
-down(['label','div']);
-chk('clic sobre la etiqueta tampoco empieza a arrastrar',capturas===0);
-capturas=0;
-down(['input','label','div']);
-down(['svg','button','div']);
-chk('el campo y los botones conservan su propia acción',capturas===0);
-down(['div']);
-chk('el espacio libre del modal sigue permitiendo arrastrar',capturas===1);
+// El sheet ya no se arrastra para cerrarlo: se retiró el 2026-09-21 porque el
+// gesto chocaba con el scroll de las listas que viven dentro de los modales.
+// Lo que se cuida ahora es que TODA ventana tenga cómo cerrarse, porque sin el
+// arrastre ni el clic afuera, un modal sin botón deja a la persona encerrada.
+const app_=fs.readFileSync(path.join(raiz,'app.js'),'utf8');
+const html_=fs.readFileSync(path.join(raiz,'index.html'),'utf8');
+chk('el sheet no tiene manejadores de arrastre',
+  !/sheet\.onpointerdown|sheet\.onpointermove|sheet\.onpointerup/.test(app_));
+chk('el tirador que lo insinuaba ya no está, ni en el HTML ni en el CSS',
+  !/modal-drag/.test(html_)&&!/modal-drag/.test(fs.readFileSync(path.join(raiz,'styles.css'),'utf8')));
+chk('tocar fuera del sheet tampoco cierra',
+  !/closeModalOutside/.test(app_)&&!/closeModalOutside/.test(html_));
+
+// Cada plantilla de modal tiene que ofrecer su salida. Ajustes y el modal de
+// calendario no la tenían: se cerraban tocando fuera.
+const plantillas=[...app_.matchAll(/getElementById\(.modal-content.\)\.innerHTML\s*=\s*`([\s\S]*?)`;/g)];
+// Vale un closeModal() directo o un botón de cancelar que termine cerrando:
+// "Ramos por agregar" sale por Descartar, que confirma y cierra.
+const sinSalida=plantillas.filter(m=>!/closeModal\(\)/.test(m[1])&&!/class="btn-cancel"/.test(m[1])).length;
+chk(`las ${plantillas.length} ventanas ofrecen cómo cerrarse`,plantillas.length>0&&sinSalida===0);
+chk('Ajustes tiene su botón Cerrar',/class="settings-cerrar"[^>]*onclick="closeModal\(\)"/.test(app_));
+chk('y Escape sigue cerrando, que es lo que espera quien usa teclado',
+  /e\.key!=='Escape'/.test(app_));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);

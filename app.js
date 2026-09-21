@@ -5230,7 +5230,10 @@ function openSettings(){
   function renderSettings(){
     const current=sections.find(x=>x[1]===activeSection);
     document.getElementById('modal-content').innerHTML=`
-      <div id="modal-titulo" class="modal-title settings-modal-title${activeSection?' settings-mobile-hidden':''}">Ajustes</div>
+      <div class="settings-modal-head${activeSection?' settings-mobile-hidden':''}">
+        <div id="modal-titulo" class="modal-title settings-modal-title">Ajustes</div>
+        <button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button>
+      </div>
       <div class="settings-shell${activeSection?' settings-detail-open':''}">
         <nav class="settings-nav" aria-label="Secciones de Ajustes">
           <label class="settings-search-label" for="settings-search">Buscar en Ajustes</label>
@@ -6016,57 +6019,16 @@ function confirmResetApp(){
   },{label:'Reiniciar'});
 }
 
-// La vuelta la maneja un resorte, no una transición de duración fija: arranca
-// del valor que hay en pantalla y hereda la velocidad del dedo, así no se nota
-// la costura entre arrastrar y soltar. Amortiguación .8 y respuesta .3s son los
-// valores de un drawer; el rebote leve se justifica porque atrás hubo un gesto
-// con impulso.
-let _sheetRaf=null,_sheetFin=null;
-function sheetResorte(sheet,desde,velocidad){
-  const ov=document.getElementById('modal');
-  const w=2*Math.PI/0.3,z=0.8;
-  let x=desde,v=velocidad,ultimo=performance.now();
-  ov.classList.add('settling');
-  const terminar=()=>{
-    cancelAnimationFrame(_sheetRaf);_sheetFin=null;
-    sheet.style.transform='';
-    ov.classList.remove('settling');
-  };
-  _sheetFin=terminar;
-  const paso=ahora=>{
-    const dt=Math.min((ahora-ultimo)/1000,1/30);ultimo=ahora;
-    v+=(-w*w*x-2*z*w*v)*dt;x+=v*dt;
-    if(Math.abs(x)<0.5&&Math.abs(v)<20){terminar();return;}
-    sheet.style.transform=`translateY(${x}px)`;
-    _sheetRaf=requestAnimationFrame(paso);
-  };
-  _sheetRaf=requestAnimationFrame(paso);
-}
-// Con la pestaña escondida requestAnimationFrame se detiene y el sheet quedaría
-// congelado a media altura hasta que el estudiante vuelva.
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&_sheetFin)_sheetFin();});
-
-// Pasado el borde superior no hay a dónde ir. Frenar en seco se lee como "se
-// colgó"; ceder cada vez menos se lee como "hasta acá llega".
-function sheetGoma(exceso,alto){return (exceso*alto*0.55)/(alto+0.55*Math.abs(exceso));}
-
-// Velocidad de los últimos ~100ms: lo que importa es cómo venía el dedo al
-// soltar, no cómo empezó. Dos guardas — una ventana casi de cero divide por nada
-// y manda el resorte fuera de pantalla, y ningún dedo pasa de unos 4000 px/s.
-function sheetVelocidad(historia){
-  const n=historia.length;
-  if(n<2)return 0;
-  const fin=historia[n-1];
-  let ini=historia[n-2];
-  for(let i=n-2;i>=0;i--){if(fin.t-historia[i].t>100)break;ini=historia[i];}
-  const dt=(fin.t-ini.t)/1000;
-  if(dt<0.008)return 0;
-  return Math.max(-4000,Math.min(4000,(fin.y-ini.y)/dt));
-}
-
-// Pointer Events en vez de touch: el mismo código sirve para dedo, mouse y
-// trackpad —en el escritorio el tirador no hacía nada—, y el capture mantiene
-// el seguimiento aunque el puntero se salga del sheet.
+// El sheet NO se arrastra para cerrarlo. Se probó y se sacó el 2026-09-21:
+// varios modales llevan una lista con scroll propio adentro —el simulador, el
+// buscador de ramos, las bandejas del agente— y el gesto de recorrer esa lista
+// es el mismo que el de cerrar. Se intentó afinarlo dos veces (solo con la
+// lista abajo, después solo fuera de la lista) y seguía cerrándose a media
+// edición. Un modal que se cierra solo mientras alguien escribe notas le borra
+// el trabajo; poder cerrarlo con un gesto no vale eso.
+//
+// Se cierra con el botón, o con Escape. Nada más.
+//
 // Tres cosas que un modal necesita y que no se ven mirando la pantalla:
 //
 //   1. Anunciarse por su nombre. La hoja decía aria-label="Ventana", así que un
@@ -6114,62 +6076,6 @@ function openModal(){
   }
   etiquetarCamposDelModal(contenido);
   sheet.scrollTop=0;
-  cancelAnimationFrame(_sheetRaf);ov.classList.remove('settling');
-  let startY=0,curY=0,startT=0,dragging=false,historia=[];
-  // ¿El puntero empezó dentro de una caja con scroll propio que YA está abajo?
-  // Solo se arrastra el sheet cuando la lista de adentro está en su tope: es la
-  // regla de cualquier bottom sheet, y es lo que separa "quiero leer más arriba"
-  // de "quiero cerrar esto". Vive acá adentro a propósito: el arrastre se prueba
-  // extrayendo openModal sola, y una ayudante suelta no viajaría con ella.
-  const scrollInternoEnElTope=destino=>{
-    let el=destino;
-    while(el&&el!==sheet&&el.nodeType===1){
-      // Alto de más y overflow que scrollea: esa es la caja que manda.
-      if(el.scrollHeight>el.clientHeight+1){
-        const desborde=typeof getComputedStyle==='function'?getComputedStyle(el).overflowY:'';
-        if(desborde==='auto'||desborde==='scroll')return el.scrollTop<=0;
-      }
-      el=el.parentElement;
-    }
-    return true;
-  };
-  sheet.onpointerdown=e=>{
-    if(e.pointerType==='mouse'&&e.button!==0)return;
-    // La etiqueta también activa su campo: el riel visible de un switch vive
-    // dentro de un label. Capturar ahí el puntero le roba el clic al checkbox.
-    if(e.target.closest('input,textarea,select,button,a,label,[contenteditable]'))return;
-    cancelAnimationFrame(_sheetRaf);ov.classList.remove('settling');
-    // `sheet.scrollTop<=0` no basta: varios modales llevan una LISTA con scroll
-    // propio adentro —el simulador, buscar ramo, las bandejas del agente— y el
-    // sheet nunca se mueve, así que su scrollTop es siempre 0. Resultado: el
-    // dedo bajaba la lista para volver arriba, eso contaba como arrastrar el
-    // sheet, y la ventana se cerraba sola a media edición.
-    startY=e.clientY;curY=startY;startT=Date.now();
-    dragging=sheet.scrollTop<=0&&scrollInternoEnElTope(e.target);
-    historia=[{y:e.clientY,t:performance.now()}];
-    if(dragging){ov.classList.add('dragging');try{sheet.setPointerCapture(e.pointerId);}catch(_){}}
-  };
-  sheet.onpointermove=e=>{
-    curY=e.clientY;
-    if(!dragging)return;
-    historia.push({y:e.clientY,t:performance.now()});
-    if(historia.length>6)historia.shift();
-    const dy=curY-startY;
-    sheet.style.transform=`translateY(${dy>=0?dy:-sheetGoma(-dy,sheet.offsetHeight)}px)`;
-  };
-  const soltar=e=>{
-    if(!dragging)return;dragging=false;
-    ov.classList.remove('dragging');
-    try{sheet.releasePointerCapture(e.pointerId);}catch(_){}
-    const dy=curY-startY, ms=Math.max(1,Date.now()-startT);
-    // Cierra por VELOCIDAD o por distancia, no solo por distancia. Antes exigía
-    // 90px fijos: un flick rápido y corto —que es como se cierra un sheet en
-    // serio— rebotaba en vez de cerrar. 0.11 px/ms es el umbral del playbook.
-    if(dy/ms>0.11||dy>110)closeModal();
-    else sheetResorte(sheet,dy>=0?dy:-sheetGoma(-dy,sheet.offsetHeight),sheetVelocidad(historia));
-  };
-  sheet.onpointerup=soltar;
-  sheet.onpointercancel=soltar;
 }
 // El cierre no necesita JavaScript: `transition-behavior:allow-discrete` en el
 // overlay hace que `display:none` se aplique AL FINAL de la transición, así que
@@ -6177,10 +6083,6 @@ function openModal(){
 // La versión anterior de este arreglo llevaba una clase `.cerrando` y un
 // `transitionend`; sobraba entera.
 function closeModal(){
-  const sheet=document.querySelector('.modal-sheet');
-  cancelAnimationFrame(_sheetRaf);_sheetFin=null;
-  document.getElementById('modal').classList.remove('settling','dragging');
-  sheet.style.transform='';   // suelta lo que dejó el arrastre
   document.getElementById('modal').classList.remove('open');
   // El foco vuelve a quien abrió, salvo que ese elemento ya no exista (un
   // botón de una lista que se volvió a dibujar). Ahí se deja como está: mandarlo
@@ -6190,7 +6092,6 @@ function closeModal(){
     try{volver.focus({preventScroll:true});}catch(e){volver.focus();}
   }
 }
-function closeModalOutside(e){if(e.target===document.getElementById('modal'))closeModal();}
 // Cerrar con tecla Escape (confirmación tiene prioridad sobre el modal)
 // Un <div role="button"> no responde al teclado por su cuenta: el navegador solo
 // le da comportamiento de botón a <button>. Sin esto, el elemento se enfoca con
@@ -7462,7 +7363,8 @@ function openAgendaCalendarOptions(){
     <p class="settings-help" style="margin-top:0;">Trae fechas desde Apple, Google u Outlook. Revisas cada coincidencia antes de agregarla.</p>
     <div class="settings-data-actions" style="margin-bottom:0;">
       <button${tieneEventos?'':' class="btn-primary"'} type="button" onclick="abrirImportarCalendario()">Importar fechas</button>
-    </div>`;
+    </div>
+    <div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeModal()">Cerrar</button></div>`;
   openModal();
   track('calendar_options_opened');
 }

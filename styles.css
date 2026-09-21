@@ -628,14 +628,16 @@ body.ramo-drag-active{overflow:hidden;-webkit-user-select:none;user-select:none;
 /* Mientras el dedo o el resorte mandan, la transición CSS estorba: cada
    escritura de transform arrancaría una animación encima y el sheet dejaría de
    seguir al dedo. */
-.modal-overlay.dragging .modal-sheet,.modal-overlay.settling .modal-sheet{transition:none;}
 .modal-sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:16px 20px calc(28px + env(safe-area-inset-bottom,0px));width:100%;max-width:430px;box-shadow:0 -4px 32px rgba(0,0,0,.2);max-height:92vh;max-height:92dvh;overflow-y:auto;
   touch-action:pan-y;overscroll-behavior-y:contain;}
-/* El tirador promete que esto se puede agarrar: al tomarlo lo confirma. */
-.modal-drag{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px;
-  transition:background-color var(--motion-press) var(--ease-standard),transform var(--motion-press) var(--ease-standard);}
-.modal-overlay.dragging .modal-drag{background-color:var(--fg3);transform:scaleX(1.15);}
 .modal-title{font-size:1.0625rem;font-weight:700;color:var(--fg);margin-bottom:16px;}
+/* Ajustes y el modal de calendario eran los dos únicos sin salida propia: se
+   cerraban tocando fuera del sheet. Desde que eso se retiró, necesitan la suya. */
+.settings-modal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+.settings-modal-head .modal-title{margin-bottom:16px;}
+.settings-cerrar{background:none;border:none;padding:4px 2px;margin:0;font:inherit;font-size:0.875rem;font-weight:600;color:var(--fg2);cursor:pointer;flex:none;}
+.settings-cerrar:hover{color:var(--fg);}
+.settings-cerrar:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:6px;}
 .modal-label{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);margin-bottom:6px;display:block;}
 .modal-input{margin-bottom:14px;}
 .slider-wrap{margin-bottom:14px;}
