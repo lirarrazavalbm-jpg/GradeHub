@@ -374,7 +374,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .auth-stats{display:flex;justify-content:center;width:100%;max-width:360px;margin:-2px auto 18px;padding:12px 6px;border:1px solid var(--border);border-radius:14px;background:var(--muted);}
 .auth-stat{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 8px;}
 .auth-stat+.auth-stat{border-left:1px solid var(--border);}
-.auth-stat b{font-size:1.375rem;font-weight:650;letter-spacing:-.025em;line-height:1.1;color:var(--fg);font-variant-numeric:tabular-nums;}
+.auth-stat b{font-size:1.375rem;font-weight:650;letter-spacing:-.025em;line-height:1.1;color:var(--primary);font-variant-numeric:tabular-nums;}
 .auth-stat span{font-size:0.625rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);}
 .auth-legal a{color:var(--fg2);text-decoration:underline;text-underline-offset:2px;}
 .auth-legal a:hover{color:var(--primary);}
