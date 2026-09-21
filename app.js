@@ -2318,6 +2318,7 @@ function openAddRamoModal(){
     <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="${ejemploRamo}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none" aria-describedby="m-ramo-error"/></div>
     <p id="m-ramo-error" role="alert" hidden style="margin:7px 0 0;font-size:0.75rem;line-height:1.4;color:var(--red);"></p>
     ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
+    ${S.tenant==='uc'?'<button type="button" class="horario-importar-link" onclick="abrirImportarHorarioBuscacursos()">Pegar horario de BuscaCursos</button>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()">Agregar ramo</button>
@@ -2373,12 +2374,16 @@ function addFromCatalogCodificado(nombre,sigla){
 // Devuelve el ramo creado para quien necesite completarlo (la sección, por
 // ejemplo, que el catálogo no conoce).
 function crearRamoDesdeCatalogo(nombre,sigla){
-  const presetName=findPresetName(nombre,S.tenant,S.carrera);
+  const candidato=findPresetName(nombre,S.tenant,S.carrera);
+  // Dos cursos UC pueden compartir nombre y tener siglas distintas. El
+  // horario trae la sigla exacta: nunca adjuntar la pauta de un homónimo.
+  const siglaPreset=candidato&&S.tenant==='uc'?siglaDePreset(candidato):null;
+  const presetName=sigla&&siglaPreset&&normName(sigla)!==normName(siglaPreset)?null:candidato;
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const fila=S.tenant==='uc'?cursoUcCompleto(nombre,sigla):null;
   const creditos=fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
   const ramo={
-    id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),
+    id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),sigla:sigla||null,
     creditos,origen:origenActual(presetName||nombre,sigla),
     categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null,
   };
@@ -2390,6 +2395,124 @@ function addFromCatalog(nombre,sigla){
   save();track('add_ramo_catalogo',{preset:!!(ramo.categorias||[]).length});
   closeModal();renderHome();
   showToast((ramo.categorias||[]).length?'Agregado con sus ponderaciones':'Ramo agregado');
+}
+
+// BuscaCursos repite SIGLA-SECCIÓN en cada bloque del horario. Extraer no
+// significa aceptar: las siglas se validan contra cursos-uc.js después.
+function extraerCodigosHorarioBuscacursos(texto){
+  const encontrados=new Map();
+  // Incluye las siglas atípicas que existen en el catálogo oficial: EDU21DC,
+  // ESM01AD y UC_0001. La forma sola nunca autoriza un ramo: manda el catálogo.
+  const patron=/(^|[^A-Z0-9_])([A-Z]{2,5}\d{2,4}[A-Z]{0,2}|UC_\d{4})\s*[-‐‑‒–—]\s*(\d{1,3})(?![A-Z0-9])/gi;
+  for(const match of String(texto||'').matchAll(patron)){
+    const sigla=match[2].toUpperCase(),seccion=seccionValida(Number(match[3]));
+    if(seccion===null)continue;
+    const clave=sigla+'-'+seccion;
+    if(!encontrados.has(clave))encontrados.set(clave,{sigla,seccion});
+  }
+  return [...encontrados.values()];
+}
+let _horarioUCReconocido=null,_horarioTextoPegado='';
+function abrirImportarHorarioBuscacursos(conservarTexto=false){
+  if(S.tenant!=='uc')return;
+  if(!conservarTexto)_horarioTextoPegado='';
+  _horarioUCReconocido=null;
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Pegar horario de BuscaCursos</div>
+    <p class="modal-desc">Copia tu horario y pégalo acá. Buscaremos las siglas y secciones; podrás revisar los ramos antes de agregarlos.</p>
+    <label class="modal-label" for="m-horario-texto">Tu horario</label>
+    <textarea id="m-horario-texto" class="horario-importar-texto" rows="7" maxlength="20000" placeholder="Ej.: MAT1610-1, IIC2333-2" aria-describedby="m-horario-estado"></textarea>
+    <p id="m-horario-estado" class="horario-importar-estado" role="status" aria-live="polite">Solo se reconocerán siglas verificadas en el catálogo UC.</p>
+    <div class="modal-btns">
+      <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="btn-confirm" id="m-horario-reconocer" onclick="reconocerHorarioBuscacursos()">Revisar ramos</button>
+    </div>`;
+  openModal();
+  const entrada=document.getElementById('m-horario-texto');
+  entrada.value=_horarioTextoPegado;
+  entrada.focus();
+}
+async function reconocerHorarioBuscacursos(){
+  if(S.tenant!=='uc')return false;
+  const entrada=document.getElementById('m-horario-texto');
+  if(!entrada)return false;
+  const boton=document.getElementById('m-horario-reconocer');
+  if(!boton||boton.disabled)return false;
+  _horarioTextoPegado=entrada.value;
+  const codigos=extraerCodigosHorarioBuscacursos(entrada.value);
+  const estado=document.getElementById('m-horario-estado');
+  _horarioUCReconocido=null;
+  if(!codigos.length){estado.textContent='No encontramos siglas con sección, como MAT1610-1. Revisa lo que pegaste.';entrada.focus();return false;}
+  boton.disabled=true;
+  estado.textContent='Cargando el catálogo UC para comprobar las siglas…';
+  let cargado=false;
+  try{cargado=await cargarCursosUC();}catch(e){}
+  // El estudiante puede cerrar el modal mientras llegan los ~660 KB. En ese
+  // caso la respuesta tardía no abre una propuesta ni modifica el semestre.
+  if(document.getElementById('m-horario-texto')!==entrada)return false;
+  boton.disabled=false;
+  const filas=cursosUcExtra();
+  if(!cargado||!filas){estado.textContent='No pudimos cargar el catálogo UC. Revisa tu conexión e intenta de nuevo; tu horario sigue aquí.';return false;}
+
+  const porSigla=new Map(filas.filter(f=>Array.isArray(f)&&typeof f[0]==='string').map(f=>[f[0].toUpperCase(),f]));
+  const secciones=new Map();
+  codigos.forEach(({sigla,seccion})=>{
+    if(!secciones.has(sigla))secciones.set(sigla,new Set());
+    secciones.get(sigla).add(seccion);
+  });
+  const ambiguas=[...secciones].filter(([,s])=>s.size>1).map(([sigla])=>sigla);
+  const desconocidas=[...secciones.keys()].filter(sigla=>!porSigla.has(sigla));
+  // El catálogo combinado decide qué nombre corresponde al preset cuando la
+  // malla y el archivo completo llaman distinto al mismo ramo.
+  const catalogoPorSigla=new Map(indiceBusquedaCatalogo('uc',S.carrera).todos
+    .filter(r=>r.sigla).map(r=>[r.sigla.toUpperCase(),r]));
+  _horarioUCReconocido=[...secciones].filter(([sigla,s])=>s.size===1&&porSigla.has(sigla))
+    .map(([sigla,s])=>{
+      const oficial=porSigla.get(sigla),catalogo=catalogoPorSigla.get(sigla);
+      return {sigla,seccion:[...s][0],nombre:(catalogo&&catalogo.nombre)||oficial[1]};
+    }).filter(r=>!ramoPropuestoYaEsta(r));
+
+  const yaTienes=[...secciones].filter(([sigla,s])=>s.size===1&&porSigla.has(sigla)
+    &&ramoPropuestoYaEsta({sigla,nombre:(catalogoPorSigla.get(sigla)||{}).nombre||porSigla.get(sigla)[1]})).length;
+  const avisos=[];
+  if(desconocidas.length)avisos.push(`No reconocimos: ${desconocidas.map(esc).join(', ')}.`);
+  if(ambiguas.length)avisos.push(`Aparecen varias secciones para ${ambiguas.map(esc).join(', ')}; agrégalo a mano para elegir la correcta.`);
+  if(yaTienes)avisos.push(`${yaTienes} ${yaTienes===1?'ramo ya está':'ramos ya están'} en tu semestre.`);
+  const lista=_horarioUCReconocido.map((r,i)=>`<label class="agent-ramo-row">
+    <input type="checkbox" class="agent-ramo-check horario-ramo-check" data-i="${i}" checked/>
+    <span><b>${esc(r.nombre)}</b><small>${esc(r.sigla)} · Sección ${r.seccion}</small></span>
+  </label>`).join('');
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Ramos reconocidos</div>
+    <p class="modal-desc">Revisa lo que encontramos en el catálogo UC. <b>Todavía no agregamos nada.</b> Desmarca los que no llevas.</p>
+    ${avisos.length?`<p class="horario-importar-estado" role="status">${avisos.join(' ')}</p>`:''}
+    ${lista?`<div class="agent-ramo-list">${lista}</div>`:'<p class="cat-empty">No hay ramos nuevos para agregar. Puedes corregir el texto o agregarlos uno por uno.</p>'}
+    <div class="modal-btns">
+      <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="btn-cancel" onclick="abrirImportarHorarioBuscacursos(true)">Corregir</button>
+      ${lista?'<button type="button" class="btn-confirm" onclick="aplicarHorarioBuscacursos()">Agregar los marcados</button>':''}
+    </div>`;
+  return true;
+}
+function aplicarHorarioBuscacursos(){
+  if(S.tenant!=='uc'||!Array.isArray(_horarioUCReconocido))return false;
+  const marcados=[...document.querySelectorAll('.horario-ramo-check')]
+    .filter(c=>c.checked).map(c=>_horarioUCReconocido[Number(c.dataset.i)]).filter(Boolean);
+  if(!marcados.length){showToast('No marcaste ningún ramo',true);return false;}
+  let puestos=0;
+  marcados.forEach(r=>{
+    if(ramoPropuestoYaEsta(r))return;
+    const creado=crearRamoDesdeCatalogo(r.nombre,r.sigla);
+    if(!creado)return;
+    creado.seccion=r.seccion;
+    puestos++;
+  });
+  if(!puestos){showToast('Ya tienes esos ramos en tu semestre',true);return false;}
+  save();track('ramos_horario_agregados',{cantidad:puestos});
+  _horarioUCReconocido=null;_horarioTextoPegado='';
+  closeModal();renderHome();
+  showToast(puestos===1?'Ramo agregado desde tu horario':`${puestos} ramos agregados desde tu horario`);
+  return true;
 }
 function renderModalColors(){
   const c=document.getElementById('m-colors');if(!c)return;c.innerHTML='';
@@ -2517,6 +2640,9 @@ function sellarDatosCatalogo(r,tenant){
 }
 function siglaDeRamo(r,tenant){
   if(!r||!r.nombre)return null;
+  // La sigla elegida explícitamente en el catálogo o leída del horario
+  // identifica el curso mejor que su nombre (hay homónimos oficiales).
+  if(typeof r.sigla==='string'&&r.sigla)return r.sigla;
   // En el onboarding la universidad todavía no está en `S`: se está eligiendo,
   // y vive en `selectedTenant`. Por eso se puede pasar explícita.
   tenant=tenant||(r.origen&&r.origen.tenant)||S.tenant;
@@ -4476,8 +4602,11 @@ function propuestaRamosLimpia(valor){
 // Un ramo propuesto que la persona ya agregó (desde la app, o aceptando otra
 // propuesta) no se vuelve a ofrecer: agregarlo dos veces le duplica el ramo.
 function ramoPropuestoYaEsta(r){
-  return (S.ramos||[]).some(x=>normName(x.nombre)===normName(r.nombre)
-    ||(r.sigla&&normName(siglaDeRamo(x)||'')===normName(r.sigla)));
+  return (S.ramos||[]).some(x=>{
+    const existente=x.sigla||siglaDeRamo(x);
+    if(r.sigla&&existente)return normName(existente)===normName(r.sigla);
+    return normName(x.nombre)===normName(r.nombre);
+  });
 }
 function propuestasFechasDeRamo(ramo){
   if(!ramo)return [];

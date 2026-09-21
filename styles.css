@@ -1006,6 +1006,11 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .agent-ramo-row b{overflow-wrap:anywhere;}
 .agent-ramo-row small{color:var(--fg3);font-size:.75rem;font-variant-numeric:tabular-nums;}
 .agent-ramo-check{width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);}
+.horario-importar-link{display:block;width:100%;margin:12px 0 4px;padding:11px 13px;border:1px solid var(--border2);border-radius:10px;background:var(--card);color:var(--fg);font:600 .8125rem var(--font-ui);text-align:left;cursor:pointer;}
+.horario-importar-link:hover{border-color:var(--primary);}
+.horario-importar-texto{display:block;width:100%;box-sizing:border-box;min-height:132px;padding:12px;border:1px solid var(--border2);border-radius:10px;background:var(--card);color:var(--fg);font:400 .875rem/1.45 var(--font-ui);resize:vertical;}
+.horario-importar-texto:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.horario-importar-estado{margin:9px 0 13px;color:var(--fg2);font-size:.78125rem;line-height:1.45;overflow-wrap:anywhere;}
 .agent-proposal-list{margin:11px 0 0;padding:0;list-style:none;border-top:1px solid var(--border);}
 .agent-proposal-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.78125rem;line-height:1.35;}
 .agent-proposal-list b{min-width:0;color:var(--fg);overflow-wrap:anywhere;}
