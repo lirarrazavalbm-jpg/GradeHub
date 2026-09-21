@@ -61,7 +61,8 @@ run("S.ramos[0].nombre='Cálculo II';S.ramos[0].seccion=3;");
 run('openSimuladorModal()');
 const cabecera=porId('modal-content').innerHTML;
 chk('el ramo es el título, no un subtítulo',/class="modal-title sim-ramo">Cálculo II/.test(cabecera));
-chk('y "Simular escenario" queda como antetítulo',/class="sim-kicker"/.test(cabecera));
+chk('y "Simular escenario" va debajo del ramo',
+  cabecera.indexOf('sim-ramo')<cabecera.indexOf('sim-kicker')&&/class="sim-kicker"/.test(cabecera));
 chk('y la sección cuando la hay',/Sección 3/.test(cabecera));
 run("S.ramos[0].seccion=null;");run('openSimuladorModal()');
 chk('sin sección no inventa una',!/Sección/.test(porId('modal-content').innerHTML));

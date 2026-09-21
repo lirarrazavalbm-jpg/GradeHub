@@ -1159,9 +1159,9 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .modal-overlay:has(.sim-cats){align-items:stretch;}
 .modal-sheet:has(.sim-cats){max-height:none;border-radius:0;}
 .sim-kicker{display:flex;align-items:center;gap:6px;font-size:0.6875rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);margin:0 0 6px;}
+  text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);margin:0 0 8px;}
 .sim-kicker .ic{width:15px;height:15px;}
-.sim-ramo{margin-bottom:6px;overflow-wrap:anywhere;}
+.sim-ramo{margin-bottom:4px;overflow-wrap:anywhere;}
 .sim-intro{font-size:0.8125rem;color:var(--fg2);margin:0 0 14px;line-height:1.45;}
 /* Eran 36vh fijos: un tercio de la pantalla para la lista, y con cinco
    evaluaciones obligaba a scrollear todo el rato en una caja chica. Ahora la
