@@ -19,11 +19,11 @@ function kit(){
 }
 let failed=0;
 function test(name,fn){try{fn();console.log('OK '+name);}catch(e){failed++;console.error('ERROR '+name+'\n'+e.message);}}
-test('cada grupo aparece una vez, sin perder ninguna de las siete secciones',()=>{
+test('cada grupo aparece una vez, sin perder ninguna de las ocho secciones',()=>{
   const k=kit();vm.runInContext('openSettings()',k.ctx);
   const groups=[...k.nav().matchAll(/class="settings-nav-group">([^<]+)/g)].map(m=>m[1]);
   assert.equal(groups.length,3);assert.equal(new Set(groups).size,groups.length);
-  assert.equal(k.buttons().length,7);
+  assert.equal(k.buttons().length,8);
 });
 test('el buscador encuentra opciones internas, ignora tildes y explica cero resultados',()=>{
   const k=kit();vm.runInContext('openSettings()',k.ctx);
@@ -33,7 +33,7 @@ test('el buscador encuentra opciones internas, ignora tildes y explica cero resu
     assert.deepEqual(k.buttons().map(b=>b.dataset.settingsSection),section?[section]:[]);
     if(!section)assert.match(k.nav(),/No encontramos/);
   }
-  k.get('settings-search').value='';k.get('settings-search').oninput();assert.equal(k.buttons().length,7);
+  k.get('settings-search').value='';k.get('settings-search').oninput();assert.equal(k.buttons().length,8);
 });
 test('buscar no borra lo escrito en el panel ni guarda estado; volver mantiene la consulta',()=>{
   const k=kit();vm.runInContext("openSettings('perfil')",k.ctx);

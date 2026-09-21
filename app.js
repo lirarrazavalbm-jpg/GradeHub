@@ -1534,7 +1534,24 @@ function showMainApp(){
     else cargarCursosUC();
   }
 }
-const NAV_TABS=['stats','home','agenda']; // orden izq→der para swipe
+// Orden izq→der para el deslizar. Es una lista VIVA: la pestaña de profesor solo
+// existe para quien está aprobado, así que el carrusel tiene que poder crecer y
+// encogerse sin dejar a nadie parado en una pestaña que ya no está.
+const NAV_TABS_BASE=['stats','home','agenda'];
+let NAV_TABS=NAV_TABS_BASE.slice();
+function recalcularNavTabs(){
+  const conProfesor=typeof esProfesorAprobado==='function'&&esProfesorAprobado();
+  const nuevas=conProfesor?[...NAV_TABS_BASE,'profesor']:NAV_TABS_BASE.slice();
+  const btn=document.getElementById('nav-profesor');if(btn)btn.hidden=!conProfesor;
+  const pantalla=document.getElementById('screen-profesor');if(pantalla)pantalla.hidden=!conProfesor;
+  if(nuevas.join()===NAV_TABS.join())return false;
+  NAV_TABS=nuevas;
+  // Si a alguien le quitan el acceso estando en su pestaña, no se le deja la
+  // pantalla en blanco: vuelve a Inicio.
+  if(!conProfesor&&currentTab==='profesor')showTab('home');
+  else setTabTransforms(Math.max(0,NAV_TABS.indexOf(currentTab)),0);
+  return true;
+}
 let currentTab='home';
 let currentTabIdx=1;
 
@@ -1551,7 +1568,7 @@ function showTab(tab,skipAnim){
   if(NAV_TABS.includes(tab)){
     // Modo tab: snap del carrusel
     ['ramo','auth','onboard','reset'].forEach(s=>{const el=document.getElementById('screen-'+s);if(el)el.classList.remove('active');});
-    ['nav-home','nav-stats','nav-agenda'].forEach(n=>{const el=document.getElementById(n);if(el){el.classList.remove('active');el.removeAttribute('aria-current');}});
+    NAV_TABS.forEach(t=>{const el=document.getElementById('nav-'+t);if(el){el.classList.remove('active');el.removeAttribute('aria-current');}});
     currentTab=tab;currentTabIdx=NAV_TABS.indexOf(tab);
     setTabTransforms(currentTabIdx,0);
     const nb=document.getElementById('nav-'+tab);if(nb){nb.classList.add('active');nb.setAttribute('aria-current','page');}
@@ -1559,6 +1576,7 @@ function showTab(tab,skipAnim){
     if(tab==='home')renderHome();
     else if(tab==='stats')renderStats();
     else if(tab==='agenda')renderAgenda();
+    else if(tab==='profesor'&&typeof renderProfesor==='function')renderProfesor();
     track('screen_view',{screen_name:tab});
   } else {
     // Modo overlay (ramo, auth, etc.)
@@ -5053,6 +5071,15 @@ function confirmarDescartarPropuestaPauta(id){
   },{label:'Descartar',danger:true,focusCancel:true});
 }
 
+let _repintarSettings=null;
+// Repinta Ajustes solo si está abierto de verdad. Sin la guarda, llamarla con el
+// modal cerrado le escribiría encima a la siguiente ventana que se abra.
+function renderSettingsSiAbierto(){
+  const modal=document.getElementById('modal');
+  if(!_repintarSettings||!modal||!modal.classList.contains('open'))return;
+  if(!document.querySelector('.settings-shell'))return;
+  _repintarSettings();
+}
 function openSettings(){
   const initialSection=arguments[0];
   let settingsSem=S.careerSemestre;
@@ -5067,6 +5094,7 @@ function openSettings(){
   let activeSection=directSection||(window.matchMedia('(min-width:768px)').matches?'perfil':'');
   const icons={
     perfil:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c.8-3.4 3.5-5.3 7.5-5.3s6.7 1.9 7.5 5.3"/></svg>',
+    profesor:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h7"/></svg>',
     academico:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg>',
     calendario:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>',
     apariencia:'<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
@@ -5079,6 +5107,7 @@ function openSettings(){
     ['Tu cuenta','perfil','Perfil','Tu nombre y correo de acceso','cambiar nombre correo email'],
     ['Tu cuenta','agentes','Agentes conectados','Conectar o desconectar un agente','chatgpt claude gemini inteligencia artificial url revocar permisos'],
     ['Tu cuenta','datos','Datos y cuenta','Respaldos, reinicio y eliminación','exportar importar copia respaldo borrar eliminar cuenta reiniciar dispositivo privacidad terminos'],
+    ['Tu cuenta','profesor','Clases particulares','Ofrece clases a otros estudiantes','profesor particular clases ofrecer anuncio tutor postular enseñar dar clases hacer clases'],
     ['Tu semestre','academico','Información académica','Universidad, carrera y semestre','cambiar carrera universidad agregar semestre anterior historial'],
     ['Tu semestre','calendario','Calendario','Importar fechas o suscribirte','apple google outlook importar archivo ics fechas copiar url suscripcion'],
     ['La app','apariencia','Apariencia','Modo, acento y fondo','tema claro oscuro sistema color cambiar fondo'],
@@ -5086,7 +5115,41 @@ function openSettings(){
   ];
 
   function guardarBtn(){return '<button class="btn-primary settings-save" id="s-save-btn" onclick="saveSettings()">Guardar cambios</button>';}
+  // "Soy profesor particular" es una POSTULACIÓN, no un interruptor: apretarlo
+  // no enciende nada hasta que alguien del equipo la revise. Por eso el panel
+  // muestra siempre en qué va, y no deja a nadie esperando sin saber.
+  function panelProfesor(){
+    if(typeof perfilProfesorConocido!=='function')
+      return '<p class="settings-help settings-help-top">Las clases particulares todavía no están disponibles.</p>';
+    if(!currentUser)
+      return '<p class="settings-help settings-help-top">Necesitas iniciar sesión para ofrecer clases: tu postulación va atada a tu cuenta, no a este dispositivo.</p>';
+    const perfil=perfilProfesorConocido();
+    if(perfil===undefined)
+      return '<p class="settings-help settings-help-top">Revisando tu acceso…</p>';
+    // null es "no se pudo preguntar", no "no tiene ficha": pasa mientras el SQL
+    // del marketplace no esté aplicado. Decir "postula" ahí sería ofrecer un
+    // botón que no puede funcionar.
+    if(perfil===null)
+      return '<p class="settings-help settings-help-top">Las clases particulares todavía no están disponibles. Vuelve a mirar más adelante.</p>';
+    if(!perfil)return `
+      <p class="settings-help settings-help-top">Si haces clases particulares, puedes publicar tus avisos acá. Tu cuenta de estudiante sigue igual: tus notas no se muestran a nadie ni se usan para tu anuncio.</p>
+      <div class="settings-data-actions" style="margin-bottom:0;">
+        <button type="button" class="btn-primary" onclick="postularComoProfesor()">Soy profesor particular</button>
+      </div>
+      <p class="settings-help">Un miembro de nuestro equipo revisa cada postulación antes de que puedas preparar anuncios.</p>`;
+    const estados={
+      pendiente:['Tu postulación está en revisión.','Te avisamos cuando un miembro de nuestro equipo la revise. Todavía no puedes publicar clases.'],
+      aprobado:['Estás aprobado como profesor particular.','Tienes la pestaña <b>Clases</b> abajo, junto a Inicio: ahí preparas tus anuncios y ves cómo les va.'],
+      rechazado:['Tu postulación no fue aprobada.','Puedes escribirnos desde Sugerencias y comentarios para revisar el motivo.'],
+      suspendido:['Tu acceso de profesor está suspendido.','Tus notas y tu semestre siguen igual. Escríbenos si crees que es un error.'],
+    };
+    const [titulo,detalle]=estados[perfil.estado]||['Tu perfil necesita revisión.',''];
+    return `
+      <p class="settings-help settings-help-top"><b>${esc(perfil.nombre_publico||'')}</b></p>
+      <p class="settings-help" style="margin-top:0;"><b>${titulo}</b><br>${detalle}</p>`;
+  }
   function panel(section){
+    if(section==='profesor')return panelProfesor();
     if(section==='perfil')return `
       <label class="modal-label" for="s-name">Nombre para mostrar</label>
       <div class="settings-name-field">
@@ -5271,6 +5334,11 @@ function openSettings(){
     }
   }
   renderSettings();
+  // Ajustes se dibuja dentro de un cierre, así que desde fuera no hay cómo
+  // repintarlo. Esta referencia es la puerta: la usa la postulación de profesor
+  // para que al volver del modal la sección muestre "en revisión" y no siga
+  // ofreciendo postular.
+  _repintarSettings=renderSettings;
   openModal();
 
   function checkSave(){
