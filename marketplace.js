@@ -40,6 +40,35 @@ function validarBorradorClase(entrada){
     modalidad,ubicacion,precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
 }
 
+// El estado de profesor lo miran dos lugares —la sección de Ajustes y la barra
+// de pestañas— y ninguno puede esperar una consulta de red para pintarse. Se
+// guarda acá: null mientras no se sabe, y la ficha (o false) cuando se supo.
+// Tres estados distintos, y confundirlos deja la pantalla mintiendo: todavía no
+// se sabe, no se pudo saber (el SQL del marketplace no está aplicado), o se supo
+// —y ahí puede ser una ficha o ninguna—.
+let perfilProfesorCache=null,perfilProfesorPedido=false,perfilProfesorResuelto=false;
+function perfilProfesorConocido(){
+  if(!perfilProfesorResuelto)return undefined;   // preguntando
+  return perfilProfesorCache;                     // ficha, false, o null si no se pudo
+}
+function esProfesorAprobado(){
+  return !!(perfilProfesorCache&&perfilProfesorCache.estado==='aprobado');
+}
+// Se llama al entrar. No bloquea nada: si falla —por ejemplo porque el SQL del
+// marketplace todavía no está aplicado— la app sigue igual y simplemente no
+// aparece ni la pestaña ni el estado en Ajustes.
+async function cargarPerfilProfesor(){
+  if(perfilProfesorPedido)return perfilProfesorCache;
+  perfilProfesorPedido=true;
+  const r=await perfilProfesorActual();
+  perfilProfesorCache=r.ok?(r.perfil||false):null;
+  perfilProfesorResuelto=true;
+  return perfilProfesorCache;
+}
+// Después de postular o de que cambie el estado, para no dejar la pantalla
+// mostrando lo anterior.
+function olvidarPerfilProfesor(){perfilProfesorCache=null;perfilProfesorPedido=false;perfilProfesorResuelto=false;}
+
 function sesionProfesorClase(){
   return supabaseClient&&currentUser&&currentUser.id?String(currentUser.id):'';
 }
@@ -426,31 +455,53 @@ async function alcanceAnuncio(anuncioId){
 
 // Espacio separado de las notas. El SQL es manual: si todavía no existe,
 // esta puerta explica el fallo y no interviene en el arranque de GradeHub.
+// El espacio de profesor vive en su propia PESTAÑA desde el 2026-09-21: armar un
+// anuncio con su público y su cotización es una tarea de varios pasos y no cabe
+// en una ventana. El cuerpo se separa del modal para que las dos entradas —la
+// pestaña y el menú, mientras exista— pinten exactamente lo mismo.
+async function renderProfesor(){
+  const raiz=document.getElementById('profesor-body');
+  if(!raiz)return;
+  await renderEspacioProfesor(raiz,{titulo:false});
+}
 async function openEspacioProfesor(){
   const raiz=document.getElementById('modal-content');
   raiz.innerHTML='<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="status">Revisando tu acceso…</p>';
   openModal();
+  await renderEspacioProfesor(raiz,{titulo:true});
+}
+async function renderEspacioProfesor(raiz,{titulo=true}={}){
+  const cabecera=t=>titulo?`<div class="modal-title" id="modal-titulo">${t}</div>`:'';
+  raiz.innerHTML=cabecera('Espacio de profesor')+'<p class="profesor-info" role="status">Revisando tu acceso…</p>';
   const ficha=await perfilProfesorActual();
-  if(!ficha.ok){raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="alert">${esc(ficha.error)}</p>`;return;}
+  if(!ficha.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(ficha.error)}</p>`;return;}
   if(!ficha.perfil){renderPostulacionProfesor(raiz);return;}
   if(ficha.perfil.estado!=='aprobado'){
     const avisos={pendiente:'Tu postulación está esperando revisión. Todavía no puedes ofrecer clases.',rechazado:'Tu postulación no fue aprobada. Puedes escribirnos desde Sugerencias para revisar el motivo.',suspendido:'Tu acceso de profesor está suspendido. Tus notas como estudiante siguen disponibles.'};
-    raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="status">${esc(avisos[ficha.perfil.estado]||'Tu perfil necesita revisión.')}</p>`;
+    raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="status">${esc(avisos[ficha.perfil.estado]||'Tu perfil necesita revisión.')}</p>`;
     return;
   }
   const borrador=await abrirBorradorClase();
-  if(!borrador.ok){raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="alert">${esc(borrador.error)}</p>`;return;}
+  if(!borrador.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(borrador.error)}</p>`;return;}
   if(!borrador.anuncio){
     try{
       const {data,error}=await supabaseClient.from('tutor_anuncios').select('id,titulo,estado')
         .eq('estado','en_revision').order('created_at',{ascending:false}).limit(1).maybeSingle();
       if(error)throw error;
-      if(data){raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="status">Tu anuncio ${esc(data.titulo||'')} está en revisión. No se publica hasta que GradeHub lo apruebe.</p>`;return;}
-    }catch(e){raiz.innerHTML='<div class="modal-title" id="modal-titulo">Espacio de profesor</div><p class="profesor-info" role="alert">No pudimos consultar tus anuncios. Intenta de nuevo.</p>';return;}
+      if(data){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="status">Tu anuncio ${esc(data.titulo||'')} está en revisión. No se publica hasta que GradeHub lo apruebe.</p>`;return;}
+    }catch(e){raiz.innerHTML=cabecera('Espacio de profesor')+'<p class="profesor-info" role="alert">No pudimos consultar tus anuncios. Intenta de nuevo.</p>';return;}
   }
   renderBorradorProfesor(raiz,borrador.anuncio);
 }
 
+// La puerta desde Ajustes: solo la postulación, sin el espacio completo. Quien
+// todavía no postula no tiene anuncios que mostrarle.
+function postularComoProfesor(){
+  const raiz=document.getElementById('modal-content');
+  if(!raiz)return;
+  renderPostulacionProfesor(raiz);
+  openModal();
+}
 function renderPostulacionProfesor(raiz){
   raiz.innerHTML=`<div class="modal-title" id="modal-titulo">Postula para ofrecer clases</div>
     <p class="profesor-info">Tu cuenta de estudiante sigue igual. Un miembro de nuestro equipo revisará tu postulación antes de que puedas preparar anuncios.</p>
@@ -469,7 +520,16 @@ function renderPostulacionProfesor(raiz){
     enviando=true;
     const boton=form.querySelector('button');boton.disabled=true;estado.textContent='Enviando postulación…';
     const resultado=await postularProfesor(form.querySelector('#profesor-nombre').value,form.querySelector('#profesor-presentacion').value);
-    if(resultado.ok){raiz.innerHTML='<div class="modal-title" id="modal-titulo">Postulación enviada</div><p class="profesor-info" role="status">Quedó pendiente de revisión. Aún no puedes publicar clases; vuelve a este espacio para ver su estado.</p>';return;}
+    if(resultado.ok){
+      // El estado en memoria quedó viejo: sin esto Ajustes seguiría ofreciendo
+      // postular a alguien que acaba de hacerlo.
+      olvidarPerfilProfesor();
+      if(typeof cargarPerfilProfesor==='function')cargarPerfilProfesor().then(()=>{
+        if(typeof renderSettingsSiAbierto==='function')renderSettingsSiAbierto();
+      }).catch(()=>{});
+      raiz.innerHTML='<div class="modal-title" id="modal-titulo">Postulación enviada</div><p class="profesor-info" role="status">Quedó pendiente de revisión. Aún no puedes publicar clases. En Ajustes · Clases particulares puedes ver en qué va.</p>';
+      return;
+    }
     estado.textContent=resultado.error;boton.disabled=false;enviando=false;
     if(resultado.campo)form.querySelector(resultado.campo==='nombre'?'#profesor-nombre':'#profesor-presentacion').focus();
   });

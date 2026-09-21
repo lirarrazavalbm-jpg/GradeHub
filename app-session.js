@@ -466,6 +466,15 @@ async function afterLogin(){
   // notas— y no bloquea nada. Va después del consenso a propósito: si una pauta
   // acaba de llegar de otros, no tiene sentido devolvérsela.
   if(typeof aportarPautasAlCatalogo==='function')aportarPautasAlCatalogo().catch(()=>{});
+  // Si esta persona está aprobada como profesor particular, le aparece una
+  // cuarta pestaña. Se pregunta una vez al entrar y no bloquea nada: si el SQL
+  // del marketplace todavía no está aplicado, la consulta falla en silencio y
+  // la app queda exactamente como antes, con sus tres pestañas.
+  if(typeof cargarPerfilProfesor==='function'){
+    cargarPerfilProfesor()
+      .then(()=>{if(typeof recalcularNavTabs==='function')recalcularNavTabs();})
+      .catch(()=>{});
+  }
   // Es una bandeja de revisión, no una sincronización del semestre: se lee
   // aparte y nunca bloquea entrar. Si llega una propuesta, se muestra completa
   // para que la persona la aplique o descarte en vez de mover su promedio sola.
