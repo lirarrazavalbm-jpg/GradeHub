@@ -542,9 +542,13 @@ function renderRamo(){
       const txt=document.getElementById('ramo-report-text');
       // Un ramo armado a mano no tiene pauta del catálogo que "no calce":
       // lo que se le ofrece es compartir la suya.
+      // A quien armó la pauta de un ramo que el catálogo trae vacío ya no se le
+      // pregunta nada: su pauta se aporta sola. El botón se queda para poder
+      // corregirla o mandar una nota, pero afirma en vez de preguntar.
       if(txt)txt.textContent=pautaEditada(r)
         ?'Corregiste esta pauta · compártela con tu curso'
         :!r.origen?'¿Armaste esta pauta? Compártela con tu curso'
+        :pautaCatalogoSinOficial(r)?'Tu pauta completa el catálogo de este ramo'
         :'¿Esta pauta no calza con tu curso? Repórtala';
     }else{rep.style.display='none';rep.onclick=null;}
   }
