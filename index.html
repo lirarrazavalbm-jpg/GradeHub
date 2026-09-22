@@ -91,12 +91,7 @@
     <div class="ob-brand">GradeHub</div>
     <h1 class="ob-title">Mejor que tu <span class="ob-title-accent">Excel.</span></h1>
     <div class="ob-sub" id="auth-sub">Tus notas, tu promedio y cuánto te falta para aprobar.</div>
-    <aside class="auth-proof" aria-label="GradeHub en números">
-      <div class="auth-proof-kicker">GradeHub en números</div>
-      <h2 class="auth-proof-title">Tu semestre, más claro.</h2>
-      <p class="auth-proof-copy">Notas, ramos y metas en un solo lugar, sin pelear con una planilla.</p>
-      <div class="auth-stats" id="auth-stats" hidden aria-label="Estadísticas de GradeHub"></div>
-    </aside>
+    <div class="auth-stats" id="auth-stats" hidden aria-label="GradeHub en números"></div>
     <button class="oauth-btn" id="btn-google" onclick="signInWithProvider('google')">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.56c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.76c-.98.66-2.23 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.11a6.6 6.6 0 0 1 0-4.22V7.05H2.18a11 11 0 0 0 0 9.9z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.05l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
       Continuar con Google
@@ -153,11 +148,36 @@
       </div>
       <div class="ap-caption">Así se ve un ramo en GradeHub</div>
     </aside>
+    <!-- La tercera columna muestra el otro lado del producto: no son cifras de
+         marketing, sino una miniatura fiel de la pantalla de Estadísticas. -->
+    <aside class="auth-stats-preview" aria-hidden="true">
+      <div class="asp-card">
+        <div class="asp-eyebrow">Estadísticas</div>
+        <div class="asp-semester">Sem. 2 · 2026</div>
+        <div class="asp-gpa-label">Promedio general</div>
+        <div class="asp-gpa">5.2</div>
+        <div class="asp-section-title">Avance del semestre</div>
+        <div class="asp-progress-card">
+          <div><b>40%</b><span>del peso evaluable ya tiene nota</span></div>
+          <strong>6<small> notas ingresadas</small></strong>
+        </div>
+        <div class="asp-progress"><i></i></div>
+        <div class="asp-section-title">Tu prioridad hoy</div>
+        <div class="asp-priority">
+          <i></i><div><b>Introducción a la Microeconomía</b><span>Vas 4.9 en lo evaluado</span></div><strong>3.4<small>necesitas</small></strong>
+        </div>
+        <div class="asp-section-title">Rango del semestre</div>
+        <div class="asp-range"><span>3.1</span><small> a </small><b>6.4</b></div>
+      </div>
+      <div class="ap-caption">Así se ven tus estadísticas en GradeHub</div>
+    </aside>
     <!-- Quien llega sin que se la recomienden ve un login y nada más. Este es el
          único enlace de la pantalla que responde "¿qué es esto y me conviene?"
          antes de pedirle una cuenta. -->
-    <p class="auth-legal"><a href="/preguntas.html">¿Qué es GradeHub? Preguntas frecuentes</a></p>
-    <p class="auth-legal">Al crear tu cuenta aceptas nuestros <a href="/terminos.html">términos de uso</a> y nuestra <a href="/privacidad.html">política de privacidad</a>.</p>
+    <footer class="auth-legal-row">
+      <p class="auth-legal"><a href="/preguntas.html">¿Qué es GradeHub? Preguntas frecuentes</a></p>
+      <p class="auth-legal">Al crear tu cuenta aceptas nuestros <a href="/terminos.html">términos de uso</a> y nuestra <a href="/privacidad.html">política de privacidad</a>.</p>
+    </footer>
   </div>
 </div>
 
