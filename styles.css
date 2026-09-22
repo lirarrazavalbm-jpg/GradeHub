@@ -747,6 +747,11 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .clase-num{display:flex;flex-direction:column;gap:2px;}
 .clase-num span{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fg3);}
 .clase-num b{font-size:1.25rem;font-weight:800;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.clase-accion{margin-top:12px;width:100%;min-height:40px;padding:8px 12px;border:1px solid var(--border2);
+  border-radius:10px;background:none;color:var(--fg2);font:inherit;font-size:0.8125rem;font-weight:600;cursor:pointer;
+  transition:color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard);}
+.clase-accion:hover{color:var(--fg);border-color:var(--fg3);}
+.clase-accion:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .clase-sin-datos{margin:10px 0 0;font-size:0.75rem;line-height:1.45;color:var(--fg3);}
 .profesor-estado{min-height:20px;color:var(--fg2);font-size:.75rem;line-height:1.45;margin:8px 0 0;}
 .btn-cancel{flex:1;padding:12px;background:var(--muted);color:var(--fg2);border:none;border-radius:10px;font-size:0.875rem;font-weight:600;cursor:pointer;}

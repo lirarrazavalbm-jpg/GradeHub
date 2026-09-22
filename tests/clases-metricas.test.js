@@ -79,6 +79,23 @@ const pintar=async(anuncios,datos)=>{
   chk('un alcance desconocido sale como raya, no como 0',/Personas alcanzadas/.test(html)&&/>—</.test(html));
   chk('y sin alcance no se afirma un costo',!/Va costando/.test(html));
 
+  console.log('\n=== Administrar la campaña desde la página ===');
+  // La RLS deja al profesor llevar su aviso a borrador, revisión o pausa, y NO
+  // a publicado ni expirado: eso lo marca el equipo. Los botones tienen que
+  // ofrecer exactamente eso y nada más.
+  html=await pintar([anuncio({id:'p2'})],{alcance:7});
+  chk('un anuncio publicado se puede pausar',/data-pausar="p2"/.test(html));
+  chk('y no se ofrece terminarlo, que no le corresponde',!/expirad/i.test(html));
+  html=await pintar([anuncio({id:'z1',estado:'pausado'})],{alcance:7});
+  chk('uno pausado ofrece volver a editarlo',/data-retomar="z1"/.test(html));
+  html=await pintar([anuncio({id:'b2',estado:'borrador'})],{alcance:7});
+  chk('un borrador no ofrece ni pausar ni retomar',!/data-pausar|data-retomar/.test(html));
+  const mk=leer('marketplace.js');
+  chk('el cambio de estado rechaza los que no le tocan al profesor',
+    /\['borrador','en_revision','pausado'\]\.includes\(estado\)/.test(mk));
+  chk('y antes de pausar se avisa que no se reanuda sola',
+    /no se reanuda sola/.test(mk));
+
   console.log('\nPASS: '+ok+'   FAIL: '+fail);
   process.exit(fail?1:0);
 })();
