@@ -37,6 +37,13 @@ chk('la pantalla y el botón nacen escondidos',
 // con su display:flex lo dejaba a la vista para todo el mundo.
 chk('y `hidden` le gana al display de la barra',
   /\.nav-item\[hidden\],\.screen\[hidden\]\{display:none;\}/.test(css));
+// La regla del carrusel lleva display:flex!important, que le gana a `hidden`:
+// sin esto la pantalla de Clases quedaba ENCIMA de Inicio para quien no es
+// profesor —en blanco y tapando todo—, porque tampoco la mueve setTabTransforms.
+chk('la pantalla de Clases está en la lista del carrusel',
+  /\.app\.tab-mode #screen-profesor\{/.test(css));
+chk('y escondida gana a ese display, para no taparle Inicio a nadie',
+  /\.app\.tab-mode #screen-profesor\[hidden\]\{display:none!important;\}/.test(css));
 chk('al abrirla se pinta el espacio de profesor',
   /tab==='profesor'&&typeof renderProfesor==='function'/.test(app) &&
   /async function renderProfesor\(\)/.test(mk));

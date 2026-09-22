@@ -114,7 +114,9 @@ if (conEasePorDefecto.length) conEasePorDefecto.forEach(t => console.log('      
 const duracionesSinToken = transiciones.filter(valor => /(?:^|[\s,])\.3(?:5)?s(?:\s|,|$)/.test(valor));
 chk(`ninguna transición conserva .3s o .35s sueltos (${duracionesSinToken.length} encontradas)`, duracionesSinToken.length === 0);
 if (duracionesSinToken.length) duracionesSinToken.forEach(t => console.log('       ' + t));
-const tabSwipe = (css.match(/\.app\.tab-mode #screen-agenda\{([\s\S]*?)\n\}/) || [])[1] || '';
+// Se busca el primer bloque del carrusel, sea cual sea la última pantalla de la
+// lista: al agregar Clases, anclar en #screen-agenda dejó de encontrarlo.
+const tabSwipe = (css.match(/\.app\.tab-mode #screen-[a-z]+\{([\s\S]*?)\n\}/) || [])[1] || '';
 chk('el desplazamiento de pantalla usa el token largo documentado',
   /--motion-screen:320ms/.test(css) && /transition:transform var\(--motion-screen\) var\(--ease-out\)/.test(tabSwipe));
 
