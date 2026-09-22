@@ -6111,7 +6111,8 @@ function confirmResetApp(){
 // edición. Un modal que se cierra solo mientras alguien escribe notas le borra
 // el trabajo; poder cerrarlo con un gesto no vale eso.
 //
-// Se cierra con el botón, o con Escape. Nada más.
+// En el teléfono se cierra con el botón o con Escape. Nada más. En computador
+// además se puede hacer clic en el fondo: ver `punteroDeMouse` más abajo.
 //
 // Tres cosas que un modal necesita y que no se ven mirando la pantalla:
 //
@@ -6176,6 +6177,42 @@ function closeModal(){
     try{volver.focus({preventScroll:true});}catch(e){volver.focus();}
   }
 }
+// En computador, hacer clic en el fondo cierra la ventana. Con mouse es el
+// gesto que todo el mundo espera —la confirmación ya lo hacía— y no compite
+// con nada: un clic es deliberado y no se puede disparar sin querer mientras
+// alguien recorre una lista.
+//
+// En táctil NO, y no es un olvido. Ahí ese mismo toque es parte del gesto de
+// desplazar, y cerrar al tocar fuera fue justo lo que hacía desaparecer el
+// simulador a media edición (#422, #424). Un modal que se cierra solo mientras
+// alguien escribe notas le borra el trabajo.
+//
+// Se piden las DOS mitades del clic sobre el fondo. Si alguien empieza a
+// seleccionar texto dentro de la hoja y suelta el botón afuera, el navegador
+// dispara igual un `click` cuyo target es el overlay: sin esta guarda,
+// arrastrar para seleccionar una nota cerraría la ventana.
+function punteroDeMouse(){
+  try{
+    return !!(typeof window!=='undefined'&&window.matchMedia&&
+      window.matchMedia('(hover:hover) and (pointer:fine)').matches);
+  }catch(e){return false;}
+}
+let _clicEmpezoEnElFondo=false;
+function esElFondoDelModal(el){return !!(el&&el.id==='modal');}
+function clicEnElFondo(e){
+  const empezoAfuera=_clicEmpezoEnElFondo;
+  _clicEmpezoEnElFondo=false;
+  if(!empezoAfuera||!esElFondoDelModal(e&&e.target))return false;
+  if(!punteroDeMouse())return false;
+  // La confirmación se dibuja encima del modal: si está abierta, el clic es suyo.
+  const conf=document.getElementById('confirm-overlay');
+  if(conf&&conf.classList&&conf.classList.contains('open'))return false;
+  const ov=document.getElementById('modal');
+  return !!(ov&&ov.classList&&ov.classList.contains('open'));
+}
+document.addEventListener('mousedown',e=>{_clicEmpezoEnElFondo=esElFondoDelModal(e&&e.target);});
+document.addEventListener('click',e=>{if(clicEnElFondo(e))closeModal();});
+
 // Cerrar con tecla Escape (confirmación tiene prioridad sobre el modal)
 // Un <div role="button"> no responde al teclado por su cuenta: el navegador solo
 // le da comportamiento de botón a <button>. Sin esto, el elemento se enfoca con
