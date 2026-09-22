@@ -600,6 +600,42 @@ function costoDeAnuncio(anuncio,alcance){
   return cotizarCampanaClases(anuncio.criterios,null,{alcanzados:alcance,ramos});
 }
 
+// La RLS deja que el profesor lleve su aviso a borrador, a revisión o a pausa.
+// NO lo deja publicar ni expirar: eso lo marca el equipo. O sea pausar es una
+// puerta de una sola dirección para él, y hay que decírselo ANTES de que la
+// cruce: para volver a mostrarse, el aviso pasa por revisión otra vez.
+async function cambiarEstadoAnuncio(id,estado){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para administrar tus clases.'};
+  if(!['borrador','en_revision','pausado'].includes(estado))return {ok:false,error:'Ese cambio no te corresponde a ti.'};
+  try{
+    const {data,error}=await supabaseClient.from('tutor_anuncios')
+      .update({estado}).eq('id',id).select(CAMPOS_PUBLICOS_ANUNCIO).single();
+    if(error||!data)return {ok:false,error:'No pudimos cambiar el estado. Intenta de nuevo.'};
+    return {ok:true,anuncio:data};
+  }catch(e){return {ok:false,error:'No pudimos cambiar el estado. Intenta de nuevo.'};}
+}
+
+function pausarAnuncioClase(id,alTerminar){
+  showConfirm('¿Pausar esta clase?',
+    'Deja de mostrarse al tiro y no se te cobra por nadie más. Para volver a publicarla tiene que pasar por revisión de nuevo: no se reanuda sola.',
+    async()=>{
+      const r=await cambiarEstadoAnuncio(id,'pausado');
+      showToast(r.ok?'Clase pausada':r.error,!r.ok);
+      if(r.ok&&typeof alTerminar==='function')alTerminar();
+    },{label:'Pausar',danger:false});
+}
+
+function retomarAnuncioClase(id,alTerminar){
+  showConfirm('¿Volver a editarla?',
+    'Pasa a borrador para que la cambies. Cuando la envíes, la revisamos antes de publicarla de nuevo.',
+    async()=>{
+      const r=await cambiarEstadoAnuncio(id,'borrador');
+      showToast(r.ok?'Quedó como borrador':r.error,!r.ok);
+      if(r.ok&&typeof alTerminar==='function')alTerminar();
+    },{label:'Editar',danger:false});
+}
+
 async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
   const borrador=anuncios.find(a=>a.estado==='borrador');
@@ -615,6 +651,8 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
           <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
           <p class="clase-card-detalle">${esc(detalle)}</p>
           <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
+          ${a.estado==='publicado'?`<button type="button" class="clase-accion" data-pausar="${esc(a.id)}">Pausar</button>`:''}
+          ${a.estado==='pausado'?`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Editar y volver a enviar</button>`:''}
         </article>`;
       }).join('')}</div>
      <div class="modal-btns">
@@ -622,6 +660,14 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
      </div>`+salida();
   const nueva=raiz.querySelector('#clase-nueva');
   if(nueva)nueva.addEventListener('click',()=>renderBorradorProfesor(raiz,borrador||null));
+  // Al cambiar el estado se vuelve a pedir la lista: el estado, los números y
+  // los botones de cada tarjeta dependen de él, y repintar a mano lo que uno
+  // cree que cambió es la forma de que una tarjeta quede mintiendo.
+  const repintar=()=>renderEspacioProfesor(raiz,{titulo:!!cabecera('x')});
+  raiz.querySelectorAll('[data-pausar]').forEach(b=>
+    b.addEventListener('click',()=>pausarAnuncioClase(b.dataset.pausar,repintar)));
+  raiz.querySelectorAll('[data-retomar]').forEach(b=>
+    b.addEventListener('click',()=>retomarAnuncioClase(b.dataset.retomar,repintar)));
 
   // Las métricas se piden después de pintar: son una consulta por anuncio y la
   // lista ya está en pantalla. Si alguna falla, esa tarjeta lo dice y las otras
