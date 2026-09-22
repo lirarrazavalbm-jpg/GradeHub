@@ -74,7 +74,7 @@ chk('HSTS obliga HTTPS después del primer acceso',
 
 console.log('\n=== El deploy no ejecuta paquetes flotantes ===');
 const pkg=JSON.parse(fs.readFileSync(path.join(raiz,'package.json'),'utf8'));
-const deploy=fs.readFileSync(path.join(raiz,'.github/workflows/deploy.yml'),'utf8');
+const deploy=fs.readFileSync(process.env.GRADEHUB_DEPLOY || path.join(raiz,'.github/workflows/deploy.yml'),'utf8');
 const testsWorkflow=fs.readFileSync(path.join(raiz,'.github/workflows/tests.yml'),'utf8');
 chk('Wrangler está fijado a una versión exacta', /^\d+\.\d+\.\d+$/.test((pkg.devDependencies||{}).wrangler||''));
 chk('los workflows instalan el lockfile con npm ci', /run:\s*npm ci/.test(deploy) && /run:\s*npm ci/.test(testsWorkflow));
@@ -82,6 +82,10 @@ chk('CI usa Wrangler instalado, no descarga latest',
   /npx --no-install wrangler/.test(deploy) && /npx --no-install wrangler/.test(testsWorkflow));
 chk('CI usa la versión de Node que exige Wrangler',
   pkg.engines&&pkg.engines.node==='>=22' && !/node-version:\s*20/.test(deploy+testsWorkflow));
+chk('el deploy excluye docs y los artefactos internos completos',
+  /--exclude 'docs'/.test(deploy) && /--exclude '\.cache'/.test(deploy) && /--exclude '\.claude'/.test(deploy));
+chk('el deploy compara dist contra una lista cerrada de archivos de app',
+  /find dist -type f/.test(deploy) && /comm -23/.test(deploy) && /ARCHIVOS NO-APP en dist/.test(deploy));
 
 console.log('\n=== El service worker no cachea cualquier dominio ===');
 // `hostname.includes('fonts.googleapis.com')` también calza con

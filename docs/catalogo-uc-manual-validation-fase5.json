@@ -1,0 +1,973 @@
+{
+  "schemaVersion": 1,
+  "sampleHash": "08523b5c5cc4b6308650ff2aea01175af55659ecfb23641f671e0ff11c69c581",
+  "allowedLabels": [
+    "correct_auto_importable",
+    "should_be_needs_review",
+    "insufficient_information",
+    "source_problem"
+  ],
+  "instructions": "Completa humanLabel, note, reviewer y reviewedAt después de contrastar el texto oficial. Ninguna opción viene preseleccionada.",
+  "reviews": [
+    {
+      "courseCode": "AQH2005",
+      "evaluationHash": "6d1a610064eafe60c444f46dcdbf8a683155f7f2d5f73f24d07ef1bd3df47eab",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IMT2100",
+      "evaluationHash": "252bf52979ff3015e93784f5acfd1074f175b3a72ff6d2ac9136a37ab8201e4d",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "QIM517",
+      "evaluationHash": "b8d330ef96d096fe049739e3a2e8ea3236d173ab91309983c28659dfb5a456e7",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "MUC950",
+      "evaluationHash": "a809986dc99d087339d3365d93c85ec819e5500e6b1f85e1ff01d478e6ff720f",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGC315",
+      "evaluationHash": "6cb543863078707af17c7695bd6d7340b95c6d58e0db53e515f508641bb541b1",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "EAA361A",
+      "evaluationHash": "c7d7cfe979a967e003e45983c469a083329d25f4196ae66a71465acf87d0a6cf",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AQU1307",
+      "evaluationHash": "361731b39d4b79f6d9fb8adec0643ee183e42e3c7f7192fbb3333a16b477ad10",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IMT2270",
+      "evaluationHash": "217b3ccc413b993790c7efae51683414a8fe25351aea076c6a7b1f0d17a2b48b",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VET2000",
+      "evaluationHash": "7aa1dcafc912374dc97cd25861ac5cd45ee5336e1943f9a0185f64bf2b2396f4",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VIL641G",
+      "evaluationHash": "23f4611699c7df83f3eeb792734f6b1d18e4eaf79c382178570112c3e4e3f2fa",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ANT2264",
+      "evaluationHash": "52cb62984904fe0d329c4dbcc16016da6b5c6eebcd07c6db328a2ba4c7bded46",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "LET321E",
+      "evaluationHash": "ca5f5a04daaa2d608d4c67541bbddedc99eec86fbd157a0b0508d43fc2394fba",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ICP0132",
+      "evaluationHash": "a249925251707a328feb3a8cf1af73b2c997a7f211c7513f870bb19bf5a46d0d",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "TEO297",
+      "evaluationHash": "dd0735b465aeb80309b69e6d20e3c08b8c7b9bb9cd3e4327367cd67d34c9d2fa",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AST1529",
+      "evaluationHash": "7e5ce4c31c5ac01e8538150349b7e57dc4ac3bb088b1b86d2c2486def76ee562",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AAZ206",
+      "evaluationHash": "d9f584d532de45ef61733dfd53528f0ef79b4e6c5423f51a1dd4e72e66994df1",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IMM2075",
+      "evaluationHash": "ee4d25a829302de6018605f1688bb8fb26ac1b5a45d298ad12317b2b20bcb378",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "GEO2018",
+      "evaluationHash": "c3d67641cd341f0e14cbf906c1b06ab7b50da1aa0321e33e878c525552e58f94",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "TTF049",
+      "evaluationHash": "c7b62edc7d925d6dcc26661c041ce13f36f09e676998cfd060558f85fe5e1aa2",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGF331",
+      "evaluationHash": "e34b680c6411678f74db38f6385b4a32f87d066135ab536248b860ca9365c830",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ENO2021",
+      "evaluationHash": "aee92da4c9e59fb2de8c0c6704c0b0633f0f368d29b456a513343c2f157cb9dc",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "EAE253B",
+      "evaluationHash": "4f8c94de48941a5fdbd1bdda91e6f80a81fc6f6a4627e956e14e9c301f227618",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "QIM515",
+      "evaluationHash": "c144736e9022fbfb34c12bc9375d70942580b3c5d022a54f6b4f56b23b0b4887",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VIL604M",
+      "evaluationHash": "dd27c29b0cdcbd6a5847aa6123feca534110c6d7e723d8d6ba01ce7dee22aa52",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IDI2996",
+      "evaluationHash": "6e5736fa954015156219146c311a3747525377f2b8018896ca0aa5a45d24d028",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ECM2001",
+      "evaluationHash": "6dd2cc49c7032e37e0a9501b5a777bf013a6d17422025be9374515eb6b62c769",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IHI0508",
+      "evaluationHash": "42bc7d91a16f231283133b0ed7b15852a185c157d2fcc80d89e17e072465af30",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VIP083",
+      "evaluationHash": "350798e971504c99ab597147376bacbf74ffd97a3eca4e39b040b7d04a243245",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "GEO1251",
+      "evaluationHash": "54da496290786d3ab669532049d82350338e920099aeb8bc17823373fe66ba27",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IIQ2133",
+      "evaluationHash": "8463d7f49a5545236671d455aceb6625b8b68a4f3bbc45a23bead8646234572b",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "EAE372A",
+      "evaluationHash": "50f377e47b565cd72edf3f1c36e59803acfc0ab4a6a6109f14bdbe4db28e4e14",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ENO1261",
+      "evaluationHash": "1f4935f84d0cb30d4f4e22f566cade32740742313ba728b3eeaed00ee05fc0bb",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "EAE231C",
+      "evaluationHash": "5c57d7b8acfba5ebb1275f6db21792037c03532eb09391cf221b0593c2ef5504",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IDI2031",
+      "evaluationHash": "93e12ae9c234ef1f606fdccfc3932d74886ea3fa2c580fb1b062443ff1ed4b2f",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "TSL587",
+      "evaluationHash": "64e3f4c295180703ee83864c860751116be20bb2e5ed43737622ed56f27820fe",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "BIO352D",
+      "evaluationHash": "b21c244895cac4b63891a3690c44d7b0b33df796f1998f75ca6247a86dff5f31",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "PSI2440",
+      "evaluationHash": "3655c8fdc135cdf799ede063b4c679e157f98af7382d78c1cf20fa5887a55592",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGL282",
+      "evaluationHash": "562fc066f4fc83e393c17e1f5ce5d614d2e43a267e7eb22487ed851adb8dc1e8",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AQI0200",
+      "evaluationHash": "e60db0d808948b05a3265ffa762b82110082a3ec19d85a72ddf70456799d9eba",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "PSO414",
+      "evaluationHash": "c6fe39361b1b1ab2233f4c64f41cd1a98e3d9ba8112586801ecc65247809996e",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "DPT9350",
+      "evaluationHash": "23d62d80a022155fda2e1f69cad3494d96f970219883671ac7754e4b47a3a604",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ENF2306",
+      "evaluationHash": "2bcd4a809bffd8d42365d39df0f7f93322743334fda6f85680af5b9132b0d88d",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "DNO016",
+      "evaluationHash": "4927484ca02a6b0f7e0802b6b5aeb125dbc5d51138d08341ced098f1e6854468",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "DEC262",
+      "evaluationHash": "b23632718afdbb2b0f3589a25b0bbaf2e4a06f7e2958af881d449b5bffd6e168",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ACO216E",
+      "evaluationHash": "e831bedacb1ba459fd5922e3ef306fedd976af644d61c901f1db28f91cd41d90",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "DNO082",
+      "evaluationHash": "84d5cdb87ff60bb2b6ac6156d25bbe3cfff743c6123f2b516a9218d1b122c600",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AST1016",
+      "evaluationHash": "5f97202a20e766c6c1910be9d3ddac982d5d342cfed949522044c9b1a8bdf6c6",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IEU2064",
+      "evaluationHash": "71185b0a29b9e2d706cab804c79c3f55773dc1649bcfc5916e15ca6f5788e211",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ESO2422",
+      "evaluationHash": "6990216ed6a47dbea2ab17a5b2dbc7d948fd763fdde6601ae3f3819e7f73244f",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "MED818B",
+      "evaluationHash": "3c308c88f98021fe89250e84088aed4af73e8b93eee462ec78034172d31aafe3",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VET1180",
+      "evaluationHash": "b9fed4c6e661ae6cb77b7136f0f1ea680fb7cbac51724e5931948e793353c44e",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AQC1123",
+      "evaluationHash": "3be062f825d422e74d18af28f13288d7d7fc13fce5098de8d03402d12605334d",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VET1000",
+      "evaluationHash": "25edec993814cad5207c3f04d86458981143cd112bf3e9a30c866184c8638846",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "DEM285",
+      "evaluationHash": "4b1ab7f089668daffeb71ce8bcfde7a77c115738f10f70e539efc3d87933c848",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ICP0116",
+      "evaluationHash": "776c09113eb00f2c65819fc18ffaa5861c7689d5f5ff1d6cfa6cfe01cad12cdf",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "DEF335",
+      "evaluationHash": "154e5e91dce2b751579a5f7e710dda99070eb02a34cae075935995fed6828cd9",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "RII6001",
+      "evaluationHash": "1e669d8ee14342810a471cf00b807675cf0e57651facb697dab779743a1032aa",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "BIO010",
+      "evaluationHash": "cecd72effd82a37abe88b9ade8491fa54dec284dfd10cefb8be92df0410ebc5b",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ANT2532",
+      "evaluationHash": "5d99568195e75edc6a2215b893eacfee10b568f4287f4241080781d7486c0245",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "SUS2250",
+      "evaluationHash": "5b538f536fc61986722cc880f29a84379bdc95c6b9561ff431a6ffbabf7f975a",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ING2983",
+      "evaluationHash": "62c4d8598dfb242e5ca52556e76d936809b5232504d9b823dd0a8198e2c0d248",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "GOB2004",
+      "evaluationHash": "bfc56318a6ce7e6aa3296b3024da6a061bf7c09fe8c6d60a2d256aaf2234c8a7",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "COM403",
+      "evaluationHash": "3217ddf21aebd7422aa6b61b7d752c7393214a4172d9f3564be88b76dd690798",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ANT240",
+      "evaluationHash": "0f6a2d0f65e7391ff77ff39db3c1af8bd6f3eb94b2db5d28a77d53ba504f5710",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGR306",
+      "evaluationHash": "28c209edf78fa0636c008db6cb4abe8fde9c2a693da4b33e2c630b8ca535d357",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "DEF349",
+      "evaluationHash": "8f03884081d3bfc030cbc10cee786a0bd055c089a5193bb39bed85fb1796d4b7",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGE313",
+      "evaluationHash": "bd646189fc89f557c2fcf3080867a570c2a0a24a161d52c36def0cf84b907005",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IEU2014",
+      "evaluationHash": "0ae6707180c0698bfbb19fad83f8e361eb29ad562fb8aa639c758e27b58c780e",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ESO012",
+      "evaluationHash": "7f9c928f06967653abedf3ecd2adadb8962f60572fc65674aedca0508f0d967b",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ODO302A",
+      "evaluationHash": "26c5f9eb77b815a71e1be68cbdf45a7db691a26113c7a3c8e6061ad6e742ce5d",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VET2810",
+      "evaluationHash": "3325f227efb753d11dd08b3fdf052fa17dee88d9b7a34da9fe4189fd234a8a05",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ECM208M",
+      "evaluationHash": "1b68934d8f5fab895929a472e16885cd057ddd4b9cfdc3b5ca1b41701918e9ee",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ANT2263",
+      "evaluationHash": "4be5292b829ebe9166fbec19d54271d053a6fc8eaa94e685d96ba69436bcc40c",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "CCO3320",
+      "evaluationHash": "0ea43a6649811b488a7942eb8448a86c350406566ddd2475e7f3482f28743569",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ANT170",
+      "evaluationHash": "e6adb836ca1f9470c05186933f268041a9cfd64a2bd221aa145e46ea7ad998e9",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "DEM283",
+      "evaluationHash": "5c90afa64be095a16efe6175ee97c3132a3ed203c49e9ad5f2ed7500ac9176d5",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "FIL185P",
+      "evaluationHash": "a8dfa50a8c96594987f36ac6c5818303c6423880642ff4f110808d187099052b",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ICP0209",
+      "evaluationHash": "6bdf340340b831627b1dae2ebff891ca0c86e1ab049654a70d9ec68a2b1ea23a",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ARO104I",
+      "evaluationHash": "746c79681581f5c5f14eb819038940913b38973d961e76dd87c8be78008e0299",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "SOL501",
+      "evaluationHash": "65d48f5e39e8453c229f8ad73667600e2acaf568daa269927b81e2308a65bb2a",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "EAF010",
+      "evaluationHash": "2a227e895d0e3ad6d7270375a8752c986a8eca08f68f5fdb31bbd7a2c295e40d",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "TTF048",
+      "evaluationHash": "4bdb9db342162b52528c5698304a64a94e0dd719ae5934ce981f317cc26fa005",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "PSB400B",
+      "evaluationHash": "f14f0b32303dafd65866f40846fc06d03d2b8593596913f1ad1e660435bd3b47",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "QOP3805",
+      "evaluationHash": "b84e3911b3ef70a75f644dcd99c3eda1410ea7e822034254419c4e5222742992",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VET2850",
+      "evaluationHash": "8e0418acf15d8bdd424a45770cadf68825470c870bba56e8f885495a849ecd85",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ENO2002",
+      "evaluationHash": "4ed524798dbb3cce582bd8df9a3dbacfd8f59cc6a98691a50ebfa76ef3c9e0e6",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "PSD283",
+      "evaluationHash": "b3e71402cc2dd7746b3ca84193e21523c5cdf340364d83c6e59046f040e02ac6",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "SOL210",
+      "evaluationHash": "fa40c77608ac48683ef1eb919496118efbc12291161a19d91bc2192987b2cd17",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "FIZ1417",
+      "evaluationHash": "24b505780565b70d536225daef05aa7c2eeefae33892ae058712f1bad165a4ac",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ECM285A",
+      "evaluationHash": "bee251bb5b9aad86353c4f19c4bea0f5de167e5f4314e726887e11d78c11bdc0",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "QIM1017",
+      "evaluationHash": "5a11105c2cd3d3e63df88a64ecb86cf157cbf94427bbdc328857c0ccb7ab4c5f",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VET2800",
+      "evaluationHash": "c1ed117ce461a34e937dcdbabb9552efa35fdc916b06a3f1b70ca912cae33036",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "QIF112",
+      "evaluationHash": "6068072776782efe2249d5ca626e3ae41b759d9743b8e64cad4dab75269cec9c",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "SUS2220",
+      "evaluationHash": "a3276446b1ae17b0dd3be2ae771753e50a8ad704c25feaa453abba8c81d59c9e",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "TSL584",
+      "evaluationHash": "679ad082be2143b2097fc853592e23a66b7d65ea75fd64cb60526dc66d82bed6",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "CAR1500",
+      "evaluationHash": "f4dd44be977c33b36e58def59d7c9286a21522ebf33709e0887ae72fb0da453e",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "TSL497",
+      "evaluationHash": "05adf5be27d3c783e0306503793411257b88fe4f785ea96e1bcdab476b551386",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "GEO601",
+      "evaluationHash": "9f82b99cd91821e041388ea99fc503a0f57f02fc3c155cad826a2ab51d4af732",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ENP2412",
+      "evaluationHash": "2c38439c4c7b2b84dbd95a91b32e916bd517d530ae92757cfb55cdd75502a6c8",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IBM2992",
+      "evaluationHash": "2c71948ec6ea12addc74914fa28ee62970faeb83ad546943097e48bb4489e984",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VIL621",
+      "evaluationHash": "6762bff66aa5d7efefe4e0006084f306f8274801a51f8a24473331980bc6e7f9",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGR317",
+      "evaluationHash": "f43adcff484a21b20c7212a49f30db657ac0ed7c4207927fd0b679ccc0a589ee",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "TBH041",
+      "evaluationHash": "8ac2a8f1b4c90707fee0ed8a001882e8549e7886e471492570c8a7cdc67b4688",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VET1400",
+      "evaluationHash": "cf1544c288bcc642bcfaec54d2f78915e21321ae31ac0a93c391080577d82e8a",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGL070",
+      "evaluationHash": "26d6fb5bedd71427f1aea39742bbf7022a4846a40118918f1dd66307729cbe09",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ILO3169",
+      "evaluationHash": "0144ac89d76de5c2db168d4a39dbd449b07064497fa7a35e12bac0517aa9d769",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "IEU2046",
+      "evaluationHash": "553b084d80b8ed44c31b14139c9d0d7a3c42114f7bdfdc60548407988b071b66",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "GOB2009",
+      "evaluationHash": "46c7d0389129c435e36a2df5bd59a01904dda94bbb7e8e6a5f80c491b9313014",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "ART049",
+      "evaluationHash": "4cc24925018a30bded63e5f069617ea157231e1f1f5409165a494491dcb40392",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "QIM1030",
+      "evaluationHash": "ac24d8b13692c6b079b5cd1ebdb087918d716d4defef046adf1bea34eaf2743e",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGZ350",
+      "evaluationHash": "6e4ef2212186a17888d470500479216ae4d474a270dc6cb2512626f92df93700",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "SUS2210",
+      "evaluationHash": "861b124360e6ea1f1372b8acdb329a26cab276d2285ce5fca0850c498faedcef",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "VET2820",
+      "evaluationHash": "6cabd10e67a002dbf40b152d20fa69196fcda3363788d8705ee3732e4f8754b4",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "GOB2010",
+      "evaluationHash": "e9f831d792cb96f9196efc13cbacb43ebab579c053a324e510c6ce3452fa8c71",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "EST244D",
+      "evaluationHash": "82f1483736dc49fddac32af3649c0eb295aba4f9992c7acb2d171aaf3f512304",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGC318",
+      "evaluationHash": "ddd4d062249d7bc41cc63fa241f9542a153e7e543a1e51dbeba21aabfb48360e",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "FON402",
+      "evaluationHash": "d1713c11cb092dad8109f133002b4e7b0bc6e4a9f088611861797ca6eeaa62eb",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "BIO187C",
+      "evaluationHash": "7184489f95a3a99e96b078f3f10d613089e28517bb87bc25ad97329aa2c69fda",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "PSB118",
+      "evaluationHash": "5c839ddeed3b2f9d43a8bcfa89db16c3a2d4b60d92d769e83b028bdd0d6c6371",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    },
+    {
+      "courseCode": "AGF330",
+      "evaluationHash": "f3c5ab3c46c613c34b4d726b542518679c302681feddb5c1054b3a4cb3e010f1",
+      "humanLabel": null,
+      "note": "",
+      "reviewer": null,
+      "reviewedAt": null
+    }
+  ]
+}

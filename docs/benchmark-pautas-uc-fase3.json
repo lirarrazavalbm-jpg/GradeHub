@@ -1,0 +1,1227 @@
+{
+  "benchmarkVersion": 1,
+  "parserVersion": "uc-catalogo-3",
+  "sourceGeneratedAt": "2026-09-21T03:48:35.797Z",
+  "metrics": {
+    "datasetSize": 30,
+    "exactClassificationCount": 30,
+    "exactClassificationAccuracy": 1,
+    "exactWeightsCount": 30,
+    "exactWeightsAccuracy": 1,
+    "falseAutoImportableCount": 0,
+    "falseAutoImportableRate": 0,
+    "falseNeedsReviewCount": 0,
+    "falseInsufficientInformationCount": 0,
+    "complexRuleSignalCount": 15,
+    "missedComplexRuleSignalCount": 0,
+    "complexRuleSignalRecall": 1
+  },
+  "rows": [
+    {
+      "courseCode": "IIC1103",
+      "courseName": "Introducción a la Programación",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=IIC1103",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "f6feb25a09512fc0cfc3beef1fcd25d2dc1d9faf9f457ca6387b57cc301e5150",
+      "fixtureHash": "e31bd8a34f784b0bfce633df38f556d7970c9086dc8f54a691fdf978f3e33436",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "auto_importable",
+      "parserStatus": "auto_importable",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Pruebas",
+          "weight": 30
+        },
+        {
+          "name": "Examen",
+          "weight": 30
+        },
+        {
+          "name": "Tareas",
+          "weight": 30
+        },
+        {
+          "name": "Nota de Participación",
+          "weight": 10
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Pruebas",
+          "weight": 30
+        },
+        {
+          "name": "Examen",
+          "weight": 30
+        },
+        {
+          "name": "Tareas",
+          "weight": 30
+        },
+        {
+          "name": "Nota de Participacion",
+          "weight": 10
+        }
+      ],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [],
+      "problem": "",
+      "goldReason": "Cuatro categorías explícitas suman 100 y no hay reglas adicionales en la sección.",
+      "mustNotInfer": [
+        "number_of_pruebas",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "FIS1514",
+      "courseName": "Dinámica",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=FIS1514",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "1617addff67a766a78f9018a2437c488f75c8169771767862b1fc9ffd2b1343f",
+      "fixtureHash": "123c2f67cef9161482185d5a7f49c566aad7c69db9f707750954c540c01a0d95",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Interrogaciones",
+          "weight": 60
+        },
+        {
+          "name": "Un Taller semanal",
+          "weight": 10
+        },
+        {
+          "name": "Examen",
+          "weight": 30
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Interrogaciones",
+          "weight": 60
+        },
+        {
+          "name": "Un Taller semanal",
+          "weight": 10
+        },
+        {
+          "name": "Examen",
+          "weight": 30
+        }
+      ],
+      "goldComplexRules": [
+        "aggregate_category"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "aggregate_category_detected"
+      ],
+      "problem": "",
+      "goldReason": "El 60% pertenece al conjunto de tres interrogaciones y el programa no declara su reparto interno.",
+      "mustNotInfer": [
+        "weight_per_interrogacion",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "QIM100F",
+      "courseName": "Química",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=QIM100F",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "b7c8259958ce89015b815b3d3dfe5e3ac2977c5a7c6592eb241bfffdbf3b9ee7",
+      "fixtureHash": "91ebf3d31ed2b7a9b8e3a5390674aef1e7dd99e4f0e9676ffa0ce649f074b34d",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Evaluaciones parciales escritas",
+          "weight": 70
+        },
+        {
+          "name": "Talleres",
+          "weight": 15
+        },
+        {
+          "name": "Presentación trabajos grupales",
+          "weight": 15
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Evaluaciones parciales escritas",
+          "weight": 70
+        },
+        {
+          "name": "Talleres",
+          "weight": 15
+        },
+        {
+          "name": "Presentacion trabajos grupales",
+          "weight": 15
+        }
+      ],
+      "goldComplexRules": [
+        "exemption_rule",
+        "minimum_average_required",
+        "minimum_each_interrogacion",
+        "conditional_exam",
+        "alternative_final_grade_formula",
+        "aggregate_category"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "exemption_rule_detected",
+        "minimum_or_cap_rule_detected",
+        "conditional_exam_rule_detected",
+        "alternative_final_grade_formula_detected",
+        "aggregate_category_detected"
+      ],
+      "problem": "",
+      "goldReason": "La fórmula cambia si no hay eximición y la eximición combina promedio y mínimos por interrogación.",
+      "mustNotInfer": [
+        "weight_per_interrogacion",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "BIO143M",
+      "courseName": "Principios Ecológicos y Medio Ambiente",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=BIO143M",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "ac3fcf113916e6596f931359ae75ff86b8c5c2520f550cf5fcc726558dee5460",
+      "fixtureHash": "b75ec2bab1ef96395f9e9e439bf11b0315d33bce1a6797bcbef391758b3e770f",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Solo declara tres evaluaciones, sin nombres ni ponderaciones.",
+      "mustNotInfer": [
+        "weight_per_evaluacion",
+        "evaluation_names",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "MAT1610",
+      "courseName": "Cálculo I",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=MAT1610",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "761cb67efe494077ca1f13ee1762fd0316182648ef0fbfe9ffe7168390705c6b",
+      "fixtureHash": "bd5e60bc7de9b2ae4edc9dcdc1bf91514e84b8453475e60700e506858cad25d0",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Evaluaciones sumativas",
+          "weight": 60
+        },
+        {
+          "name": "Actividades de laboratorio",
+          "weight": 10
+        },
+        {
+          "name": "Examen final escrito",
+          "weight": 30
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Evaluaciones sumativas",
+          "weight": 60
+        },
+        {
+          "name": "Actividades de laboratorio",
+          "weight": 10
+        },
+        {
+          "name": "Examen final escrito",
+          "weight": 30
+        }
+      ],
+      "goldComplexRules": [
+        "aggregate_category"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "aggregate_category_detected"
+      ],
+      "problem": "",
+      "goldReason": "El 60% de evaluaciones sumativas no viene desglosado.",
+      "mustNotInfer": [
+        "sumativas_breakdown",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "EAE1110",
+      "courseName": "Introducción a la Microeconomía",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=EAE1110",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "8e731d85c7ae8abab3094dc68b68c929fda456c16d5a66d3c34629ab91c1ed12",
+      "fixtureHash": "735ac8f59e0b3c628418b09f57379f4d266abbc3193ed707229a77fab15842b3",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "auto_importable",
+      "parserStatus": "auto_importable",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Guías semanales",
+          "weight": 20
+        },
+        {
+          "name": "Pruebas",
+          "weight": 45
+        },
+        {
+          "name": "Examen",
+          "weight": 35
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Guias semanales",
+          "weight": 20
+        },
+        {
+          "name": "Pruebas",
+          "weight": 45
+        },
+        {
+          "name": "Examen",
+          "weight": 35
+        }
+      ],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [],
+      "problem": "",
+      "goldReason": "Las tres categorías explícitas suman 100.",
+      "mustNotInfer": [
+        "number_of_pruebas",
+        "number_of_guias",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "EAA100A",
+      "courseName": "Horizontes y Desafíos en la Gestión de Empresas",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=EAA100A",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "e5575099a350d1d1235582f7c34e8e7fbe00ff6ec3930367bd0840d860a3d4ad",
+      "fixtureHash": "6c23b937d086171b0c3e44eb23eaf5a73665d74e7c9b26270c67a50eff87bb04",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Enumera tipos de evaluación, pero no publica ponderaciones.",
+      "mustNotInfer": [
+        "all_weights",
+        "number_of_evaluations",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "FIL001",
+      "courseName": "Platón",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=FIL001",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "c2d7f40cb43f5e183e79d440cb79b88c8b209fd2be27a3c46e4fa9f68226b03a",
+      "fixtureHash": "aa4c81adc58c004e0be77df045a1c67b2db177216acf9e911f141137efaa218f",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Declara tres papers, pero ningún porcentaje.",
+      "mustNotInfer": [
+        "weight_per_paper",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "TTF013",
+      "courseName": "Tópicos de Ética Social Cristiana",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=TTF013",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "5adf7c86702d20888850897e71fa7b6b00e88b31d5cea2a3f19cf0aa8bb0ee1d",
+      "fixtureHash": "3b9547dd14ca117cf507ea13f532beb50175b7ef6cc43253de3c41f465f6d7c8",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Enumera prueba, informes, ensayo y examen sin ponderaciones.",
+      "mustNotInfer": [
+        "all_weights",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "ARQ2000",
+      "courseName": "Investigación en Artes y Humanidades",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ARQ2000",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "45fe09def7bef5b492633b90ab78fa5d4227fb79e788641a6172459e44e855ca",
+      "fixtureHash": "3b52b50c1fc45755d2413fd035aefa8ddab0ac5c402491596b699def64c64d4b",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "evaluation_section_not_found"
+      ],
+      "problem": "",
+      "goldReason": "El programa no contiene una sección de evaluación.",
+      "mustNotInfer": [
+        "evaluation_structure",
+        "all_weights",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "DER002C",
+      "courseName": "Personas y Bienes",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=DER002C",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "100692b671603f5ab3bcf0efc5ac7246070c8f3ba8415066830c739ac96c3880",
+      "fixtureHash": "c1a1cbe1a5a19e63edaea0561e9f688eb57dd2071e1e8674ab42e8fe6a25d17e",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Solo enumera modalidades orales, escritas, controles y trabajos.",
+      "mustNotInfer": [
+        "all_weights",
+        "number_of_evaluations",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "MED101A",
+      "courseName": "Anatomía y Embriología Humana I",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=MED101A",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "c3ab88671dc8884c402b6c59bfe470d81243eaf2c2034dd93cdd6268ce24b503",
+      "fixtureHash": "ab32a2ed8202fc9f5572723bbb1d15be0533ce28a81e3d8db60169f8eb611c1a",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "not_found",
+      "parserStatus": "not_found",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "source_program_unavailable"
+      ],
+      "problem": "",
+      "goldReason": "La fuente oficial responde explícitamente «Programa de curso no disponible».",
+      "mustNotInfer": [
+        "evaluation_structure",
+        "all_weights",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "ENF043A",
+      "courseName": "Cuidados de la Persona Enferma",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ENF043A",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "352cd9f0044886e1f6187c8239e60d43f27d6ba58a3115c0957609e548c822d1",
+      "fixtureHash": "869f44be25d101fa6b0d17fc06d20a2efeb6bf2c452df5235502cd0a56a82fd7",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "evaluation_section_not_found"
+      ],
+      "problem": "",
+      "goldReason": "El documento termina en metodología y bibliografía, sin pauta de evaluación.",
+      "mustNotInfer": [
+        "evaluation_structure",
+        "all_weights"
+      ]
+    },
+    {
+      "courseCode": "PSI1101",
+      "courseName": "Procesos Psicológicos Básicos",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=PSI1101",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "fa5f6a4f3537eb3ed370d773f2c02974caf9501aada77f536c9705275e55945f",
+      "fixtureHash": "13f7d88141a8af80bc89845f8832e0602a1ad7cce2e32df8896a47d7b9c1e829",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Pruebas escritas",
+          "weight": 99
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Pruebas escritas",
+          "weight": 99
+        }
+      ],
+      "goldComplexRules": [
+        "weights_do_not_sum_100"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "weights_do_not_sum_100"
+      ],
+      "problem": "",
+      "goldReason": "Declara tres pruebas de 33% cada una: el total textual es 99 y no se puede inventar el 1% restante.",
+      "mustNotInfer": [
+        "missing_one_percent",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "LET0003",
+      "courseName": "Desarrollo de Habilidades Comunicativas para Ingenieros",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=LET0003",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "82772abd92027cc722d3b175e81ac387037117414973082a9b0e818d02f3517f",
+      "fixtureHash": "1d8767f2af6382e67ec3a0ce04a4eb2889a7bf5d8283e32e86396943a4be15b9",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Entrega escrita 1",
+          "weight": 30
+        },
+        {
+          "name": "Entrega escrita 2",
+          "weight": 40
+        },
+        {
+          "name": "Entrega oral",
+          "weight": 30
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Entrega escrita 1",
+          "weight": 30
+        },
+        {
+          "name": "Entrega escrita 2",
+          "weight": 40
+        },
+        {
+          "name": "Entrega oral",
+          "weight": 30
+        }
+      ],
+      "goldComplexRules": [
+        "minimum_attendance_80"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "attendance_requirement_detected"
+      ],
+      "problem": "",
+      "goldReason": "Los pesos suman 100, pero el 80% de asistencia es un requisito, no otra evaluación.",
+      "mustNotInfer": [
+        "effect_of_attendance_failure",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "COM001",
+      "courseName": "Comunicación y Educación",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=COM001",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "21e9dba2ae60cfadc556e80c26d83f5fc318ed5a791c0758c9b9b2741c299111",
+      "fixtureHash": "94ff4d2a8fb1f060bdb3e7b707126056c3288db8c39f78b2a10b1a2e4653a950",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "auto_importable",
+      "parserStatus": "auto_importable",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Trabajo individual: Análisis de una experiencia relevante en Comunicación y Educación",
+          "weight": 20
+        },
+        {
+          "name": "Trabajo individual: Reflexión sobre un tema a elección del participante",
+          "weight": 20
+        },
+        {
+          "name": "Participación en actividades de clases",
+          "weight": 20
+        },
+        {
+          "name": "Trabajo final en grupo",
+          "weight": 40
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Trabajo individual: Analisis de una experiencia relevante en Comunicacion y Educacion",
+          "weight": 20
+        },
+        {
+          "name": "Trabajo individual: Reflexion sobre un tema a eleccion del participante",
+          "weight": 20
+        },
+        {
+          "name": "Participacion en actividades de clases",
+          "weight": 20
+        },
+        {
+          "name": "Trabajo final en grupo",
+          "weight": 40
+        }
+      ],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [],
+      "problem": "",
+      "goldReason": "Cuatro categorías explícitas suman 100.",
+      "mustNotInfer": [
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "EDU0010",
+      "courseName": "Tecnología de Información y Comunicación en Educación",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=EDU0010",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "1de1dc3e133f4f2bb4f4bb0936dbcdf640936c96a7548cb3ebde03da524a94c1",
+      "fixtureHash": "79ad6adaf57d1e1c5e798e52f801a9c3cfc0208735229bf7fc5cdaf32d657235",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Describe tres modalidades, pero no publica porcentajes.",
+      "mustNotInfer": [
+        "all_weights",
+        "number_of_evaluations",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "ART001",
+      "courseName": "Dibujo Figura Humana Básico",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ART001",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "13770d5aec9795d11cc955455f6329bb3f0f7a2e372fe6ab8e51a0845be7c875",
+      "fixtureHash": "74acbb0932e1f0fc1576b886cc6c7ad6802cff13e7b03bbf07a4ed39c756820f",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "evaluation_section_not_found"
+      ],
+      "problem": "",
+      "goldReason": "Menciona evaluaciones formativas en metodología, sin pauta sumativa.",
+      "mustNotInfer": [
+        "summative_evaluation_structure",
+        "all_weights",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "GEO1002",
+      "courseName": "Introducción a la Geografía",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=GEO1002",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "610026d68a3b88b0656e741d78d3b839679305ec91a27bbb55634ab2ded11e5e",
+      "fixtureHash": "9756d7cd77454c39b11dc8200d27a2c0ab6e2c05af32d2bf7952e533a511130a",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Controles bibliográficos, ejercicios y tareas",
+          "weight": 30
+        },
+        {
+          "name": "Controles parciales",
+          "weight": 30
+        },
+        {
+          "name": "Examen final o semestral",
+          "weight": 40
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Controles bibliograficos, ejercicios y tareas",
+          "weight": 30
+        },
+        {
+          "name": "Controles parciales",
+          "weight": 30
+        },
+        {
+          "name": "Examen final o semestral",
+          "weight": 40
+        }
+      ],
+      "goldComplexRules": [
+        "minimum_attendance_75"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "attendance_requirement_detected"
+      ],
+      "problem": "",
+      "goldReason": "Publica una pauta 30/30/40 y una asistencia mínima obligatoria de 75%.",
+      "mustNotInfer": [
+        "effect_of_attendance_failure",
+        "internal_breakdown_first_category",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "AGL007",
+      "courseName": "Taller de Biohuerto",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=AGL007",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "b8fc71c5f85f300f709d845c194656e7bbb28914f7cc7933cb71cd466af3250d",
+      "fixtureHash": "4931c0a8ba639cf127b8caa1cdf44d939fc56279526cdea543498c3c5c3d576b",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Controles",
+          "weight": 20
+        },
+        {
+          "name": "Nota personal de participación",
+          "weight": 40
+        },
+        {
+          "name": "Actividades en grupo",
+          "weight": 40
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Controles",
+          "weight": 20
+        },
+        {
+          "name": "Nota personal de participacion",
+          "weight": 40
+        },
+        {
+          "name": "Actividades en grupo",
+          "weight": 40
+        }
+      ],
+      "goldComplexRules": [
+        "minimum_attendance_100"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "attendance_requirement_detected"
+      ],
+      "problem": "",
+      "goldReason": "Las notas suman 100 y además exige 100% de asistencia; ese 100% no es peso académico.",
+      "mustNotInfer": [
+        "effect_of_attendance_failure",
+        "number_of_controles",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "ICH1104",
+      "courseName": "Mecánica de Fluidos",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ICH1104",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "a1306aad410cf95a51363cc5364bde7c50f4147f63f3f7584ba48945e404e42b",
+      "fixtureHash": "f1fd2160527d97283409ac05d37e13e7ec075fce5a8fd31a0336872863d03f9d",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Dice que puede haber pruebas, proyectos y/o tareas, sin confirmar cuáles ni sus pesos.",
+      "mustNotInfer": [
+        "all_weights",
+        "which_evaluation_types_apply",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "ICE1513",
+      "courseName": "Estática y Dinámica",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ICE1513",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "1081366498f3c414ebce0dfc54833e0a91ab694f4b026b5302a2b9bfa62061b8",
+      "fixtureHash": "1998f5ab00251df4866d68f0037d22d7252864e6482d2c46d55b18905388724d",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Laboratorio",
+          "weight": 30
+        },
+        {
+          "name": "Nota de cátedra",
+          "weight": 70
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "laboratorio",
+          "weight": 30
+        },
+        {
+          "name": "nota de catedra",
+          "weight": 70
+        }
+      ],
+      "goldComplexRules": [
+        "aggregate_category",
+        "minimum_six_lab_experiences"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "ambiguous_percentage_detected",
+        "minimum_or_cap_rule_detected",
+        "aggregate_category_detected"
+      ],
+      "problem": "",
+      "goldReason": "El párrafo fija 30/70 y al menos seis experiencias, pero no reparte el laboratorio ni la cátedra.",
+      "mustNotInfer": [
+        "weight_per_lab_experience",
+        "catedra_breakdown",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "FIS1503",
+      "courseName": "Física General",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=FIS1503",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "8e215a106eb95b116a69895a5660615cbcdd9448f8ec697ae24b826fc5db7948",
+      "fixtureHash": "ad9dd792c583faad2866670aa48f3b1c56d1bec8299184767cd93661b85adede",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Enumera interrogaciones, controles y examen sin porcentajes.",
+      "mustNotInfer": [
+        "all_weights",
+        "number_of_interrogaciones",
+        "number_of_controles",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "QIM100",
+      "courseName": "Química General",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=QIM100",
+      "capturedAt": "2026-09-21T03:36:55.155Z",
+      "sourceHash": "c3ab88671dc8884c402b6c59bfe470d81243eaf2c2034dd93cdd6268ce24b503",
+      "fixtureHash": "ab32a2ed8202fc9f5572723bbb1d15be0533ce28a81e3d8db60169f8eb611c1a",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "not_found",
+      "parserStatus": "not_found",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "source_program_unavailable"
+      ],
+      "problem": "",
+      "goldReason": "La fuente oficial responde explícitamente «Programa de curso no disponible».",
+      "mustNotInfer": [
+        "evaluation_structure",
+        "all_weights",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "BIO141C",
+      "courseName": "Biología de la Célula",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=BIO141C",
+      "capturedAt": "2026-09-21T03:39:20.844Z",
+      "sourceHash": "6bde94f68c8da6cd02136d3130f72e1cc13ae873c93b416756a5251bad80fcbe",
+      "fixtureHash": "c9e5827c1bc8d8844eebf3f93b330ce74399eab94ed74ffced23be5b282c3fec",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Solo declara pruebas y controles en ayudantías, sin pesos.",
+      "mustNotInfer": [
+        "all_weights",
+        "number_of_pruebas",
+        "number_of_controles",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "MAT1620",
+      "courseName": "Cálculo II",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=MAT1620",
+      "capturedAt": "2026-09-21T03:39:25.297Z",
+      "sourceHash": "d54f08dbc3dbd22459755c54e4e9c661791c6c6bfacd1e64d61a5dcc34f64d0c",
+      "fixtureHash": "03bfc7a660fa9c52514f6fb2198439ed67fdaf43e02aa2b80774fa1ff5cbbcb5",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "needs_review",
+      "parserStatus": "needs_review",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Evaluaciones sumativas",
+          "weight": 60
+        },
+        {
+          "name": "Actividades de laboratorio",
+          "weight": 10
+        },
+        {
+          "name": "Examen final escrito",
+          "weight": 30
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Evaluaciones sumativas",
+          "weight": 60
+        },
+        {
+          "name": "Actividades de laboratorio",
+          "weight": 10
+        },
+        {
+          "name": "Examen final escrito",
+          "weight": 30
+        }
+      ],
+      "goldComplexRules": [
+        "aggregate_category"
+      ],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "aggregate_category_detected"
+      ],
+      "problem": "",
+      "goldReason": "El 60% de evaluaciones sumativas no viene desglosado.",
+      "mustNotInfer": [
+        "sumativas_breakdown",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "ICS2563",
+      "courseName": "Econometría Aplicada",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ICS2563",
+      "capturedAt": "2026-09-21T03:39:26.934Z",
+      "sourceHash": "8b1c350a4489cbfb5bb113e4ffb3c4bd19e2cf022436e2eba197c2f74aedb4d4",
+      "fixtureHash": "5eb2a29afcb1f5461c1cb2ce3db3e6d54a27b6e96b8af16abe4efb882c0b3c25",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "auto_importable",
+      "parserStatus": "auto_importable",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Pruebas escritas",
+          "weight": 40
+        },
+        {
+          "name": "Tareas computacionales grupales",
+          "weight": 30
+        },
+        {
+          "name": "Examen final escrito",
+          "weight": 30
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Pruebas escritas",
+          "weight": 40
+        },
+        {
+          "name": "Tareas computacionales grupales",
+          "weight": 30
+        },
+        {
+          "name": "Examen final escrito",
+          "weight": 30
+        }
+      ],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [],
+      "problem": "",
+      "goldReason": "Tres categorías explícitas suman 100.",
+      "mustNotInfer": [
+        "number_of_pruebas",
+        "number_of_tareas",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "ICS2121",
+      "courseName": "Métodos de Optimización",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ICS2121",
+      "capturedAt": "2026-09-21T03:39:28.774Z",
+      "sourceHash": "5d34b3b9d7a0edddd120617d9cfe74c391b58f239e853c39883fe6584fd9e43d",
+      "fixtureHash": "d2b5d9c739a76c762ded2bb9cebcf56de9e9ba629ef724eccec31219ada4dfa7",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "auto_importable",
+      "parserStatus": "auto_importable",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Tareas",
+          "weight": 15
+        },
+        {
+          "name": "Proyecto",
+          "weight": 20
+        },
+        {
+          "name": "Pruebas",
+          "weight": 65
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Tareas",
+          "weight": 15
+        },
+        {
+          "name": "Proyecto",
+          "weight": 20
+        },
+        {
+          "name": "Pruebas",
+          "weight": 65
+        }
+      ],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [],
+      "problem": "",
+      "goldReason": "Tres categorías explícitas suman 100.",
+      "mustNotInfer": [
+        "number_of_tareas",
+        "number_of_pruebas",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "ICT2904",
+      "courseName": "Ingeniería de Sistemas de Transporte",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ICT2904",
+      "capturedAt": "2026-09-21T03:39:33.953Z",
+      "sourceHash": "cf0edf24b809e9350f738b42c719570dca57645b0f3169290b919aa519bdd558",
+      "fixtureHash": "1b4c94fc7cdf2f28111e649dc8ef38f61335c47009b5f8f1f2fa8081ed4cf68b",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "insufficient_information",
+      "parserStatus": "insufficient_information",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [],
+      "parserWeights": [],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [
+        "relevant_unparsed_line"
+      ],
+      "problem": "",
+      "goldReason": "Enumera pruebas, proyectos y tareas sin porcentajes.",
+      "mustNotInfer": [
+        "all_weights",
+        "number_of_evaluations",
+        "semester"
+      ]
+    },
+    {
+      "courseCode": "IIC2115",
+      "courseName": "Programación como Herramienta para la Ingeniería",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=IIC2115",
+      "capturedAt": "2026-09-21T03:39:35.639Z",
+      "sourceHash": "87ce240eaa375ccf4894fa8ad0e81ce54d4194fcd81d065def393ea77a5a9279",
+      "fixtureHash": "aae049ecc976f3db79f90c6a9ee2d7f088124c6f166750ff4cc7ef28fad24f4a",
+      "fidelity": "normalized_official_html",
+      "goldStatus": "auto_importable",
+      "parserStatus": "auto_importable",
+      "classificationMatch": true,
+      "weightsMatch": true,
+      "goldWeights": [
+        {
+          "name": "Tareas",
+          "weight": 45
+        },
+        {
+          "name": "Proyecto semestral",
+          "weight": 30
+        },
+        {
+          "name": "Controles",
+          "weight": 20
+        },
+        {
+          "name": "Preguntas en clases (variable)",
+          "weight": 5
+        }
+      ],
+      "parserWeights": [
+        {
+          "name": "Tareas",
+          "weight": 45
+        },
+        {
+          "name": "Proyecto semestral",
+          "weight": 30
+        },
+        {
+          "name": "Controles",
+          "weight": 20
+        },
+        {
+          "name": "Preguntas en clases (variable)",
+          "weight": 5
+        }
+      ],
+      "goldComplexRules": [],
+      "missedComplexRules": [],
+      "parserReasons": [],
+      "problem": "",
+      "goldReason": "Cantidad y peso unitario están explícitos; el total calculable es 100.",
+      "mustNotInfer": [
+        "semester"
+      ]
+    }
+  ]
+}
