@@ -14,9 +14,13 @@ function abrirFechaAgenda(item){
   setTimeout(()=>openEditCatModal(item.cat.id),320);
 }
 
-function abrirRecorreccionAgenda(ramoId,catId,notaId,editor){
-  openRamo(ramoId);
-  setTimeout(()=>editor==='categoria'?openEditCatModal(catId):openEditNotaModal(catId,notaId),320);
+function resolverRecorreccionAgenda(ramoId,catId,notaId){
+  const ramo=S.ramos.find(r=>r.id===ramoId);
+  const cat=ramo&&(ramo.categorias||[]).find(c=>c.id===catId);
+  const nota=cat&&(cat.notas||[]).find(n=>n.id===notaId);
+  if(!nota||nota.recorreccionPendiente!==true)return;
+  delete nota.recorreccionPendiente;
+  save();renderAgenda();showToast('Listo, ya no te recordaremos mandarla');
 }
 
 function agendaRecorreccionesHTML(items){
@@ -25,8 +29,8 @@ function agendaRecorreccionesHTML(items){
     <div class="ag-list-hd"><span class="section-hd-title">Por mandar a recorregir</span><span class="ag-count">${items.length}</span></div>
     <div class="ag-recorreccion-list">${items.map(e=>`<article class="ag-recorreccion-row">
       <span class="ag-recorreccion-mark" aria-hidden="true"></span>
-      <div><strong>${esc(nombreNotaCasilla(e.ramo,e.cat,e.nota))}</strong><span>${esc(e.ramo.nombre)} · nota ${fmt(e.nota.valor)}</span></div>
-      <button type="button" data-agenda-action="abrir-recorreccion" data-ramo-id="${esc(e.ramo.id)}" data-cat-id="${esc(e.cat.id)}" data-nota-id="${esc(e.nota.id)}" data-editor="${e.editor}">Revisar</button>
+      <div><strong>${esc(nombreNotaCasilla(e.ramo,e.cat,e.nota))}</strong><span>${esc(e.ramo.nombre)} · aún no la mandas</span></div>
+      <button type="button" data-agenda-action="resolver-recorreccion" data-ramo-id="${esc(e.ramo.id)}" data-cat-id="${esc(e.cat.id)}" data-nota-id="${esc(e.nota.id)}">Ya la mandé</button>
     </article>`).join('')}</div>
   </section>`;
 }
@@ -296,7 +300,7 @@ function activarAccionesAgenda(body){
     else if(accion==='agregar-fecha')abrirFechaAgenda(agendaSinFecha()[0]);
     else if(accion==='completar-nota')completarNotaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
     else if(accion==='corregir-fecha')corregirFechaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
-    else if(accion==='abrir-recorreccion')abrirRecorreccionAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId,boton.dataset.editor);
+    else if(accion==='resolver-recorreccion')resolverRecorreccionAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId);
     else if(accion==='agregar-evaluacion'){
       openRamo(boton.dataset.ramoId);
       setTimeout(openAddCatModal,320);
@@ -439,7 +443,7 @@ function renderAgenda(){
   if(events.length===0){
     body.innerHTML=agendaRecorreccionesHTML(recorrecciones)+agendaSinFechaHTML(sinFecha);
     const sub=document.getElementById('agenda-sub');
-    if(sub)sub.textContent=`${recorrecciones.length} pendiente${recorrecciones.length!==1?'s':''} de recorrección`;
+    if(sub)sub.textContent=`${recorrecciones.length} sin mandar a recorregir`;
     return;
   }
 
@@ -455,7 +459,7 @@ function renderAgenda(){
   const sub=document.getElementById('agenda-sub');
   if(sub){
     if(recorrecciones.length>0){
-      sub.textContent=`${recorrecciones.length} pendiente${recorrecciones.length!==1?'s':''} de recorrección`;
+      sub.textContent=`${recorrecciones.length} sin mandar a recorregir`;
     }else if(porVenir.length===0&&fechasPasadas.length===0){
       sub.textContent='Todo al día';
     }else if(porVenir.length===0){

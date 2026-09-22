@@ -6438,7 +6438,7 @@ function controlRecorreccionHTML(n){
   if(!n||!Number.isFinite(n.valor))return '';
   return `<label class="recorreccion-toggle">
     <input type="checkbox" id="m-recorreccion" ${n.recorreccionPendiente===true?'checked':''}/>
-    <span><b>Pendiente de mandar a recorregir</b><small>Desmárcalo cuando vuelva corregida.</small></span>
+    <span><b>Pendiente de mandar a recorregir</b><small>Desmárcalo apenas la mandes.</small></span>
   </label>`;
 }
 function openEditCatModal(catId){
@@ -7124,8 +7124,9 @@ function agendaEvents(){
   return out;
 }
 
-// Una recorrección no tiene una fecha inventada ni es una evaluación pendiente:
-// la nota ya existe y sigue contando. Viaja por un carril aparte de la línea de
+// Esto recuerda una acción todavía no hecha: mandar una prueba ya rendida a
+// recorregir. No tiene una fecha inventada ni es una evaluación pendiente: la
+// nota ya existe y sigue contando. Viaja por un carril aparte de la línea de
 // tiempo para que la Agenda pueda recordarla aunque nunca tuvo fecha.
 function agendaRecorrecciones(){
   const out=[];

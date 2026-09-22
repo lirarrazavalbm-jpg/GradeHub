@@ -1,5 +1,6 @@
-// Una recorrección es un recordatorio sobre una nota existente. No cambia el
-// cálculo, no inventa fecha y no se pierde al editar nuevamente la casilla.
+// La marca recuerda una acción pendiente: todavía no se manda una nota ya
+// rendida a recorregir. No cambia el cálculo, no inventa fecha y no se pierde
+// al editar nuevamente la casilla.
 const fs=require('fs'),vm=require('vm'),path=require('path');
 const raiz=process.env.GRADEHUB_ROOT||path.join(__dirname,'..');
 const src=['data.js','engine.js','app.js','render-agenda.js'].map(f=>fs.readFileSync(path.join(raiz,f),'utf8')).join('\n');
@@ -24,7 +25,8 @@ run(`S=normalize(${JSON.stringify(estado)});currentRamoId='r1'`);
 chk('normalize conserva la marca de la nota rendida',run('S.ramos[0].categorias[0].notas[0].recorreccionPendiente===true'));
 chk('y descarta la marca de una evaluación sin nota',run('S.ramos[0].categorias[0].notas[1].recorreccionPendiente===undefined'));
 chk('el control no aparece para una evaluación sin nota',run("controlRecorreccionHTML({valor:null,recorreccionPendiente:true})===''"));
-chk('la opción explica cómo resolverla',/Desmárcalo cuando vuelva corregida/.test(run('controlRecorreccionHTML(S.ramos[0].categorias[0].notas[0])')));
+const control=run('controlRecorreccionHTML(S.ramos[0].categorias[0].notas[0])');
+chk('la opción significa que todavía falta mandarla',/Pendiente de mandar a recorregir/.test(control)&&/apenas la mandes/.test(control));
 
 console.log('\n=== Editar la nota conserva la marca ===');
 ctx.save=()=>{};ctx.track=()=>{};ctx.showToast=()=>{};
@@ -38,6 +40,8 @@ chk('aparece entre las recorrecciones',recs.length===1&&recs[0].nota==='Control 
 chk('y sigue sin fecha',recs[0].fecha===null);
 chk('no se mezcla con agendaEvents',run('agendaEvents().length===0'));
 const html=run('agendaRecorreccionesHTML(agendaRecorrecciones())');
-chk('la Agenda la presenta como recorrección',/Por mandar a recorregir/.test(html)&&/Control 1/.test(html));
+chk('la Agenda dice que todavía no se ha mandado',/Por mandar a recorregir/.test(html)&&/aún no la mandas/.test(html)&&/Ya la mandé/.test(html));
+ctx.resolverRecorreccionAgenda('r1','c1','n1');
+chk('confirmar el envío saca el recordatorio',run('S.ramos[0].categorias[0].notas[0].recorreccionPendiente===undefined'));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);process.exit(fail?1:0);
