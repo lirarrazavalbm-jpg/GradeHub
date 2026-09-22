@@ -378,6 +378,13 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .auth-stat span{font-size:0.625rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);}
 .auth-proof{display:contents;}
 .auth-proof-kicker,.auth-proof-title,.auth-proof-copy{display:none;}
+/* `hidden` no basta por sí solo: cualquier `display` de autor le gana al
+   `[hidden]{display:none}` del navegador, y esta banda declara `display:flex`.
+   Sin esta regla, mientras la RPC responde (≈1 s en producción) se ve una
+   píldora gris vacía, y si la consulta falla o hay menos cuentas que el mínimo,
+   se queda ahí para siempre. Va con el id para ganarle también al bloque de
+   1280px. */
+#screen-auth .auth-stats[hidden]{display:none;}
 
 /* Muestra de la ficha de un ramo en el login. Es la ficha real en miniatura,
    pintada con los tokens de la app: sigue el modo y el acento. En móvil va
@@ -439,6 +446,9 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
   #screen-auth .auth-stat:last-child{padding-bottom:0;}
   #screen-auth .auth-stat+.auth-stat{border-left:0;border-top:1px solid var(--border);}
   #screen-auth .auth-stat b{font-size:1.75rem;}
+  /* Sin números no hay nada que enmarcar: una tarjeta titulada "GradeHub en
+     números" y vacía dice lo contrario de lo que pretende. */
+  #screen-auth .auth-proof:has(.auth-stats[hidden]){display:none;}
 }
 @media(min-width:900px) and (hover:hover) and (pointer:fine){.ap-card:hover{transform:perspective(1200px) rotateY(0deg);}}
 @media(prefers-reduced-motion:reduce){.ap-card{transform:none;transition:none;}}

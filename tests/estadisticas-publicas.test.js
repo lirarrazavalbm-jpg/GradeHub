@@ -16,6 +16,11 @@ chk('security definer + stable, y solo anon/authenticated pueden ejecutarla', /s
 chk('la app llama a esa RPC desde la pantalla de login', /rpc\('estadisticas_publicas'\)/.test(app) && /cargarEstadisticasPublicas\(\);/.test(app.slice(app.indexOf('function showAuthScreen'))));
 chk('con pocas cuentas no se muestra nada', /MINIMO_CUENTAS_PARA_MOSTRAR=\d+/.test(app) && /data\.cuentas>=MINIMO_CUENTAS_PARA_MOSTRAR/.test(app));
 chk('el elemento parte oculto', /<div class="auth-stats" id="auth-stats" hidden/.test(html));
+// Y `hidden` tiene que ganarle al display de autor: si no, la banda vacía se ve
+// mientras la RPC responde y para siempre cuando falla.
+const css = leer('styles.css');
+chk('oculto de verdad: hay una regla para [hidden]', /#screen-auth \.auth-stats\[hidden\]\{display:none;?\}/.test(css));
+chk('sin números tampoco se muestra la tarjeta que los enmarca', /#screen-auth \.auth-proof:has\(\.auth-stats\[hidden\]\)\{display:none;?\}/.test(css));
 
 console.log(`\n${ok} ok, ${fail} fail`);
 if (fail) process.exit(1);
