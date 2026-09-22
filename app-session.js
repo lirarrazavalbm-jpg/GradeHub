@@ -82,6 +82,10 @@ function showAuthScreen(){
   document.getElementById('bottom-nav').style.display='none';
   document.getElementById('screen-auth').classList.add('active');
   marcarUltimoLogin();
+  // El esqueleto se pinta YA, con el alto definitivo: la RPC tarda cerca de un
+  // segundo en producción y, sin esto, los números entraban empujando el botón
+  // de Google hacia abajo justo cuando alguien iba a tocarlo.
+  pintarEsqueletoEstadisticas();
   cargarEstadisticasPublicas();
 }
 // "1.240 estudiantes ya llevan sus notas acá". Sale de una RPC pública que
@@ -89,15 +93,31 @@ function showAuthScreen(){
 // cuentas la línea juega en contra —"12 estudiantes" suena a nadie—, así que
 // bajo el mínimo no se muestra nada. Si la RPC falla, tampoco: es adorno.
 const MINIMO_CUENTAS_PARA_MOSTRAR=100;
+const ETIQUETAS_ESTADISTICAS=['estudiantes','ramos','notas'];
+function fichaEstadistica(valor,etiqueta){
+  const n=Number(valor||0).toLocaleString('es-CL');
+  return `<div class="auth-stat"><b data-final="${Number(valor)||0}">${n}</b><span>${etiqueta}</span></div>`;
+}
+// Las tres etiquetas con un guion en vez del número: mismo alto que el final,
+// así nada se mueve cuando llegan los datos. Si la consulta falla o no alcanza
+// el mínimo, la banda se esconde y el guion no queda nunca a la vista.
+function pintarEsqueletoEstadisticas(){
+  const el=document.getElementById('auth-stats');
+  if(!el||!supabaseClient)return;
+  el.innerHTML=ETIQUETAS_ESTADISTICAS.map(l=>`<div class="auth-stat"><b class="auth-stat-cargando">—</b><span>${l}</span></div>`).join('');
+  el.setAttribute('aria-busy','true');
+  el.hidden=false;
+}
 async function cargarEstadisticasPublicas(){
   const el=document.getElementById('auth-stats');
   if(!el||!supabaseClient)return;
   try{
     const {data,error}=await supabaseClient.rpc('estadisticas_publicas');
-    if(error||!data||!(data.cuentas>=MINIMO_CUENTAS_PARA_MOSTRAR))return;
+    if(error||!data||!(data.cuentas>=MINIMO_CUENTAS_PARA_MOSTRAR)){el.hidden=true;el.innerHTML='';return;}
     const n=x=>Number(x||0).toLocaleString('es-CL');
-    const tile=(v,l)=>`<div class="auth-stat"><b data-final="${Number(v)||0}">${n(v)}</b><span>${l}</span></div>`;
+    const tile=fichaEstadistica;
     el.innerHTML=tile(data.cuentas,'estudiantes')+(data.ramos>0?tile(data.ramos,'ramos'):'')+(data.notas>0?tile(data.notas,'notas'):'');
+    el.removeAttribute('aria-busy');
     el.hidden=false;
     // Los números suben desde 0 en ~700 ms. Es adorno: con reduced-motion se
     // quedan como están, y el texto final ya estaba pintado por si el rAF no corre.
@@ -109,7 +129,7 @@ async function cargarEstadisticasPublicas(){
       if(p<1)requestAnimationFrame(paso);
     };
     requestAnimationFrame(paso);
-  }catch(e){}
+  }catch(e){el.hidden=true;el.innerHTML='';}
 }
 // Una sesión válida que falla al dibujarse no es un error de login. Esta
 // pantalla conserva esa distinción: no expone el stack, no cierra la sesión y
