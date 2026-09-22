@@ -1195,7 +1195,10 @@ function obCodificarNombre(nombre){return encodeURIComponent(nombre).replace(/'/
 function obToggleRamo(nombre,checked){
   if(checked&&!obTieneRamo(nombre))obRamos.push({nombre,manual:false});
   if(!checked)obRamos=obRamos.filter(r=>normName(r.nombre)!==normName(nombre));
-  renderObCoursePicker();obRender();
+  // El checkbox ya refleja el cambio. Reconstruir el selector completo en cada
+  // clic hace saltar su scroll y recalcula todas las filas, justo cuando la
+  // persona está marcando varios ramos de su horario.
+  obRender();
 }
 function obToggleRamoCodificado(nombre,checked){obToggleRamo(decodeURIComponent(nombre),checked);}
 
