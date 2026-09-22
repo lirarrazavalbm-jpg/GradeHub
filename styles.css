@@ -385,6 +385,9 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
    se queda ahí para siempre. Va con el id para ganarle también al bloque de
    1280px. */
 #screen-auth .auth-stats[hidden]{display:none;}
+.auth-stat-cargando{color:var(--fg3);opacity:.55;animation:statsCargando 1.4s ease-in-out infinite;}
+@keyframes statsCargando{0%,100%{opacity:.3;}50%{opacity:.7;}}
+@media(prefers-reduced-motion:reduce){.auth-stat-cargando{animation:none;}}
 
 /* Muestra de la ficha de un ramo en el login. Es la ficha real en miniatura,
    pintada con los tokens de la app: sigue el modo y el acento. En móvil va
