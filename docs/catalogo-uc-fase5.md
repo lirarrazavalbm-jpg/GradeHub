@@ -197,7 +197,9 @@ Ninguna etiqueta viene preseleccionada. El archivo de etiquetas está ligado al 
 node bin/validar-candidatos-uc-fase5.js metrics
 ```
 
-Estado actual: `pending_review`; revisados 0; correctos 0; falsos 0; tasa —.
+Estado actual: `pending_review`; revisión completa: no; revisados 0; correctos 0; falsos 0; tasa detectada en la muestra sesgada —.
+
+La muestra sobrerrepresenta formatos raros y casos atípicos dentro de cada estrato a propósito. Esa tasa describe solo las fichas revisadas y no estima la tasa poblacional de los 2.001 candidatos.
 
 Si aparece un falso positivo, las métricas guardan el curso, texto fuente, etiqueta, nota, estrato, patrones responsables y población potencial del estrato. El runner siempre mantiene `massImportAllowed:false`.
 
@@ -219,12 +221,14 @@ El revisor ve la fuente, la sección completa, la estructura y cualquier compara
 
 `candidateToPresetProposal(candidate, approval)` es una función pura. Solo acepta una aprobación explícita, nombres no vacíos, categorías únicas y pesos que sumen 100. Devuelve:
 
-- un objeto actual de `PRESETS_UC` con `sigla` y `evals`;
+- un objeto actual de `PRESETS_UC` con `sigla`, `evals` y `periodo` cuando la fuente declara exactamente un semestre;
 - un diff textual para revisión;
 - un registro de provenance separado;
 - la validación realizada.
 
 No escribe `data.js`. Tampoco divide categorías agregadas: `Pruebas 40%` sigue siendo una categoría de 40%, salvo que una persona la edite con evidencia antes de aprobar.
+
+`evals` admite un tercer elemento con `slots`, `min`/`cap` y `fecha`; este prototipo todavía no lo emite y no debe inferir esos datos.
 
 ## Provenance propuesta
 

@@ -77,7 +77,8 @@ check('el estrato raro queda sobrerrepresentado', (() => {
 console.log('\n=== El parser no se autovalida ===');
 check('ninguna etiqueta humana viene contestada', labels.reviews.length === 120 && labels.reviews.every(review => review.humanLabel === null && review.reviewer === null && review.reviewedAt === null));
 check('la clasificación del parser no se copia al archivo de respuestas', labels.reviews.every(review => !Object.prototype.hasOwnProperty.call(review, 'classification') && !Object.prototype.hasOwnProperty.call(review, 'parserOutput')));
-check('sin revisión las métricas dicen pendiente, no éxito', metrics.reviewed_count === 0 && metrics.false_auto_importable_rate === null && metrics.stopCondition === 'pending_review');
+check('sin revisión las métricas dicen pendiente, no éxito', metrics.reviewed_count === 0 && metrics.detected_false_rate_in_biased_sample === null && metrics.stopCondition === 'pending_review' && metrics.review_complete === false);
+check('la tasa declara que viene de una muestra sesgada y no se extrapola', /sobrerrepresenta/.test(metrics.rateInterpretation) && /no se extrapola/.test(metrics.rateInterpretation));
 
 const retainedReview = {
   sampleHash: sample.sampleHash,
@@ -96,6 +97,14 @@ changedSample.sample[0].provenance.evaluationHash = 'fuente-oficial-cambiada';
 const labelsInvalidated = tool.prepareLabels(changedSample, retainedReview);
 check('una decisión se conserva mientras el texto oficial sea el mismo', labelsRetained.reviews[0].humanLabel === 'correct_auto_importable');
 check('una decisión vieja se borra si cambia el hash evaluativo', labelsInvalidated.reviews[0].humanLabel === null && labelsInvalidated.reviews[0].reviewer === null && labelsInvalidated.reviews[0].reviewedAt === null);
+const sameTextChangedParser = JSON.parse(JSON.stringify(sample));
+sameTextChangedParser.sample[0].provenance.parserVersion = 'uc-catalogo-4';
+sameTextChangedParser.sampleHash = tool.sampleHash(sameTextChangedParser.sample);
+const labelsInvalidatedByParser = tool.prepareLabels(sameTextChangedParser, retainedReview);
+check('cambiar parser con el mismo texto invalida las etiquetas viejas', sameTextChangedParser.sampleHash !== sample.sampleHash && labelsInvalidatedByParser.reviews[0].humanLabel === null);
+const sameTextChangedWeights = JSON.parse(JSON.stringify(sample));
+sameTextChangedWeights.sample[0].candidateWeights[0].weight += 1;
+check('cambiar los pesos propuestos cambia el hash', tool.sampleHash(sameTextChangedWeights.sample) !== tool.sampleHash(sample.sample));
 
 const tinySample = {
   sampleHash: 'tiny',
@@ -118,8 +127,12 @@ oneError.reviews[1].humanLabel = 'should_be_needs_review';
 oneError.reviews[1].note = 'Hay una condición que el parser no detectó.';
 const safeMetrics = tool.calculateMetrics(tinySample, allCorrect);
 const stoppedMetrics = tool.calculateMetrics(tinySample, oneError);
+const incompleteWithError = JSON.parse(JSON.stringify(oneError));
+incompleteWithError.reviews[0] = { ...incompleteWithError.reviews[0], humanLabel: null, reviewer: null, reviewedAt: null };
+const stoppedIncompleteMetrics = tool.calculateMetrics(tinySample, incompleteWithError);
 check('cero falsos habilita diseñar aprobación, nunca importar solo', safeMetrics.stopCondition === 'validated_for_approval_workflow_design' && safeMetrics.false_auto_importable_count === 0 && safeMetrics.massImportAllowed === false);
-check('un falso positivo activa el stop condition', stoppedMetrics.stopCondition === 'stop_false_auto_importable_detected' && stoppedMetrics.false_auto_importable_count === 1 && stoppedMetrics.false_auto_importable_rate === 0.5);
+check('un falso positivo activa el stop condition', stoppedMetrics.stopCondition === 'stop_false_auto_importable_detected' && stoppedMetrics.false_auto_importable_count === 1 && stoppedMetrics.detected_false_rate_in_biased_sample === 0.5);
+check('un falso positivo frena aunque la revisión esté incompleta', stoppedIncompleteMetrics.stopCondition === 'stop_false_auto_importable_detected' && stoppedIncompleteMetrics.review_complete === false && stoppedIncompleteMetrics.unreviewed_count === 1);
 check('el error conserva texto, patrón y población potencial', stoppedMetrics.falseAutoImportableDetails[0].evaluationSourceText && stoppedMetrics.falseAutoImportableDetails[0].responsiblePatterns.length > 0 && stoppedMetrics.falseAutoImportableDetails[0].potentialPrimaryStratumPopulation === 3);
 check('una etiqueta sin autor y fecha se rechaza', (() => {
   const unsigned = JSON.parse(JSON.stringify(allCorrect));
@@ -131,10 +144,23 @@ console.log('\n=== Aprobar genera un diff, no escribe producción ===');
 const aggregate = sample.sample.find(item => item.courseCode === 'IMT2100');
 const proposal = tool.candidateToPresetProposal(aggregate, { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt });
 check('la definición usa el formato actual de PRESETS_UC y no inventa período', proposal.presetDefinition.sigla === 'IMT2100' && Array.isArray(proposal.presetDefinition.evals) && !Object.prototype.hasOwnProperty.call(proposal.presetDefinition, 'periodo'));
+const declared = synthetic('PER1000', 'bullet_list|3|declared|absent', { programVersionAvailability: 'declared' });
+declared.programVersionText = '2026-2';
+const proposalWithPeriod = tool.candidateToPresetProposal(declared, { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt });
+check('un semestre declarado llega a periodo y al diff', proposalWithPeriod.presetDefinition.periodo === '2026-2' && /periodo:'2026-2'/.test(proposalWithPeriod.diffText));
+check('el prototipo deja anotado que todavía no emite metadata por evaluación', /tercer elemento[\s\S]*slots[\s\S]*min\/cap[\s\S]*fecha/.test(fs.readFileSync(path.join(ROOT, 'bin', 'validar-candidatos-uc-fase5.js'), 'utf8')));
 check('tres Pruebas agregadas siguen siendo UNA categoría de 60%', proposal.presetDefinition.evals.filter(row => row[0] === 'Pruebas' && row[1] === 60).length === 1 && proposal.presetDefinition.evals.length === 4);
 check('la provenance conserva fuente, hash, parser, aprobación y alcance', proposal.provenance.sourceType === 'official_uc_catalog' && proposal.provenance.evaluationHash && proposal.provenance.parserVersion === 'uc-catalogo-3' && proposal.provenance.approvedBy === 'revisor' && proposal.provenance.scope === 'institutional_program' && proposal.provenance.semester === null);
 check('sin aprobación explícita no hay propuesta', (() => { try { tool.candidateToPresetProposal(aggregate, {}); return false; } catch (_) { return true; } })());
 check('una edición que ya no suma 100 se rechaza', (() => { try { tool.candidateToPresetProposal(aggregate, { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt, editedEvaluations: [{ name: 'Pruebas', weight: 40 }] }); return false; } catch (_) { return true; } })());
+check('dos candidatos con el mismo nombre normalizado se bloquean', (() => {
+  const first = synthetic('DPT9030', 'bullet_list|3|missing|absent');
+  const second = synthetic('DPT9035', 'bullet_list|3|missing|absent');
+  first.courseName = 'Liderazgo: Juegos y Recreación I';
+  second.courseName = 'Liderazgo, Juegos y Recreación I';
+  try { tool.validateCandidateNameCollisions([first, second]); return false; }
+  catch (error) { return /DPT9030/.test(error.message) && /DPT9035/.test(error.message); }
+})());
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail ? 1 : 0);

@@ -5,7 +5,9 @@
   "reviewed_count": 0,
   "correct_auto_importable_count": 0,
   "false_auto_importable_count": 0,
-  "false_auto_importable_rate": null,
+  "detected_false_rate_in_biased_sample": null,
+  "review_complete": false,
+  "rateInterpretation": "La muestra sobrerrepresenta deliberadamente formatos raros y casos atípicos dentro de cada estrato; esta tasa describe solo las fichas revisadas y no se extrapola a los 2.001 candidatos.",
   "unreviewed_count": 120,
   "labels": {
     "correct_auto_importable": 0,

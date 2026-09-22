@@ -329,14 +329,20 @@ function selectStratifiedSample(population, sampleSize = DEFAULT_SAMPLE_SIZE, se
 }
 
 function sampleHash(sample) {
-  return sha256(sample.map(item => `${item.courseCode}:${item.provenance.evaluationHash}`).sort().join('|'));
+  return sha256(sample.map(item => JSON.stringify({
+    courseCode: item.courseCode,
+    evaluationHash: item.provenance.evaluationHash,
+    parserVersion: item.provenance.parserVersion,
+    proposedWeights: (item.candidateWeights || []).map(row => [cleanValue(row.name ?? row.nombre), Number(row.weight ?? row.peso)]),
+  })).sort().join('|'));
 }
 
 function prepareLabels(sampleDocument, existing = null) {
+  const sameSample = !!existing && existing.sampleHash === sampleDocument.sampleHash;
   const previous = new Map(((existing && existing.reviews) || []).map(review => [review.courseCode, review]));
   const reviews = sampleDocument.sample.map(item => {
     const prior = previous.get(item.courseCode);
-    const unchanged = prior && prior.evaluationHash === item.provenance.evaluationHash;
+    const unchanged = sameSample && prior && prior.evaluationHash === item.provenance.evaluationHash;
     return {
       courseCode: item.courseCode,
       evaluationHash: item.provenance.evaluationHash,
@@ -421,7 +427,7 @@ function calculateMetrics(sampleDocument, labelsDocument) {
     };
   });
   const reviewComplete = reviewed.length === sampleDocument.sample.length;
-  const stopCondition = !reviewComplete ? 'pending_review' : errors.length ? 'stop_false_auto_importable_detected' : 'validated_for_approval_workflow_design';
+  const stopCondition = errors.length ? 'stop_false_auto_importable_detected' : !reviewComplete ? 'pending_review' : 'validated_for_approval_workflow_design';
   return {
     generatedAt: new Date().toISOString(),
     sampleHash: sampleDocument.sampleHash,
@@ -429,7 +435,9 @@ function calculateMetrics(sampleDocument, labelsDocument) {
     reviewed_count: reviewed.length,
     correct_auto_importable_count: correct.length,
     false_auto_importable_count: errors.length,
-    false_auto_importable_rate: reviewed.length ? errors.length / reviewed.length : null,
+    detected_false_rate_in_biased_sample: reviewed.length ? errors.length / reviewed.length : null,
+    review_complete: reviewComplete,
+    rateInterpretation: 'La muestra sobrerrepresenta deliberadamente formatos raros y casos atípicos dentro de cada estrato; esta tasa describe solo las fichas revisadas y no se extrapola a los 2.001 candidatos.',
     unreviewed_count: sampleDocument.sample.length - reviewed.length,
     labels: byLabel,
     errorsByPrimaryStratum: byPrimaryStratum,
@@ -438,6 +446,22 @@ function calculateMetrics(sampleDocument, labelsDocument) {
     stopCondition,
     massImportAllowed: false,
   };
+}
+
+function validateCandidateNameCollisions(candidates) {
+  const byName = new Map();
+  (candidates || []).forEach(candidate => {
+    const key = normalizar(candidate && candidate.courseName);
+    if (!key) return;
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key).push(candidate);
+  });
+  const collisions = [...byName.entries()].filter(([, rows]) => new Set(rows.map(row => sigla(row.courseCode))).size > 1);
+  if (collisions.length) {
+    const detail = collisions.map(([, rows]) => rows.map(row => `${sigla(row.courseCode)} (${cleanValue(row.courseName)})`).join(' / ')).join('; ');
+    throw new Error(`Hay candidatos que colapsan al mismo nombre de PRESETS_UC: ${detail}. Deben resolverse por sigla antes de proponer presets.`);
+  }
+  return true;
 }
 
 function jsString(value) {
@@ -477,6 +501,13 @@ function candidateToPresetProposal(candidate, approval) {
     sigla: candidate.courseCode,
     evals: evaluations.map(row => [row.name, row.weight]),
   };
+  // PRESETS_UC admite un tercer elemento por evaluación con slots, min/cap y
+  // fecha. Este prototipo todavía no lo emite: incorporarlo exige evidencia y
+  // revisión humana de esos campos, no inferirlos desde el texto.
+  const declaredPeriod = /^\d{4}-[12]$/.test(cleanValue(candidate.programVersionText) || '')
+    ? cleanValue(candidate.programVersionText)
+    : null;
+  if (declaredPeriod) presetDefinition.periodo = declaredPeriod;
   const provenance = {
     sourceType: 'official_uc_catalog',
     sourceUrl: candidate.sourceUrl,
@@ -493,7 +524,8 @@ function candidateToPresetProposal(candidate, approval) {
     NRC: null,
   };
   const evalLines = presetDefinition.evals.map(row => `      [${jsString(row[0])},${row[1]}],`).join('\n');
-  const diffText = `  ${jsString(candidate.courseName)}:{\n    sigla:${jsString(candidate.courseCode)},\n    evals:[\n${evalLines}\n    ],\n  },`;
+  const periodLine = declaredPeriod ? `    periodo:${jsString(declaredPeriod)},\n` : '';
+  const diffText = `  ${jsString(candidate.courseName)}:{\n    sigla:${jsString(candidate.courseCode)},\n${periodLine}    evals:[\n${evalLines}\n    ],\n  },`;
   return {
     presetName: candidate.courseName,
     presetDefinition,
@@ -523,6 +555,7 @@ function sampleDocument(population, selection, seed, sampleSize, inventory) {
       primaryStrata: selection.allocation,
       populationByFeature,
       sampleByFeature,
+      interpretation: 'La muestra sobrerrepresenta deliberadamente formatos raros y casos atípicos dentro de cada estrato. Ninguna tasa observada en ella se extrapola directamente a los 2.001 candidatos.',
     },
     sample: selection.selected,
   };
@@ -617,7 +650,8 @@ function renderReport(sampleDocument, metrics, paths) {
     '```bash',
     'node bin/validar-candidatos-uc-fase5.js metrics',
     '```', '',
-    `Estado actual: \`${metrics.stopCondition}\`; revisados ${metrics.reviewed_count}; correctos ${metrics.correct_auto_importable_count}; falsos ${metrics.false_auto_importable_count}; tasa ${pct(metrics.false_auto_importable_rate)}.`, '',
+    `Estado actual: \`${metrics.stopCondition}\`; revisión completa: ${metrics.review_complete?'sí':'no'}; revisados ${metrics.reviewed_count}; correctos ${metrics.correct_auto_importable_count}; falsos ${metrics.false_auto_importable_count}; tasa detectada en la muestra sesgada ${pct(metrics.detected_false_rate_in_biased_sample)}.`, '',
+    'La muestra sobrerrepresenta formatos raros y casos atípicos dentro de cada estrato a propósito. Esa tasa describe solo las fichas revisadas y no estima la tasa poblacional de los 2.001 candidatos.', '',
     'Si aparece un falso positivo, las métricas guardan el curso, texto fuente, etiqueta, nota, estrato, patrones responsables y población potencial del estrato. El runner siempre mantiene `massImportAllowed:false`.', '',
     '## Diseño del workflow de aprobación', '',
     '```text',
@@ -632,11 +666,12 @@ function renderReport(sampleDocument, metrics, paths) {
     'El revisor ve la fuente, la sección completa, la estructura y cualquier comparación disponible. Validar no publica. Aprobar exige identidad y fecha; editar crea una propuesta nueva conservando la fuente original y el detalle de la edición. Rechazar conserva la decisión y su motivo.', '',
     '## Conversión a PRESETS_UC', '',
     '`candidateToPresetProposal(candidate, approval)` es una función pura. Solo acepta una aprobación explícita, nombres no vacíos, categorías únicas y pesos que sumen 100. Devuelve:', '',
-    '- un objeto actual de `PRESETS_UC` con `sigla` y `evals`;',
+    '- un objeto actual de `PRESETS_UC` con `sigla`, `evals` y `periodo` cuando la fuente declara exactamente un semestre;',
     '- un diff textual para revisión;',
     '- un registro de provenance separado;',
     '- la validación realizada.', '',
-    'No escribe `data.js`. Tampoco divide categorías agregadas: `Pruebas 40%` sigue siendo una categoría de 40%, salvo que una persona la edite con evidencia antes de aprobar.', '',
+    'No escribe `data.js`. Tampoco divide categorías agregadas: `Pruebas 40%` sigue siendo una categoría de 40%, salvo que una persona la edite con evidencia antes de aprobar.',
+    '`evals` admite un tercer elemento con `slots`, `min`/`cap` y `fecha`; este prototipo todavía no lo emite y no debe inferir esos datos.', '',
     '## Provenance propuesta', '',
     'Cada aprobación conserva centralmente `sourceType`, `sourceUrl`, `courseCode`, `retrievedAt`, `programVersionText`, `evaluationHash`, `parserVersion`, `approvedAt`, `approvedBy` y `scope`. El alcance continúa siendo `institutional_program`; semestre, sección y NRC permanecen nulos.', '',
     'La provenance debe vivir junto a la definición institucional o en un registro central por sigla/hash, nunca copiada a cada cuenta. El estado del estudiante solo recibe la pauta resultante.', '',
@@ -700,6 +735,7 @@ function prepare(options) {
   const inventory = readJson(options.inventory);
   const entries = (inventory.entries || []).filter(entry => !entry.hasExistingPreset && entry.classification === 'auto_importable');
   const population = entries.map(entry => analyzeCandidate(entry, options.cacheDir));
+  validateCandidateNameCollisions(population);
   const selection = selectStratifiedSample(population, options.sampleSize, options.seed);
   const sample = sampleDocument(population, selection, options.seed, options.sampleSize, inventory);
   const existingLabels = fs.existsSync(options.labels) ? readJson(options.labels) : null;
@@ -766,10 +802,12 @@ module.exports = {
   distributions,
   allocateStrata,
   selectStratifiedSample,
+  sampleHash,
   prepareLabels,
   validateLabels,
   calculateMetrics,
   validateEvaluations,
+  validateCandidateNameCollisions,
   candidateToPresetProposal,
   sampleDocument,
   renderReviewPacket,
