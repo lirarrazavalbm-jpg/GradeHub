@@ -41,6 +41,36 @@ function agendaRecorreccionesHTML(items){
 const AGENDA_ORDENES=['recomendado','fecha','peso'];
 let agendaOrdenActual='recomendado';
 let agendaDetalleAbierto=null;
+let agendaRendidasAbiertas=false;
+
+// La línea de tiempo exige fecha; el historial de notas no. Se arma aparte para
+// que una evaluación rendida nunca desaparezca de la Agenda por no tenerla.
+function agendaRendidas(){
+  const out=[];
+  let orden=0;
+  S.ramos.forEach(r=>(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{
+    if(!Number.isFinite(n.valor))return;
+    out.push({
+      fecha:n.fecha||c.fecha||null,
+      hora:(n.fecha?n.hora:c.hora)||null,
+      ramo:r,cat:c,nota:n,notas:[n],pending:false,targetCount:1,
+      estadoAgenda:'con_nota',historialRendida:true,ordenPauta:orden++,
+    });
+  })));
+  return out.sort((a,b)=>{
+    if(a.fecha&&b.fecha)return b.fecha.localeCompare(a.fecha)||(b.hora||'').localeCompare(a.hora||'')||b.ordenPauta-a.ordenPauta;
+    if(a.fecha)return -1;
+    if(b.fecha)return 1;
+    // Sin una fecha no se inventa cronología: la última fila de la pauta es la
+    // referencia cerrada y el resto queda disponible al desplegar.
+    return b.ordenPauta-a.ordenPauta;
+  });
+}
+
+function toggleRendidasAgenda(){
+  agendaRendidasAbiertas=!agendaRendidasAbiertas;
+  renderAgenda();
+}
 
 function ordenarAgenda(pendientes,orden='recomendado'){
   const criterio=AGENDA_ORDENES.includes(orden)?orden:'recomendado';
@@ -178,6 +208,7 @@ function siguienteEvaluacionAgenda(actual,pendientes){
   if(indice>=0)return cronologia[indice+1]||null;
   // Las rendidas no pertenecen a la lista de pendientes, pero desde su detalle
   // todavía conviene saber cuál es la próxima cosa que sí queda por preparar.
+  if(!actual.fecha)return cronologia[0]||null;
   return cronologia.find(e=>{
     const fechaActual=`${actual.fecha}T${actual.hora||'00:00'}`;
     const fechaCandidata=`${e.fecha}T${e.hora||'00:00'}`;
@@ -222,17 +253,30 @@ function agendaEventoHTML(e,contenido,pendientes,tipo='row'){
 
 function agendaRendidaHTML(e){
   const a=avgPond(e.notas);
-  const f=formatEventDate(e.fecha);
+  const f=e.fecha?formatEventDate(e.fecha):null;
   return `<button type="button" class="ag-row done" style="--ag-course:${esc(e.ramo.color)}">
     <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
     <div class="ag-row-main">
-      <div class="ag-row-top"><span class="ag-row-when done">${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}</span><span class="ag-row-peso">${pesoEventoAgendaTexto(e)}</span></div>
+      <div class="ag-row-top"><span class="ag-row-when done">${f?`${f.day} ${f.mon}${e.hora?' · '+esc(e.hora):''}`:'Sin fecha'}</span><span class="ag-row-peso">${pesoEventoAgendaTexto(e)}</span></div>
       <div class="ag-row-name">${esc(nombreEventoAgenda(e))}</div>
       <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
     </div>
     ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${fmt(a)}</span>`:""}
     <span class="chevron-r">›</span>
   </button>`;
+}
+
+function agendaRendidasHTML(items,pendientes){
+  if(!items.length)return '';
+  const visibles=agendaRendidasAbiertas?items:items.slice(0,1);
+  return `<section class="ag-rendidas">
+    <button type="button" class="ag-rendidas-toggle" data-agenda-action="toggle-rendidas" aria-expanded="${agendaRendidasAbiertas?'true':'false'}">
+      <span class="section-hd-title">Ya rendidas</span><span class="ag-count">${items.length}</span>
+      <span class="ag-rendidas-hint">${agendaRendidasAbiertas?'Ver última':'Ver todas'}</span>
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"/></svg>
+    </button>
+    <div class="ag-rendidas-list">${visibles.map(e=>agendaEventoHTML(e,agendaRendidaHTML(e),pendientes,'done')).join('')}</div>
+  </section>`;
 }
 
 function proximoDetalleAgenda(actual,nuevo){
@@ -301,6 +345,7 @@ function activarAccionesAgenda(body){
     else if(accion==='completar-nota')completarNotaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
     else if(accion==='corregir-fecha')corregirFechaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
     else if(accion==='resolver-recorreccion')resolverRecorreccionAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId);
+    else if(accion==='toggle-rendidas')toggleRendidasAgenda();
     else if(accion==='agregar-evaluacion'){
       openRamo(boton.dataset.ramoId);
       setTimeout(openAddCatModal,320);
@@ -403,6 +448,7 @@ function renderAgenda(){
   const events=agendaEvents();
   const sinFecha=agendaSinFecha();
   const recorrecciones=agendaRecorrecciones();
+  const rendidas=agendaRendidas();
 
   const expBtn=document.getElementById("agenda-export-btn");
   // Importar fechas sirve justo cuando la Agenda aún no tiene ninguna. El menú
@@ -410,7 +456,7 @@ function renderAgenda(){
   // inaccesible para su caso principal.
   if(expBtn)expBtn.style.display="block";
 
-  if(events.length===0&&recorrecciones.length===0){
+  if(events.length===0&&recorrecciones.length===0&&rendidas.length===0){
     const hayRamos=S.ramos.length>0;
     const primerRamo=hayRamos?S.ramos[0]:null;
     const primeraSinFecha=sinFecha[0];
@@ -441,9 +487,10 @@ function renderAgenda(){
   }
 
   if(events.length===0){
-    body.innerHTML=agendaRecorreccionesHTML(recorrecciones)+agendaSinFechaHTML(sinFecha);
+    body.innerHTML=agendaRecorreccionesHTML(recorrecciones)+agendaSinFechaHTML(sinFecha)+agendaRendidasHTML(rendidas,[]);
     const sub=document.getElementById('agenda-sub');
-    if(sub)sub.textContent=`${recorrecciones.length} sin mandar a recorregir`;
+    if(sub)sub.textContent=recorrecciones.length?`${recorrecciones.length} sin mandar a recorregir`:'Todo al día';
+    activarDetallesAgenda(body);
     return;
   }
 
@@ -452,7 +499,6 @@ function renderAgenda(){
   const porVenir=pendientes.filter(e=>e.estadoAgenda==='por_venir');
   const fechasPasadas=pendientes.filter(e=>e.estadoAgenda==='esperando_nota'||e.estadoAgenda==='requiere_revision');
   const fechasPorRevisar=fechasPasadas.filter(e=>e.estadoAgenda==='requiere_revision');
-  const hechas=clasificados.filter(e=>e.estadoAgenda==='con_nota');
   const ordenadas=ordenarAgenda(porVenir,agendaOrdenActual);
 
   // Subtítulo del hero: resume el estado en una línea
@@ -522,11 +568,7 @@ function renderAgenda(){
   // fecha conocida. Antes ocupaba la primera tarjeta y competía con el foco.
   html+=agendaSinFechaHTML(sinFecha);
 
-  if(hechas.length>0){
-    hechas.sort((a,b)=>b.fecha.localeCompare(a.fecha));
-    html+=`<div class="ag-list-hd" style="margin-top:26px;"><span class="section-hd-title">Ya rendidas</span><span class="ag-count">${hechas.length}</span></div>`;
-    html+=hechas.map(e=>agendaEventoHTML(e,agendaRendidaHTML(e),porVenir,'done')).join('');
-  }
+  html+=agendaRendidasHTML(rendidas,porVenir);
 
   body.innerHTML=html;
   activarDetallesAgenda(body);

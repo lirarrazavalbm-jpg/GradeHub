@@ -7078,6 +7078,10 @@ function nombreEventoAgenda(e){return e.nota?nombreNotaCasilla(e.ramo,e.cat,e.no
 function pesoEventoAgenda(e){
   const c=e.cat,peso=Number(c.peso)||0;
   const fechadas=(c.notas||[]).filter(n=>n.fecha);
+  // Una evaluación directa tiene una sola nota: al reconstruir el historial
+  // completo de rendidas, esa nota conserva el peso de su categoría aunque la
+  // fecha haya vivido en la categoría o no haya existido nunca.
+  if(e.historialRendida===true&&e.nota&&c.directNota===true&&!(Number.isInteger(c.slots)&&c.slots>1)&&(c.notas||[]).length<=1)return peso;
   if(!e.nota&&!fechadas.length)return peso;
   // El porcentaje individual no es fijo si se descarta una nota o no sabemos
   // cuántas habrá. El peso del grupo no puede disfrazarse de peso de esa entrega.
