@@ -14,6 +14,23 @@ function abrirFechaAgenda(item){
   setTimeout(()=>openEditCatModal(item.cat.id),320);
 }
 
+function abrirRecorreccionAgenda(ramoId,catId,notaId,editor){
+  openRamo(ramoId);
+  setTimeout(()=>editor==='categoria'?openEditCatModal(catId):openEditNotaModal(catId,notaId),320);
+}
+
+function agendaRecorreccionesHTML(items){
+  if(!items.length)return '';
+  return `<section class="ag-recorrecciones">
+    <div class="ag-list-hd"><span class="section-hd-title">Por mandar a recorregir</span><span class="ag-count">${items.length}</span></div>
+    <div class="ag-recorreccion-list">${items.map(e=>`<article class="ag-recorreccion-row">
+      <span class="ag-recorreccion-mark" aria-hidden="true"></span>
+      <div><strong>${esc(nombreNotaCasilla(e.ramo,e.cat,e.nota))}</strong><span>${esc(e.ramo.nombre)} · nota ${fmt(e.nota.valor)}</span></div>
+      <button type="button" data-agenda-action="abrir-recorreccion" data-ramo-id="${esc(e.ramo.id)}" data-cat-id="${esc(e.cat.id)}" data-nota-id="${esc(e.nota.id)}" data-editor="${e.editor}">Revisar</button>
+    </article>`).join('')}</div>
+  </section>`;
+}
+
 // El orden es una preferencia de lectura de esta sesión, no un dato académico.
 // No entra a S ni a gradehub_v1: cambiar cómo se mira la Agenda no justifica
 // una migración del estado que ya tienen los estudiantes en producción.
@@ -279,6 +296,7 @@ function activarAccionesAgenda(body){
     else if(accion==='agregar-fecha')abrirFechaAgenda(agendaSinFecha()[0]);
     else if(accion==='completar-nota')completarNotaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
     else if(accion==='corregir-fecha')corregirFechaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
+    else if(accion==='abrir-recorreccion')abrirRecorreccionAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId,boton.dataset.editor);
     else if(accion==='agregar-evaluacion'){
       openRamo(boton.dataset.ramoId);
       setTimeout(openAddCatModal,320);
@@ -380,6 +398,7 @@ function renderAgenda(){
   agendaDetalleAbierto=null;
   const events=agendaEvents();
   const sinFecha=agendaSinFecha();
+  const recorrecciones=agendaRecorrecciones();
 
   const expBtn=document.getElementById("agenda-export-btn");
   // Importar fechas sirve justo cuando la Agenda aún no tiene ninguna. El menú
@@ -387,7 +406,7 @@ function renderAgenda(){
   // inaccesible para su caso principal.
   if(expBtn)expBtn.style.display="block";
 
-  if(events.length===0){
+  if(events.length===0&&recorrecciones.length===0){
     const hayRamos=S.ramos.length>0;
     const primerRamo=hayRamos?S.ramos[0]:null;
     const primeraSinFecha=sinFecha[0];
@@ -417,6 +436,13 @@ function renderAgenda(){
     return;
   }
 
+  if(events.length===0){
+    body.innerHTML=agendaRecorreccionesHTML(recorrecciones)+agendaSinFechaHTML(sinFecha);
+    const sub=document.getElementById('agenda-sub');
+    if(sub)sub.textContent=`${recorrecciones.length} pendiente${recorrecciones.length!==1?'s':''} de recorrección`;
+    return;
+  }
+
   const clasificados=events.map(e=>({...e,estadoAgenda:estadoEventoAgenda(e)}));
   const pendientes=clasificados.filter(e=>e.estadoAgenda!=='con_nota').map(withPriority);
   const porVenir=pendientes.filter(e=>e.estadoAgenda==='por_venir');
@@ -428,7 +454,9 @@ function renderAgenda(){
   // Subtítulo del hero: resume el estado en una línea
   const sub=document.getElementById('agenda-sub');
   if(sub){
-    if(porVenir.length===0&&fechasPasadas.length===0){
+    if(recorrecciones.length>0){
+      sub.textContent=`${recorrecciones.length} pendiente${recorrecciones.length!==1?'s':''} de recorrección`;
+    }else if(porVenir.length===0&&fechasPasadas.length===0){
       sub.textContent='Todo al día';
     }else if(porVenir.length===0){
       sub.textContent=`${fechasPasadas.length} fecha${fechasPasadas.length!==1?'s':''} pasada${fechasPasadas.length!==1?'s':''} sin nota`;
@@ -441,7 +469,7 @@ function renderAgenda(){
     }
   }
 
-  let html="";
+  let html=agendaRecorreccionesHTML(recorrecciones);
 
   // Las dos primeras se leen antes de escanear la lista. El orden elegido
   // también decide cuáles son: "Recomendado" usa la mezcla académica existente;
@@ -477,7 +505,7 @@ function renderAgenda(){
   } else {
     html+=`<div class="ag-alldone">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-      <div><div class="ag-alldone-t">Nada pendiente.</div><div class="ag-alldone-s">Todas tus evaluaciones con fecha ya están rendidas.</div></div>
+      <div><div class="ag-alldone-t">${recorrecciones.length?'Nada pendiente de rendir.':'Nada pendiente.'}</div><div class="ag-alldone-s">Todas tus evaluaciones con fecha ya están rendidas.</div></div>
     </div>`;
   }
 

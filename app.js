@@ -231,6 +231,9 @@ function normalize(data) {
         hora: (n.fecha && HORA_RE.test(n.hora || '')) ? n.hora : null,
         valor: n.valor ?? (typeof n === 'number' ? n : null),
         peso: n.peso || 1,
+        // Es un estado de trámite, no académico. Solo existe sobre una nota ya
+        // rendida; ausente conserva exactamente el comportamiento histórico.
+        ...(Number.isFinite(n.valor) && n.recorreccionPendiente===true ? {recorreccionPendiente:true} : {}),
         // Las casillas fijas se identifican por posición, no por el nombre.
         // Si se pierde `slot` al recargar, Informe 0 sigue guardado pero ya no
         // puede volver a dibujarse en ninguna de las seis casillas.
@@ -2000,7 +2003,13 @@ function setDirectNota(catId,raw){
   if(txt===''){cat.notas=[];}
   else{
     const val=parseNota(txt);
-    if(!isNaN(val))cat.notas=[{id:(cat.notas[0]&&cat.notas[0].id)||uid(),nombre:cat.nombre,valor:val,peso:1}];
+    if(!isNaN(val)){
+      // Igual que las casillas: editar el objeto conserva los metadatos de la
+      // nota, incluida una recorrección pendiente.
+      const existente=cat.notas[0];
+      if(existente){existente.nombre=cat.nombre;existente.valor=val;existente.peso=1;}
+      else cat.notas=[{id:uid(),nombre:cat.nombre,valor:val,peso:1}];
+    }
   }
   save();track('set_nota_directa');renderRamo();
   const notaValida=txt!==''&&!isNaN(parseNota(txt));
@@ -6425,6 +6434,13 @@ function confirmEditRamo(){
 
 // ─── EDITAR CATEGORÍA ────────────────────────────────────────────────────────
 let editCatError='';
+function controlRecorreccionHTML(n){
+  if(!n||!Number.isFinite(n.valor))return '';
+  return `<label class="recorreccion-toggle">
+    <input type="checkbox" id="m-recorreccion" ${n.recorreccionPendiente===true?'checked':''}/>
+    <span><b>Pendiente de mandar a recorregir</b><small>Desmárcalo cuando vuelva corregida.</small></span>
+  </label>`;
+}
 function openEditCatModal(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
@@ -6440,6 +6456,7 @@ function openEditCatModal(catId){
       <span>Son varias notas que se promedian ${(cat.notas||[]).length>1?'<span style="color:var(--fg3);">(ya tiene varias notas: para volver a una sola, bórralas)</span>':'<span style="color:var(--fg3);">(controles, laboratorios, tareas)</span>'}</span>
     </label>`}
     ${campoFechaHoraHTML('m-cat',cat.fecha,cat.hora,true)}
+    ${cat.directNota===true&&!(Number.isInteger(cat.slots)&&cat.slots>1)?controlRecorreccionHTML((cat.notas||[])[0]):''}
     ${cat.fecha?`<a class="ramo-action" href="${esc(googleCalUrl(r,cat))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;margin-bottom:14px;">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
       Agregar a Google Calendar
@@ -6463,6 +6480,10 @@ function confirmEditCat(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   cat.nombre=name;cat.peso=peso;marcarFechaUsuario(cat,fecha,leerHora('m-cat'));
+  const notaDirecta=(cat.notas||[])[0];
+  const recorreccion=document.getElementById('m-recorreccion');
+  if(notaDirecta&&Number.isFinite(notaDirecta.valor)&&recorreccion?.checked)notaDirecta.recorreccionPendiente=true;
+  else if(notaDirecta)delete notaDirecta.recorreccionPendiente;
   // La casilla no existe en las de casillas fijas (`slots`), y viene desactivada
   // cuando ya hay dos o más notas: volver a fila simple mostraría una y
   // escondería el resto sin decirlo.
@@ -6508,6 +6529,7 @@ function openEditNotaModal(catId,notaId){
     <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
     ${campoFechaHoraHTML('m-nota',n.fecha,n.hora,true)}
+    ${controlRecorreccionHTML(n)}
     <div class="toggle-row">
       <div><div class="toggle-label">Ponderación personalizada</div><div class="toggle-sub">Por defecto se promedia simple</div></div>
       <label class="toggle"><input type="checkbox" id="m-pond-toggle" ${hasPond?'checked':''} onchange="togglePondSlider()"/><span class="toggle-slider"></span></label>
@@ -6538,6 +6560,9 @@ function confirmEditNota(catId,notaId){
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
   n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;marcarFechaUsuario(n,fechaNota,leerHora('m-nota'));
+  const recorreccion=document.getElementById('m-recorreccion');
+  if(Number.isFinite(n.valor)&&recorreccion?.checked)n.recorreccionPendiente=true;
+  else delete n.recorreccionPendiente;
   save();track('edit_nota',{pendiente:isNaN(val)});closeModal();renderRamo();
   if(typeof renderAgenda==='function')renderAgenda();
   showToast(isNaN(val)?'Guardada como pendiente':lecturaDespuesDeNota(r));
@@ -7096,6 +7121,20 @@ function agendaEvents(){
     });
   });
   out.sort((a,b)=>a.fecha.localeCompare(b.fecha)||(a.hora||'').localeCompare(b.hora||''));
+  return out;
+}
+
+// Una recorrección no tiene una fecha inventada ni es una evaluación pendiente:
+// la nota ya existe y sigue contando. Viaja por un carril aparte de la línea de
+// tiempo para que la Agenda pueda recordarla aunque nunca tuvo fecha.
+function agendaRecorrecciones(){
+  const out=[];
+  S.ramos.forEach(r=>(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{
+    if(n.recorreccionPendiente===true&&Number.isFinite(n.valor))out.push({
+      ramo:r,cat:c,nota:n,
+      editor:c.directNota===true&&!(Number.isInteger(c.slots)&&c.slots>1)?'categoria':'nota',
+    });
+  })));
   return out;
 }
 
