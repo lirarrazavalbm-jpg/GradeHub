@@ -1,0 +1,197 @@
+{
+  "generatedAt": "2026-09-22T02:42:10.617Z",
+  "sampleHash": "08523b5c5cc4b6308650ff2aea01175af55659ecfb23641f671e0ff11c69c581",
+  "sampleSize": 120,
+  "reviewed_count": 0,
+  "correct_auto_importable_count": 0,
+  "false_auto_importable_count": 0,
+  "false_auto_importable_rate": null,
+  "unreviewed_count": 120,
+  "labels": {
+    "correct_auto_importable": 0,
+    "should_be_needs_review": 0,
+    "insufficient_information": 0,
+    "source_problem": 0
+  },
+  "errorsByPrimaryStratum": {
+    "bullet_list|1-2|declared|absent": {
+      "populationCount": 7,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|1-2|missing|absent": {
+      "populationCount": 341,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|1-2|missing|present": {
+      "populationCount": 1,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|3|declared|absent": {
+      "populationCount": 23,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|3|missing|absent": {
+      "populationCount": 810,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|3|missing|present": {
+      "populationCount": 2,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|4|declared|absent": {
+      "populationCount": 17,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|4|missing|absent": {
+      "populationCount": 531,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|5+|declared|absent": {
+      "populationCount": 6,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "bullet_list|5+|missing|absent": {
+      "populationCount": 176,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "numbered_list|1-2|missing|absent": {
+      "populationCount": 2,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "numbered_list|3|missing|absent": {
+      "populationCount": 3,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "numbered_list|4|missing|absent": {
+      "populationCount": 2,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "paragraph|1-2|missing|absent": {
+      "populationCount": 2,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "paragraph|3|missing|absent": {
+      "populationCount": 1,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "paragraph|4|missing|absent": {
+      "populationCount": 1,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "plain_lines|1-2|missing|absent": {
+      "populationCount": 4,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "plain_lines|3|declared|absent": {
+      "populationCount": 1,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "plain_lines|3|missing|absent": {
+      "populationCount": 15,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "plain_lines|4|missing|absent": {
+      "populationCount": 5,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "plain_lines|5+|missing|absent": {
+      "populationCount": 5,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "table_like|1-2|missing|absent": {
+      "populationCount": 9,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "table_like|3|missing|absent": {
+      "populationCount": 15,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "table_like|4|missing|absent": {
+      "populationCount": 16,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    },
+    "table_like|5+|missing|absent": {
+      "populationCount": 6,
+      "reviewedCount": 0,
+      "correctCount": 0,
+      "errorCount": 0,
+      "errorRate": null
+    }
+  },
+  "errorsByPattern": {},
+  "falseAutoImportableDetails": [],
+  "stopCondition": "pending_review",
+  "massImportAllowed": false
+}
