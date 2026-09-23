@@ -182,9 +182,16 @@ function resolverReglasAusencia(def,categorias){
 }
 function ausenciasDeclaradas(raw){return [...new Set((Array.isArray(raw)?raw:[]).filter(id=>typeof id==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(id)))];}
 
+// `x || []` no alcanza cuando el dato no es una lista: un string no vacío es
+// truthy y no tiene `.map`, así que `normalize` LANZABA y la app se quedaba sin
+// cargar. Es el camino crítico —cargar los ramos guardados— y ahí un throw no
+// es un error visible sino una cuenta que no abre, con sus datos intactos y
+// fuera de alcance. Lo que no es lista se trata como vacío.
+function comoLista(x){return Array.isArray(x)?x:[];}
+
 function normalize(data) {
   // Rellena campos que podrían faltar (ediciones parciales, imports, etc.)
-  data.ramos = (data.ramos || []).map(r => ({
+  data.ramos = comoLista(data.ramos).map(r => ({
     ...r,
     id: idSeguro(r.id),
     color: r.color || '#2563eb',
@@ -209,9 +216,13 @@ function normalize(data) {
     // aprobada. Sin declaración, una cuenta anterior calcula exactamente igual.
     reglasAusenciaJustificada: copiarReglasAusenciaIds(r.reglasAusenciaJustificada),
     ausenciasJustificadas: ausenciasDeclaradas(r.ausenciasJustificadas),
-    categorias: (r.categorias || []).map(c => ({
+    categorias: comoLista(r.categorias).map(c => ({
       ...c,
       id: idSeguro(c.id),
+      // Sin nombre la ficha imprimía literalmente "undefined" donde va el de la
+      // evaluación. Es el mismo defecto que ya apareció en Ajustes: un campo
+      // que falta se dibuja como la palabra, no como un hueco.
+      nombre: typeof c.nombre === 'string' && c.nombre.trim() ? c.nombre : 'Evaluación',
       ponderaNotas: c.ponderaNotas ?? false,
       // `slots` declara casillas fijas. Una versión anterior guardaba por error
       // `directNota:false` junto a `slots`, con lo que la ficha los trataba como
@@ -219,7 +230,7 @@ function normalize(data) {
       // no cambia notas, pesos ni cálculo, solo recupera la forma que la persona
       // acababa de declarar. Sin cantidad conocida, `directNota:false` conserva
       // la lista abierta para controles cuyo número todavía no se sabe.
-      directNota: Number.isInteger(c.slots) && c.slots > 1 ? true : (c.directNota ?? ((c.notas || []).length <= 1)),
+      directNota: Number.isInteger(c.slots) && c.slots > 1 ? true : (c.directNota ?? (comoLista(c.notas).length <= 1)),
       fecha: c.fecha || null, // opcional, ISO YYYY-MM-DD, se ingresa en el modal de categoría
       // La hora va APARTE de la fecha y nunca dentro de ella. Hay miles de
       // evaluaciones guardadas con `fecha` sola: convertirla a fecha-y-hora
@@ -231,7 +242,7 @@ function normalize(data) {
       horaOrigen: (c.fecha && HORA_RE.test(c.hora || ''))?origenFechaSeguro(c.horaOrigen):null,
       fechaQuitada: !c.fecha && c.fechaQuitada===true,
       horaQuitada: !(c.fecha && HORA_RE.test(c.hora || '')) && c.horaQuitada===true,
-      notas: (c.notas || []).map(n => ({
+      notas: comoLista(c.notas).map(n => ({
         id: idSeguro(n.id),
         nombre: n.nombre || 'Nota',
         hora: (n.fecha && HORA_RE.test(n.hora || '')) ? n.hora : null,
@@ -352,10 +363,10 @@ function normalize(data) {
     ramos: (h.ramos || []).map(r => ({
       ...r,
       id: idSeguro(r.id),
-      categorias: (r.categorias || []).map(c => ({
+      categorias: comoLista(r.categorias).map(c => ({
         ...c,
         id: idSeguro(c.id),
-        notas: (c.notas || []).map(n => ({...n, id: idSeguro(n.id)})),
+        notas: comoLista(c.notas).map(n => ({...n, id: idSeguro(n.id)})),
       })),
     })),
   }));
