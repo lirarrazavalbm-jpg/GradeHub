@@ -1298,7 +1298,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .agent-proposal-heading span{margin-top:2px;color:var(--fg3);font-size:.71875rem;}
 .agent-proposal-total{flex:none;margin:0!important;color:var(--primary)!important;font-weight:800;font-variant-numeric:tabular-nums;font-size:.875rem!important;}
 .agent-proposal-source,.agent-proposal-help,.agent-proposal-warning{margin:10px 0 0;color:var(--fg2);font-size:.75rem;line-height:1.45;overflow-wrap:anywhere;}
-.agent-proposal-warning{color:var(--amber);}
+.agent-proposal-warning{color:var(--yellow);}
 /* El mensaje completo son varios párrafos: se muestra plegado para que la
    tarjeta siga siendo una línea y no una pared de texto, pero a la vista de
    quien quiera leer lo que va a copiar. */
@@ -2346,3 +2346,13 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .eval-sub-open:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:8px;}
 .eval-sub-fecha{font-size:0.6875rem;color:var(--fg3);}
 .eval-sub-fecha.vacia{color:var(--border2);}
+/* Una casilla que quedó fuera de la pauta al bajar las casillas del grupo.
+   Su nota sigue contando, así que tiene que verse: antes desaparecía y el
+   promedio quedaba sin explicación.
+   Usa `--yellow`, que es el amarillo de aviso de la interfaz y está definido
+   en los tres temas. NO es el del semáforo: ese se calcula con hsl() dentro de
+   getColor() y nunca pasa por una variable.
+   Ojo: `--amber` NO existe. `.agent-proposal-warning` la usaba y por eso el
+   aviso de propuestas de un agente llevaba tiempo sin color. Corregido acá. */
+.eval-sub-sobra{background:color-mix(in srgb,var(--yellow),transparent 94%);border-radius:8px;padding-left:6px;padding-right:6px;margin:0 -6px;}
+.eval-sub-aviso{font-size:0.6875rem;color:var(--yellow);font-weight:600;}
