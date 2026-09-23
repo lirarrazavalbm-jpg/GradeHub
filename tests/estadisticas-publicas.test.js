@@ -20,7 +20,12 @@ chk('el elemento parte oculto', /<div class="auth-stats" id="auth-stats" hidden/
 // mientras la RPC responde y para siempre cuando falla.
 const css = leer('styles.css');
 chk('oculto de verdad: hay una regla para [hidden]', /#screen-auth \.auth-stats\[hidden\]\{display:none;?\}/.test(css));
-chk('sin números tampoco se muestra la tarjeta que los enmarca', /#screen-auth \.auth-proof:has\(\.auth-stats\[hidden\]\)\{display:none;?\}/.test(css));
+// En tres columnas las cifras volvieron a ser una banda encima del acceso y la
+// tercera columna es una muestra real de Estadísticas. Por eso ya no existe una
+// tarjeta de marketing que pueda quedar vacía; si reaparece, debe ocultarse con
+// la banda igual que antes.
+chk('sin números tampoco se muestra una tarjeta vacía que los enmarque',
+  !/class="auth-proof"/.test(html) || /#screen-auth \.auth-proof:has\(\.auth-stats\[hidden\]\)\{display:none;?\}/.test(css));
 // El esqueleto existe para que nada se mueva cuando llegan los datos: mismas
 // tres fichas, mismo alto. Y si la consulta falla, la banda se esconde en vez
 // de dejar los guiones puestos.

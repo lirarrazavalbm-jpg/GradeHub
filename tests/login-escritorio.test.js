@@ -13,10 +13,10 @@ const chk=(nombre,cumple)=>{if(cumple){ok++;console.log('  OK   '+nombre);}else{
 console.log('\n=== Login ordenado en escritorio ===');
 chk('el bloque completo centra sus hijos, incluido el logo',/#screen-auth \.ob-wrap\{[^}]*justify-items:center/.test(css));
 chk('la muestra ocupa la columna izquierda completa',/#screen-auth \.auth-preview\{[^}]*grid-column:1[^}]*justify-self:stretch/.test(css));
-chk('las estadísticas tienen un bloque de contexto propio',/class="auth-proof"/.test(html)&&/class="auth-proof-title"/.test(html));
-chk('en pantallas anchas hay tres columnas',/@media\(min-width:1280px\)[\s\S]*?#screen-auth \.ob-wrap\{grid-template-columns:[^}]*300px/.test(css));
-chk('y las estadísticas pasan a la tercera',/@media\(min-width:1280px\)[\s\S]*?#screen-auth \.auth-proof\{[^}]*grid-column:3/.test(css));
-chk('antes de 1280 px el wrapper no agrega una caja',/\.auth-proof\{display:contents;\}/.test(css));
+chk('la derecha muestra una miniatura de la página de estadísticas',/class="auth-stats-preview"/.test(html)&&/Avance del semestre/.test(html)&&/Tu prioridad hoy/.test(html));
+chk('en pantallas anchas hay tres columnas equivalentes',/@media\(min-width:1280px\)[\s\S]*?#screen-auth \.ob-wrap\{grid-template-columns:repeat\(3,/.test(css));
+chk('y esa miniatura pasa a la tercera',/@media\(min-width:1280px\)[\s\S]*?#screen-auth \.auth-stats-preview\{[^}]*grid-column:3/.test(css));
+chk('el texto chico forma un pie que cruza todas las columnas',/\.auth-legal-row\{[^}]*grid-column:1\/-1/.test(css));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);
