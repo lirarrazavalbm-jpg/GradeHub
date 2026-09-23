@@ -47,7 +47,11 @@ chk('hay un constructor explícito para cada canal de contacto',tieneEnlace);
 if(tieneEnlace){
   chk('WhatsApp conserva solo un teléfono plausible',val("enlaceContactoClase('whatsapp','+56 9 1234 5678')")==='https://wa.me/56912345678');
   chk('Instagram acepta usuario, no una URL arbitraria',val("enlaceContactoClase('instagram','@profe.calculo')")==='https://www.instagram.com/profe.calculo/'&&val("enlaceContactoClase('instagram','javascript:alert(1)')")==='');
-  chk('correo solo genera mailto para una dirección válida',val("enlaceContactoClase('email','profe@example.cl')")==='mailto:profe%40example.cl'&&val("enlaceContactoClase('email','no es correo')")==='');
+  // Esta aserción esperaba `mailto:profe%40example.cl` hasta el 2026-09-23:
+  // fijaba lo que el código hacía, no lo que corresponde. El `@` es el
+  // separador del destinatario y el RFC 6068 no lo admite escapado — con %40
+  // hay clientes que abren el mensaje sin destino o no lo abren.
+  chk('correo solo genera mailto para una dirección válida',val("enlaceContactoClase('email','profe@example.cl')")==='mailto:profe@example.cl'&&val("enlaceContactoClase('email','no es correo')")==='');
 }
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
