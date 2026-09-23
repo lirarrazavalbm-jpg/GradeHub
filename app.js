@@ -1644,7 +1644,7 @@ function showMainApp(){
   document.getElementById('screen-onboard').classList.remove('active');
   document.getElementById('bottom-nav').style.display='flex';
   document.querySelector('.app').classList.add('tab-mode');
-  renderHome();renderStats();renderAgenda(); // los 3 siempre montados
+  renderHome();renderStats();renderAgenda(); // las vistas locales siempre montadas
   showTab('home');
   contarVisita();
   pintarAvisoInstalar();
@@ -1659,7 +1659,7 @@ function showMainApp(){
 // Orden izq→der para el deslizar. Es una lista VIVA: la pestaña de profesor solo
 // existe para quien está aprobado, así que el carrusel tiene que poder crecer y
 // encogerse sin dejar a nadie parado en una pestaña que ya no está.
-const NAV_TABS_BASE=['stats','home','agenda'];
+const NAV_TABS_BASE=['stats','home','agenda','profesores'];
 let NAV_TABS=NAV_TABS_BASE.slice();
 function recalcularNavTabs(){
   const conProfesor=typeof esProfesorAprobado==='function'&&esProfesorAprobado();
@@ -1698,6 +1698,7 @@ function showTab(tab,skipAnim){
     if(tab==='home')renderHome();
     else if(tab==='stats')renderStats();
     else if(tab==='agenda')renderAgenda();
+    else if(tab==='profesores'&&typeof renderProfesores==='function')renderProfesores();
     else if(tab==='profesor'&&typeof renderProfesor==='function')renderProfesor();
     track('screen_view',{screen_name:tab});
   } else {

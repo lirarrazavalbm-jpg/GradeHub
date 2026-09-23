@@ -72,6 +72,7 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 | aplicar un tema | `app.js` | `grep -n "function applyTheme"` |
 | cargar preset del catálogo | `app.js` | `grep -n "function presetRamo"` |
 | auth y sync a Supabase | `app-session.js` | `rg -n "function boot\|function afterLogin\|function syncToCloud"` |
+| registro y reseñas de profesores | `profesores.js` | `rg -n "function renderProfesores\|function renderProfesorRamo"` |
 | estilos | `styles.css` | `grep -n "^\.<clase>"` |
 
 ## Arquitectura
@@ -86,12 +87,13 @@ Sin build, sin frameworks. Los archivos de la app se despliegan tal cual:
 | `app.js` | Estado, navegación, editor y adaptadores de cálculo |
 | `app-session.js` | Auth, recuperación, persistencia local y sync con Supabase |
 | `marketplace.js` | Avisos, segmentación local, cotización pura y espacio privado de profesor; publicidad y cobro aún sin activar |
+| `profesores.js` | Registro comunitario, consenso por ramo/sección y reseñas anónimas verificadas |
 | `render-main.js` | `renderHome`, `renderRamo` y `renderStats` |
 | `render-agenda.js` | `renderAgenda`, separado de `app.js` por tamaño |
 | `styles.css` | Estilos y la base neutra compartida |
 
 El orden de carga en `index.html` es `data.js` → `engine.js` → `app.js` →
-`app-session.js` → `marketplace.js` → `render-main.js` → `render-agenda.js`, y no es decorativo:
+`app-session.js` → `marketplace.js` → `profesores.js` → `render-main.js` → `render-agenda.js`, y no es decorativo:
 son `<script>` clásicos, así que sus `const` quedan en el ámbito léxico global y
 cada uno ve a los anteriores sin imports. Si inviertes el orden, aparece un
 `ReferenceError` en el primer render.
@@ -290,7 +292,7 @@ tocar todo, es lo único que evita conflictos.
 |---|---|---|
 | Contenido FEN | `data.js` — mallas, presets y carreras de FEN | `ms` |
 | Contenido UC | `data.js` — mallas, presets, carreras y créditos de UC | `li` |
-| Motor y experiencia | `engine.js`, `app.js`, `app-session.js`, `render-main.js`, `render-agenda.js` | `codex` |
+| Motor y experiencia | `engine.js`, `app.js`, `app-session.js`, `profesores.js`, `render-main.js`, `render-agenda.js` | `codex` |
 | Infra y seguridad | workflows, `sw.js`, `styles.css`, `_headers` | `li` |
 
 Si tu tarea te obliga a salir de tu carril, no lo hagas: dilo primero.
