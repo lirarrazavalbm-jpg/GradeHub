@@ -1180,12 +1180,10 @@ function filtrarCarrerasAjustes(v){window._sFiltro&&window._sFiltro(v);}
 function obStepValid(step,datos){
   const d=datos||{
     nombre:(document.getElementById('ob-name')||{}).value||'',
-    edad:!!(document.getElementById('ob-edad')||{}).checked,
     tenant:selectedTenant,carrera:selectedCarrera,semestre:selectedSem,
     carreraNombre:selectedCarreraNombre
   };
-  // El paso 1 pide dos cosas: cómo te llamas y que declares la edad mínima.
-  if(step===1)return !!String(d.nombre||'').trim()&&!!d.edad;
+  if(step===1)return !!String(d.nombre||'').trim();
   if(step===2)return !!d.tenant;
   if(step===3)return !!(d.carrera||String(d.carreraNombre||'').trim());
   if(step===4)return !!d.semestre;
@@ -1509,10 +1507,12 @@ function completeOnboarding(){
   });
   S.onboardingDone=true;save();
   syncProfile();
-  // La declaración de edad queda anotada con su fecha. Va acá y no en el
-  // formulario de correo porque por el onboarding pasan también las cuentas de
-  // Google, que nunca vieron ese formulario — y con ellas, la aceptación de
-  // los términos, que hasta ahora solo se registraba en el camino del correo.
+  // Acá se cierra la declaración que el paso 1 anuncia junto al botón: quien
+  // llegó hasta este punto pasó por ese aviso. Se anota con su fecha. Va acá y
+  // no en el formulario de correo porque por el onboarding pasan también las
+  // cuentas de Google, que nunca vieron ese formulario — y con ellas, la
+  // aceptación de los términos, que hasta ahora solo se registraba en el
+  // camino del correo.
   registrarDeclaracionEdad();
   // `carrera` es un código de una lista cerrada y puede viajar. El nombre
   // declarado NO: es texto escrito por el estudiante y la analítica no recibe

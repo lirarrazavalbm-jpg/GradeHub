@@ -10,7 +10,7 @@ const AGENDA = fs.readFileSync(__dirname+'/../render-agenda.js', 'utf8');
 const src = DATA + '\n' + ENGINE + '\n' + APP + '\n' + AGENDA;
 new vm.Script(src);
 
-const stub = { style: { setProperty() {}, removeProperty() {} }, checked: true, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };
+const stub = { style: { setProperty() {}, removeProperty() {} }, addEventListener() {}, appendChild() {}, classList: { add() {}, remove() {}, contains() { return false } }, value: '', innerHTML: '', textContent: '', focus() {}, select() {}, setAttribute() {}, removeAttribute() {}, getAttribute() { return null }, querySelectorAll() { return [] }, querySelector() { return stub }, clientWidth: 400, dataset: {}, click() {} };
 const ctx = {
   window: { addEventListener() {}, matchMedia: () => ({ matches: true, addEventListener() {}, addListener() {} }) },
   document: { getElementById: () => stub, createElement: () => stub, addEventListener() {}, documentElement: { style: { setProperty() {}, removeProperty() {} }, setAttribute() {}, removeAttribute() {}, getAttribute() { return null } }, querySelector: () => stub, querySelectorAll: () => [], body: stub },
@@ -192,7 +192,7 @@ eq('historial archivado vacío', ctx.ultimoHistorialConGpa([]), null);
 
 console.log('\n=== Onboarding · carga flexible ===');
 eq('el último paso llena la barra', ctx.obProgressPct(5), 100);
-const obDatos={nombre:'Antonia',edad:true,tenant:'fen',carrera:'ING',semestre:2};
+const obDatos={nombre:'Antonia',tenant:'fen',carrera:'ING',semestre:2};
 if(ctx.obStepValid(1,obDatos)&&ctx.obStepValid(2,obDatos)&&ctx.obStepValid(3,obDatos)&&ctx.obStepValid(4,obDatos)&&ctx.obStepValid(5,obDatos)){ok++;console.log('  OK   cada paso valida su propio dato');}
 else {fail++;console.log('  FAIL validación de pasos del onboarding');}
 if(!ctx.obStepValid(1,{tenant:'fen'})&&!ctx.obStepValid(2,{nombre:'Antonia'})&&!ctx.obStepValid(3,{tenant:'fen'})&&!ctx.obStepValid(4,{carrera:'ING'})&&ctx.obStepValid(5,{})){ok++;console.log('  OK   ramos sugeridos no son obligatorios');}

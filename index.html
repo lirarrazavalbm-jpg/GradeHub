@@ -239,10 +239,13 @@
       <!-- Declaración de edad. Va acá y no en el formulario de correo porque
            por acá pasa toda cuenta nueva, también las que entran con Google.
            No se pide fecha de nacimiento: para saber si alguien puede usar la
-           app basta la declaración, y el dato exacto sería recolectar de más. -->
-      <p class="ob-edad">
-        <label><input type="checkbox" id="ob-edad" onchange="checkOb()"/><span>Tengo <b>14 años o más</b>.</span></label>
-      </p>
+           app basta la declaración, y el dato exacto sería recolectar de más.
+           Y va junto al botón, no en una casilla: una casilla más en la
+           primera pantalla es un trámite antes de haber visto nada. -->
+      <p class="ob-legal" id="ob-legal-edad">Al continuar declaras que tienes
+        <b>16 años o más</b> y aceptas los
+        <a href="/terminos.html" target="_blank" rel="noopener">términos de uso</a> y la
+        <a href="/privacidad.html" target="_blank" rel="noopener">política de privacidad</a>.</p>
     </div>
 
     <div class="ob-step" data-step="2" style="display:none;">
