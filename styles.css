@@ -395,6 +395,19 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
    se queda ahí para siempre. Va con el id para ganarle también al bloque de
    1280px. */
 #screen-auth .auth-stats[hidden]{display:none;}
+/* Aviso de instalación al pie de Inicio. Tono de nota al margen: sin fondo de
+   tarjeta ni color de acento en el cuerpo, para que no compita con los ramos. */
+.instalar-aviso{display:flex;align-items:flex-start;gap:12px;margin:18px 20px 0;padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:var(--muted);}
+.instalar-aviso .ic{width:20px;height:20px;flex:0 0 auto;margin-top:1px;color:var(--fg3);}
+.instalar-cuerpo{flex:1;min-width:0;}
+.instalar-titulo{font-size:0.875rem;font-weight:600;color:var(--fg);}
+.instalar-texto{margin-top:3px;font-size:0.75rem;line-height:1.5;color:var(--fg3);}
+.instalar-texto b{color:var(--fg2);font-weight:600;}
+.instalar-acciones{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px;}
+.instalar-acciones button{min-height:36px;padding:7px 13px;border-radius:9px;border:1px solid var(--border2);background:var(--card);color:var(--fg);font-family:var(--font-ui);font-size:0.8125rem;font-weight:600;cursor:pointer;}
+.instalar-acciones .instalar-si{border-color:var(--primary);background:var(--primary);color:var(--primary-fg);}
+.instalar-cerrar{flex:0 0 auto;min-height:32px;padding:4px 8px;border:0;background:none;color:var(--fg3);font-family:var(--font-ui);font-size:1.125rem;line-height:1;cursor:pointer;}
+@media(hover:hover) and (pointer:fine){.instalar-cerrar:hover{color:var(--fg);}}
 .auth-stat-cargando{color:var(--fg3);opacity:.55;animation:statsCargando 1.4s ease-in-out infinite;}
 @keyframes statsCargando{0%,100%{opacity:.3;}50%{opacity:.7;}}
 @media(prefers-reduced-motion:reduce){.auth-stat-cargando{animation:none;}}
