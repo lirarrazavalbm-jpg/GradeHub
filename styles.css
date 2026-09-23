@@ -825,7 +825,19 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .peso-hint.ok{color:var(--green);font-weight:600;}
 .peso-hint.over{color:var(--yellow);font-weight:600;}
 .peso-slider{width:100%;accent-color:var(--primary);margin:2px 0 0;}
-.peso-marks{display:flex;justify-content:space-between;margin:2px 2px 14px;font-size:0.625rem;color:var(--fg3);font-variant-numeric:tabular-nums;opacity:.6;}
+/* Las marcas se posicionan en el centro real del thumb, no repartidas con
+   space-between.
+   Con space-between lo que se reparte son las CAJAS, y miden distinto: el "0"
+   son 7px y el "100" son 20px. Sumado a que el contenedor iba 2px corrido y
+   4px más angosto que el slider, y a que el thumb viaja con media pastilla de
+   margen en cada punta, cada marca quedaba entre 3 y 7px a la izquierda de su
+   valor. En un slider de 500px se disimula; en un teléfono de 340 no.
+   El thumb es nativo (`accent-color`), así que su ancho lo decide el navegador
+   y hay que declararlo acá. 18px es lo que miden Chrome y Safari. Si algún
+   navegador usa otro, el error vuelve a ser de un par de píxeles en las puntas
+   y cero en el 50%: bastante mejor que los 7px de todas partes. */
+.peso-marks{--peso-thumb:18px;position:relative;height:0.8rem;margin:4px 0 14px;font-size:0.625rem;color:var(--fg3);font-variant-numeric:tabular-nums;opacity:.6;}
+.peso-marks span{position:absolute;top:0;left:calc(var(--peso-thumb) / 2 + (100% - var(--peso-thumb)) * var(--p) / 100);transform:translateX(-50%);}
 .slider-desc{font-size:0.75rem;color:var(--fg3);margin-top:4px;}
 .modal-btns{display:flex;gap:10px;margin-top:6px;}
 .profesor-info{font-size:.8125rem;line-height:1.5;color:var(--fg2);margin:0 0 16px;}
