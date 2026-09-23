@@ -250,9 +250,13 @@ console.log('\n=== Las fechas solo se ofrecen con período confirmado ===');
 chk('Contabilidad · el período confirmado ofrece las fechas de los controles',
   catPorNombre('Control de Lectura 1').fecha === '2026-08-07' &&
   catPorNombre('Control de Ejercicios 4').fecha === '2026-10-30');
-// Una compuerta por control, no una sobre el promedio del grupo.
-chk('Contabilidad · cada control lleva su propio mínimo de 1,5',
-  contaPreset.gates.filter(g => g.min === 1.5).length === 9);
+// El mínimo de 1,5 por control salió del preset el 2026-09-23, por decisión de
+// Martín. Estaba en el programa, pero topaba la nota final de quien sacara
+// menos de 1,5 en cualquier control y en la práctica confundía más de lo que
+// aclaraba. Esta comprobación queda al revés: que no vuelva sin que alguien lo
+// decida de nuevo.
+chk('Contabilidad · sin mínimos por control',
+  !contaPreset.gates.some(g => g.min === 1.5));
 
 // Una cuenta antigua recibe una fecha oficial actual solo con período
 // confirmado; la que puso el estudiante sigue mandando.

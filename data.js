@@ -1961,11 +1961,9 @@ const PRESETS_FEN={
       ],
       traspasos:[{desde:'Pruebas sorpresa',hacia:'Examen'}],
     },
-    // Las dos reglas restantes no son cálculos: la primera es procedimiento del
-    // curso y la segunda es disciplinaria.
+    // No es un cálculo: es procedimiento del curso.
     reglasDelCurso:[
       'Si faltas al Examen tienes que dar el recuperativo',
-      'Copiar o plagiar reprueba el ramo de inmediato con 1,0',
     ],
     evals:[
       // La solemne y los controles traen fecha del calendario; el examen lo
@@ -2066,18 +2064,18 @@ const PRESETS_FEN={
       // controles (lectura, ejercicios y sorpresa) y solemne" —, y por eso cada
       // fila lleva su compuerta. Agruparlos la movía al promedio del grupo, que
       // es una regla distinta y más blanda que la del programa.
-      ['Control de Lectura 1',3.33,{fecha:'2026-08-07',min:1.5,cap:3.9}],
-      ['Control de Lectura 2',3.33,{fecha:'2026-08-28',min:1.5,cap:3.9}],
-      ['Control de Lectura 3',3.34,{fecha:'2026-11-06',min:1.5,cap:3.9}],
-      ['Control de Ejercicios 1',10,{fecha:'2026-08-21',min:1.5,cap:3.9}],
-      ['Control de Ejercicios 2',10,{fecha:'2026-09-11',min:1.5,cap:3.9}],
-      ['Control de Ejercicios 3',10,{fecha:'2026-10-16',min:1.5,cap:3.9}],
-      ['Control de Ejercicios 4',10,{fecha:'2026-10-30',min:1.5,cap:3.9}],
+      ['Control de Lectura 1',3.33,{fecha:'2026-08-07'}],
+      ['Control de Lectura 2',3.33,{fecha:'2026-08-28'}],
+      ['Control de Lectura 3',3.34,{fecha:'2026-11-06'}],
+      ['Control de Ejercicios 1',10,{fecha:'2026-08-21'}],
+      ['Control de Ejercicios 2',10,{fecha:'2026-09-11'}],
+      ['Control de Ejercicios 3',10,{fecha:'2026-10-16'}],
+      ['Control de Ejercicios 4',10,{fecha:'2026-10-30'}],
       // Los sorpresa sí quedan como lista abierta: "entre 4 y 6 durante el
       // semestre" es el único número que el programa no fija, y son los únicos
       // con descarte (se elimina el 25% de los rendidos).
-      ['Controles Sorpresa',5,{lista:true,min:1.5,cap:3.9,dropLowest:{fraction:0.25}}],
-      ['Solemne',20,{fecha:'2026-09-22',min:1.5,cap:3.9}],
+      ['Controles Sorpresa',5,{lista:true,dropLowest:{fraction:0.25}}],
+      ['Solemne',20,{fecha:'2026-09-22'}],
       // El examen lo fija la Escuela entre el 18 nov y el 2 dic: sin fecha.
       ['Examen',25,{min:3.0,cap:3.4}],
     ],
