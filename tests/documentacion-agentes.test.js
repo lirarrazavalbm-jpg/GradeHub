@@ -8,7 +8,7 @@ const leer=f=>fs.readFileSync(path.join(raiz,f),'utf8');
 let ok=0,fail=0;
 const chk=(nombre,cond)=>{if(cond){ok++;console.log('  OK   '+nombre);}else{fail++;console.log('  FAIL '+nombre);}};
 
-const scripts=['data.js','engine.js','app.js','app-session.js','marketplace.js','render-main.js','render-agenda.js'];
+const scripts=['data.js','engine.js','app.js','app-session.js','marketplace.js','profesores.js','render-main.js','render-agenda.js'];
 const index=leer('index.html');
 const cargados=[...index.matchAll(/<script src="([^?\"]+)/g)].map(m=>m[1]);
 chk('index carga todos los scripts principales en orden',JSON.stringify(cargados.slice(-scripts.length))===JSON.stringify(scripts));
@@ -17,7 +17,7 @@ const agents=leer('AGENTS.md');
 chk('AGENTS apunta el render principal a render-main.js',/pantalla principal\s*\|\s*`render-main\.js`/.test(agents));
 chk('AGENTS apunta auth y sync a app-session.js',/auth y sync a Supabase\s*\|\s*`app-session\.js`/.test(agents));
 const agentsPlano=agents.replace(/\s+/g,' ');
-chk('AGENTS enumera los scripts en el orden real',agentsPlano.includes('`data.js` → `engine.js` → `app.js` → `app-session.js` → `marketplace.js` → `render-main.js` → `render-agenda.js`'));
+chk('AGENTS enumera los scripts en el orden real',agentsPlano.includes('`data.js` → `engine.js` → `app.js` → `app-session.js` → `marketplace.js` → `profesores.js` → `render-main.js` → `render-agenda.js`'));
 chk('AGENTS no deja tareas ya resueltas como pendientes',!agents.includes('Nadie puede cambiar su correo')&&!agents.includes('Faltan colores de fondo elegibles.'));
 
 const readme=leer('README.md');

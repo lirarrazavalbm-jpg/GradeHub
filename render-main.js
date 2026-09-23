@@ -699,6 +699,10 @@ function renderRamo(){
       </div>`;
     cl.appendChild(card);
   });
+  // El nombre del profesor vive en Supabase y no participa del cálculo. Se
+  // pinta después de la ficha local para que una red lenta nunca frene notas,
+  // promedios ni evaluaciones.
+  if(typeof renderProfesorRamo==='function')renderProfesorRamo(r);
 }
 
 // Formato corto de fecha para chips: "15 mar"

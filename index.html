@@ -356,6 +356,7 @@
     <div id="eximicion-warning" style="display:none;"></div>
     <div id="ausencias-justificadas-warning" style="display:none;"></div>
     <div id="recuperativo-warning" style="display:none;"></div>
+    <div id="ramo-profesor"></div>
     <div id="cat-list"></div>
     <button class="add-cat-btn" onclick="openPautaManualModal()">Editar evaluaciones</button>
     <button class="rep-link" id="ramo-report" style="display:none;">
@@ -383,6 +384,25 @@
   <div class="scroll">
     <div class="greet-hero"><div class="greet-line" id="agenda-title">Qué se viene</div><div class="agenda-sub" id="agenda-sub"></div></div>
     <div id="agenda-body" style="padding:10px 20px 20px;"></div>
+  </div>
+</div>
+
+<!-- REGISTRO COMUNITARIO DE PROFESORES -->
+<div id="screen-profesores" class="screen">
+  <div class="topbar">
+    <span class="brand-word" style="flex:1;font-size:15px;font-weight:800;letter-spacing:-.02em;color:var(--fg);">Profesores</span>
+  </div>
+  <div class="scroll">
+    <div class="doc-hero">
+      <span class="doc-eyebrow">Hecho por estudiantes</span>
+      <h1>Profesores de tu universidad</h1>
+      <p>Consulta experiencias verificadas por ramo y sección. Cada profesor aparece después de que 3 estudiantes coinciden.</p>
+      <label class="doc-search" for="profesores-buscar">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        <input id="profesores-buscar" type="search" maxlength="100" autocomplete="off" placeholder="Busca por profesor, ramo o sigla" oninput="buscarProfesores()">
+      </label>
+    </div>
+    <div id="profesores-body" class="doc-body"></div>
   </div>
 </div>
 
@@ -456,6 +476,13 @@
     </span>
     Agenda
   </button>
+  <button class="nav-item" id="nav-profesores" onclick="showTab('profesores')" aria-label="Profesores">
+    <span class="nav-icon">
+      <svg class="ic ic-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h2a4.5 4.5 0 0 1 4.5 4.5V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M15 5.2a3.5 3.5 0 0 1 0 6.6M16.5 14.2a4.5 4.5 0 0 1 3.5 4.3V20"/></svg>
+      <svg class="ic ic-fill" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M9.5 3a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm0 10A6.5 6.5 0 0 0 3 19.5V21h13v-1.5A6.5 6.5 0 0 0 9.5 13zm6.2-9.7a4.5 4.5 0 0 1 0 8.4 5.5 5.5 0 0 0 0-8.4zm1.2 9.8a7.4 7.4 0 0 1 2.1 5.2V21h2v-2.5a5.5 5.5 0 0 0-4.1-5.4z"/></svg>
+    </span>
+    Profes
+  </button>
   <!-- Aparece solo para quien está aprobado como profesor particular. -->
   <button class="nav-item" id="nav-profesor" onclick="showTab('profesor')" aria-label="Clases" hidden>
     <span class="nav-icon">
@@ -492,6 +519,7 @@
 <script src="app.js?v=__ASSET_VERSION__"></script>
 <script src="app-session.js?v=__ASSET_VERSION__"></script>
 <script src="marketplace.js?v=__ASSET_VERSION__"></script>
+<script src="profesores.js?v=__ASSET_VERSION__"></script>
 <script src="render-main.js?v=__ASSET_VERSION__"></script>
 <script src="render-agenda.js?v=__ASSET_VERSION__"></script>
 </body>

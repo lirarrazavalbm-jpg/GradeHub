@@ -1247,6 +1247,90 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .ob-claim{margin:10px 0 0;font-size:0.75rem;font-weight:600;color:var(--primary);letter-spacing:-.01em;}
 .app-footer a{color:var(--fg3);text-decoration:none;}
 .app-footer a:hover{color:var(--primary);}
+
+/* REGISTRO COMUNITARIO DE PROFESORES
+   Prefijo `doc-` para no cruzarlo con `.profesor-*`, que pertenece al espacio
+   privado del marketplace. Las estrellas usan el acento de la app: el verde,
+   amarillo y rojo siguen reservados al significado académico de las notas. */
+.doc-hero{padding:26px 20px 12px;max-width:920px;margin:0 auto;}
+.doc-eyebrow{display:block;margin-bottom:5px;color:var(--primary);font-size:.6875rem;font-weight:750;letter-spacing:.075em;text-transform:uppercase;}
+.doc-hero h1{margin:0;color:var(--fg);font-size:1.75rem;line-height:1.08;letter-spacing:-.045em;}
+.doc-hero>p{max-width:620px;margin:9px 0 18px;color:var(--fg2);font-size:.84375rem;line-height:1.5;}
+.doc-search{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 13px;border:1px solid var(--border2);border-radius:12px;background:var(--card);color:var(--fg3);transition:border-color var(--motion-fast),box-shadow var(--motion-fast);}
+.doc-search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 86%);}
+.doc-search .ic{width:18px;height:18px;flex:0 0 auto;}
+.doc-search input{width:100%;border:0;outline:0;background:transparent;color:var(--fg);font:500 .875rem var(--font-ui);}
+.doc-search input::placeholder{color:var(--fg3);}
+.doc-body{max-width:920px;margin:0 auto;padding:8px 20px 28px;}
+.doc-list{display:grid;gap:9px;}
+.doc-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.8fr) auto;align-items:center;gap:14px;width:100%;padding:15px;border:1px solid var(--border);border-radius:14px;background:var(--card);color:var(--fg);font-family:var(--font-ui);text-align:left;cursor:pointer;box-shadow:var(--shadow);}
+.doc-card:hover{border-color:var(--border2);}
+.doc-card-main{display:flex;min-width:0;flex-direction:column;gap:7px;}
+.doc-card-main strong{overflow:hidden;font-size:.9375rem;line-height:1.25;text-overflow:ellipsis;white-space:nowrap;}
+.doc-cursos{color:var(--fg2);font-size:.71875rem;line-height:1.55;}
+.doc-chevron{color:var(--fg3);font-size:1.6rem;font-weight:300;}
+.doc-rating{display:flex;align-items:center;gap:8px;min-width:0;}
+.doc-rating>span:last-child{color:var(--fg2);font-size:.71875rem;white-space:nowrap;}
+.doc-estrellas{display:inline-flex;gap:1px;color:var(--fg3);font-size:.875rem;letter-spacing:-.04em;}
+.doc-estrellas .on{color:var(--primary);}
+.doc-estrellas.is-buttons{gap:4px;font-size:1.75rem;letter-spacing:0;}
+.doc-estrellas.is-buttons button{min-width:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--primary);font:inherit;cursor:pointer;}
+.doc-empty,.doc-loading{padding:42px 24px;text-align:center;color:var(--fg3);}
+.doc-empty>div{margin-bottom:8px;color:var(--primary);font-size:2rem;}
+.doc-empty b{display:block;color:var(--fg);font-size:.9375rem;}
+.doc-empty p{max-width:430px;margin:7px auto 14px;font-size:.8125rem;line-height:1.5;}
+.doc-empty.is-error b{color:var(--fg);}
+
+.doc-ramo{margin:2px 20px 18px;padding:15px;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);}
+.doc-ramo.is-loading{padding:16px;color:var(--fg3);font-size:.78125rem;}
+.doc-ramo.is-error b{font-size:.8125rem;}.doc-ramo.is-error p{margin:5px 0 0;color:var(--fg3);font-size:.75rem;line-height:1.4;}
+.doc-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.doc-section-head>div{min-width:0;}
+.doc-section-head h2{margin:0;color:var(--fg);font-size:1rem;line-height:1.25;letter-spacing:-.025em;}
+.doc-section-head+.doc-rating{margin-top:10px;}
+.doc-consenso{flex:0 0 auto;padding:5px 8px;border-radius:999px;background:var(--primary-light);color:var(--primary);font-size:.65625rem;font-weight:700;white-space:nowrap;}
+.doc-ramo>p{margin:7px 0 12px;color:var(--fg2);font-size:.78125rem;line-height:1.45;}
+.doc-ramo>label,.doc-aporte label,.doc-review-form label{display:block;margin:10px 0 5px;color:var(--fg2);font-size:.6875rem;font-weight:650;}
+.doc-inline{display:flex;gap:8px;}
+.doc-inline input,.doc-review-form textarea{width:100%;min-width:0;padding:10px 11px;border:1px solid var(--border2);border-radius:9px;outline:0;background:var(--bg2);color:var(--fg);font:500 .8125rem var(--font-ui);}
+.doc-inline input:focus,.doc-review-form textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 86%);}
+.doc-inline button,.doc-primary,.doc-secondary{min-height:44px;padding:9px 13px;border:0;border-radius:9px;background:var(--primary);color:var(--primary-fg);font:700 .75rem var(--font-ui);cursor:pointer;}
+.doc-inline button:disabled,.doc-primary:disabled{opacity:.45;cursor:default;}
+.doc-secondary{border:1px solid var(--border2);background:transparent;color:var(--fg);}
+.doc-ramo>small,.doc-aporte small{display:block;margin-top:7px;color:var(--fg3);font-size:.6875rem;line-height:1.4;}
+.doc-actions{display:flex;margin-top:12px;}
+.doc-aporte{margin-top:12px;padding-top:11px;border-top:1px solid var(--border);}
+.doc-aporte summary{display:flex;align-items:center;min-height:44px;color:var(--fg2);font-size:.71875rem;font-weight:650;cursor:pointer;}
+
+.doc-detail>.doc-rating{margin:-7px 0 12px;}
+.doc-detail-courses{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:17px;}
+.doc-detail-courses span{padding:5px 8px;border-radius:999px;background:var(--muted);color:var(--fg2);font-size:.6875rem;}
+.doc-review-form{margin:0 -2px 18px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--card);}
+.doc-review-form h3,.doc-reviews h3{margin:0;color:var(--fg);font-size:.875rem;}
+.doc-review-form>p,.doc-review-lock{margin:4px 0 10px;color:var(--fg3);font-size:.71875rem;line-height:1.45;}
+.doc-review-form label span{color:var(--fg3);font-weight:500;}
+.doc-review-form textarea{min-height:96px;resize:vertical;line-height:1.45;}
+.doc-review-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:10px;}
+.doc-link-danger{min-height:44px;margin-right:auto;border:0;background:transparent;color:var(--fg3);font:650 .71875rem var(--font-ui);cursor:pointer;}
+.doc-review{padding:13px 0;border-bottom:1px solid var(--border);}
+.doc-review:last-child{border-bottom:0;}
+.doc-review>div{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.doc-review b{font-size:.75rem;}.doc-review span{color:var(--primary);font-size:.71875rem;white-space:nowrap;}
+.doc-review p{margin:8px 0;color:var(--fg2);font-size:.8125rem;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
+.doc-review button{display:inline-flex;align-items:center;min-height:44px;padding:0;border:0;background:transparent;color:var(--fg3);font:600 .6875rem var(--font-ui);cursor:pointer;}
+.doc-no-reviews,.doc-modal-error{color:var(--fg3);font-size:.78125rem;line-height:1.5;}
+
+@media(min-width:768px){
+  .doc-list{grid-template-columns:1fr 1fr;}
+  .doc-card{grid-template-columns:minmax(0,1fr) auto;}
+  .doc-card .doc-cursos{grid-column:1/2;}.doc-card .doc-chevron{grid-column:2;grid-row:1/3;}
+}
+@media(max-width:430px){
+  .doc-hero h1{font-size:1.5rem;}
+  .doc-card{grid-template-columns:minmax(0,1fr) auto;}
+  .doc-card .doc-cursos{grid-column:1/2;}.doc-card .doc-chevron{grid-column:2;grid-row:1/3;}
+  .doc-review>div{align-items:flex-start;flex-direction:column;gap:4px;}
+}
 /* SCREEN TRANSITIONS */
 /* Tab-mode: los 3 tab-screens siempre presentes en un carrusel horizontal.
    showTab / drag controlan translateX vía JS. Los otros screens (auth, onboard,
@@ -1262,6 +1346,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .app.tab-mode #screen-stats,
 .app.tab-mode #screen-home,
 .app.tab-mode #screen-agenda,
+.app.tab-mode #screen-profesores,
 .app.tab-mode #screen-profesor{
   position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;bottom:0;
   display:flex!important;flex-direction:column;
@@ -1278,6 +1363,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .app.tab-mode.dragging #screen-stats,
 .app.tab-mode.dragging #screen-home,
 .app.tab-mode.dragging #screen-agenda,
+.app.tab-mode.dragging #screen-profesores,
 .app.tab-mode.dragging #screen-profesor{transition:none;}
 /* Overlay screens (auth, onboard, reset, ramo): pisan a los tab-screens cuando active */
 .app.tab-mode #screen-auth.active,
