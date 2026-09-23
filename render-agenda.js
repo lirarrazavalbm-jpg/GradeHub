@@ -131,7 +131,7 @@ function razonDestacadaAgenda(e){
   if(e.estadoAgenda==='esperando_nota'||e.estadoAgenda==='requiere_revision')return focoAgendaCopy(e);
   if(e.necesita!==null&&e.necesita>7.05)return 'Con lo pendiente ya no alcanza para aprobar el ramo.';
   if(e.necesita!==null&&e.necesita>5.0)return `Necesitas ${nf(e.necesita)} en lo pendiente para aprobar.`;
-  if(e.avg!==null&&r2(e.avg)<4.0)return `Vas ${fmt(e.avg)} en el ramo: conviene prepararla con tiempo.`;
+  if(e.avg!==null&&!notaAprobadaRamo(e.ramo,e.avg))return `Vas ${fmtPromedio(e.avg)} en el ramo: conviene prepararla con tiempo.`;
   const peso=pesoEventoAgenda(e);
   if(peso!==null&&peso>=30)return `Define ${r2(peso)}% del ramo.`;
   return focoAgendaCopy(e);
@@ -261,7 +261,7 @@ function agendaRendidaHTML(e){
       <div class="ag-row-name">${esc(nombreEventoAgenda(e))}</div>
       <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
     </div>
-    ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${fmt(a)}</span>`:""}
+    ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${fmtPromedio(a)}</span>`:""}
     <span class="chevron-r">›</span>
   </button>`;
 }

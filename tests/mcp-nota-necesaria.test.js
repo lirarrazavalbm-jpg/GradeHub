@@ -55,7 +55,7 @@ async function ejecutar(estado,args){
   const calculo=await ejecutar({ramos:[laboratorio,privado]},{ramo:'FIS0154'});
   assert.equal(calculo.ramo,'Laboratorio de Dinámica');
   assert.equal(calculo.meta,4);
-  assert.ok(Math.abs(calculo.promedioNecesario-3.67)<0.005,`esperaba 3,67 y llegó ${calculo.promedioNecesario}`);
+  assert.ok(Math.abs(calculo.promedioNecesario-3.61)<0.005,`esperaba 3,61 y llegó ${calculo.promedioNecesario}`);
   assert.equal(calculo.factibleEnEscala,true);
   assert.doesNotMatch(JSON.stringify(calculo),/Ramo que no se pidió|Secreto|1\.2/);
 
@@ -63,12 +63,12 @@ async function ejecutar(estado,args){
     categoria('Controles',100,[nota('Control 1',2,0),nota('Control 2',5,1)],{slots:3,dropLowest:{count:1}}),
   ]);
   const descarte=await ejecutar({ramos:[conDescarte]},{ramo:'Curso con descarte',meta:4});
-  assert.ok(Math.abs(descarte.promedioNecesario-3)<1e-6,'el motor debe considerar el descarte al proyectar la nota pendiente');
+  assert.ok(Math.abs(descarte.promedioNecesario-2.9)<1e-6,'el motor debe considerar el descarte y el redondeo final al proyectar la nota pendiente');
 
   const laboratorioVinculado=ramo('Laboratorio',[categoria('Final',100,[nota('lab',6)])]);
   const catedra=ramo('Dinámica',[categoria('Cátedra',100,[])],{aporta:{ramo:'Laboratorio',peso:30}});
   const vinculado=await ejecutar({ramos:[catedra,laboratorioVinculado]},{ramo:'Dinámica',meta:4});
-  assert.ok(Math.abs(vinculado.promedioNecesario-(22/7))<1e-6,'el 30% del ramo vinculado debe entrar al cálculo');
+  assert.ok(Math.abs(vinculado.promedioNecesario-(21.5/7))<1e-6,'el 30% del ramo vinculado debe entrar al cálculo');
 
   const conCompuerta=ramo('Curso con compuerta',[
     categoria('Examen',50,[nota('Examen',2)]),categoria('Tareas',50,[]),

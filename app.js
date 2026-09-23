@@ -753,10 +753,23 @@ function idSeguro(v){return (typeof v==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(v
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Redondea a 2 decimales para evitar errores de punto flotante en comparaciones
 function r2(n){return Math.round(n*100)/100;}
+// La nota final oficial se redondea a una décima antes de decidir su estado:
+// 3,94 queda en 3,9 y 3,95 pasa a 4,0. `r2` sigue disponible para porcentajes y
+// cuentas intermedias; no se usa para contradecir la nota que ve la persona.
+function notaFinalOficial(n){return n===null||isNaN(n)?null:Math.round(Number(n)*10)/10;}
+function nivelNota(n){
+  const v=notaFinalOficial(n);
+  if(v===null)return'neutral';
+  return v>=5.0?'good':v>=4.0?'warn':'bad';
+}
+function notaAprobada(n){return nivelNota(n)==='warn'||nivelNota(n)==='good';}
+function fmtPromedio(n){
+  const v=notaFinalOficial(n);return v===null?'·':v.toFixed(1);
+}
 // El semáforo conserva sus categorías: una nota bajo 4,0 no puede parecerse a
 // una aprobada. Dentro de cada categoría sí graduamos el color para que 1,0 y
 // 3,9, por ejemplo, no se sientan igual de urgentes.
-function colorClass(n){if(n===null||isNaN(n))return'neutral';const v=r2(n);return v>=5.0?'good':v>=4.0?'warn':'bad';}
+function colorClass(n){return nivelNota(n);}
 function notaHue(n){
   const v=Math.max(1,Math.min(7,Number(n)));
   // Tres bandas semánticas, con saltos visibles al aprobar (4,0) y al salir
@@ -782,7 +795,7 @@ function getColor(n){
   // rodea el número pero nunca lo colorea, y por eso no puede confundirse con un
   // estado.
   if(notaPerfecta(n))return'hsl(142 92% var(--grade-perfect-light))';
-  return`hsl(${notaHue(n).toFixed(1)} 84% var(--grade-light))`;
+  return`hsl(${notaHue(notaFinalOficial(n)).toFixed(1)} 84% var(--grade-light))`;
 }
 function fmt(n){return n===null?'·':n.toFixed(1);}
 // Formato numérico con 1 decimal por defecto (usa punto, no coma)
@@ -802,7 +815,7 @@ function duracionMovimiento(token){
   return raw.endsWith('ms')?n:raw.endsWith('s')?n*1000:0;
 }
 function promedioMarkup(valor,tipo){
-  const s=nf(valor);const dot=s.indexOf('.');
+  const s=fmtPromedio(valor);const dot=s.indexOf('.');
   const decimal=tipo==='ramo'?'ramo-decimal':'gpa-decimal';
   return `${s.slice(0,dot)}<span class="${decimal}">${s.slice(dot)}</span>`;
 }
@@ -941,6 +954,13 @@ const calculoRamo=gh_crearCalculoRamo({
   ramos:()=>S.ramos,
 });
 var {hojasCategoria,ramoToStructure,gradesOf,avgPond,promedioCompletoSinDescarte,estadoEximicion,categoriaEximida,categoriasVigentes,estadoAusenciasJustificadas,avgDeGrupo,avgDeGrupoCalculado,calculoRamoConCompuertas,ramoCompletamenteEvaluado,estadoRecuperativo,resumenCategoriasCalculadas,ramoAvg,ramoVinculado,combinarConRamoVinculado,gatesActivas,estadoParaNotaNecesaria,notaNecesaria}=calculoRamo;
+// Una compuerta es una excepción explícita al promedio: puede reprobar aunque
+// la nota final redondeada llegue a 4,0. Estos helpers mantienen esa excepción
+// visible sin contaminar el redondeo normal de todos los demás ramos.
+function nivelRamo(r,n){return gatesActivas(r).length?'bad':nivelNota(n);}
+function notaAprobadaRamo(r,n){const nivel=nivelRamo(r,n);return nivel==='warn'||nivel==='good';}
+function colorClassRamo(r,n){return nivelRamo(r,n);}
+function getColorRamo(r,n){return gatesActivas(r).length?getColor(3.9):getColor(n);}
 // Los descartes vienen del motor, pero se explican en la evaluación donde
 // ocurren. La nota sigue visible: solo no participa en ese promedio.
 function textoDescarte(cat,descarte){
@@ -5601,7 +5621,7 @@ function openEditHistRamoModal(histId,ramoId){
     </p>
     <label class="modal-label">Promedio final (1.0 – 7.0)</label>
     <div class="modal-input"><input type="text" inputmode="decimal" id="m-hist-avg" value="${actual!==null?nf(actual):''}" placeholder="Ej: 5.4" maxlength="4"/></div>
-    ${calculado!==null?`<p style="font-size:0.75rem;color:var(--fg3);margin:-6px 0 14px;">Calculado desde sus evaluaciones: <b>${fmt(calculado)}</b></p>`:''}
+    ${calculado!==null?`<p style="font-size:0.75rem;color:var(--fg3);margin:-6px 0 14px;">Calculado desde sus evaluaciones: <b>${fmtPromedio(calculado)}</b></p>`:''}
     <div id="m-hist-err" style="display:none;font-size:0.75rem;color:var(--red);margin:-6px 0 12px;"></div>
     <div class="modal-btns">
       ${esOverride?`<button class="btn-cancel" onclick="resetHistRamoAvg('${esc(histId)}','${esc(ramoId)}')">Restaurar</button>`:`<button class="btn-cancel" onclick="closeModal()">Cancelar</button>`}
@@ -6621,8 +6641,9 @@ function openCalculadoraModal(){
     if(needed===null){
       const avg=ramoAvg(r);
       if(avg!==null){
-        const ok=avg>=target;
-        el.innerHTML=`<span style="color:${ok?'var(--green)':'var(--red)'}">Tu promedio actual es <b>${avg.toFixed(2)}</b> — ${ok?'ya lo lograste.':`te faltan ${(target-avg).toFixed(2)} puntos y no quedan evaluaciones.`}</span>`;
+        const oficial=notaFinalOficial(avg),metaOficial=notaFinalOficial(target);
+        const ok=oficial>=metaOficial;
+        el.innerHTML=`<span style="color:${ok?'var(--green)':'var(--red)'}">Tu promedio actual es <b>${fmtPromedio(avg)}</b> — ${ok?'ya lo lograste.':`te faltan ${(metaOficial-oficial).toFixed(1)} puntos y no quedan evaluaciones.`}</span>`;
       } else {el.innerHTML=`<span style="color:var(--fg3)">No hay notas ingresadas aún.</span>`;}
       return;
     }
@@ -6795,11 +6816,11 @@ function renderSimGlobalList(){
     const isHyp=hyp!==undefined;
     const prog=ramoProgress(r);
     const metaLeft=realAvg!==null
-      ? `Actual ${nf(realAvg)} · ${prog.pct}% evaluado`
+      ? `Actual ${fmtPromedio(realAvg)} · ${prog.pct}% evaluado`
       : (r.categorias.length?'Sin notas aún':'Sin evaluaciones');
     const id=esc(r.id);
     const val=shown!==null?nf(shown):'';
-    const color=shown!==null?getColor(shown):'var(--fg3)';
+    const color=shown!==null?(isHyp?getColor(shown):getColorRamo(r,shown)):'var(--fg3)';
     const tope=shown!==null&&shown>=SIM_MAX, piso=shown!==null&&shown<=SIM_MIN;
     return `
       <div class="simg-row">
@@ -6858,23 +6879,24 @@ function simCombinadas(c){
 function simCatAvg(c){return avgPond(simCombinadas(c));}
 // Proyección del simulador: mismo motor y mismas compuertas que el promedio real.
 // Mezcla notas reales + hipotéticas y delega en ramoAvg (gate-aware).
-function simProjectedAvg(r){
-  const merged={...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({
+function simProjectedRamo(r){
+  return {...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({
     id:n.id||('sim_'+c.id+'_'+i),nombre:n.nombre||'Nota',valor:n.valor,peso:n.peso||1,
     ...(Number.isInteger(n.slot)?{slot:n.slot}:{}),
   }))}))};
-  return ramoAvg(merged);
 }
+function simProjectedAvg(r){return ramoAvg(simProjectedRamo(r));}
 
 function renderSimulador(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const real=ramoAvg(r);
-  const proj=simProjectedAvg(r);
+  const proyectado=simProjectedRamo(r);
+  const proj=ramoAvg(proyectado);
   const hasSim=Object.values(simState).some(arr=>arr&&arr.length);
 
   const avgEl=document.getElementById('sim-avg');
-  avgEl.textContent=proj!==null?proj.toFixed(2):'—';
-  avgEl.style.color=proj!==null?getColor(proj):'var(--fg3)';
+  avgEl.textContent=proj!==null?fmtPromedio(proj):'—';
+  avgEl.style.color=proj!==null?getColorRamo(proyectado,proj):'var(--fg3)';
 
   const deltaEl=document.getElementById('sim-delta');
   // ¿La proyección quedó topada por un piso de nota? Avisar el porqué.
@@ -6884,14 +6906,14 @@ function renderSimulador(){
     deltaEl.textContent=`${gateHit.nombre} bajo ${gateHit.min.toFixed(1)}: la nota queda topada en ${gateHit.cap.toFixed(1)}`;
     deltaEl.style.display='inline-block';
   } else if(proj!==null&&real!==null&&hasSim){
-    const d=r2(proj-real);
+    const d=r2(notaFinalOficial(proj)-notaFinalOficial(real));
     const cls=d>0?'up':d<0?'down':'flat';
     deltaEl.className='sim-delta '+cls;
-    deltaEl.textContent=`${d>0?'+':''}${d.toFixed(2)} vs tu ${real.toFixed(2)} actual`;
+    deltaEl.textContent=`${d>0?'+':''}${d.toFixed(1)} vs tu ${fmtPromedio(real)} actual`;
     deltaEl.style.display='inline-block';
   } else if(real!==null){
     deltaEl.className='sim-delta flat';
-    deltaEl.textContent=`Tu promedio actual: ${real.toFixed(2)}`;
+    deltaEl.textContent=`Tu promedio actual: ${fmtPromedio(real)}`;
     deltaEl.style.display='inline-block';
   } else {deltaEl.style.display='none';}
 
@@ -6915,7 +6937,7 @@ function renderSimulador(){
       <div class="sim-cat">
         <div class="sim-cat-head">
           <div><div class="sim-cat-name">${esc(c.nombre)}</div><div class="sim-cat-meta">${c.peso}% del ramo</div></div>
-          <div class="sim-cat-avg" style="color:${getColor(catAvg)}">${fmt(catAvg)}</div>
+          <div class="sim-cat-avg" style="color:${getColor(catAvg)}">${fmtPromedio(catAvg)}</div>
         </div>
         ${(realChips||hypChips)?`<div class="sim-chips">${realChips}${hypChips}</div>`:''}
         ${simCatLlena(c)?'':`<div class="sim-add">
@@ -7034,7 +7056,7 @@ function mostRiskyRamo(){
     if(r.categorias.length===0)return;
     const avg=ramoAvg(r);
     if(avg===null)return;
-    if(r2(avg)>=5.0)return; // no está en riesgo
+    if(nivelRamo(r,avg)==='good')return; // no está en riesgo
     const needed=notaNecesaria(r);
     if(needed===null)return; // ya evaluado todo
     if(needed<=1.0)return;   // trivial: le sobra con cualquier nota
@@ -7608,15 +7630,15 @@ function lecturaDespuesDeNota(ramo){
   const avg=ramoAvg(ramo);
   if(avg===null)return 'Nota guardada';
   const gate=gatesActivas(ramo)[0];
-  if(gate)return `${gate.nombre} quedó en ${fmt(gate.actual)} · nota topada en ${fmt(gate.cap)}`;
+  if(gate)return `${gate.nombre} quedó en ${fmtPromedio(gate.actual)} · nota topada en ${fmtPromedio(gate.cap)}`;
   const descarteAbierto=reglaDescarteConCantidadAbierta(ramo);
-  if(descarteAbierto)return `Vas ${fmt(avg)} · la nota mínima depende de los próximos ${descarteAbierto.nombre.toLowerCase()}`;
+  if(descarteAbierto)return `Vas ${fmtPromedio(avg)} · la nota mínima depende de los próximos ${descarteAbierto.nombre.toLowerCase()}`;
   const necesita=notaNecesaria(ramo);
-  if(necesita===null)return `Vas ${fmt(avg)} · ramo completamente evaluado`;
-  if(necesita>7.05)return `Vas ${fmt(avg)} · ya no alcanza sólo con lo pendiente`;
-  if(necesita<=1.0)return `Vas ${fmt(avg)} · tienes margen para aprobar`;
-  if(r2(avg)>=5.0&&necesita<=4.0)return `Vas ${fmt(avg)} · buen margen en lo pendiente`;
-  return `Vas ${fmt(avg)} · necesitas ${nf(necesita)} en lo pendiente para aprobar`;
+  if(necesita===null)return `Vas ${fmtPromedio(avg)} · ramo completamente evaluado`;
+  if(necesita>7.05)return `Vas ${fmtPromedio(avg)} · ya no alcanza sólo con lo pendiente`;
+  if(necesita<=1.0)return `Vas ${fmtPromedio(avg)} · tienes margen para aprobar`;
+  if(nivelNota(avg)==='good'&&necesita<=4.0)return `Vas ${fmtPromedio(avg)} · buen margen en lo pendiente`;
+  return `Vas ${fmtPromedio(avg)} · necesitas ${nf(necesita)} en lo pendiente para aprobar`;
 }
 
 // Hasta dónde llega "ahora". Un mes es lo que alguien alcanza a preparar y
@@ -7665,8 +7687,8 @@ function withPriority(e){
   // Riesgo: si el ramo va mal, sus evaluaciones suben de prioridad
   let riesgo=0;
   if(avg!==null){
-    if(r2(avg)<4.0)riesgo=45;
-    else if(r2(avg)<5.0)riesgo=20;
+    if(!notaAprobadaRamo(e.ramo,avg))riesgo=45;
+    else if(nivelRamo(e.ramo,avg)==='warn')riesgo=20;
   }
   // Si necesita una nota alta en lo que queda, es una alerta real
   if(necesita!==null){
@@ -7718,8 +7740,8 @@ function agendaItemHTML(e){
   let alerta='';
   if(!e.mostrarAlerta){
     alerta='';
-  } else if(e.avg!==null&&r2(e.avg)<4.0&&e.necesita!==null&&e.necesita<=7.05){
-    alerta=`<div class="ag-alert bad"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Vas ${fmt(e.avg)} · necesitas ${nf(e.necesita)} en lo que queda</div>`;
+  } else if(e.avg!==null&&!notaAprobadaRamo(e.ramo,e.avg)&&e.necesita!==null&&e.necesita<=7.05){
+    alerta=`<div class="ag-alert bad"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Vas ${fmtPromedio(e.avg)} · necesitas ${nf(e.necesita)} en lo que queda</div>`;
   } else if(e.necesita!==null&&e.necesita>5.0&&e.necesita<=7.05){
     alerta=`<div class="ag-alert warn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Necesitas ${nf(e.necesita)} en lo que queda para aprobar</div>`;
   } else if(e.necesita!==null&&e.necesita>7.05){
@@ -7734,7 +7756,7 @@ function agendaItemHTML(e){
         <span class="ag-row-peso ${peso!==null&&peso>=30?'heavy':''}">${pesoEventoAgendaTexto(e)}</span>
       </div>
       <div class="ag-row-name">${esc(nombreEventoAgenda(e))}</div>
-      <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}${e.avg!==null?` · vas ${fmt(e.avg)}`:''}</div>
+      <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}${e.avg!==null?` · vas ${fmtPromedio(e.avg)}`:''}</div>
       ${alerta}
     </div>
     <span class="chevron-r">›</span>
