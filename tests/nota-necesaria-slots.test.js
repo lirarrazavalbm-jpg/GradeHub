@@ -27,8 +27,8 @@ function laboratorio(notasInformes){
 console.log('\n=== Laboratorio de Dinámica · casillas que aún faltan ===');
 const conInforme0=laboratorio([{id:'informe-0',nombre:'Informe 0',valor:6.5,peso:1,slot:0}]);
 eq('una nota de seis informes conserva el promedio parcial',ramoAvg(conInforme0),6.5);
-eq('con cinco informes y dos categorías pendientes necesita 3,67',notaNecesaria(conInforme0),3.67);
-eq('para meta 5, la calculadora cuenta los cinco Informes que faltan',notaNecesaria(conInforme0,5),4.80);
+eq('con cinco informes y dos categorías pendientes necesita 3,61',notaNecesaria(conInforme0),3.61);
+eq('para meta 5, la calculadora cuenta los cinco Informes que faltan',notaNecesaria(conInforme0,5),4.75);
 const calculoConUno=calcular(ramoToStructure(conInforme0),gradesOf(conInforme0));
 chk('las dieciséis casillas que faltan llegan al motor',calculoConUno.emptyLeaves.length===16);
 chk('las casillas pendientes se derivan sin agregarse al ramo guardado',conInforme0.categorias.find(c=>c.nombre==='Informes').notas.length===1);
@@ -48,7 +48,7 @@ chk('Informes tiene una nota rendida y cinco casillas pendientes, no siete hojas
 
 console.log('\n=== Una categoría abierta conserva su comportamiento ===');
 const sinSlots={id:'manual',nombre:'Ramo manual',categorias:[{id:'abierta',nombre:'Proyecto',peso:100,notas:[]}]};
-eq('sin slots ni notas sigue necesitando 4,00',notaNecesaria(sinSlots),4.0);
+eq('sin slots ni notas necesita 3,95 para redondear a 4,0',notaNecesaria(sinSlots),3.95);
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);

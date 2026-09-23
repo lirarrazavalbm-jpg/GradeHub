@@ -4,7 +4,7 @@
 // categoría con `slots:6` y una sola nota se daba por cerrada.
 //
 // Con un informe de seis en el Laboratorio de Dinámica pedía 5,2 donde el
-// número real es 4,07. No lanza ningún error: asusta de más, o tranquiliza de
+// número real era 4,07 antes de aplicar el redondeo oficial. No lanza ningún error: asusta de más, o tranquiliza de
 // más si la nota fue alta, en la pantalla donde alguien decide qué estudiar.
 
 const fs = require('fs'), vm = require('vm');
@@ -48,8 +48,9 @@ conInforme(3.5);
 const risky = run('mostRiskyRamo')();
 chk('la tarjeta aparece', !!risky);
 // 70/6 = 11,67 de peso rendido con 3,5; quedan 58,33 de Informes + 30 del resto.
-// (400 - 40,83) / 88,33 = 4,07. La cuenta vieja daba 5,17.
-chk('pide 4,07 y no 5,2', !!risky && Math.abs(risky.needed - 4.07) < 0.02);
+// Para aprobar, la nota bruta debe llegar a 3,95: (395 - 40,83) / 88,33 = 4,01.
+// La cuenta que cerraba la categoría completa daba 5,17.
+chk('pide 4,01 y no 5,2', !!risky && Math.abs(risky.needed - 4.01) < 0.02);
 
 console.log('\n=== El que ya no puede aprobar es el que más necesita verlo ===');
 // Los seis informes rendidos en 1,0: el 70% del ramo cerrado en el mínimo.

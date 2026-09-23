@@ -19,11 +19,11 @@ c.r=r;c.run('S.ramos=[r]');
 const needed=c.run('notaNecesaria(r)');
 const filled=structuredClone(r);filled.categorias[0].notas.push(note('c4',4,4));c.filled=filled;
 assert.equal(c.run('ramoAvg(filled)'),4);
-assert.equal(c.run('solveForTarget(ramoToStructure(r),gradesOf(r),4).requiredAverage'),4);
-assert.ok(Math.abs(needed-4)<1e-9,'la app exige más que una nota que sí permite aprobar');
+assert.equal(c.run('solveForTarget(ramoToStructure(r),gradesOf(r),4).requiredAverage'),3.56);
+assert.ok(Math.abs(needed-3.55555555555556)<1e-9,`la app debe pedir 3,6 para que la final redondee a 4,0; llegó ${needed}`);
 c.run('currentRamoId=r.id;openModal=()=>{}');c.openCalculadoraModal();
 c.document.getElementById('m-calc-target').value='4';c.window.calcResult();
-assert.match(c.document.getElementById('calc-result').innerHTML,/>4\.0<\/b>/);
+assert.match(c.document.getElementById('calc-result').innerHTML,/>3\.6<\/b>/);
 assert.doesNotMatch(c.document.getElementById('calc-result').innerHTML,/imposible/);
 const before=JSON.stringify(r),avg=c.run('ramoAvg(r)');
 assert.ok(c.notaNecesaria(r,7)>7,'una meta imposible no se disfraza de un 7,0 alcanzable');
@@ -32,12 +32,13 @@ assert.equal(c.run('ramoAvg(r)'),avg,'el promedio actual no cambia');
 
 // El descarte de un grupo ya terminado tampoco vuelve a entrar como peso bruto.
 const completo=course('completo',[cat('controles',50,[1,4,4,4,4].map((n,i)=>note('c'+i,n,i)),{slots:5,dropLowest:{count:1}}),cat('examen',50)]);
-assert.equal(c.notaNecesaria(completo),4);
+assert.ok(Math.abs(c.notaNecesaria(completo)-3.9)<1e-9);
 // Los ids son locales a cada acta: el vínculo no puede pisar sus notas.
 const vinculado=course('vinculado',[cat('examen',100,[note('ex',4)])],{aporta:{ramo:r.nombre,peso:30,min:4}});
 c.vinculado=vinculado;c.run('S.ramos=[vinculado,r]');
-assert.ok(Math.abs(c.notaNecesaria(vinculado)-4)<1e-9);
-const borde=course('borde',[cat('primera',50,[note('p',6.9998)]),cat('segunda',50)]);
+const necesariaVinculado=c.notaNecesaria(vinculado);
+assert.ok(Math.abs(necesariaVinculado-2.51851851851853)<1e-9,`llegó ${necesariaVinculado}`);
+const borde=course('borde',[cat('primera',50,[note('p',6.8998)]),cat('segunda',50)]);
 assert.ok(Math.abs(c.notaNecesaria(borde,7)-7.0002)<1e-9,'no redondear antes de decidir si cabe en la escala');
 assert.equal(c.resumenMetaCalculadora(c.notaNecesaria(borde,7)).estado,'inalcanzable');
 console.log('OK: la reproducción de 2ff3468 ahora exige 4,0, no 7,0');

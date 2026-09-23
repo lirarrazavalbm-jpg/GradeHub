@@ -83,11 +83,11 @@ chk('sin la regla no hay descartes que mostrar', grupo([2, 5, 6, 7], null).drops
 console.log('\n=== Nota necesaria cuando una futura puede descartarse ===');
 const solve = vm.runInContext('solveForTarget', ctx);
 const conDescartePendiente = solve(estructuraGrupo([2, 6, 6, null], {count:1}), notasGrupo([2, 6, 6, null]), 6.33);
-eq('para llegar a 6.33, la cuarta debe ser 6.99 y no 11.32', conDescartePendiente.requiredAverage, 6.99);
+eq('para llegar a 6.33 con nota final a dos decimales, la cuarta debe ser 6.98 y no 11.32', conDescartePendiente.requiredAverage, 6.98);
 chk('explica el supuesto de misma nota y el descarte futuro',
   conDescartePendiente.dropAware === true && conDescartePendiente.conditions.some(c=>/misma nota/.test(c)) && conDescartePendiente.conditions.some(c=>/descarta/.test(c)));
 const sinDescartePendiente = solve(estructuraGrupo([2, 6, null, null], null), notasGrupo([2, 6, null, null]), 5);
-eq('sin descarte conserva el despeje normal', sinDescartePendiente.requiredAverage, 6);
+eq('sin descarte usa el borde que redondea a la meta', sinDescartePendiente.requiredAverage, 5.99);
 const reglaAbierta=vm.runInContext('reglaDescarteConCantidadAbierta', ctx);
 chk('la interfaz no inventa una nota mínima si el programa no fija cuántos controles quedan',
   reglaAbierta({categorias:[{nombre:'Controles Sorpresa',dropLowest:{fraction:.25},notas:[]}]})?.nombre === 'Controles Sorpresa');

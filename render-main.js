@@ -57,9 +57,9 @@ function renderHome(){
   if(simGlobalBtn)simGlobalBtn.style.display=S.ramos.length>=2?'flex':'none';
 
   if(g!==null){
-    // Redondear a 1 decimal (formato universitario CL). Al tocar → exacto + distancia.
-    // Siempre 1 decimal (5.0 no 5). Decimal atenuado con el mismo gradient.
-    const rounded=nf(g); // ej "5.0" o "4.7"
+    // La nota oficial, su color y la distancia al siguiente nivel parten del
+    // mismo redondeo a una décima. El decimal va atenuado con el mismo gradient.
+    const rounded=fmtPromedio(g);
     const sep=rounded.indexOf('.');
     const entera=rounded.slice(0,sep);
     const decimal=rounded.slice(sep);
@@ -67,12 +67,12 @@ function renderHome(){
     gpael.className='gpa-num '+colorClass(g)+claseNotaEspecial(g);
     gpael.style.setProperty('--grade-color',getColor(g));
     gpael.onclick=()=>{
-      const exacto=nf(g,2);
+      const oficial=notaFinalOficial(g);
       const umbrales=[4.0,5.0,6.0,7.0];
-      const next=umbrales.find(u=>u>g+0.005);
-      let msg=`Exacto: ${exacto}`;
+      const next=umbrales.find(u=>u>oficial+0.001);
+      let msg=`Promedio oficial: ${fmtPromedio(g)}`;
       if(next!==undefined){
-        msg+=`  ·  ${nf(next-g,2)} para el ${nf(next)}`;
+        msg+=`  ·  ${nf(Math.max(0,next-0.05-g),2)} para redondear a ${nf(next)}`;
       }else{
         msg+=`  ·  máximo`;
       }
@@ -106,7 +106,7 @@ function renderHome(){
   // Chips de estado — contexto exclusivo del promedio general
   if(tagsEl){
     let good=0,warn=0,bad=0,pend=0;
-    S.ramos.forEach(r=>{const a=ramoAvg(r);if(a===null)pend++;else if(r2(a)>=5.0)good++;else if(r2(a)>=4.0)warn++;else bad++;});
+    S.ramos.forEach(r=>{const a=ramoAvg(r),nivel=a===null?'neutral':nivelRamo(r,a);if(nivel==='neutral')pend++;else if(nivel==='good')good++;else if(nivel==='warn')warn++;else bad++;});
     const parts=[];
     if(good)parts.push(`<span class="gpa-tag"><span class="gpa-tag-dot good"></span>${good} aprobado${good!==1?'s':''}</span>`);
     if(warn)parts.push(`<span class="gpa-tag"><span class="gpa-tag-dot warn"></span>${warn} en riesgo</span>`);
@@ -156,7 +156,7 @@ function renderHome(){
       // El caso sin salida no se pinta como una advertencia más: si ya no se
       // puede aprobar con lo que queda, la etiqueta y el color tienen que
       // decirlo, no pedir una nota que no existe en la escala.
-      const warnColor=(risky.imposible||r2(risky.avg)<4.0)?'#ff7a8f':'#ffcf5c';
+      const warnColor=(risky.imposible||!notaAprobadaRamo(risky.ramo,risky.avg))?'#ff7a8f':'#ffcf5c';
       cards.push(`
         <div class="insight-card" role="button" tabindex="0" style="--insight-color:${warnColor}" onclick="openRamo('${esc(risky.ramo.id)}')">
           <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg></div>
@@ -240,7 +240,7 @@ function renderHome(){
     div.innerHTML=`
       <div class="ramo-band" aria-hidden="true" style="background:${esc(r.color)}"></div>
       <div class="ramo-info"><button type="button" class="ramo-name">${esc(r.nombre)}</button><div class="ramo-meta">${sig?`<span class="ramo-sigla">${esc(sig)}</span>`:''}${metaHtml}</div></div>
-      <div class="ramo-grade-action"><div class="ramo-nota ${colorClass(avg)}" style="--grade-color:${getColor(avg)}">${fmt(avg)}</div>${control}</div>
+      <div class="ramo-grade-action"><div class="ramo-nota ${colorClassRamo(r,avg)}" style="--grade-color:${getColorRamo(r,avg)}">${fmtPromedio(avg)}</div>${control}</div>
       ${nc>0?'<span class="ramo-progress-track" aria-hidden="true"><span class="ramo-progress-fill"></span></span>':''}`;
     c.appendChild(div);
   });
@@ -265,10 +265,10 @@ function renderRamo(){
   const descartes=calculo.res.drops||[];
   const avgEl=document.getElementById('ramo-hero-avg');
   if(avg!==null){
-    const s=nf(avg);const dot=s.indexOf('.');
+    const s=fmtPromedio(avg);const dot=s.indexOf('.');
     avgEl.innerHTML=`${s.slice(0,dot)}<span class="ramo-decimal">${s.slice(dot)}</span>`;
-    avgEl.className='ramo-num '+colorClass(avg)+claseNotaEspecial(avg);
-    avgEl.style.setProperty('--grade-color',getColor(avg));
+    avgEl.className='ramo-num '+colorClassRamo(r,avg)+claseNotaEspecial(avg);
+    avgEl.style.setProperty('--grade-color',getColorRamo(r,avg));
   } else {
     avgEl.textContent='Sin notas';avgEl.className='ramo-num empty';
   }
@@ -367,12 +367,12 @@ function renderRamo(){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip bad';
       chipEl.textContent=gateHit.grupo
-        ? `${gateHit.nombre} va ${fmt(gateHit.actual)} (mín. ${nf(gateHit.min)}): topa tu nota final`
+        ? `${gateHit.nombre} va ${fmtPromedio(gateHit.actual)} (mín. ${nf(gateHit.min)}): topa tu nota final`
         : `${gateHit.nombre} bajo ${nf(gateHit.min)}: repruebas pese al promedio`;
     } else if(recuperativo&&recuperativo.motivo==='pendiente'){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip warn';chipEl.textContent='Puedes rendir examen recuperativo';
-    } else if(pesoSinNotas===0 && avg!==null && r2(avg)>=4.0){
+    } else if(pesoSinNotas===0 && notaAprobadaRamo(r,avg)){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip good';chipEl.textContent='✓ Aprobado';
     } else if(pesoSinNotas===0){
@@ -634,7 +634,7 @@ function renderRamo(){
               <div class="eval-row-name">${esc(cat.nombre)}</div>
               <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}</div>
             </div>
-            <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:1.1875rem;">${fmt(av)}</div>
+            <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:1.1875rem;">${fmtPromedio(av)}</div>
             <span aria-hidden="true" style="color:var(--fg3);font-size:0.6875rem;margin-left:6px;">${isOpen?'▲':'▼'}</span>
           </div>
           <div class="eval-group-body${isOpen?' open':''}">${rows}</div>`;
@@ -688,7 +688,7 @@ function renderRamo(){
           <div class="cat-name">${esc(cat.nombre)}</div>
           <div class="cat-peso-tag">${cat.peso}% del ramo · ${notas.length} nota${notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
         </div>
-        <span style="font-size:1rem;font-weight:700;color:${getColor(catAvg)}">${fmt(catAvg)}</span>
+        <span style="font-size:1rem;font-weight:700;color:${getColor(catAvg)}">${fmtPromedio(catAvg)}</span>
         ${puedeEliminar?`<button aria-label="Eliminar evaluación ${esc(cat.nombre)}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:44px;min-height:44px;background:var(--red-bg);border:none;border-radius:8px;padding:0;cursor:pointer;color:var(--red);font-size:0.8125rem;" onclick="confirmDeleteCat('${cat.id}');event.stopPropagation();"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`:''}
         <button aria-label="${isOpen?'Colapsar':'Expandir'} ${esc(cat.nombre)}" aria-expanded="${isOpen?'true':'false'}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:44px;min-height:44px;background:var(--muted);border:none;border-radius:8px;padding:0;cursor:pointer;color:var(--fg2);font-size:0.6875rem;" onclick="toggleCat('${cat.id}');event.stopPropagation();">${isOpen?'▲':'▼'}</button>
       </div>
@@ -797,8 +797,8 @@ function renderStats(){
       const sub=imposible
         ? 'Ya no alcanza solo con lo pendiente'
         : x.abierto
-          ? `Vas ${fmt(x.avg)} · puede bajar según cuántas notas te tomen`
-          : `Vas ${fmt(x.avg)} en lo evaluado`;
+          ? `Vas ${fmtPromedio(x.avg)} · puede bajar según cuántas notas te tomen`
+          : `Vas ${fmtPromedio(x.avg)} en lo evaluado`;
       return `<button class="ag-row stats-priority-row" onclick="openRamo('${esc(x.ramo.id)}')">
         <span class="ag-row-bar" style="background:${esc(x.ramo.color)}"></span>
         <div class="ag-row-main">
@@ -884,7 +884,7 @@ function renderStats(){
           const editado=typeof r.avgOverride==='number';
           return `<button class="hist-ramo-row" onclick="openEditHistRamoModal('${esc(h.id)}','${esc(r.id)}')" aria-label="Editar promedio de ${esc(r.nombre)}">
             <span class="hist-ramo-name">${esc(r.nombre)}${r.creditos?`<span class="hist-cr">${r.creditos} cr</span>`:''}${editado?'<span class="hist-edited" title="Corregido a mano">editado</span>':''}</span>
-            <span class="hist-ramo-val" style="color:${getColor(avg)}">${fmt(avg)}</span>
+            <span class="hist-ramo-val" style="color:${getColorRamo(r,avg)}">${fmtPromedio(avg)}</span>
             <svg class="ic hist-pencil" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
           </button>`;
         }).join('');
@@ -895,7 +895,7 @@ function renderStats(){
                 <div style="font-size:0.96875rem;font-weight:700;color:var(--fg);letter-spacing:-.01em;">${esc(h.label)}</div>
                 <div style="font-size:0.75rem;color:var(--fg3);margin-top:3px;">${Number.isFinite(h.careerSemestre)?`Sem. ${h.careerSemestre} · `:''}${ramosHistorial.length} ramo${ramosHistorial.length!==1?'s':''}</div>
               </div>
-              <span class="hist-gpa" style="color:${gpaColor}">${historialGpa!==null?nf(historialGpa):'—'}</span>
+              <span class="hist-gpa" style="color:${gpaColor}">${historialGpa!==null?fmtPromedio(historialGpa):'—'}</span>
               <span style="color:var(--fg3);font-size:0.6875rem;">${isOpen?'▲':'▼'}</span>
             </div>
             <div class="hist-body${isOpen?' open':''}">

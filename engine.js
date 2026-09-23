@@ -129,6 +129,11 @@ function solveForTarget(structure,grades,target,overrides={},options={}){
   // sin redondear y extender la búsqueda para explicar una meta inalcanzable.
   const requiredValue=n=>options.precision===null?n:gh_excelRound(n,2);
   const meta=gh_meta(structure);const scaleMin=meta?.grade_scale?.min??1.0,scaleMax=meta?.grade_scale?.max??7.0;
+  const decimales=meta?.rounding?.decimals??1;
+  // Si la nota oficial se informa a una décima, 3,95 ya llega a 4,0. La meta
+  // se resuelve contra ese borde real, no contra el 4,00 bruto que la interfaz
+  // nunca muestra. Las compuertas se evalúan aparte con sus mínimos explícitos.
+  const targetRaw=target-(0.5/Math.pow(10,decimales));
   const direct=calculateFinalGrade(structure,grades,overrides);const effW=gh_effWeights(structure,overrides);
   let known=0;for(const id in grades){if(typeof grades[id]==='number'&&effW[id]!=null)known+=grades[id]*effW[id];}
   const remainingWeight=direct.emptyLeaves.reduce((s,l)=>s+l.effectiveWeight,0);
@@ -139,14 +144,14 @@ function solveForTarget(structure,grades,target,overrides={},options={}){
     if(g.kind==='gated_average'&&g.pending&&(!g.lockedOffenders||g.lockedOffenders.length===0))conditions.push(`Cada componente con compuerta debe terminar en ≥ ${g.min_required}.`);
     if(g.kind==='min_grade_required'&&g.pending)conditions.push(`${g.name} debe ser ≥ ${g.min_required} (si no, repruebas pese al promedio).`);
   }
-  if(remainingWeight===0){const reached=direct.raw;return {feasible:reached>=target&&gateWarnings.length===0,requiredAverage:null,emptyLeaves:direct.emptyLeaves,message:gateWarnings.length?`Curso completo, con tope por compuerta. Nota final: ${direct.value}.`:(reached>=target?`Ya alcanzaste ${target}.`:`No quedan evaluaciones; tu nota final es ${direct.value}.`),conditions,gateWarnings,scaleMin,scaleMax,dropAware:false};}
+  if(remainingWeight===0){const reached=direct.value;return {feasible:reached>=target&&gateWarnings.length===0,requiredAverage:null,emptyLeaves:direct.emptyLeaves,message:gateWarnings.length?`Curso completo, con tope por compuerta. Nota final: ${direct.value}.`:(reached>=target?`Ya alcanzaste ${target}.`:`No quedan evaluaciones; tu nota final es ${direct.value}.`),conditions,gateWarnings,scaleMin,scaleMax,dropAware:false};}
   // Con una nota pendiente en un grupo que descarta la peor, su peso efectivo
   // depende de su propio valor. En vez de fingir un peso fijo, proyectamos la
   // misma nota en todas las pendientes y buscamos el mínimo que llega a meta.
   const dropAware=gh_hasPendingDrop(structure,grades);
   if(dropAware){
     conditions.push('El cálculo supone la misma nota en todas las evaluaciones pendientes y considera que la peor nota del grupo se descarta según la regla del programa.');
-    const finalCon=value=>calculateFinalGrade(structure,gh_projectGrades(grades,direct.emptyLeaves,value),overrides).raw;
+    const finalCon=value=>calculateFinalGrade(structure,gh_projectGrades(grades,direct.emptyLeaves,value),overrides).value;
     const conMax=finalCon(scaleMax);
     if(conMax===null||gateWarnings.length>0||(!options.extrapolate&&conMax<target))return {feasible:false,requiredAverage:gh_excelRound(scaleMax,2),emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
     const conMin=finalCon(scaleMin);
@@ -161,7 +166,7 @@ function solveForTarget(structure,grades,target,overrides={},options={}){
     }
     return {feasible:hi<=scaleMax,requiredAverage:requiredValue(hi),emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
   }
-  const required=(target-known)/remainingWeight;const reqRounded=requiredValue(required);
+  const required=(targetRaw-known)/remainingWeight;const reqRounded=requiredValue(required);
   const feasible=reqRounded>=scaleMin&&reqRounded<=scaleMax&&gateWarnings.length===0;
   return {feasible,requiredAverage:reqRounded,emptyLeaves:direct.emptyLeaves,message:'',conditions,gateWarnings,scaleMin,scaleMax,dropAware};
 }
@@ -198,7 +203,7 @@ function gh_crearCalculoRamo(deps){
     return hojas;
   }
   function ramoToStructure(r){
-    return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:2},passing_grade:4.0},
+    return {__meta:{grade_scale:{min:1,max:7},rounding:{decimals:1},passing_grade:4.0},
       id:'final',name:r.nombre||'Ramo',type:'group',aggregation_rule:'weighted_average',
       children:categoriasVigentes(r).map(c=>({id:c.id,name:c.nombre,weight:c.peso,type:'group',aggregation_rule:'weighted_average',
         drop_lowest:c.dropLowest||null,

@@ -131,7 +131,7 @@ const lecturaRamo={id:'lectura',categorias:[
   {id:'ya',peso:50,notas:[{id:'n',valor:3.0,peso:1}]},
   {id:'falta',peso:50,notas:[]}
 ],gates:[]};
-if(ctx.lecturaDespuesDeNota(lecturaRamo).includes('necesitas 5.0')){ok++;console.log('  OK   explica la nota necesaria en lo pendiente');}
+if(ctx.lecturaDespuesDeNota(lecturaRamo).includes('necesitas 4.9')){ok++;console.log('  OK   explica la nota necesaria en lo pendiente');}
 else {fail++;console.log('  FAIL lectura post-nota → '+ctx.lecturaDespuesDeNota(lecturaRamo));}
 const lecturaConTope={id:'tope',categorias:[
   {id:'ex',nombre:'Examen',peso:100,notas:[{id:'n',valor:2.5,peso:1}]}
@@ -430,12 +430,12 @@ chk('tampoco le pide SCT a un ramo que no entra al promedio',
   sinCreditos([ppa.din, ppa.lab]).length === 0);
 
 // "¿Qué nota necesito?" tiene que contar el 30% del laboratorio. Con la cátedra
-// completa en 3,0 y el lab sin notas, hace falta un 6,33 en el lab para llegar
-// a 4,0: (4,0·100 − 3,0·70) / 30.
+// completa en 3,0 y el lab sin notas, hace falta un 6,17 en el lab para que la
+// nota bruta llegue a 3,95 y la nota oficial redondee a 4,0.
 const paraCalc = armar(3, 3, 3, 3, null, null, null);
 const nec = notaNecesaria(paraCalc.din);
 chk(`la nota necesaria cuenta el 30% del laboratorio (${nec === null ? 'null' : nec.toFixed(2)})`,
-  nec !== null && Math.abs(nec - (4.0 * 100 - 3.0 * 70) / 30) < 0.0001);
+  nec !== null && Math.abs(nec - (3.95 * 100 - 3.0 * 70) / 30) < 0.0001);
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);
