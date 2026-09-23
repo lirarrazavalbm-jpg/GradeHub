@@ -864,6 +864,62 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .clase-accion:hover{color:var(--fg);border-color:var(--fg3);}
 .clase-accion:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .clase-sin-datos{margin:10px 0 0;font-size:0.75rem;line-height:1.45;color:var(--fg3);}
+/* Catálogo público de clases. Es la puerta del estudiante, separada del panel
+   privado de quien publica. El acento es de navegación: no reutiliza ningún
+   color del semáforo de notas. */
+.home-clases{margin:18px 20px 4px;}
+.home-clases-card{position:relative;isolation:isolate;display:flex;align-items:center;gap:13px;width:100%;min-height:92px;padding:15px 16px;border:1px solid var(--border);border-radius:14px;background:var(--card);color:inherit;text-align:left;font:inherit;cursor:pointer;overflow:hidden;transition:background-color var(--motion-fast),border-color var(--motion-fast),transform var(--motion-press);}
+.home-clases-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--primary);transform:scaleY(.6);transform-origin:center;transition:transform var(--motion-fast) var(--ease-out),filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
+.home-clases-card:active{transform:scale(.99);}
+.home-clases-card:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.home-clases-icon{display:flex;align-items:center;justify-content:center;width:42px;height:42px;flex:none;border-radius:12px;background:color-mix(in srgb,var(--primary),transparent 88%);color:var(--primary);}
+.home-clases-icon .ic{width:21px;height:21px;}
+.home-clases-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px;}
+.home-clases-copy strong{font-size:.9375rem;line-height:1.25;color:var(--fg);letter-spacing:-.015em;}
+.home-clases-copy>span:last-child{font-size:.75rem;line-height:1.4;color:var(--fg3);}
+.home-clases-kicker{font-size:.65625rem;font-weight:750;letter-spacing:.065em;text-transform:uppercase;color:var(--primary);}
+@media(hover:hover) and (pointer:fine){
+  .home-clases-card:hover{background:var(--muted);border-color:var(--border2);}
+  .home-clases-card:hover::before{transform:scaleX(1.65) scaleY(1);filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--primary) 35%,transparent);}
+}
+
+.catalogo-clases-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:18px;}
+.catalogo-clases-head .modal-title{margin-bottom:5px;}
+.catalogo-clases-head p{max-width:580px;margin:0;color:var(--fg2);font-size:.8125rem;line-height:1.5;}
+.catalogo-clases-busqueda{display:flex;align-items:center;gap:9px;margin-bottom:7px;padding:0 12px;border:1.5px solid var(--border);border-radius:11px;background:var(--card);transition:border-color var(--motion-fast),box-shadow var(--motion-fast);}
+.catalogo-clases-busqueda:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 86%);}
+.catalogo-clases-busqueda .ic{width:18px;height:18px;flex:none;color:var(--fg3);}
+.catalogo-clases-busqueda input{width:100%;min-width:0;padding:12px 0;border:0;outline:0;background:transparent;color:var(--fg);font:inherit;font-size:1rem;}
+.catalogo-clases-estado{min-height:18px;margin:0 0 12px;color:var(--fg3);font-size:.75rem;line-height:1.45;}
+.catalogo-clases-resultados{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;}
+.catalogo-clase-card{display:flex;min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:14px;background:var(--card);}
+.catalogo-clase-flyer{width:34%;min-width:116px;max-width:170px;background:var(--muted);color:var(--fg3);font-size:.6875rem;display:flex;align-items:center;justify-content:center;text-align:center;}
+.catalogo-clase-flyer img{display:block;width:100%;height:100%;min-height:210px;object-fit:cover;}
+.catalogo-clase-contenido{display:flex;flex:1;min-width:0;flex-direction:column;padding:15px;}
+.catalogo-clase-contenido>small{margin-bottom:5px;color:var(--primary);font-size:.65625rem;font-weight:700;letter-spacing:.045em;text-transform:uppercase;}
+.catalogo-clase-contenido h3{margin:0;color:var(--fg);font-size:1rem;line-height:1.25;letter-spacing:-.015em;overflow-wrap:anywhere;}
+.catalogo-clase-ramos{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:7px 0 0;color:var(--fg2);font-size:.75rem;line-height:1.35;}
+.catalogo-clase-ramos strong{color:var(--fg);font-variant-numeric:tabular-nums;}
+.catalogo-clase-ramos span{color:var(--fg3);}
+.catalogo-clase-descripcion{display:-webkit-box;margin:11px 0 13px;color:var(--fg2);font-size:.8125rem;line-height:1.48;white-space:pre-line;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:4;}
+.catalogo-clase-datos{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:auto;padding-top:10px;border-top:1px solid var(--border);color:var(--fg2);font-size:.75rem;}
+.catalogo-clase-datos strong{color:var(--fg);font-size:.875rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.catalogo-clase-datos strong small{color:var(--fg3);font-size:.625rem;font-weight:600;}
+.catalogo-clase-contacto{display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:12px;padding:9px 12px;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-size:.8125rem;font-weight:750;text-decoration:none;transition:filter var(--motion-fast),transform var(--motion-press);}
+.catalogo-clase-contacto:active{transform:scale(.99);}
+.catalogo-clase-contacto:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.catalogo-clase-sin-contacto{margin:12px 0 0;color:var(--fg3);font-size:.75rem;line-height:1.4;}
+@media(hover:hover) and (pointer:fine){.catalogo-clase-contacto:hover{filter:brightness(1.06);}}
+@media(min-width:768px){
+  .modal-sheet:has(.catalogo-clases){max-width:min(920px,92vw);}
+  .catalogo-clases-resultados{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:430px){
+  .catalogo-clase-card{flex-direction:column;}
+  .catalogo-clase-flyer{width:100%;max-width:none;min-height:160px;max-height:210px;}
+  .catalogo-clase-flyer img{min-height:160px;max-height:210px;}
+}
+@media(prefers-reduced-motion:reduce){.home-clases-card::before{transition:none;}.home-clases-card:active,.catalogo-clase-contacto:active{transform:none;}}
 .profesor-estado{min-height:20px;color:var(--fg2);font-size:.75rem;line-height:1.45;margin:8px 0 0;}
 .btn-cancel{flex:1;padding:12px;background:var(--muted);color:var(--fg2);border:none;border-radius:10px;font-size:0.875rem;font-weight:600;cursor:pointer;}
 .btn-confirm{flex:2;padding:12px;background:var(--primary);color:var(--primary-fg);border:none;border-radius:10px;font-size:0.875rem;font-weight:700;cursor:pointer;}

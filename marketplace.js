@@ -393,6 +393,149 @@ async function cargarAnunciosClases(tenant){
   }catch(error){console.warn('No se pudieron cargar las clases particulares:',error.message||error);return [];}
 }
 
+// ─── CATÁLOGO GENERAL PARA ESTUDIANTES ─────────────────────────────────────
+//
+// Esta puerta no es una recomendación: todos los estudiantes de la misma
+// universidad reciben los mismos anuncios y el filtro trabaja sobre esa lista
+// ya descargada. No lee S.ramos ni una nota para ordenar o esconder resultados.
+function normalizarBusquedaClase(texto){
+  return String(texto||'').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+}
+
+function nombresRamosParaClases(tenant){
+  const nombres={};
+  const agregar=(sigla,nombre)=>{
+    const codigo=siglaAnuncio(sigla),rotulo=String(nombre||'').trim();
+    if(codigo&&rotulo&&!nombres[codigo])nombres[codigo]=rotulo;
+  };
+  // Créditos y cursos UC son fuentes ya cargadas por la app. No se deduce una
+  // sigla desde el texto: si GradeHub no conoce el par, el aviso sigue siendo
+  // encontrable por su código y por el texto que escribió el profesor.
+  const creditos=typeof CREDITOS_POR_TENANT!=='undefined'&&CREDITOS_POR_TENANT[tenant];
+  if(creditos)Object.entries(creditos).forEach(([nombre,fila])=>agregar(fila&&fila[1],nombre));
+  if(tenant==='uc'&&typeof cursosUcDisponibles==='function')
+    cursosUcDisponibles().forEach(fila=>{if(Array.isArray(fila))agregar(fila[0],fila[1]);});
+  if(tenant==='uc'&&typeof SIGLAS_UC!=='undefined')
+    Object.values(SIGLAS_UC).forEach(tabla=>Object.entries(tabla||{}).forEach(([nombre,sigla])=>agregar(sigla,nombre)));
+  return nombres;
+}
+
+function prepararCatalogoClases(anuncios,busqueda,nombresPorSigla={}, {ahora=Date.now()}={}){
+  const consulta=normalizarBusquedaClase(busqueda),tokens=consulta.split(' ').filter(Boolean);
+  return (Array.isArray(anuncios)?anuncios:[]).filter(a=>{
+    if(!a||a.estado!=='publicado')return false;
+    if(a.vence_at!=null){const vence=Date.parse(a.vence_at);if(!Number.isFinite(vence)||vence<=ahora)return false;}
+    const siglas=(Array.isArray(a.ramos_siglas)?a.ramos_siglas:[]).map(siglaAnuncio).filter(Boolean);
+    const nombres=siglas.map(s=>nombresPorSigla[s]).filter(Boolean);
+    const texto=normalizarBusquedaClase([a.titulo,a.descripcion,...siglas,...nombres].join(' '));
+    return !tokens.length||tokens.every(t=>texto.includes(t));
+  }).map(a=>{
+    const siglas=(Array.isArray(a.ramos_siglas)?a.ramos_siglas:[]).map(siglaAnuncio).filter(Boolean);
+    return {...a,ramos_siglas:siglas,nombres_ramos:siglas.map(s=>nombresPorSigla[s]).filter(Boolean)};
+  }).sort((a,b)=>{
+    const sa=(a.ramos_siglas.slice().sort()[0]||'ZZZ'),sb=(b.ramos_siglas.slice().sort()[0]||'ZZZ');
+    if(sa!==sb)return sa<sb?-1:1;
+    const va=a.vence_at?Date.parse(a.vence_at):Infinity,vb=b.vence_at?Date.parse(b.vence_at):Infinity;
+    if(va!==vb)return va-vb;
+    return String(a.titulo||'').localeCompare(String(b.titulo||''),'es');
+  });
+}
+
+// Los datos de contacto vienen de contenido revisado, pero igual se construyen
+// con lista blanca. Nunca se copia una URL arbitraria a href.
+function enlaceContactoClase(tipo,valor){
+  const canal=String(tipo||''),dato=String(valor||'').trim();
+  if(canal==='whatsapp'){
+    const telefono=dato.replace(/\D/g,'');
+    return telefono.length>=8&&telefono.length<=15?`https://wa.me/${telefono}`:'';
+  }
+  if(canal==='instagram'){
+    const usuario=dato.replace(/^@/,'');
+    return /^[A-Za-z0-9._]{1,30}$/.test(usuario)?`https://www.instagram.com/${usuario}/`:'';
+  }
+  if(canal==='email'){
+    const correo=dato.toLowerCase();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)?`mailto:${encodeURIComponent(correo)}`:'';
+  }
+  return '';
+}
+
+function formatoClase(anuncio){
+  const modalidad={individual:'Individual',grupal:'Grupal'}[anuncio&&anuncio.modalidad]||'';
+  const ubicacion={online:'Online',presencial:'Presencial',hibrido:'Híbrida'}[anuncio&&anuncio.ubicacion]||'';
+  return [modalidad,ubicacion].filter(Boolean).join(' · ');
+}
+function pesosClase(valor){
+  return new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Number(valor)||0);
+}
+function textoContactoClase(tipo){return {whatsapp:'Hablar por WhatsApp',instagram:'Ver Instagram',email:'Enviar correo'}[tipo]||'Contactar';}
+
+let catalogoClasesActual=[],nombresCatalogoClasesActual={};
+function renderCatalogoClases(busqueda=''){
+  const raiz=document.getElementById('catalogo-clases-resultados');
+  if(!raiz)return;
+  const anuncios=prepararCatalogoClases(catalogoClasesActual,busqueda,nombresCatalogoClasesActual);
+  const estado=document.getElementById('catalogo-clases-estado');
+  if(estado)estado.textContent=anuncios.length
+    ?`${anuncios.length} ${anuncios.length===1?'clase encontrada':'clases encontradas'}`
+    :(busqueda?'No encontramos clases para esa búsqueda.':'Todavía no hay clases publicadas en tu universidad.');
+  raiz.innerHTML=anuncios.map(a=>{
+    const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor);
+    const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos)].join(' · ');
+    return `<article class="catalogo-clase-card" data-catalogo-anuncio="${esc(a.id)}">
+      ${a.flyer_path?`<div class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"><span>Cargando flyer…</span></div>`:''}
+      <div class="catalogo-clase-contenido">
+        <small>Publicidad · Clase particular</small>
+        <h3>${esc(a.titulo||'Clase particular')}</h3>
+        <p class="catalogo-clase-ramos"><strong>${esc(siglas)}</strong>${nombres?`<span>${esc(nombres)}</span>`:''}</p>
+        <p class="catalogo-clase-descripcion">${esc(a.descripcion||'')}</p>
+        <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${pesosClase(a.precio_clp)} <small>por clase</small></strong></div>
+        ${contacto?`<a class="catalogo-clase-contacto" href="${esc(contacto)}" ${a.contacto_tipo==='email'?'':'target="_blank" rel="noopener noreferrer"'} data-contactar="${esc(a.id)}" data-sigla="${esc(a.ramos_siglas[0]||'')}">${esc(textoContactoClase(a.contacto_tipo))}</a>`
+          :'<p class="catalogo-clase-sin-contacto">El contacto de esta clase necesita revisión.</p>'}
+      </div>
+    </article>`;
+  }).join('');
+  raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',()=>{
+    registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
+  }));
+  raiz.querySelectorAll('[data-flyer]').forEach(async caja=>{
+    const url=await urlFlyerClase(caja.dataset.flyer);
+    if(!caja.isConnected)return;
+    caja.innerHTML=url?`<img src="${esc(url)}" alt="" loading="lazy">`:'';
+    if(!url)caja.remove();
+  });
+}
+
+async function openCatalogoClases(){
+  const raiz=document.getElementById('modal-content');
+  if(!raiz)return;
+  raiz.innerHTML=`<div class="catalogo-clases">
+    <div class="catalogo-clases-head"><div><div class="modal-title" id="modal-titulo">Clases particulares</div><p>Busca apoyo por ramo o sigla. El catálogo es el mismo para todos los estudiantes de tu universidad: no usa tus notas.</p></div><button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button></div>
+    <label class="modal-label" for="catalogo-clases-buscar">Buscar clases</label>
+    <div class="catalogo-clases-busqueda"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="catalogo-clases-buscar" type="search" autocomplete="off" placeholder="Ej. Cálculo II o MAT1620" aria-describedby="catalogo-clases-estado"></div>
+    <p class="catalogo-clases-estado" id="catalogo-clases-estado" role="status" aria-live="polite">Buscando clases publicadas…</p>
+    <div class="catalogo-clases-resultados" id="catalogo-clases-resultados" aria-busy="true"></div>
+  </div>`;
+  openModal();
+  const input=raiz.querySelector('#catalogo-clases-buscar');
+  const sigueAbierto=()=>input.isConnected&&document.getElementById('catalogo-clases-buscar')===input&&
+    document.getElementById('modal').classList.contains('open');
+  input.addEventListener('input',()=>renderCatalogoClases(input.value));
+  const tenant=S.tenant;
+  // En UC los nombres del catálogo completo llegan diferidos. Los avisos y sus
+  // siglas aparecen al tiro; cuando carga el archivo, se enriquece la búsqueda
+  // por nombre sin volver a pedir anuncios ni tocar datos académicos.
+  if(tenant==='uc'&&typeof cargarCursosUC==='function'&&typeof cursosUcExtra==='function'&&!cursosUcExtra())
+    cargarCursosUC().then(ok=>{if(ok&&sigueAbierto()){nombresCatalogoClasesActual=nombresRamosParaClases(tenant);renderCatalogoClases(input.value);}}).catch(()=>{});
+  catalogoClasesActual=await cargarAnunciosClases(tenant);
+  if(!sigueAbierto())return;
+  nombresCatalogoClasesActual=nombresRamosParaClases(tenant);
+  const resultados=raiz.querySelector('#catalogo-clases-resultados');if(resultados)resultados.setAttribute('aria-busy','false');
+  renderCatalogoClases(input.value);
+  input.focus();
+}
+
 function payloadMetricaAnuncio(anuncioId,tipo,ramoSigla){
   const evento=String(tipo||'');
   const sigla=siglaAnuncio(ramoSigla);
