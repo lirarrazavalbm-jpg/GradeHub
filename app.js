@@ -107,6 +107,12 @@ function completarFechasOficiales(r,contexto){
 // HH:MM en 24 h. El input[type=time] ya entrega este formato, pero por acá
 // también entran respaldos importados y datos de la nube: se valida igual.
 const HORA_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const FECHA_RE = /^\d{4}-\d{2}-\d{2}$/;
+// Cuándo un plazo pasa a mostrarse en rojo. Dos días deja margen para
+// reaccionar: con uno, quien abre la app en la tarde ya no alcanza a mandar
+// nada. El rojo acá NO es el del semáforo —no dice nada sobre la nota— sino el
+// de urgencia que la app ya usa en errores y en "no alcanza".
+const RECORRECCION_DIAS_URGENTE = 2;
 const ORIGENES_FECHA=new Set(['usuario','catalogo','calendario','desconocido']);
 
 function origenFechaSeguro(origen){return ORIGENES_FECHA.has(origen)?origen:null;}
@@ -238,6 +244,12 @@ function normalize(data) {
         // Es un estado de trámite, no académico. Solo existe sobre una nota ya
         // rendida; ausente conserva exactamente el comportamiento histórico.
         ...(Number.isFinite(n.valor) && n.recorreccionPendiente===true ? {recorreccionPendiente:true} : {}),
+        // El plazo para pedirla, si la persona lo anotó. Opcional a propósito:
+        // cada facultad fija el suyo y el reglamento UC solo pone un techo de
+        // quince días hábiles, así que la app no lo puede deducir de la fecha
+        // de la evaluación. Sin plazo el recordatorio funciona igual que antes.
+        ...(Number.isFinite(n.valor) && n.recorreccionPendiente===true && FECHA_RE.test(n.recorreccionHasta||'')
+          ? {recorreccionHasta:n.recorreccionHasta} : {}),
         // Las casillas fijas se identifican por posición, no por el nombre.
         // Si se pierde `slot` al recargar, Informe 0 sigue guardado pero ya no
         // puede volver a dibujarse en ninguna de las seis casillas.
@@ -6674,10 +6686,62 @@ function confirmEditRamo(){
 let editCatError='';
 function controlRecorreccionHTML(n){
   if(!n||!Number.isFinite(n.valor))return '';
+  const marcada=n.recorreccionPendiente===true;
+  const hasta=marcada&&FECHA_RE.test(n.recorreccionHasta||'')?n.recorreccionHasta:'';
   return `<label class="recorreccion-toggle">
-    <input type="checkbox" id="m-recorreccion" ${n.recorreccionPendiente===true?'checked':''}/>
+    <input type="checkbox" id="m-recorreccion" ${marcada?'checked':''} onchange="togglePlazoRecorreccion()"/>
     <span><b>Pendiente de mandar a recorregir</b><small>Desmárcalo apenas la mandes.</small></span>
-  </label>`;
+  </label>
+  <div class="recorreccion-plazo" id="m-recorreccion-plazo" style="display:${marcada?'block':'none'};">
+    <label class="modal-label" for="m-recorreccion-hasta">Hasta cuándo puedes pedirla <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— opcional</span></label>
+    <div class="modal-input"><input type="date" id="m-recorreccion-hasta" value="${esc(hasta)}"/></div>
+  </div>`;
+}
+// El plazo solo tiene sentido si la marca está puesta; al sacarla se esconde,
+// pero no se borra la fecha hasta guardar: desmarcar sin querer y volver a
+// marcar no puede costar el dato.
+function togglePlazoRecorreccion(){
+  const marca=document.getElementById('m-recorreccion');
+  const caja=document.getElementById('m-recorreccion-plazo');
+  if(caja)caja.style.display=marca&&marca.checked?'block':'none';
+}
+// Lo que se guarda en la nota al cerrar cualquiera de los dos editores.
+function aplicarRecorreccion(n){
+  if(!n)return;
+  const marca=document.getElementById('m-recorreccion');
+  const campo=document.getElementById('m-recorreccion-hasta');
+  if(Number.isFinite(n.valor)&&marca?.checked){
+    n.recorreccionPendiente=true;
+    const hasta=(campo&&campo.value||'').trim();
+    if(FECHA_RE.test(hasta))n.recorreccionHasta=hasta;
+    else delete n.recorreccionHasta;
+  }else{
+    delete n.recorreccionPendiente;
+    delete n.recorreccionHasta;
+  }
+}
+// Cuántos días faltan para el plazo: 0 es hoy, negativo es vencido, null si no
+// hay plazo. Se compara a mediodía para que el cambio de hora no corra un día.
+function diasParaRecorreccion(n){
+  if(!n||n.recorreccionPendiente!==true||!FECHA_RE.test(n.recorreccionHasta||''))return null;
+  const [a,m,d]=n.recorreccionHasta.split('-').map(Number);
+  const limite=new Date(a,m-1,d,12,0,0);
+  const hoy=new Date();hoy.setHours(12,0,0,0);
+  return Math.round((limite-hoy)/86400000);
+}
+function recorreccionUrgente(n){
+  const dias=diasParaRecorreccion(n);
+  return dias!==null&&dias<=RECORRECCION_DIAS_URGENTE;
+}
+// Todas las recorrecciones pendientes de la cuenta, con su plazo resuelto.
+// Las que vencen antes van primero; las que no tienen plazo, al final.
+function recorreccionesPendientes(){
+  const out=[];
+  (S.ramos||[]).forEach(r=>(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{
+    if(n.recorreccionPendiente!==true)return;
+    out.push({ramo:r,cat:c,nota:n,dias:diasParaRecorreccion(n)});
+  })));
+  return out.sort((a,b)=>(a.dias===null?1:0)-(b.dias===null?1:0)||(a.dias||0)-(b.dias||0));
 }
 function openEditCatModal(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
@@ -6719,9 +6783,7 @@ function confirmEditCat(catId){
   const cat=r.categorias.find(c=>c.id===catId);
   cat.nombre=name;cat.peso=peso;marcarFechaUsuario(cat,fecha,leerHora('m-cat'));
   const notaDirecta=(cat.notas||[])[0];
-  const recorreccion=document.getElementById('m-recorreccion');
-  if(notaDirecta&&Number.isFinite(notaDirecta.valor)&&recorreccion?.checked)notaDirecta.recorreccionPendiente=true;
-  else if(notaDirecta)delete notaDirecta.recorreccionPendiente;
+  aplicarRecorreccion(notaDirecta);
   // La casilla no existe en las de casillas fijas (`slots`), y viene desactivada
   // cuando ya hay dos o más notas: volver a fila simple mostraría una y
   // escondería el resto sin decirlo.
@@ -6802,9 +6864,7 @@ function confirmEditNota(catId,notaId){
   if(isNaN(val)){n.valor=null;delete n.calificacionConceptual;}
   else asignarCalificacionNota(n,rawNota,Math.round(val*10)/10);
   marcarFechaUsuario(n,fechaNota,leerHora('m-nota'));
-  const recorreccion=document.getElementById('m-recorreccion');
-  if(Number.isFinite(n.valor)&&recorreccion?.checked)n.recorreccionPendiente=true;
-  else delete n.recorreccionPendiente;
+  aplicarRecorreccion(n);
   save();track('edit_nota',{pendiente:isNaN(val)});closeModal();renderRamo();
   if(typeof renderAgenda==='function')renderAgenda();
   showToast(isNaN(val)?'Guardada como pendiente':lecturaDespuesDeNota(r));
