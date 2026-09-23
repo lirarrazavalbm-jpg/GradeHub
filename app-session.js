@@ -570,6 +570,20 @@ async function syncProfile(){
 // Se guarda apenas se crea la cuenta, antes del onboarding. Así no depende de
 // que la persona alcance a configurar sus ramos para que exista la constancia.
 // Las columnas son opcionales para no reinterpretar ni bloquear perfiles previos.
+// Se llama al terminar el onboarding, que es por donde pasa toda cuenta nueva.
+// No revienta hacia afuera: la persona ya está adentro y su semestre ya está
+// guardado; un fallo de red acá no puede dejarla fuera de su propia cuenta.
+async function registrarDeclaracionEdad(){
+  if(!supabaseClient||!currentUser)return;
+  try{
+    await supabaseClient.from('profiles').upsert({
+      id:currentUser.id,
+      edad_declarada_en:new Date().toISOString(),
+    });
+    // Quien entró con Google nunca vio la casilla del formulario de correo.
+    await registrarAceptacionLegal();
+  }catch(e){}
+}
 async function registrarAceptacionLegal(){
   if(!supabaseClient||!currentUser)throw new Error('No pudimos registrar la aceptación.');
   const {error}=await supabaseClient.from('profiles').upsert({

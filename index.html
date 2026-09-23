@@ -236,6 +236,13 @@
         <label class="field-label">Tu nombre</label>
         <input type="text" id="ob-name" placeholder="Nombre o apodo" maxlength="30" autocomplete="given-name" onkeydown="if(event.key===&apos;Enter&apos;)obNext()"/>
       </div>
+      <!-- Declaración de edad. Va acá y no en el formulario de correo porque
+           por acá pasa toda cuenta nueva, también las que entran con Google.
+           No se pide fecha de nacimiento: para saber si alguien puede usar la
+           app basta la declaración, y el dato exacto sería recolectar de más. -->
+      <p class="ob-edad">
+        <label><input type="checkbox" id="ob-edad" onchange="checkOb()"/><span>Tengo <b>14 años o más</b>.</span></label>
+      </p>
     </div>
 
     <div class="ob-step" data-step="2" style="display:none;">

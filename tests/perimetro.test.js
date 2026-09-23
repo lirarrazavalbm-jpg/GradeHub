@@ -88,10 +88,14 @@ chk('el deploy compara dist contra una lista cerrada de archivos de app',
   /find dist -type f/.test(deploy) && /comm -23/.test(deploy) && /ARCHIVOS NO-APP en dist/.test(deploy));
 
 console.log('\n=== El service worker no cachea cualquier dominio ===');
-// `hostname.includes('fonts.googleapis.com')` también calza con
-// fonts.googleapis.com.malo.cl, y su respuesta quedaba en la caché de la app.
-chk('compara el hostname exacto, no por subcadena',
-  /url\.hostname === 'fonts\.googleapis\.com'/.test(sw) && !/hostname\.includes\(/.test(sw));
+// Antes cacheaba Google Fonts y la comparación tenía que ser exacta:
+// `hostname.includes('fonts.googleapis.com')` calzaba también con
+// fonts.googleapis.com.malo.cl, y esa respuesta terminaba en la caché de la
+// app. Desde el 2026-09-23 no cachea ningún dominio externo, así que la regla
+// se vuelve más simple y más estricta: nada de terceros en la caché, y si
+// mañana vuelve alguno, que no entre por subcadena.
+chk('no cachea ningún dominio externo',
+  !/caches\.open[\s\S]{0,400}url\.hostname/.test(sw) && !/hostname\.includes\(/.test(sw));
 chk('sigue ignorando lo que no sea GET', /request\.method !== 'GET'/.test(sw));
 
 console.log('\n=== Nada de secretos en el cliente ===');

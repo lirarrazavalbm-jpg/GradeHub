@@ -65,28 +65,6 @@ self.addEventListener('fetch', event => {
 
   // Requests externos
   if (url.origin !== location.origin) {
-    // Google Fonts: cache-then-network
-    // Coincidencia EXACTA, no `includes`: con subcadena, un dominio como
-    // fonts.googleapis.com.malo.cl también calzaba y su respuesta terminaba
-    // guardada en la caché de la app.
-    if (url.hostname === 'fonts.googleapis.com' ||
-        url.hostname === 'fonts.gstatic.com') {
-      event.respondWith(
-        caches.open(CACHE_NAME).then(cache =>
-          cache.match(request).then(cached => {
-            // Si la red falla hay que devolver ALGO igual: una promesa
-            // rechazada acá se transforma en un error de red para la página y
-            // la hoja de estilos no se aplica. Pasó con la CSP bloqueando el
-            // fetch, y pasa igual sin conexión y con la primera visita.
-            const networkFetch = fetch(request).then(response => {
-              cache.put(request, response.clone());
-              return response;
-            }).catch(() => cached || new Response('', { status: 504, statusText: 'sin red' }));
-            return cached || networkFetch;
-          })
-        )
-      );
-    }
     // Resto de externos (Supabase, etc.): pasar sin cachear
     return;
   }
