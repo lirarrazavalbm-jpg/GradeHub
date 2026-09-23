@@ -637,16 +637,56 @@ function cursoUcCompleto(nombre,sigla){
     return (ns&&normName(f[0]||'')===ns)||(!ns&&nn&&normName(f[1]||'')===nn);
   })||null;
 }
+// Los créditos de un ramo escrito a mano que resulta ser uno del catálogo.
+//
+// Durante el onboarding los ~660 KB todavía no llegaron, así que buscar un
+// electivo no encuentra nada y la persona termina escribiendo el nombre. Ese
+// ramo queda con `origen:null`, y hasta ahora se quedaba sin créditos PARA
+// SIEMPRE aunque el dato estuviera en el catálogo desde el principio: la
+// función de abajo exigía procedencia y lo saltaba en cada carga posterior.
+//
+// Se completa SOLO el número. No se le pone sigla ni procedencia: darle origen
+// de catálogo le cargaría además su pauta oficial, y eso sí sería reinterpretar
+// un ramo que la persona declaró como suyo. Los créditos son un hecho del
+// curso; la pauta es una decisión de quien lo cursa.
+//
+// Y solo cuando el nombre es inequívoco. Hoy ningún nombre del catálogo repite
+// con créditos distintos, así que la guarda no se dispara nunca — está igual
+// porque el catálogo se edita todo el tiempo y crece con cada semestre. El día
+// que aparezcan dos siglas con el mismo nombre y distinto SCT, sin esto
+// elegiríamos una al azar y nadie se enteraría.
+function creditosUCPorNombreUnico(nombre){
+  const filas=cursosUcExtra();
+  if(!filas||!nombre)return null;
+  const n=normName(nombre);
+  if(!n)return null;
+  let cr=null;
+  for(const f of filas){
+    if(!Array.isArray(f)||normName(f[1]||'')!==n)continue;
+    if(typeof f[2]!=='number')return null;
+    if(cr===null)cr=f[2];
+    else if(cr!==f[2])return null;
+  }
+  return cr;
+}
 // El archivo grande llega después de normalize() y también puede llegar mientras
 // alguien agrega un ramo desde el catálogo mínimo. Solo completamos créditos
-// ausentes de ramos UC con procedencia; nunca corregimos un valor ya guardado.
+// ausentes; nunca corregimos un valor ya guardado.
 function completarCreditosUCTrasCarga(){
   if(S.tenant!=='uc'||!S.onboardingDone||!cursosUcExtra())return false;
   let agregados=0;
   (S.ramos||[]).forEach(r=>{
-    if(!r.origen||r.origen.tenant!=='uc'||(r.creditos!==null&&r.creditos!==undefined))return;
-    sellarDatosCatalogo(r,'uc');
-    if(typeof r.creditos==='number')agregados++;
+    if(r.creditos!==null&&r.creditos!==undefined)return;
+    if(r.origen&&r.origen.tenant==='uc'){
+      sellarDatosCatalogo(r,'uc');
+      if(typeof r.creditos==='number')agregados++;
+      return;
+    }
+    // Con procedencia de otra universidad no se toca: sus créditos salen de su
+    // propia tabla y el catálogo UC no tiene nada que decir ahí.
+    if(r.origen)return;
+    const cr=creditosUCPorNombreUnico(r.nombre);
+    if(typeof cr==='number'){r.creditos=cr;agregados++;}
   });
   if(!agregados)return false;
   // Una sola escritura/sync para la carga completa, no una por ramo. save()
@@ -1649,9 +1689,19 @@ function showMainApp(){
   contarVisita();
   pintarAvisoInstalar();
   // En una cuenta existente el catálogo puede no haberse pedido nunca: si un
-  // ramo UC del catálogo quedó sin SCT, hay que traerlo incluso sin abrir el
-  // buscador. Si ya se cargó durante onboarding, completa de inmediato.
-  if(S.tenant==='uc'&&(S.ramos||[]).some(r=>r.origen&&r.origen.tenant==='uc'&&(r.creditos===null||r.creditos===undefined))){
+  // ramo UC quedó sin SCT, hay que traerlo incluso sin abrir el buscador. Si ya
+  // se cargó durante onboarding, completa de inmediato.
+  //
+  // Incluye los ramos sin procedencia, y ahí está el caso reportado: durante el
+  // onboarding el catálogo todavía no bajó, así que buscar un electivo no
+  // encuentra nada y la persona lo escribe a mano. Ese ramo nace sin origen, y
+  // mientras esta condición lo excluía no se pedía el archivo, no se completaba
+  // nada, y la cuenta entera se quedaba en promedio simple para siempre.
+  //
+  // El costo es que una cuenta UC con un ramo verdaderamente propio y sin
+  // créditos baja los ~660 KB una vez. El service worker los cachea, y el
+  // precio de no hacerlo es mostrar un promedio que no es el ponderado.
+  if(S.tenant==='uc'&&(S.ramos||[]).some(r=>(!r.origen||r.origen.tenant==='uc')&&(r.creditos===null||r.creditos===undefined))){
     if(cursosUcExtra())completarCreditosUCTrasCarga();
     else cargarCursosUC();
   }
