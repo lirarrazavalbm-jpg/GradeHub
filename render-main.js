@@ -358,7 +358,19 @@ function renderRamo(){
     const pesoSinNotas=totalPeso-pesoConNotas;
     // ¿Hay un piso de nota activo? (sección calificada bajo su mínimo → topa la final)
     const gateHit=gatesActivas(r)[0]||null;
-    const pctPendiente=totalPeso>0?Math.round(pesoSinNotas/totalPeso*100):0;
+    // Cuánto falta por rendir, contando CASILLAS y no categorías.
+    //
+    // Antes salía de `pesoSinNotas`, que da una categoría por cerrada apenas
+    // tiene una nota. En Laboratorio de Dinámica —Controles 10% en 5 casillas,
+    // Informes 70% en 6, Evaluación de pares 20% en 6— con UN control y UN
+    // informe puestos contaba el 80% como rendido y anunciaba "falta 20%",
+    // cuando iban 2 de 17 evaluaciones.
+    //
+    // `emptyLeaves` son las hojas sin nota, con su peso efectivo ya repartido
+    // entre las casillas de su categoría, y suman 1 sobre el ramo entero.
+    const pendientes=(calculo.res&&calculo.res.emptyLeaves)||[];
+    const pesoPendiente=pendientes.reduce((s,l)=>s+(Number(l.effectiveWeight)||0),0);
+    const pctPendiente=Math.round(pesoPendiente*100);
     if(eximicion&&eximicion.activa){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip';
@@ -372,15 +384,31 @@ function renderRamo(){
     } else if(recuperativo&&recuperativo.motivo==='pendiente'){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip warn';chipEl.textContent='Puedes rendir examen recuperativo';
-    } else if(pesoSinNotas===0 && notaAprobadaRamo(r,avg)){
+    } else if(ramoCompletamenteEvaluado(r) && notaAprobadaRamo(r,avg)){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip good';chipEl.textContent='✓ Aprobado';
-    } else if(pesoSinNotas===0){
+    } else if(ramoCompletamenteEvaluado(r)){
       chipEl.style.display='inline-flex';
       chipEl.className='ramo-chip bad';chipEl.textContent='✕ Reprobado';
     } else if(totalPeso>0){
-      const needed=(4.0*totalPeso-sumaPonderada)/pesoSinNotas;
-      if(avg!==null && needed<=1.0){
+      // La cuenta sale de `notaNecesaria`, no de una fórmula escrita acá.
+      //
+      // Acá vivía la última copia a mano —`(4*totalPeso - sumaPonderada) /
+      // pesoSinNotas`— y se equivocaba de dos formas a la vez. Repartía por
+      // categoría entera, así que "Controles" con 4 casillas y 2 notas contaba
+      // como cerrada: `pesoSinNotas` daba 0 y la ficha decía "✕ Reprobado" a
+      // alguien que todavía aprobaba con 4,65. Y apuntaba al 4,00 bruto en vez
+      // del 3,95 que redondea a 4,0 (#447), así que pedía una décima de más que
+      // Estadísticas para el mismo ramo.
+      //
+      // `notaNecesaria` sabe de casillas declaradas, descartes, compuertas y
+      // del ramo vinculado. Es la misma que usan Estadísticas y la calculadora:
+      // que el número salga de un solo lugar es la única forma de que no haya
+      // dos respuestas a la misma pregunta.
+      const needed=notaNecesaria(r);
+      if(needed===null){
+        chipEl.style.display='none';
+      } else if(avg!==null && needed<=1.0){
         // Ya no puede reprobar con lo pendiente → aprobación asegurada
         chipEl.style.display='inline-flex';
         chipEl.className='ramo-chip good';chipEl.textContent=`Va aprobando · falta ${pctPendiente}%`;
