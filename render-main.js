@@ -182,7 +182,7 @@ function renderHome(){
             <div class="insight-body">
               <div class="insight-label">Última nota</div>
               <div class="insight-title">${esc(lg.cat.nombre)} · ${esc(lg.ramo.nombre)}</div>
-              <div class="insight-meta"><span class="strong">${nf(lg.nota.valor)}</span></div>
+              <div class="insight-meta"><span class="strong">${textoCalificacionNota(lg.nota)}</span></div>
             </div>
             <span class="chevron-r">›</span>
           </div>`);
@@ -617,7 +617,7 @@ function renderRamo(){
               ${fSub?`<span class="eval-sub-fecha">${esc(fSub)}</span>`:'<span class="eval-sub-fecha vacia">sin fecha</span>'}
               ${recorreccion?'<span class="recorreccion-chip">Falta mandar</span>':''}
             </button>
-            <input class="eval-row-input sm" inputmode="decimal" maxlength="3" placeholder="—" value="${v!=null?fmt(v):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(etiqueta)}"/>
+            <input class="eval-row-input sm" inputmode="${inputModeNota()}" autocapitalize="characters" maxlength="3" placeholder="—" value="${v!=null?textoCalificacionNota(nota):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(etiqueta)}"/>
           </div>`;
         }
         // Casillas con nota, no notas: un duplicado de la misma casilla no es
@@ -650,7 +650,7 @@ function renderRamo(){
           <div class="eval-row-name">${esc(cat.nombre)}</div>
           <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}${recorreccion?' <span class="recorreccion-chip">Falta mandar</span>':''}</div>
         </div>
-        <input class="eval-row-input" inputmode="decimal" maxlength="3" placeholder="—" value="${g!=null?fmt(g):''}" style="color:${g!=null?getColor(g):'var(--fg)'}" onchange="setDirectNota('${cat.id}',this.value)" onclick="event.stopPropagation();" aria-label="Nota de ${esc(cat.nombre)}"/>`;
+        <input class="eval-row-input" inputmode="${inputModeNota()}" autocapitalize="characters" maxlength="3" placeholder="—" value="${g!=null?textoCalificacionNota(notas[0]):''}" style="color:${g!=null?getColor(g):'var(--fg)'}" onchange="setDirectNota('${cat.id}',this.value)" onclick="event.stopPropagation();" aria-label="Nota de ${esc(cat.nombre)}"/>`;
       cl.appendChild(row);
       return;
     }
@@ -678,7 +678,7 @@ function renderRamo(){
           ${descartada?'<span class="nota-row-drop-tag">No cuenta</span>':''}
           ${n.recorreccionPendiente===true?'<span class="recorreccion-chip">Falta mandar</span>':''}
           ${n.fecha?`<span class="cat-fecha-chip">${esc(fechaCorta(n.fecha))}</span>`:''}
-          <span class="nota-row-val" style="color:${getColor(n.valor)}">${fmt(n.valor)}</span>
+          <span class="nota-row-val" style="color:${getColor(n.valor)}">${textoCalificacionNota(n)}</span>
           <button class="nota-row-del" aria-label="Eliminar nota ${esc(n.nombre)}" onclick="deleteNota('${cat.id}','${n.id}');event.stopPropagation();">✕</button>
         </div>`;
       }).join('');

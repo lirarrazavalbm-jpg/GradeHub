@@ -69,8 +69,18 @@ chk('al crear, solo el nombre es obligatorio',
   /function confirmAddNota[\s\S]{0,520}if\(!name\)\{addNotaError=[\s\S]{0,180}mostrarErrorCampo/.test(app));
 chk('al editar, también',
   /function confirmEditNota[\s\S]{0,520}if\(!name\)\{editNotaError=[\s\S]{0,180}mostrarErrorCampo/.test(app));
-chk('y el valor vacío se guarda como null, no como cero',
-  /valor:isNaN\(val\)\?null:val/.test(app));
+// Se ejercita el comportamiento: la forma del objeto cambió al empezar a
+// conservar las calificaciones conceptuales y un regex sobre una línea exacta
+// dejó de describir el requisito real.
+const campos={
+  'm-nota-name':{value:'Caso pendiente'},'m-nota-val':{value:''},'m-nota-fecha':{value:''},
+  'm-pond-toggle':{checked:false},'m-nota-peso':{value:'40'},'m-nota-hora':{value:''},
+};
+ctx.document.getElementById=id=>campos[id]||stub;
+ctx.renderRamo=()=>{};ctx.renderAgenda=()=>{};ctx.closeModal=()=>{};ctx.showToast=()=>{};ctx.track=()=>{};
+vm.runInContext(`save=()=>{};S={tenant:'fen',ramos:[{id:'r2',nombre:'Ramo',categorias:[{id:'c2',nombre:'Casos',directNota:false,notas:[]}]}]};currentRamoId='r2';`,ctx);
+val('confirmAddNota')('c2');
+chk('y el valor vacío se guarda como null, no como cero',val("S.ramos[0].categorias[0].notas[0].valor")===null);
 
 console.log('\nPASS: ' + ok + '   FAIL: ' + fail);
 process.exit(fail ? 1 : 0);

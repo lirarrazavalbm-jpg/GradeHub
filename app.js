@@ -231,6 +231,10 @@ function normalize(data) {
         hora: (n.fecha && HORA_RE.test(n.hora || '')) ? n.hora : null,
         valor: n.valor ?? (typeof n === 'number' ? n : null),
         peso: n.peso || 1,
+        // La equivalencia numérica alimenta el motor, pero la letra se conserva
+        // para que la ficha siga diciendo lo mismo que Mi UC. Ausente significa
+        // nota numérica normal y mantiene compatibles todas las cuentas previas.
+        ...(calificacionConceptualGuardada(n,data.tenant) ? {calificacionConceptual:calificacionConceptualGuardada(n,data.tenant)} : {}),
         // Es un estado de trámite, no académico. Solo existe sobre una nota ya
         // rendida; ausente conserva exactamente el comportamiento histórico.
         ...(Number.isFinite(n.valor) && n.recorreccionPendiente===true ? {recorreccionPendiente:true} : {}),
@@ -856,9 +860,45 @@ function mostrarEcoGpa(antes,despues){
   eco.textContent=`Promedio general ${nf(antes)} → ${nf(despues)}`;
   fila.appendChild(eco);
 }
+function calificacionConceptual(raw,tenant){
+  const tenantActual=typeof tenant==='string'?tenant:(typeof S!=='undefined'&&S?S.tenant:null);
+  const tabla=CALIFICACIONES_CONCEPTUALES_POR_TENANT[tenantActual];
+  const concepto=String(raw==null?'':raw).trim().toUpperCase();
+  if(!tabla||!Object.prototype.hasOwnProperty.call(tabla,concepto))return null;
+  return {concepto,valor:tabla[concepto]};
+}
+function calificacionConceptualGuardada(n,tenant){
+  if(!n||typeof n!=='object')return null;
+  const conceptual=calificacionConceptual(n.calificacionConceptual,tenant);
+  return conceptual&&n.valor===conceptual.valor?conceptual.concepto:null;
+}
+function asignarCalificacionNota(n,raw,valor,tenant){
+  n.valor=valor;
+  const conceptual=calificacionConceptual(raw,tenant);
+  if(conceptual&&conceptual.valor===valor)n.calificacionConceptual=conceptual.concepto;
+  else delete n.calificacionConceptual;
+  return n;
+}
+function textoCalificacionNota(n,tenant){
+  return calificacionConceptualGuardada(n,tenant)||fmt(n&&n.valor!=null?n.valor:null);
+}
+function conceptosNota(tenant){
+  const tenantActual=typeof tenant==='string'?tenant:(typeof S!=='undefined'&&S?S.tenant:null);
+  return Object.keys(CALIFICACIONES_CONCEPTUALES_POR_TENANT[tenantActual]||{});
+}
+function etiquetaNotaEntrada(tenant){
+  const conceptos=conceptosNota(tenant);
+  return `Nota (1.0 – 7.0${conceptos.length?', '+conceptos.slice(0,-1).join(', ')+(conceptos.length>1?' o ':'')+conceptos[conceptos.length-1]:''})`;
+}
+function inputModeNota(tenant){return conceptosNota(tenant).length?'text':'decimal';}
+function ejemploNotaEntrada(tenant){return conceptosNota(tenant).length?'Ej: 5.5 o A':'Ej: 5.5';}
+
 // Parser de notas: acepta "6.5", "6,5", "65" (autocorrige a 6.5), "70" → 7.0.
+// En tenants que lo declaran en data.js acepta además sus conceptos oficiales.
 // Devuelve un número con 1 decimal en rango [1.0, 7.0], o NaN si inválido.
-function parseNota(raw){
+function parseNota(raw,tenant){
+  const conceptual=calificacionConceptual(raw,tenant);
+  if(conceptual)return conceptual.valor;
   const txt=String(raw==null?'':raw).trim().replace(',','.');
   if(txt==='')return NaN;
   let v=parseFloat(txt);
@@ -2079,12 +2119,12 @@ function setSlotNota(catId,slot,raw){
   const existente=cat.notas.find(n=>n.slot===slot);
   const val=txt===''?NaN:parseNota(txt);
   if(txt!==''&&!isNaN(val)){
-    if(existente)existente.valor=val;
-    else cat.notas.push({id:uid(),nombre:etiquetaCasilla(r,cat,slot),valor:val,peso:1,slot});
+    if(existente)asignarCalificacionNota(existente,txt,val);
+    else cat.notas.push(asignarCalificacionNota({id:uid(),nombre:etiquetaCasilla(r,cat,slot),peso:1,slot},txt,val));
   }else if(existente){
     // Vaciar la nota no borra la casilla si tiene fecha: queda pendiente, que
     // es lo que dice "esto se rinde ese día y todavía no tengo la nota".
-    if(existente.fecha)existente.valor=null;
+    if(existente.fecha){existente.valor=null;delete existente.calificacionConceptual;}
     else cat.notas=cat.notas.filter(n=>n.slot!==slot);
   }
   save();track('set_nota_slot');renderRamo();
@@ -2112,8 +2152,8 @@ function setDirectNota(catId,raw){
       // Igual que las casillas: editar el objeto conserva los metadatos de la
       // nota, incluida una recorrección pendiente.
       const existente=cat.notas[0];
-      if(existente){existente.nombre=cat.nombre;existente.valor=val;existente.peso=1;}
-      else cat.notas=[{id:uid(),nombre:cat.nombre,valor:val,peso:1}];
+      if(existente){existente.nombre=cat.nombre;existente.peso=1;asignarCalificacionNota(existente,txt,val);}
+      else cat.notas=[asignarCalificacionNota({id:uid(),nombre:cat.nombre,peso:1},txt,val)];
     }
   }
   save();track('set_nota_directa');renderRamo();
@@ -4387,8 +4427,8 @@ function openAddNotaModal(catId){
     <label class="modal-label">Nombre</label>
     <div class="modal-input"><input type="text" id="m-nota-name" placeholder="Ej: Prueba 1" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-nota-error"/></div>
     <p id="m-nota-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
-    <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— déjala vacía si todavía no la rindes</span></label>
-    <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" placeholder="Ej: 5.5"/></div>
+    <label class="modal-label">${etiquetaNotaEntrada()} <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— déjala vacía si todavía no la rindes</span></label>
+    <div class="modal-input"><input type="text" inputmode="${inputModeNota()}" autocapitalize="characters" id="m-nota-val" placeholder="${ejemploNotaEntrada()}"/></div>
     ${campoFechaHoraHTML('m-nota','',null,false)}
     <div class="toggle-row">
       <div><div class="toggle-label">Ponderación personalizada</div><div class="toggle-sub">Por defecto se promedia simple</div></div>
@@ -4419,7 +4459,8 @@ function togglePondSlider(){
 function confirmAddNota(catId){
   const input=document.getElementById('m-nota-name');
   const name=(input&&input.value||'').trim();
-  const val=parseNota(document.getElementById('m-nota-val').value);
+  const rawNota=document.getElementById('m-nota-val').value;
+  const val=parseNota(rawNota);
   // La nota puede quedar pendiente: se registra qué viene y cuándo, y el valor
   // se agrega al rendirla. `gradesOf` y `avgPond` ya ignoran las que no tienen
   // valor, así que una pendiente no arrastra el promedio hacia abajo.
@@ -4429,7 +4470,10 @@ function confirmAddNota(catId){
   const peso=usaPond?parseInt(document.getElementById('m-nota-peso').value)||40:1;
   const r=S.ramos.find(x=>x.id===currentRamoId);const cat=r.categorias.find(c=>c.id===catId);
   const horaNota=leerHora('m-nota');
-  cat.notas.push({id:uid(),nombre:name,valor:isNaN(val)?null:val,peso,fecha:fechaNota,hora:horaNota,fechaOrigen:fechaNota?'usuario':null,horaOrigen:horaNota?'usuario':null});
+  const nueva={id:uid(),nombre:name,peso,fecha:fechaNota,hora:horaNota,fechaOrigen:fechaNota?'usuario':null,horaOrigen:horaNota?'usuario':null};
+  if(isNaN(val))nueva.valor=null;
+  else asignarCalificacionNota(nueva,rawNota,val);
+  cat.notas.push(nueva);
   openCats[catId]=true;save();track('add_nota',{ponderada:usaPond,pendiente:isNaN(val)});closeModal();renderRamo();
   // Si trae fecha entra a la Agenda, que vive en otra pantalla.
   if(typeof renderAgenda==='function')renderAgenda();
@@ -6631,8 +6675,8 @@ function openEditNotaModal(catId,notaId){
     <label class="modal-label">Nombre</label>
     <div class="modal-input"><input type="text" id="m-nota-name" value="${esc(nombreNotaCasilla(r,cat,n))}" maxlength="${NOMBRE_MAX}" autocomplete="off" aria-describedby="m-nota-error"/></div>
     <p id="m-nota-error" role="alert" hidden style="margin:-6px 0 10px;font-size:0.8125rem;color:var(--red);"></p>
-    <label class="modal-label">Nota (1.0 – 7.0) <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
-    <div class="modal-input"><input type="text" inputmode="decimal" id="m-nota-val" value="${n.valor!==null?nf(n.valor):''}"/></div>
+    <label class="modal-label">${etiquetaNotaEntrada()} <span style="text-transform:none;font-weight:500;color:var(--fg3);letter-spacing:0;">— vacía si todavía no la rindes</span></label>
+    <div class="modal-input"><input type="text" inputmode="${inputModeNota()}" autocapitalize="characters" id="m-nota-val" value="${n.valor!==null?textoCalificacionNota(n):''}"/></div>
     ${campoFechaHoraHTML('m-nota',n.fecha,n.hora,true)}
     ${controlRecorreccionHTML(n)}
     <div class="toggle-row">
@@ -6654,7 +6698,8 @@ function openEditNotaModal(catId,notaId){
 function confirmEditNota(catId,notaId){
   const input=document.getElementById('m-nota-name');
   const name=(input&&input.value||'').trim();
-  const val=parseNota(document.getElementById('m-nota-val').value);
+  const rawNota=document.getElementById('m-nota-val').value;
+  const val=parseNota(rawNota);
   // Igual que al crearla: sin valor queda pendiente. Es el camino de vuelta —
   // se anota la evaluación cuando se sabe la fecha y se completa al rendirla.
   if(!name){editNotaError='Escribe el nombre de la nota para guardarla.';mostrarErrorCampo('m-nota-name','m-nota-error',editNotaError);return false;}
@@ -6664,7 +6709,10 @@ function confirmEditNota(catId,notaId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r.categorias.find(c=>c.id===catId);
   const n=cat.notas.find(x=>x.id===notaId);
-  n.nombre=name;n.valor=isNaN(val)?null:Math.round(val*10)/10;n.peso=peso;marcarFechaUsuario(n,fechaNota,leerHora('m-nota'));
+  n.nombre=name;n.peso=peso;
+  if(isNaN(val)){n.valor=null;delete n.calificacionConceptual;}
+  else asignarCalificacionNota(n,rawNota,Math.round(val*10)/10);
+  marcarFechaUsuario(n,fechaNota,leerHora('m-nota'));
   const recorreccion=document.getElementById('m-recorreccion');
   if(Number.isFinite(n.valor)&&recorreccion?.checked)n.recorreccionPendiente=true;
   else delete n.recorreccionPendiente;
@@ -7016,8 +7064,8 @@ function renderSimulador(){
     // casilla puede tener su propia fecha existen notas con `valor` en null, y
     // se colaban como una etiqueta vacía ("Laboratorio 1: ").
     const realChips=notasReales.filter(n=>n&&n.valor!==null&&n.valor!==undefined)
-      .map(n=>`<span class="sim-chip real">${esc(nombreNotaCasilla(r,c,n))}: ${fmt(n.valor)}</span>`).join('');
-    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':c.directNota&&!(c.slots>1)?esc(c.nombre)+': ':''}${s.valor.toFixed(1)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
+      .map(n=>`<span class="sim-chip real">${esc(nombreNotaCasilla(r,c,n))}: ${textoCalificacionNota(n)}</span>`).join('');
+    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':c.directNota&&!(c.slots>1)?esc(c.nombre)+': ':''}${textoCalificacionNota(s)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
     return `
       <div class="sim-cat">
         <div class="sim-cat-head">
@@ -7026,7 +7074,7 @@ function renderSimulador(){
         </div>
         ${(realChips||hypChips)?`<div class="sim-chips">${realChips}${hypChips}</div>`:''}
         ${simCatLlena(c)?'':`<div class="sim-add">
-          <input type="text" inputmode="decimal" id="sim-in-${c.id}" placeholder="Nota hipotética (1.0–7.0)" onkeydown="if(event.key==='Enter')simAddNota('${c.id}')"/>
+          <input type="text" inputmode="${inputModeNota()}" autocapitalize="characters" id="sim-in-${c.id}" placeholder="${conceptosNota().length?'Nota hipotética (1.0–7.0, D/A/R)':'Nota hipotética (1.0–7.0)'}" onkeydown="if(event.key==='Enter')simAddNota('${c.id}')"/>
           <button onclick="simAddNota('${c.id}')">+ Agregar</button>
         </div>`}
       </div>`;
@@ -7043,7 +7091,8 @@ function simCatLlena(cat){
 }
 function simAddNota(catId){
   const inp=document.getElementById('sim-in-'+catId);if(!inp)return;
-  const val=parseNota(inp.value);
+  const rawNota=inp.value;
+  const val=parseNota(rawNota);
   if(isNaN(val)){showToast('Ingresa una nota entre 1.0 y 7.0',true);return;}
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r&&(r.categorias||[]).find(c=>c.id===catId);if(!cat)return;
@@ -7059,7 +7108,7 @@ function simAddNota(catId){
     slot=Array.from({length:cat.slots},(_,i)=>i).find(i=>!ocupadas.has(i));
     if(slot===undefined){showToast(`Ya simulaste las ${cat.slots} casillas de ${cat.nombre}`,true);return;}
   }
-  simState[catId].push({id:uid(),valor:val,...(slot===undefined?{}:{slot})});
+  simState[catId].push(asignarCalificacionNota({id:uid(),...(slot===undefined?{}:{slot})},rawNota,val));
   renderSimulador();
   setTimeout(()=>{const i=document.getElementById('sim-in-'+catId);if(i)i.focus();},30);
 }
@@ -7078,7 +7127,7 @@ function simCommit(){
         const conCasilla=Number.isInteger(s.slot);
         c.notas.push({
           id:uid(),nombre:conCasilla?etiquetaCasilla(r,c,s.slot):'Simulada '+(c.notas.length+1),
-          valor:s.valor,peso:1,...(conCasilla?{slot:s.slot}:{}),
+          valor:s.valor,peso:1,...(s.calificacionConceptual?{calificacionConceptual:s.calificacionConceptual}:{}),...(conCasilla?{slot:s.slot}:{}),
         });
         openCats[c.id]=true;
       });
