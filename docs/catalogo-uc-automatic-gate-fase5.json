@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-23T21:04:08.615Z",
+  "populationSize": 2001,
+  "scope": "all_new_auto_importable_candidates",
+  "checks": {
+    "weights_sum_100": {
+      "passedCount": 2001,
+      "flaggedCount": 0
+    },
+    "names_present_in_source": {
+      "passedCount": 2001,
+      "flaggedCount": 0
+    },
+    "all_source_percentages_used": {
+      "passedCount": 1998,
+      "flaggedCount": 3
+    }
+  },
+  "declaredSlots": {
+    "candidateCount": 97,
+    "categoryCount": 107,
+    "evaluationCount": 242,
+    "rule": "Solo N … X% c/u declarado literalmente; sin número no se emiten slots."
+  },
+  "passedAllChecksCount": 1998,
+  "flaggedCandidatesCount": 3,
+  "flaggedCandidates": [
+    {
+      "courseCode": "PSI2440",
+      "courseName": "Psicología del Delito",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=PSI2440",
+      "evaluationSourceText": "V.ESTRATEGIAS EVALUATIVAS\n-2 pruebas de desarrollo: 30% cada una\n-Trabajo final: Propuesta de intervencion: 40%",
+      "proposedEvaluations": [
+        [
+          "pruebas de desarrollo",
+          60
+        ],
+        [
+          "Trabajo final: Propuesta de intervencion",
+          40
+        ]
+      ],
+      "weightTotal": 100,
+      "sourcePercentages": [
+        30,
+        40
+      ],
+      "missingNames": [],
+      "unusedPercentages": [
+        30
+      ],
+      "checks": {
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": false
+      },
+      "failedChecks": [
+        "all_source_percentages_used"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "TSL587",
+      "courseName": "Innovación Social y Tecnología para el Trabajo Social",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=TSL587",
+      "evaluationSourceText": "V.ESTRATEGIAS EVALUATIVAS\n-1 analisis de caso: 20%\n-2 exposiciones trabajo en terreno sobre procesos de innovacion social social y tecnologia  25% cada una\n-1 trabajo final  experiencia de innovacion social incorporando tecnologia: 30%",
+      "proposedEvaluations": [
+        [
+          "analisis de caso",
+          20
+        ],
+        [
+          "exposiciones trabajo en terreno sobre procesos de innovacion social social y tecnologia",
+          50
+        ],
+        [
+          "trabajo final experiencia de innovacion social incorporando tecnologia",
+          30
+        ]
+      ],
+      "weightTotal": 100,
+      "sourcePercentages": [
+        20,
+        25,
+        30
+      ],
+      "missingNames": [],
+      "unusedPercentages": [
+        25
+      ],
+      "checks": {
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": false
+      },
+      "failedChecks": [
+        "all_source_percentages_used"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "TSL592",
+      "courseName": "Jovenes y Movimientos Sociales",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=TSL592",
+      "evaluationSourceText": "V.ESTRATEGIAS EVALUATIVAS\n-2 Fichas de analisis de casos: 20% cada una\n-Prueba: 35%\n-Policy brief: 25%",
+      "proposedEvaluations": [
+        [
+          "Fichas de analisis de casos",
+          40
+        ],
+        [
+          "Prueba",
+          35
+        ],
+        [
+          "Policy brief",
+          25
+        ]
+      ],
+      "weightTotal": 100,
+      "sourcePercentages": [
+        20,
+        35,
+        25
+      ],
+      "missingNames": [],
+      "unusedPercentages": [
+        20
+      ],
+      "checks": {
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": false
+      },
+      "failedChecks": [
+        "all_source_percentages_used"
+      ],
+      "passesAllChecks": false
+    }
+  ],
+  "limitation": "Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las tres comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta.",
+  "massImportAllowed": false
+}

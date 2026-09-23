@@ -16,6 +16,7 @@ const DEFAULT_CACHE = path.join(ROOT, '.cache', 'catalogo-uc', 'programas');
 const DEFAULT_SAMPLE = path.join(ROOT, 'docs', 'catalogo-uc-review-sample-fase5.json');
 const DEFAULT_LABELS = path.join(ROOT, 'docs', 'catalogo-uc-manual-validation-fase5.json');
 const DEFAULT_METRICS = path.join(ROOT, 'docs', 'catalogo-uc-validation-metrics-fase5.json');
+const DEFAULT_AUTOMATIC_GATE = path.join(ROOT, 'docs', 'catalogo-uc-automatic-gate-fase5.json');
 const DEFAULT_REPORT = path.join(ROOT, 'docs', 'catalogo-uc-fase5.md');
 const DEFAULT_PACKET = path.join(ROOT, 'docs', 'catalogo-uc-review-packet-fase5.md');
 const DEFAULT_SEED = 'gradehub-uc-fase5-v1';
@@ -487,23 +488,134 @@ function validateEvaluations(rows) {
   return { valid: errors.length === 0, errors, total };
 }
 
+function percentageValues(text) {
+  return [...String(text || '').matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)]
+    .map(match => Number(match[1].replace(',', '.')))
+    .filter(Number.isFinite);
+}
+
+function declaredSlots(candidate, row) {
+  const detail = row && row.detail || {};
+  const count = Number(detail.cantidad);
+  const unitWeight = Number(detail.pesoCadaUna);
+  const normalizedName = normalizar(row && (row.name ?? row.nombre));
+  if (!Number.isInteger(count) || count < 2 || !Number.isFinite(unitWeight) || !normalizedName) return null;
+  const countPattern = new RegExp(`(?:^|\\D)${count}(?=\\s)`);
+  const matchingLine = String(candidate && candidate.evaluationSourceText || '').split('\n').find(line => (
+    /\bc\s*\/\s*u\b/i.test(line)
+    && countPattern.test(line)
+    && normalizar(line).includes(normalizedName)
+    && percentageValues(line).some(value => Math.abs(value - unitWeight) < 0.000001)
+  ));
+  return matchingLine ? count : null;
+}
+
+function candidateEvaluations(candidate, editedEvaluations = null) {
+  const sourceRows = candidate && candidate.candidateWeights || [];
+  return (editedEvaluations || sourceRows).map(row => {
+    const name = cleanValue(row && (row.name ?? row.nombre));
+    const weight = Number(row && (row.weight ?? row.peso));
+    const sourceRow = sourceRows.find(source => (
+      normalizar(source.name ?? source.nombre) === normalizar(name)
+      && Math.abs(Number(source.weight ?? source.peso) - weight) < 0.000001
+    ));
+    const slots = sourceRow ? declaredSlots(candidate, sourceRow) : null;
+    return {
+      name,
+      weight,
+      ...(slots ? { slots, sourceUnitWeight: Number(sourceRow.detail.pesoCadaUna) } : {}),
+    };
+  });
+}
+
+function evaluateAutomaticChecks(candidate) {
+  const evaluations = candidateEvaluations(candidate);
+  const validation = validateEvaluations(evaluations);
+  const sourceNormalized = normalizar(candidate && candidate.evaluationSourceText);
+  const missingNames = evaluations
+    .map(row => row.name)
+    .filter(name => !name || !sourceNormalized.includes(normalizar(name)));
+  const usedPercentages = evaluations.flatMap(row => [
+    row.weight,
+    ...(row.slots ? [row.sourceUnitWeight] : []),
+  ]).filter(Number.isFinite);
+  const sourcePercentages = percentageValues(candidate && candidate.evaluationSourceText);
+  const unusedPercentages = [...new Set(sourcePercentages.filter(value => (
+    !usedPercentages.some(used => Math.abs(used - value) < 0.000001)
+  )))];
+  const checks = {
+    weights_sum_100: Math.abs(validation.total - 100) < 0.000001,
+    names_present_in_source: missingNames.length === 0,
+    all_source_percentages_used: unusedPercentages.length === 0,
+  };
+  return {
+    courseCode: candidate.courseCode,
+    courseName: candidate.courseName,
+    sourceUrl: candidate.sourceUrl,
+    evaluationSourceText: candidate.evaluationSourceText,
+    proposedEvaluations: evaluations.map(row => row.slots
+      ? [row.name, row.weight, { slots: row.slots }]
+      : [row.name, row.weight]),
+    weightTotal: validation.total,
+    sourcePercentages,
+    missingNames,
+    unusedPercentages,
+    checks,
+    failedChecks: Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name),
+    passesAllChecks: Object.values(checks).every(Boolean),
+  };
+}
+
+function buildAutomaticGateReport(population) {
+  const audited = (population || []).map(evaluateAutomaticChecks);
+  const flagged = audited.filter(item => !item.passesAllChecks);
+  const checkReport = check => {
+    const flaggedCount = audited.filter(item => !item.checks[check]).length;
+    return { passedCount: audited.length - flaggedCount, flaggedCount };
+  };
+  const withSlots = audited.flatMap(item => item.proposedEvaluations
+    .filter(row => row[2] && row[2].slots)
+    .map(row => ({ courseCode: item.courseCode, slots: row[2].slots })));
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    populationSize: audited.length,
+    scope: 'all_new_auto_importable_candidates',
+    checks: {
+      weights_sum_100: checkReport('weights_sum_100'),
+      names_present_in_source: checkReport('names_present_in_source'),
+      all_source_percentages_used: checkReport('all_source_percentages_used'),
+    },
+    declaredSlots: {
+      candidateCount: new Set(withSlots.map(item => item.courseCode)).size,
+      categoryCount: withSlots.length,
+      evaluationCount: withSlots.reduce((sum, item) => sum + item.slots, 0),
+      rule: 'Solo N … X% c/u declarado literalmente; sin número no se emiten slots.',
+    },
+    passedAllChecksCount: audited.length - flagged.length,
+    flaggedCandidatesCount: flagged.length,
+    flaggedCandidates: flagged,
+    limitation: 'Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las tres comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta.',
+    massImportAllowed: false,
+  };
+}
+
 function candidateToPresetProposal(candidate, approval) {
   if (!candidate || candidate.scope !== 'institutional_program') throw new Error('El candidato no conserva el alcance institucional.');
   if (!approval || approval.status !== 'approved') throw new Error('La conversión exige una aprobación humana explícita.');
   if (!cleanValue(approval.approvedBy) || !cleanValue(approval.approvedAt)) throw new Error('La aprobación debe registrar quién y cuándo aprobó.');
-  const evaluations = (approval.editedEvaluations || candidate.candidateWeights || []).map(row => ({
-    name: cleanValue(row.name ?? row.nombre),
-    weight: Number(row.weight ?? row.peso),
-  }));
+  const evaluations = candidateEvaluations(candidate, approval.editedEvaluations || null);
   const validation = validateEvaluations(evaluations);
   if (!validation.valid) throw new Error(validation.errors.join(' '));
   const presetDefinition = {
     sigla: candidate.courseCode,
-    evals: evaluations.map(row => [row.name, row.weight]),
+    evals: evaluations.map(row => row.slots
+      ? [row.name, row.weight, { slots: row.slots }]
+      : [row.name, row.weight]),
   };
-  // PRESETS_UC admite un tercer elemento por evaluación con slots, min/cap y
-  // fecha. Este prototipo todavía no lo emite: incorporarlo exige evidencia y
-  // revisión humana de esos campos, no inferirlos desde el texto.
+  // PRESETS_UC admite un tercer elemento por evaluación. Solo se emite slots
+  // cuando la fuente declara literalmente “N … X% c/u”. min/cap y fecha siguen
+  // fuera del prototipo: incorporarlos exige evidencia y revisión humana.
   const declaredPeriod = /^\d{4}-[12]$/.test(cleanValue(candidate.programVersionText) || '')
     ? cleanValue(candidate.programVersionText)
     : null;
@@ -523,7 +635,10 @@ function candidateToPresetProposal(candidate, approval) {
     section: null,
     NRC: null,
   };
-  const evalLines = presetDefinition.evals.map(row => `      [${jsString(row[0])},${row[1]}],`).join('\n');
+  const evalLines = presetDefinition.evals.map(row => {
+    const metadata = row[2] && row[2].slots ? `,{slots:${row[2].slots}}` : '';
+    return `      [${jsString(row[0])},${row[1]}${metadata}],`;
+  }).join('\n');
   const periodLine = declaredPeriod ? `    periodo:${jsString(declaredPeriod)},\n` : '';
   const diffText = `  ${jsString(candidate.courseName)}:{\n    sigla:${jsString(candidate.courseCode)},\n${periodLine}    evals:[\n${evalLines}\n    ],\n  },`;
   return {
@@ -603,7 +718,7 @@ function renderReviewPacket(sampleDocument) {
   return lines.join('\n');
 }
 
-function renderReport(sampleDocument, metrics, paths) {
+function renderReport(sampleDocument, metrics, paths, automaticGate = null) {
   const strata = sampleDocument.stratification.primaryStrata;
   const missingDiscipline = sampleDocument.stratification.populationByFeature.discipline.missing || 0;
   const declaredDiscipline = sampleDocument.populationSize - missingDiscipline;
@@ -612,6 +727,19 @@ function renderReport(sampleDocument, metrics, paths) {
     : metrics.false_auto_importable_count > 0
       ? `Se detectaron ${metrics.false_auto_importable_count} falsos auto_importable. Se detiene cualquier preparación de importación masiva.`
       : 'La muestra completa no detectó falsos auto_importable. Esto habilita diseñar una aprobación controlada, no importar automáticamente.';
+  const automaticGateLines = automaticGate ? [
+    '## Compuerta automática sobre los 2.001 candidatos', '',
+    `La compuerta offline revisó los **${automaticGate.populationSize}** candidatos: **${automaticGate.passedAllChecksCount}** pasan las tres comprobaciones y **${automaticGate.flaggedCandidatesCount}** quedan marcados para revisión.`, '',
+    '| Comprobación | Pasan | Marcados |',
+    '|---|---:|---:|',
+    `| Pesos suman 100 | ${automaticGate.checks.weights_sum_100.passedCount} | ${automaticGate.checks.weights_sum_100.flaggedCount} |`,
+    `| Cada nombre aparece en el texto fuente | ${automaticGate.checks.names_present_in_source.passedCount} | ${automaticGate.checks.names_present_in_source.flaggedCount} |`,
+    `| Ningún porcentaje del texto queda sin usar | ${automaticGate.checks.all_source_percentages_used.passedCount} | ${automaticGate.checks.all_source_percentages_used.flaggedCount} |`, '',
+    `El patrón literal \`N … X% c/u\` conserva \`slots\` en **${automaticGate.declaredSlots.candidateCount}** candidatos, **${automaticGate.declaredSlots.categoryCount}** categorías y **${automaticGate.declaredSlots.evaluationCount}** evaluaciones declaradas. Sin número explícito no se inventan \`slots\`.`, '',
+    `Informe contable completo: \`${path.relative(ROOT, paths.automaticGate)}\`. Incluye cada candidato marcado, su URL, el texto evaluativo y el detalle de la comprobación que falló.`, '',
+    `**Límite de la compuerta:** ${automaticGate.limitation}`, '',
+    'La revisión humana de la muestra sigue siendo necesaria, pero cambia de foco: la máquina verifica la transcripción interna; la persona confirma en `sourceUrl` que el parser leyó la sección correcta del programa.', '',
+  ] : [];
   const lines = [
     '# Fase 5 · Validación estratificada y flujo de aprobación UC', '',
     '## Resumen ejecutivo', '',
@@ -627,6 +755,7 @@ function renderReport(sampleDocument, metrics, paths) {
     `- Forma singular/plural superficial: ${topDistribution(sampleDocument.stratification.populationByFeature.categoryNumberForm)}.`,
     `- Texto posterior a porcentajes: ${topDistribution(sampleDocument.stratification.populationByFeature.additionalTextAfterPercentages)}.`, '',
     'La unidad académica no está disponible de forma fiable: `ESCUELAS_UC` está vacío deliberadamente. En su lugar se conserva únicamente `DISCIPLINA` cuando el propio programa la declara; no se deduce facultad desde la sigla.', '',
+    ...automaticGateLines,
     '## Estratos encontrados', '',
     `Estrato primario: \`${sampleDocument.stratification.primaryDefinition.join(' × ')}\`. La asignación da al menos un cupo a cada estrato y distribuye el resto según la raíz de la población, por lo que los formatos raros quedan sobrerrepresentados sin ahogar los comunes.`, '',
     '| Estrato | Población | Muestra | Tasa de muestreo |',
@@ -641,10 +770,11 @@ function renderReport(sampleDocument, metrics, paths) {
     `- Paquete legible: \`${path.relative(ROOT, paths.packet)}\`.`,
     `- Muestra estructurada: \`${path.relative(ROOT, paths.sample)}\`.`,
     `- Etiquetas humanas separadas: \`${path.relative(ROOT, paths.labels)}\`.`,
-    `- Métricas: \`${path.relative(ROOT, paths.metrics)}\`.`, '',
+    `- Métricas: \`${path.relative(ROOT, paths.metrics)}\`.`,
+    `- Compuerta automática poblacional: \`${path.relative(ROOT, paths.automaticGate)}\`.`, '',
     'Ninguna etiqueta viene preseleccionada. El archivo de etiquetas está ligado al hash de cada sección evaluativa para impedir que una decisión vieja se aplique a una fuente nueva.', '',
     '## Cómo ejecutar la revisión y calcular métricas', '',
-    '1. Abrir cada ficha del paquete y contrastar el texto evaluativo con la URL oficial.',
+    '1. Abrir cada ficha del paquete y confirmar en la URL oficial que el parser tomó la sección evaluativa correcta.',
     '2. Completar `humanLabel`, `note`, `reviewer` y `reviewedAt` en el archivo de etiquetas.',
     '3. Ejecutar:', '',
     '```bash',
@@ -671,12 +801,12 @@ function renderReport(sampleDocument, metrics, paths) {
     '- un registro de provenance separado;',
     '- la validación realizada.', '',
     'No escribe `data.js`. Tampoco divide categorías agregadas: `Pruebas 40%` sigue siendo una categoría de 40%, salvo que una persona la edite con evidencia antes de aprobar.',
-    '`evals` admite un tercer elemento con `slots`, `min`/`cap` y `fecha`; este prototipo todavía no lo emite y no debe inferir esos datos.', '',
+    '`evals` emite un tercer elemento con `slots` únicamente cuando el texto declara literalmente `N … X% c/u`. Sin número declarado no inventa la cantidad; `min`/`cap` y `fecha` siguen fuera del prototipo.', '',
     '## Provenance propuesta', '',
     'Cada aprobación conserva centralmente `sourceType`, `sourceUrl`, `courseCode`, `retrievedAt`, `programVersionText`, `evaluationHash`, `parserVersion`, `approvedAt`, `approvedBy` y `scope`. El alcance continúa siendo `institutional_program`; semestre, sección y NRC permanecen nulos.', '',
     'La provenance debe vivir junto a la definición institucional o en un registro central por sigla/hash, nunca copiada a cada cuenta. El estado del estudiante solo recibe la pauta resultante.', '',
     '## Riesgos', '',
-    '- La muestra reduce incertidumbre, pero no demuestra que los 2.001 casos sean correctos.',
+    '- La muestra y la compuerta reducen incertidumbre, pero no demuestran que los 2.001 casos sean correctos: ambas fallan si se extrajo la sección equivocada.',
     `- Solo ${declaredDiscipline} candidatos declaran \`DISCIPLINA\`; inferir la facultad desde la sigla sería inventar metadata.`,
     '- Los programas institucionales pueden ser más genéricos que la pauta del semestre.',
     '- Una edición humana puede introducir un error aunque el parser haya acertado; por eso el diff y los tests siguen siendo obligatorios.',
@@ -699,6 +829,7 @@ function parseArgs(argv) {
     sample: DEFAULT_SAMPLE,
     labels: DEFAULT_LABELS,
     metrics: DEFAULT_METRICS,
+    automaticGate: DEFAULT_AUTOMATIC_GATE,
     report: DEFAULT_REPORT,
     packet: DEFAULT_PACKET,
     seed: DEFAULT_SEED,
@@ -711,6 +842,7 @@ function parseArgs(argv) {
     else if (arg === '--sample') options.sample = path.resolve(argv[++index]);
     else if (arg === '--labels') options.labels = path.resolve(argv[++index]);
     else if (arg === '--metrics') options.metrics = path.resolve(argv[++index]);
+    else if (arg === '--gate-report') options.automaticGate = path.resolve(argv[++index]);
     else if (arg === '--report') options.report = path.resolve(argv[++index]);
     else if (arg === '--packet') options.packet = path.resolve(argv[++index]);
     else if (arg === '--seed') options.seed = String(argv[++index]);
@@ -725,9 +857,11 @@ function help() {
     'Uso:',
     '  node bin/validar-candidatos-uc-fase5.js prepare [--sample-size 120] [--seed texto]',
     '  node bin/validar-candidatos-uc-fase5.js metrics',
+    '  node bin/validar-candidatos-uc-fase5.js gate [--gate-report ruta.json]',
     '',
     'prepare lee el inventario y la cache de Fase 4; no consulta la red.',
     'metrics lee únicamente la muestra y las etiquetas humanas.',
+    'gate recorre offline los 2.001 candidatos y emite las tres comprobaciones automáticas.',
   ].join('\n');
 }
 
@@ -736,6 +870,7 @@ function prepare(options) {
   const entries = (inventory.entries || []).filter(entry => !entry.hasExistingPreset && entry.classification === 'auto_importable');
   const population = entries.map(entry => analyzeCandidate(entry, options.cacheDir));
   validateCandidateNameCollisions(population);
+  const automaticGate = buildAutomaticGateReport(population);
   const selection = selectStratifiedSample(population, options.sampleSize, options.seed);
   const sample = sampleDocument(population, selection, options.seed, options.sampleSize, inventory);
   const existingLabels = fs.existsSync(options.labels) ? readJson(options.labels) : null;
@@ -745,18 +880,32 @@ function prepare(options) {
   writeJson(options.sample, sample);
   writeJson(options.labels, labels);
   writeJson(options.metrics, metrics);
+  writeJson(options.automaticGate, automaticGate);
   writeText(options.packet, renderReviewPacket(sample));
-  writeText(options.report, renderReport(sample, metrics, paths));
-  return { sample, labels, metrics };
+  writeText(options.report, renderReport(sample, metrics, paths, automaticGate));
+  return { sample, labels, metrics, automaticGate };
 }
 
 function recalculate(options) {
   const sample = readJson(options.sample);
   const labels = readJson(options.labels);
   const metrics = calculateMetrics(sample, labels);
+  const automaticGate = fs.existsSync(options.automaticGate) ? readJson(options.automaticGate) : null;
   writeJson(options.metrics, metrics);
-  writeText(options.report, renderReport(sample, metrics, options));
+  writeText(options.report, renderReport(sample, metrics, options, automaticGate));
   return metrics;
+}
+
+function runAutomaticGate(options) {
+  const inventory = readJson(options.inventory);
+  const entries = (inventory.entries || []).filter(entry => !entry.hasExistingPreset && entry.classification === 'auto_importable');
+  const population = entries.map(entry => analyzeCandidate(entry, options.cacheDir));
+  const automaticGate = buildAutomaticGateReport(population);
+  writeJson(options.automaticGate, automaticGate);
+  if (fs.existsSync(options.sample) && fs.existsSync(options.metrics)) {
+    writeText(options.report, renderReport(readJson(options.sample), readJson(options.metrics), options, automaticGate));
+  }
+  return automaticGate;
 }
 
 async function main() {
@@ -777,6 +926,18 @@ async function main() {
   }
   if (options.command === 'metrics') {
     console.log(JSON.stringify(recalculate(options), null, 2));
+    return;
+  }
+  if (options.command === 'gate') {
+    const result = runAutomaticGate(options);
+    console.log(JSON.stringify({
+      populationSize: result.populationSize,
+      passedAllChecks: result.passedAllChecksCount,
+      flaggedCandidates: result.flaggedCandidatesCount,
+      checks: result.checks,
+      declaredSlots: result.declaredSlots,
+      massImportAllowed: result.massImportAllowed,
+    }, null, 2));
     return;
   }
   throw new Error(`Comando desconocido: ${options.command}`);
@@ -807,6 +968,11 @@ module.exports = {
   validateLabels,
   calculateMetrics,
   validateEvaluations,
+  percentageValues,
+  declaredSlots,
+  candidateEvaluations,
+  evaluateAutomaticChecks,
+  buildAutomaticGateReport,
   validateCandidateNameCollisions,
   candidateToPresetProposal,
   sampleDocument,
@@ -814,4 +980,5 @@ module.exports = {
   renderReport,
   prepare,
   recalculate,
+  runAutomaticGate,
 };
