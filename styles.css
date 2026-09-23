@@ -425,7 +425,11 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .ap-caption{margin-top:10px;text-align:center;font-size:0.6875rem;color:var(--fg3);}
 @media(hover:hover) and (pointer:fine){.auth-preview:hover{opacity:1;}}
 @media(prefers-reduced-motion:reduce){.auth-preview{transition:none;}}
-.ap-card{position:relative;padding:16px 16px 6px;border:1px solid var(--border);border-radius:18px;background:var(--bg2);}
+.ap-card{position:relative;padding:16px 16px 6px;border:1px solid var(--border);border-radius:18px;background:var(--card);}
+/* El halo del acento detrás de las dos muestras. Es lo que les daba color y
+   Lucas lo echó de menos; vuelve más suave (88% de transparencia contra 82%),
+   que tiñe sin devolverles el peso de una tarjeta. */
+.ap-card::before,.asp-card::before{content:"";position:absolute;inset:-28px;z-index:-1;border-radius:40px;background:radial-gradient(60% 60% at 50% 40%,color-mix(in srgb,var(--primary),transparent 88%),transparent 70%);pointer-events:none;}
 .ap-head{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:start;}
 .ap-name{font-size:0.9375rem;font-weight:650;letter-spacing:-.02em;line-height:1.2;color:var(--fg);}
 .ap-meta{grid-column:1;font-size:0.6875rem;color:var(--fg3);}
@@ -447,7 +451,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 @media(prefers-reduced-motion:reduce){.auth-stats-preview{transition:none;}}
 /* Sin sombra y sobre el fondo, no sobre una tarjeta: la única superficie
    elevada de la pantalla es el formulario, que es a lo que se viene. */
-.asp-card{padding:20px;border:1px solid var(--border);border-radius:18px;background:var(--bg2);}
+.asp-card{position:relative;padding:20px;border:1px solid var(--border);border-radius:18px;background:var(--card);}
 .asp-eyebrow{margin-bottom:3px;color:var(--primary);font-size:0.625rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase;}
 .asp-semester{margin-bottom:14px;color:var(--fg);font-size:1rem;font-weight:650;letter-spacing:-.025em;}
 .asp-gpa-label{color:var(--fg3);font-size:0.625rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
@@ -523,11 +527,15 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
   /* Tres columnas, pero no tres iguales: la del medio es la ancha porque es a
      lo que se viene. Con las tres del mismo tamaño la pantalla se leía como
      tres tarjetas equivalentes y costaba encontrar dónde se entra. */
-  #screen-auth .ob-wrap{grid-template-columns:minmax(250px,340px) minmax(340px,430px) minmax(250px,340px);column-gap:clamp(32px,3.5vw,64px);max-width:none;}
+  #screen-auth .ob-wrap{grid-template-columns:minmax(230px,320px) minmax(380px,480px) minmax(230px,320px);column-gap:clamp(28px,3vw,56px);max-width:none;}
+  /* Espejo de la muestra de la izquierda: giran hacia afuera, como dos hojas
+     apoyadas a los costados del formulario. */
+  .asp-card{transform:perspective(1200px) rotateY(-7deg);transition:transform .45s var(--ease-out);}
   #screen-auth .auth-stats-preview{display:block;grid-column:3;grid-row:1/span 20;align-self:center;justify-self:stretch;margin:0;}
 }
 @media(min-width:900px) and (hover:hover) and (pointer:fine){.ap-card:hover{transform:perspective(1200px) rotateY(0deg);}}
-@media(prefers-reduced-motion:reduce){.ap-card{transform:none;transition:none;}}
+@media(min-width:1280px) and (hover:hover) and (pointer:fine){.asp-card:hover{transform:perspective(1200px) rotateY(0deg);}}
+@media(prefers-reduced-motion:reduce){.ap-card,.asp-card{transform:none;transition:none;}}
 .auth-legal a{color:var(--fg2);text-decoration:underline;text-underline-offset:2px;}
 .auth-legal a:hover{color:var(--primary);}
 /* GPA — hero protagonista, con color propio (gradient teal) y contexto único */
