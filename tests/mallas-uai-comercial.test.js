@@ -36,14 +36,29 @@ chk('ningún semestre quedó vacío',
   Object.values(M).every(c=>Object.values(c).every(l=>Array.isArray(l)&&l.length>0)));
 
 console.log('\n=== Consistencia con lo que ya sabíamos de la UAI ===');
-// Las seis pautas UAI se transcribieron antes y de otra fuente. Que sean todas
-// ramos del primer año de Ingeniería Comercial es la validación cruzada de que
-// esta malla no salió de la nada.
+// Las pautas UAI se transcriben de programas oficiales, y la malla de otra
+// fuente. Que cada pauta corresponda a un ramo que la malla conoce es la
+// validación cruzada de que ninguna de las dos salió de la nada.
 const bloque=datos.slice(datos.indexOf('const PRESETS_UAI'));
 const presets=[...bloque.slice(0,bloque.indexOf('\nconst ')).matchAll(/^  '([^']+)':/gm)].map(m=>m[1]);
-const primerAnio=[...(M['UAI-INGENIERIA-COMERCIAL']['1']||[]),...(M['UAI-INGENIERIA-COMERCIAL']['2']||[])];
-chk('las pautas UAI que ya teníamos son ramos del primer año de Comercial',
-  presets.length>0 && presets.every(p=>primerAnio.includes(p)));
+const enAlgunaMalla=new Set(Object.values(M).flatMap(c=>Object.values(c).flat()));
+// Pautas con programa oficial en mano de un ramo que las mallas NO tienen. No
+// es una excepción para que el test pase: es la lista de huecos detectados, y
+// cada una dice qué falta comprobar. Si se resuelve, se saca de acá.
+const FUERA_DE_MALLA={
+  // Programa CORE oficial 2026-2 de un estudiante de Comercial que lo cursa en
+  // SEGUNDO semestre. Las mallas solo tienen "Civilización Contemporánea", sin
+  // número, en primero, y ponen "Literatura y Humanidades" como el CORE de
+  // segundo. Falta confirmar si la secuencia CORE cambió o si hay más de una.
+  'Civilización Contemporánea II':'la malla no tiene la II; ver si la secuencia CORE cambió',
+};
+const huerfanas=presets.filter(p=>!enAlgunaMalla.has(p)&&!FUERA_DE_MALLA[p]);
+chk('cada pauta UAI corresponde a un ramo de alguna malla'+(huerfanas.length?' → '+huerfanas.join(' · '):''),
+  presets.length>0 && huerfanas.length===0);
+// Que la lista de huecos no se llene en silencio: si crece, hay que mirar las
+// mallas en vez de seguir agregando excepciones.
+chk(`los huecos conocidos entre pauta y malla siguen siendo pocos (${Object.keys(FUERA_DE_MALLA).length})`,
+  Object.keys(FUERA_DE_MALLA).length<=3);
 
 // El plan común de ingeniería de la UAI está en seis mallas transcritas aparte.
 // Industrial tiene que calzar con ellas o una de las dos fuentes está mal.

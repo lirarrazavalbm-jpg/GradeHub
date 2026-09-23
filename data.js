@@ -2441,6 +2441,104 @@ const PRESETS_UAI={
       'Las notas y promedios se redondean a un decimal: 3,94 queda en 3,9 y 3,95 en 4,0. El examen final es obligatorio',
     ],
   },
+  // Syllabus oficial UAI 2026-2.
+  //
+  // El programa da los pesos en dos pisos: tres pruebas de cátedra pesan 70% de
+  // la nota de presentación y tres controles el 30%, y esa nota de presentación
+  // vale 70% contra un examen de 30%. Aplanado son 49 / 21 / 30, que es lo que
+  // el modelo guarda.
+  //
+  // El "segundo examen" del reglamento —final entre 3,5 y 3,9 tras rendir el
+  // examen, con opción de aprobar con 4,0— es exactamente la forma de
+  // `recuperativo`, así que se declara y se calcula.
+  'Matemáticas Avanzadas II':{
+    periodo:'2026-2',
+    recuperativo:{min:3.5,max:3.9,nota:4.0},
+    eximicion:{evaluacion:'Examen',segun:['Pruebas','Controles'],min:5,requiereConfirmacion:true},
+    // El programa nombra a qué evaluación pasa la ausencia justificada, así que
+    // se puede declarar: "la nota del control sea reemplazada por la del examen".
+    ausenciasJustificadas:{
+      reemplazos:[
+        {desde:'Controles',hacia:'Examen'},
+        {desde:'Pruebas',hacia:'Examen'},
+      ],
+    },
+    evals:[
+      ['Pruebas',49,{slots:3}],
+      ['Controles',21,{slots:3}],
+      ['Examen',30],
+    ],
+    noCalcula:[
+      'Si rendiste todas las pruebas y controles puedes reemplazar la nota de UNA prueba por la del examen, siempre que el examen sea al menos 4,0',
+    ],
+    reglasDelCurso:[
+      'La eximición pide además haber rendido todas las evaluaciones; la app no sabe si una casilla vacía es una que no rendiste o una que no has ingresado',
+      'Las evaluaciones corregidas se entregan en un máximo de 2 semanas hábiles',
+    ],
+  },
+  // Syllabus oficial UAI 2026-2.
+  //
+  // Dos dimensiones que se aprueban POR SEPARADO: la nota teórica (pruebas) y
+  // la práctica (laboratorios y trabajo grupal), cada una 50% de la nota de
+  // presentación. "En caso de reprobar alguna de las dos áreas, la nota final
+  // del curso corresponderá a la menor entre ambas" — eso es `group_min` con
+  // `cap:'self'`, la misma regla que ya modela FEN.
+  //
+  // Aplanado, con examen: 0,5·(0,7·NT + 0,3·ET) + 0,5·(0,7·NP + 0,3·EP), y NP
+  // repartido 75/25 entre laboratorios y trabajo. Da 35 / 26,25 / 8,75 / 15 /
+  // 15, que son los MISMOS pesos que Razonamiento Cuantitativo con Datos I.
+  //
+  // "Pruebas" va SIN `slots`: el programa nunca dice cuántas son. Los
+  // laboratorios sí —cinco, y cuentan los cuatro mejores.
+  'Razonamiento Cuantitativo con Datos II':{
+    periodo:'2026-2',
+    evals:[
+      ['Pruebas',35],
+      ['Laboratorios',26.25,{slots:5,dropLowest:{count:1}}],
+      ['Trabajo grupal',8.75],
+      ['Examen teórico',15],
+      ['Examen práctico',15],
+    ],
+    grupos:[
+      {nombre:'Nota teórica',evals:['Pruebas','Examen teórico'],min:4.0,cap:'self'},
+      {nombre:'Nota práctica',evals:['Laboratorios','Trabajo grupal','Examen práctico'],min:4.0,cap:'self'},
+    ],
+    noCalcula:[
+      'Te eximes del examen si la nota de presentación es al menos 5,0 y las notas teórica y práctica son ambas al menos 4,0. No se declara como eximición porque el examen son dos evaluaciones separadas y el modelo exime de una',
+    ],
+    reglasDelCurso:[
+      'Una inasistencia justificada a prueba o laboratorio se reemplaza con la parte correspondiente del examen',
+    ],
+  },
+  // Programa oficial UAI 2026-2, CORE.
+  //
+  // OJO CON EL NOMBRE: el programa dice "Civilización Contemporánea II" y la
+  // malla UAI tiene "Civilización Contemporánea", sin número, en primer
+  // semestre. Se transcribe con el nombre del documento, que es el que manda;
+  // si resulta que son el mismo ramo o que falta el I en la malla, eso se
+  // arregla en la malla y no renombrando la pauta.
+  //
+  // El documento se contradice sobre cuántas evaluaciones de lectura son: el
+  // encabezado de la ponderación declara "cantidad: 10" y el cuerpo habla de
+  // "las once evaluaciones semestrales". Se toma el 10 declarado junto al
+  // porcentaje, que es el dato que la ponderación fija.
+  'Civilización Contemporánea II':{
+    periodo:'2026-2',
+    evals:[
+      ['Evaluaciones de lectura',32.5,{slots:10}],
+      ['Participación en clases',32.5],
+      ['Ensayo breve escrito en clases',10],
+      ['Examen',25],
+    ],
+    noCalcula:[
+      'Te eximes del examen si tu nota de presentación te deja en el 20% superior del curso y además es al menos 5,5: la app no conoce las notas del resto del curso',
+    ],
+    reglasDelCurso:[
+      'El curso exige 80% de asistencia: bajo eso repruebas, con 3,9 si tu promedio era 4,0 o más, o con tu promedio si era 3,9 o menos. La app no registra asistencia',
+      'Las recorrecciones se piden dentro de una semana desde que entregan la evaluación',
+      'El plagio se califica con 1,0',
+    ],
+  },
 };
 
 // Registro de contenido: sumar una universidad no exige replicar los cuatro
