@@ -456,7 +456,16 @@ function enlaceContactoClase(tipo,valor){
   }
   if(canal==='email'){
     const correo=dato.toLowerCase();
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)?`mailto:${encodeURIComponent(correo)}`:'';
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo))return '';
+    // El `@` NO se codifica: es el separador del destinatario y el RFC 6068 no
+    // lo admite escapado. `encodeURIComponent` lo convertía en %40, y con eso
+    // hay clientes de correo que no abren el mensaje o lo abren sin destino —
+    // justo el enlace del que depende todo el marketplace.
+    //
+    // Lo demás sí se codifica: un `?` o un `&` en la dirección los leería el
+    // cliente como el inicio de los encabezados del mailto (asunto, cuerpo,
+    // copia oculta), no como parte del correo.
+    return `mailto:${encodeURIComponent(correo).replace(/%40/g,'@')}`;
   }
   return '';
 }
@@ -467,7 +476,12 @@ function formatoClase(anuncio){
   return [modalidad,ubicacion].filter(Boolean).join(' · ');
 }
 function pesosClase(valor){
-  return new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Number(valor)||0);
+  // Nunca un precio negativo. El formulario ya exige entre 1.000 y 500.000, así
+  // que un negativo solo puede venir de una fila corrupta o manipulada del
+  // servidor — y ahí "$-500" en el catálogo es peor que no mostrar nada.
+  const n=Number(valor);
+  return new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0})
+    .format(Number.isFinite(n)&&n>0?n:0);
 }
 function textoContactoClase(tipo){return {whatsapp:'Hablar por WhatsApp',instagram:'Ver Instagram',email:'Enviar correo'}[tipo]||'Contactar';}
 
