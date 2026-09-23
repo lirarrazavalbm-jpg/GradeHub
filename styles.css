@@ -145,6 +145,21 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
 .recorreccion-toggle input{width:18px;height:18px;margin:1px 0 0;flex-shrink:0;accent-color:var(--primary);}
 .recorreccion-toggle span{display:flex;flex-direction:column;gap:2px;color:var(--fg);font-size:0.8125rem;line-height:1.3;}
 .recorreccion-toggle b{font-weight:650;}.recorreccion-toggle small{color:var(--fg3);font-size:0.71875rem;}
+/* El plazo se despliega al marcar la casilla: sin marca no ocupa espacio. */
+.recorreccion-plazo{margin:-8px 0 14px;padding:0 2px;}
+/* El recordatorio de Inicio. El rojo de `.urgente` es el de urgencia que la app
+   ya usa en errores, NO el del semáforo: no dice nada sobre la nota, dice que
+   se acaba el plazo para reclamarla. Por eso no reutiliza .bad ni --red-light
+   del semáforo académico. */
+.home-recorrecciones{margin:4px 20px 0;padding:12px 14px;border:1px solid color-mix(in srgb,var(--primary),transparent 55%);border-radius:12px;background:var(--primary-light);}
+.home-recorrecciones.urgente{border-color:color-mix(in srgb,var(--red),transparent 50%);background:color-mix(in srgb,var(--red),transparent 92%);}
+.home-recorrecciones-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.home-recorreccion-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;cursor:pointer;}
+.home-recorreccion-row+.home-recorreccion-row{border-top:1px solid color-mix(in srgb,var(--border),transparent 45%);}
+.home-recorreccion-row div{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.home-recorreccion-row strong{font-size:0.84375rem;font-weight:650;color:var(--fg);}
+.home-recorreccion-row span{font-size:0.75rem;color:var(--fg3);}
+.home-recorreccion-row.urgente span{color:var(--red);font-weight:600;}
 .eval-sub{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;}
 .eval-sub+.eval-sub{border-top:1px solid color-mix(in srgb,var(--border),transparent 45%);}
 .eval-sub-name{font-size:0.84375rem;color:var(--fg2);font-weight:500;}

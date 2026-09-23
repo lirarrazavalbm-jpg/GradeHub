@@ -1,6 +1,45 @@
 // Render de las vistas principales. Carga después de app.js: usa sus datos y helpers globales.
 
+// Las recorrecciones pendientes, arriba de los ramos.
+//
+// Vivían solo en la Agenda y en la ficha del ramo, o sea había que ir a
+// buscarlas. Una recorrección con plazo es lo contrario: si te enteras cuando
+// abres el ramo, ya puede ser tarde.
+//
+// El rojo de acá NO es el del semáforo. No dice nada sobre la nota —de hecho la
+// nota ya está puesta— sino que se te acaba el plazo para reclamarla. Por eso
+// usa `--red` como los errores y el "ya no alcanza" de la calculadora, y nunca
+// las clases `good`/`warn`/`bad`, que sí significan aprobado, al borde y
+// reprobado.
+function renderRecorreccionesHome(){
+  const caja=document.getElementById('home-recorrecciones');
+  if(!caja)return;
+  const items=typeof recorreccionesPendientes==='function'?recorreccionesPendientes():[];
+  if(!items.length){caja.style.display='none';caja.innerHTML='';return;}
+  const urgentes=items.filter(x=>x.dias!==null&&x.dias<=RECORRECCION_DIAS_URGENTE);
+  const plazo=x=>{
+    if(x.dias===null)return 'sin plazo anotado';
+    if(x.dias<0)return `el plazo venció hace ${Math.abs(x.dias)} ${Math.abs(x.dias)===1?'día':'días'}`;
+    if(x.dias===0)return 'el plazo vence hoy';
+    if(x.dias===1)return 'te queda 1 día';
+    return `te quedan ${x.dias} días`;
+  };
+  caja.style.display='block';
+  caja.className='home-recorrecciones'+(urgentes.length?' urgente':'');
+  caja.innerHTML=`
+    <div class="home-recorrecciones-hd">
+      <span class="section-hd-title">Por mandar a recorregir</span>
+      <span class="ag-count">${items.length}</span>
+    </div>
+    ${items.map(x=>`<article class="home-recorreccion-row${x.dias!==null&&x.dias<=RECORRECCION_DIAS_URGENTE?' urgente':''}" role="button" tabindex="0" onclick="openRamo('${esc(x.ramo.id)}')">
+      <div>
+        <strong>${esc(nombreNotaCasilla(x.ramo,x.cat,x.nota))}</strong>
+        <span>${esc(x.ramo.nombre)} · ${esc(plazo(x))}</span>
+      </div>
+    </article>`).join('')}`;
+}
 function renderHome(){
+  renderRecorreccionesHome();
   const g=gpa(S.ramos);
   const gpael=document.getElementById('home-gpa');
   const emptyHint=document.getElementById('gpa-empty-hint');
