@@ -405,10 +405,14 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
    compacta bajo las cifras (dos filas); en escritorio ocupa la columna
    izquierda, con las cuatro filas y un leve giro que se endereza al pasar el
    mouse. */
-.auth-preview{width:100%;max-width:360px;margin:0 auto 22px;}
+/* La muestra acompaña, no compite: sin sombra, sobre el fondo y no sobre una
+   tarjeta como la del formulario, y un punto más apagada. Quien llega tiene que
+   mirar primero dónde se entra. Al pasar el mouse recupera su color entero. */
+.auth-preview{width:100%;max-width:360px;margin:0 auto 22px;opacity:.82;transition:opacity var(--motion-base) var(--ease-out);}
 .ap-caption{margin-top:10px;text-align:center;font-size:0.6875rem;color:var(--fg3);}
-.ap-card{position:relative;padding:16px 16px 6px;border:1px solid var(--border);border-radius:18px;background:var(--card);box-shadow:var(--shadow-lg);}
-.ap-card::before{content:"";position:absolute;inset:-28px;z-index:-1;border-radius:40px;background:radial-gradient(60% 60% at 50% 40%,color-mix(in srgb,var(--primary),transparent 82%),transparent 70%);pointer-events:none;}
+@media(hover:hover) and (pointer:fine){.auth-preview:hover{opacity:1;}}
+@media(prefers-reduced-motion:reduce){.auth-preview{transition:none;}}
+.ap-card{position:relative;padding:16px 16px 6px;border:1px solid var(--border);border-radius:18px;background:var(--bg2);}
 .ap-head{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:start;}
 .ap-name{font-size:0.9375rem;font-weight:650;letter-spacing:-.02em;line-height:1.2;color:var(--fg);}
 .ap-meta{grid-column:1;font-size:0.6875rem;color:var(--fg3);}
@@ -425,12 +429,16 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .ap-val{min-width:44px;padding:6px 0;border:1.5px solid color-mix(in srgb,var(--c,var(--border2)),transparent 40%);border-radius:9px;text-align:center;font-size:0.9375rem;font-weight:700;color:var(--c,var(--fg));background:var(--bg2);font-variant-numeric:tabular-nums;}
 .ap-val-empty{color:var(--fg3);font-weight:400;border-color:var(--border2);}
 .ap-row-extra{display:none;}
-.auth-stats-preview{display:none;width:100%;max-width:420px;}
-.asp-card{padding:20px;border:1px solid var(--border);border-radius:18px;background:var(--card);box-shadow:var(--shadow-lg);}
+.auth-stats-preview{display:none;width:100%;max-width:420px;opacity:.82;transition:opacity var(--motion-base) var(--ease-out);}
+@media(hover:hover) and (pointer:fine){.auth-stats-preview:hover{opacity:1;}}
+@media(prefers-reduced-motion:reduce){.auth-stats-preview{transition:none;}}
+/* Sin sombra y sobre el fondo, no sobre una tarjeta: la única superficie
+   elevada de la pantalla es el formulario, que es a lo que se viene. */
+.asp-card{padding:20px;border:1px solid var(--border);border-radius:18px;background:var(--bg2);}
 .asp-eyebrow{margin-bottom:3px;color:var(--primary);font-size:0.625rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase;}
 .asp-semester{margin-bottom:14px;color:var(--fg);font-size:1rem;font-weight:650;letter-spacing:-.025em;}
 .asp-gpa-label{color:var(--fg3);font-size:0.625rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
-.asp-gpa{margin:2px 0 15px;color:var(--yellow);font-size:3.25rem;font-weight:750;letter-spacing:-.055em;line-height:1;font-variant-numeric:tabular-nums;}
+.asp-gpa{margin:2px 0 15px;color:var(--yellow);font-size:2.5rem;font-weight:750;letter-spacing:-.055em;line-height:1;font-variant-numeric:tabular-nums;}
 .asp-section-title{margin:12px 0 7px;color:var(--fg2);font-size:0.6875rem;font-weight:700;}
 .asp-progress-card{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:12px;border:1px solid color-mix(in srgb,var(--primary),transparent 72%);border-radius:12px;background:var(--muted);}
 .asp-progress-card>div{display:flex;flex-direction:column;gap:2px;}
@@ -450,9 +458,32 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .asp-priority small{display:block;color:var(--fg3);font-size:0.53125rem;font-weight:600;text-transform:uppercase;}
 .asp-range{padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums;}
 .asp-range span{color:var(--red);}.asp-range small{color:var(--fg3);font-size:0.75rem;}.asp-range b{color:var(--green);}
-/* En móvil va debajo del login, chica y sin resplandor: no compite con el
-   formulario. Sin la línea de meta, dos filas, menos aire. */
-@media(max-width:899px){.auth-preview{max-width:300px;margin:22px auto 4px;}.ap-card{padding:12px 12px 2px;box-shadow:var(--shadow);}.ap-card::before{display:none;}.ap-meta{display:none;}.ap-name{font-size:0.875rem;}.ap-hero{margin-top:8px;gap:10px;}.ap-avg{font-size:1.875rem;}.ap-pill{font-size:0.625rem;padding:5px 8px;}.ap-bar{margin:10px 0 2px;}.ap-row{padding:6px 0;}.ap-val{min-width:40px;padding:5px 0;font-size:0.875rem;}}
+/* En el teléfono la muestra NO entra. Con ella el contenido medía 1135px en
+   una pantalla de 812: el login quedaba pegado al borde de arriba porque ya no
+   había aire que repartir. Sin ella cabe entero y `justify-content:center` lo
+   deja donde tiene que estar, al centro. En escritorio sí entra: tiene su
+   propia columna y no le quita espacio a nada. */
+@media(max-width:899px){
+  .auth-preview{display:none;}
+  /* El acceso cabe entero en una pantalla: sin scroll, el centrado se ve. */
+  #screen-auth .ob-wrap{padding-top:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}
+  /* Y el acceso se compacta para que quepa con aire de sobra: con el alto de
+     antes llenaba la pantalla justa y "centrado" no se notaba. Solo acá: el
+     onboarding comparte estas clases y ahí sí hay una pantalla por paso. */
+  #screen-auth .ob-icon{width:48px;height:48px;border-radius:14px;margin-bottom:10px;}
+  #screen-auth .ob-brand{margin-bottom:6px;}
+  #screen-auth .ob-title{font-size:1.875rem;margin-bottom:6px;}
+  #screen-auth .ob-sub{margin-bottom:14px;}
+  #screen-auth .ob-card{padding:16px 18px;margin-bottom:10px;}
+  #screen-auth .oauth-divider{margin-bottom:12px;}
+  #screen-auth .auth-legal{margin-top:8px;font-size:0.6875rem;line-height:1.45;}
+  /* Las cifras acá son un pie de página del encabezado, no una tarjeta: sin
+     caja compiten menos con el formulario y devuelven el alto que hacía falta
+     para que el login respire arriba y abajo. */
+  #screen-auth .auth-stats{margin:0 auto 14px;padding:0;border:0;background:none;border-radius:0;}
+  #screen-auth .auth-stat{padding:2px 14px;}
+  #screen-auth .auth-stat b{font-size:1.125rem;}
+}
 @media(min-width:900px){
   /* En escritorio el acceso es una composición, no una columna móvil estirada:
      la muestra y el formulario ocupan el espacio disponible y comparten eje. */
@@ -476,7 +507,10 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
   .ap-avg{font-size:3rem;}
 }
 @media(min-width:1280px){
-  #screen-auth .ob-wrap{grid-template-columns:repeat(3,minmax(320px,420px));column-gap:clamp(32px,3.5vw,64px);max-width:none;}
+  /* Tres columnas, pero no tres iguales: la del medio es la ancha porque es a
+     lo que se viene. Con las tres del mismo tamaño la pantalla se leía como
+     tres tarjetas equivalentes y costaba encontrar dónde se entra. */
+  #screen-auth .ob-wrap{grid-template-columns:minmax(250px,340px) minmax(340px,430px) minmax(250px,340px);column-gap:clamp(32px,3.5vw,64px);max-width:none;}
   #screen-auth .auth-stats-preview{display:block;grid-column:3;grid-row:1/span 20;align-self:center;justify-self:stretch;margin:0;}
 }
 @media(min-width:900px) and (hover:hover) and (pointer:fine){.ap-card:hover{transform:perspective(1200px) rotateY(0deg);}}
