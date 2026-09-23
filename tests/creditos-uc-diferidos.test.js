@@ -47,7 +47,11 @@ run('S=normalize({ramos:[fixtures[5]],tenant:"uandes",onboardingDone:true})');
 run('showMainApp()');
 run('S=normalize({ramos:[fixtures[3]],tenant:"uc",onboardingDone:true})');
 run('showMainApp()');
-assert.strictEqual(scripts.length, 0, 'UAI, UAndes y un ramo UC manual no piden el catálogo completo');
+// UAI y UAndes no piden el catálogo UC: no tienen nada que buscar ahí. El ramo
+// UC escrito a mano SÍ lo pide desde que se completa por nombre — antes se
+// excluía, y por eso una cuenta cuyos únicos ramos sin SCT eran manuales no
+// pedía el archivo nunca, no completaba nada y se quedaba en promedio simple.
+assert.strictEqual(scripts.length, 1, 'un ramo UC a mano sin SCT sí pide el catálogo; UAI y UAndes no');
 run('S=normalize({ramos:fixtures,tenant:"uc",onboardingDone:true})');
 assert.strictEqual(run('creditosDe("Principios Ecológicos y Medio Ambiente","uc")'), null,
   'el catálogo pequeño no tiene el crédito del caso reportado');
@@ -72,7 +76,15 @@ assert.strictEqual(run('gpaMode(S.ramos)'), 'creditos', 'el promedio vuelve a po
 assert.ok(Math.abs(run('gpa(S.ramos)') - (6 * 10 + 4 * 5) / 15) < 1e-9);
 assert.strictEqual(run('S.ramos[1].creditos'), 5, 'no altera un crédito existente');
 assert.strictEqual(run('S.ramos[2].creditos'), 3, 'no toca ramos manuales');
-assert.strictEqual(run('S.ramos[3].creditos'), null, 'no completa un ramo creado a mano');
+// Esta aserción decía lo contrario hasta el 2026-09-23, agrupada con las de
+// UAI y UAndes bajo "no inventar créditos". La diferencia es que acá no se
+// inventa nada: el nombre calza exacto con un curso UC y quien lo escribió es
+// estudiante UC. Y el ramo a mano muchas veces no es una decisión — durante el
+// onboarding el catálogo no ha bajado, el buscador no encuentra el electivo y
+// la persona lo escribe, sin poder distinguirse después de uno propio.
+// Se completa SOLO el número; sigue sin recibir sigla, procedencia ni pauta.
+assert.strictEqual(run('S.ramos[3].creditos'), 10, 'un ramo a mano con nombre de catálogo recibe sus créditos');
+assert.strictEqual(run('S.ramos[3].origen'), null, 'pero no se le inventa procedencia');
 assert.strictEqual(run('S.ramos[4].creditos'), null, 'no inventa créditos UAI');
 assert.strictEqual(run('S.ramos[5].creditos'), null, 'no inventa créditos UAndes');
 assert.strictEqual(writes.filter(([k]) => k === 'gradehub_v1').length, 1, 'persiste solo si encontró un crédito nuevo');
