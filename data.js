@@ -174,6 +174,14 @@ const TENANTS={
   uandes:{name:'U. de los Andes', short:'UANDES', mono:'UA', sub:'Carreras y ramos manuales'},
 };
 
+// Equivalencias institucionales para calificaciones que sí participan del
+// promedio. Son dato por universidad: no se aplican a otro tenant por parecido.
+// La "C" UC queda fuera a propósito: no tiene equivalencia numérica y el modelo
+// todavía no sabe representar un ramo aprobado que no entra al promedio.
+const CALIFICACIONES_CONCEPTUALES_POR_TENANT={
+  uc:{D:7.0,A:5.0,R:3.0},
+};
+
 // ─── GLIFOS DE UNIVERSIDAD ───────────────────────────────────────────────────
 // Marcas de línea, sin texto, en el mismo lenguaje de trazo que el resto de los
 // íconos de la app. Cada escudo se reduce a su elemento dominante: a 26px un

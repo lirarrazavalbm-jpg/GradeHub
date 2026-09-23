@@ -253,6 +253,7 @@ function agendaEventoHTML(e,contenido,pendientes,tipo='row'){
 
 function agendaRendidaHTML(e){
   const a=avgPond(e.notas);
+  const notaUnica=e.notas.length===1?e.notas[0]:null;
   const f=e.fecha?formatEventDate(e.fecha):null;
   return `<button type="button" class="ag-row done" style="--ag-course:${esc(e.ramo.color)}">
     <span class="ag-row-bar" style="background:${esc(e.ramo.color)}"></span>
@@ -261,7 +262,7 @@ function agendaRendidaHTML(e){
       <div class="ag-row-name">${esc(nombreEventoAgenda(e))}</div>
       <div class="ag-row-sub"><span class="ag-ramo-dot" style="background:${esc(e.ramo.color)}"></span>${esc(e.ramo.nombre)}</div>
     </div>
-    ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${fmtPromedio(a)}</span>`:""}
+    ${a!==null?`<span class="ramo-nota ${colorClass(a)}" style="--grade-color:${getColor(a)};min-width:auto;font-size:1.1875rem;">${notaUnica?textoCalificacionNota(notaUnica):fmtPromedio(a)}</span>`:""}
     <span class="chevron-r">›</span>
   </button>`;
 }
