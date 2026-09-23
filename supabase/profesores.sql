@@ -146,9 +146,13 @@ as $$
   );
 $$;
 
-revoke all on function public.profesor_texto_limpio(text,integer) from public;
-revoke all on function public.profesor_nombre_normalizar(text) from public;
-revoke all on function public.profesor_nombres_coinciden(text,text) from public;
+-- Supabase puede otorgar EXECUTE directo a `anon` y `authenticated` mediante
+-- sus privilegios por defecto. Revocar solo a PUBLIC no alcanza: las funciones
+-- internas quedarían invocables desde PostgREST. Se cierran los tres roles y
+-- al final se abren únicamente las RPC de producto para cuentas autenticadas.
+revoke all on function public.profesor_texto_limpio(text,integer) from public, anon, authenticated;
+revoke all on function public.profesor_nombre_normalizar(text) from public, anon, authenticated;
+revoke all on function public.profesor_nombres_coinciden(text,text) from public, anon, authenticated;
 
 create or replace function public.profesor_ramo_estado(
   p_tenant text,
@@ -272,7 +276,7 @@ begin
 end;
 $$;
 
-revoke all on function public.profesor_reconciliar(text,text,integer,text) from public;
+revoke all on function public.profesor_reconciliar(text,text,integer,text) from public, anon, authenticated;
 
 -- Borrar una cuenta borra sus menciones por cascade. El consenso se vuelve a
 -- calcular en la misma transacción para que una ficha no conserve “3” cuando
@@ -294,7 +298,7 @@ create trigger profesor_mencion_borrada_reconcilia
 after delete on public.profesor_menciones
 for each row execute function public.profesor_mencion_borrada_reconciliar();
 
-revoke all on function public.profesor_mencion_borrada_reconciliar() from public;
+revoke all on function public.profesor_mencion_borrada_reconciliar() from public, anon, authenticated;
 
 create or replace function public.profesor_reportar(
   p_tenant text,
@@ -481,13 +485,13 @@ begin
 end;
 $$;
 
-revoke all on function public.profesor_ramo_estado(text,text,integer,text) from public;
-revoke all on function public.profesor_reportar(text,text,text,integer,text,text) from public;
-revoke all on function public.profesores_listar(text,text) from public;
-revoke all on function public.profesor_detalle(uuid) from public;
-revoke all on function public.profesor_resena_guardar(uuid,integer,text) from public;
-revoke all on function public.profesor_resena_eliminar(uuid) from public;
-revoke all on function public.profesor_resena_reportar(uuid,text) from public;
+revoke all on function public.profesor_ramo_estado(text,text,integer,text) from public, anon, authenticated;
+revoke all on function public.profesor_reportar(text,text,text,integer,text,text) from public, anon, authenticated;
+revoke all on function public.profesores_listar(text,text) from public, anon, authenticated;
+revoke all on function public.profesor_detalle(uuid) from public, anon, authenticated;
+revoke all on function public.profesor_resena_guardar(uuid,integer,text) from public, anon, authenticated;
+revoke all on function public.profesor_resena_eliminar(uuid) from public, anon, authenticated;
+revoke all on function public.profesor_resena_reportar(uuid,text) from public, anon, authenticated;
 
 grant execute on function public.profesor_ramo_estado(text,text,integer,text) to authenticated;
 grant execute on function public.profesor_reportar(text,text,text,integer,text,text) to authenticated;

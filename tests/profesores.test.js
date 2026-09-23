@@ -52,6 +52,8 @@ assert.match(sql,/unique \(user_id, profesor_id\)/i,'una cuenta debe tener una s
 assert.match(sql,/rating between 1 and 5/i,'las estrellas deben quedar limitadas en la base');
 assert.match(sql,/primero confirma a este profesor en tu ramo y sección/i,'reseñar debe exigir pertenencia verificada');
 assert.match(sql,/revoke all on public\.profesor_menciones from public, anon, authenticated/i,'las menciones no deben admitir lectura directa');
+assert.match(sql,/revoke all on function public\.profesor_nombre_normalizar\(text\) from public, anon, authenticated/i,'las funciones internas no deben quedar expuestas por los privilegios por defecto de Supabase');
+assert.match(sql,/revoke all on function public\.profesores_listar\(text,text\) from public, anon, authenticated[\s\S]*grant execute on function public\.profesores_listar\(text,text\) to authenticated/i,'la lista debe abrirse solo después de revocar explícitamente a anon');
 assert.match(sql,/security definer[\s\S]+set search_path/i,'las RPC privilegiadas deben fijar search_path');
 assert.doesNotMatch(sql,/\b(from|join|update|insert into)\s+(public\.)?gradehub_v1\b/i,'el registro no debe leer ni reescribir gradehub_v1');
 
