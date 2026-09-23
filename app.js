@@ -3005,6 +3005,27 @@ function fuentesDiferidasCatalogo(tenant){
     cursos:tenant==='uc'?cursosUcExtra():null,
   };
 }
+// El catálogo escribe el nivel en romano —"Matemáticas Avanzadas II"— y la
+// gente escribe el número. Nadie teclea romanos en el teléfono: buscar
+// "matematicas avanzadas 2" no devolvía NADA, aunque el ramo estuviera en su
+// propia malla.
+//
+// Va aparte de `normName` a propósito, y esto importa: `normName` decide
+// IDENTIDAD —con qué preset calza un ramo, qué clave de consenso le toca, si
+// dos ramos guardados son el mismo— y tocarla reinterpretaría datos que ya
+// están guardados. Esto solo cambia qué aparece mientras alguien escribe.
+const ROMANOS_BUSQUEDA={i:'1',ii:'2',iii:'3',iv:'4',v:'5',vi:'6',vii:'7',viii:'8',ix:'9',x:'10',xi:'11',xii:'12'};
+function normBusqueda(s){
+  return String(s||'').split(' ').map(t=>ROMANOS_BUSQUEDA[t]||t).join(' ');
+}
+// Palabras de enlace que no distinguen un ramo de otro. Un estudiante UAI dijo
+// "Razonamiento Cuantitativo DE Datos" y el catálogo dice "CON Datos": esa
+// palabra de tres letras hacía desaparecer el ramo entero de los resultados,
+// porque el calce por tokens exige que estén TODOS.
+//
+// Solo se sacan de la consulta, nunca del nombre del ramo: si alguien busca
+// exactamente "de la" no queremos que calce con todo.
+const ENLACES_BUSQUEDA=new Set(['de','del','la','el','los','las','y','e','o','u','con','a','al','en','para','un','una','sobre']);
 function indiceBusquedaCatalogo(tenant,carrera){
   const key=catalogKey(tenant,carrera),fuentes=fuentesDiferidasCatalogo(tenant);
   const guardado=_indicesBusquedaCatalogo.get(key);
@@ -3012,7 +3033,10 @@ function indiceBusquedaCatalogo(tenant,carrera){
   const todos=catalogRamosUniversidad(tenant,carrera);
   const indice={
     mallas:fuentes.mallas,cursos:fuentes.cursos,todos,
-    filas:todos.map(r=>({ramo:r,nombre:normName(r.nombre),sigla:normName(r.sigla||'')})),
+    filas:todos.map(r=>{
+      const nombre=normName(r.nombre);
+      return {ramo:r,nombre,sigla:normName(r.sigla||''),busqueda:normBusqueda(nombre)};
+    }),
     ordenes:new Map(),
   };
   _indicesBusquedaCatalogo.set(key,indice);
@@ -3046,16 +3070,24 @@ function searchCatalog(q,tenant,carrera,semActual){
   // sin cambiar el orden que históricamente devuelve el catálogo completo.
   const filas=ordenBusquedaCatalogo(indice,semActual);
   if(!nq)return todos.slice();
-  const grupos=[[],[],[],[]],tk=nq.split(/\s+/).filter(Boolean);
+  const grupos=[[],[],[],[]];
+  const nqb=normBusqueda(nq);
+  const tkCrudo=nqb.split(/\s+/).filter(Boolean);
+  // Los enlaces salen del calce por tokens, no de la consulta entera: el orden
+  // exacto y por prefijo sigue compar\u00e1ndose con lo que la persona escribi\u00f3.
+  const tk=tkCrudo.filter(t=>!ENLACES_BUSQUEDA.has(t));
   filas.forEach(f=>{
-    const r=f.ramo,n=f.nombre,sigla=f.sigla;
+    const r=f.ramo,n=f.nombre,sigla=f.sigla,nb=f.busqueda||n;
     let s=-1;
-    if(n===nq||sigla===nq)s=0;
-    else if(n.startsWith(nq)||sigla.startsWith(nq))s=1;
-    else if(n.includes(nq)||sigla.includes(nq))s=2;
+    if(n===nq||sigla===nq||nb===nqb)s=0;
+    else if(n.startsWith(nq)||sigla.startsWith(nq)||nb.startsWith(nqb))s=1;
+    else if(n.includes(nq)||sigla.includes(nq)||nb.includes(nqb))s=2;
     else{
-      // que "micro 1" encuentre "Microeconom\u00eda I"
-      if(tk.length>1&&tk.every(t=>n.includes(t)))s=3;
+      // que "micro 1" encuentre "Microeconom\u00eda I", y "matematicas avanzadas 2"
+      // encuentre "Matem\u00e1ticas Avanzadas II". Se exige que la consulta original
+      // tuviera m\u00e1s de una palabra para que un token suelto no calce con todo,
+      // aunque despu\u00e9s los enlaces la dejen en una sola.
+      if(tk.length&&tkCrudo.length>1&&tk.every(t=>nb.includes(t)))s=3;
     }
     // `n` ya viene normalizado por el índice: se conserva en la fila para que el
     // reordenamiento de abajo no tenga que volver a normalizar cada ramo.
