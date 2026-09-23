@@ -666,7 +666,22 @@ function renderRamo(){
         const wrap=document.createElement('div');wrap.className='eval-group';
         if(av!=null)wrap.style.borderLeftColor=getColor(av);
         let rows='';
-        for(let i=0;i<cat.slots;i++){
+        // Se dibujan las casillas declaradas Y las que quedaron más allá.
+        //
+        // Al bajar las casillas de una categoría —de 3 controles a 2, por
+        // ejemplo— la nota del tercero se quedaba guardada y SEGUÍA contando en
+        // el promedio, pero dejaba de dibujarse: con 7,0 · 7,0 · 1,0 la ficha
+        // mostraba dos sietes y un promedio de 5,0, sin nada que explicara la
+        // diferencia. `normalize` tampoco la limpiaba al recargar.
+        //
+        // No se deja de contar, porque eso cambiaría el promedio de cuentas
+        // reales sin que nadie lo pidiera, y es una nota que la persona escribió.
+        // Se muestra, que es lo que hizo el #235 con las notas que salen de una
+        // pauta oficial: quedan a la vista para que su dueño decida.
+        const slotMax=notas.reduce((m,n)=>Number.isInteger(n.slot)?Math.max(m,n.slot):m,-1);
+        const casillas=Math.max(cat.slots,slotMax+1);
+        for(let i=0;i<casillas;i++){
+          const sobra=i>=cat.slots;
           const nota=notas.find(n=>n.slot===i);const v=(nota&&nota.valor!=null)?nota.valor:null;
           const etiqueta=etiquetaCasilla(r,cat,i);
           // La fecha de la casilla, cuando la tiene. El botón abre el editor de
@@ -678,10 +693,10 @@ function renderRamo(){
           // formato corto de la ficha es el mismo que usa el chip del grupo.
           const fSub=nota&&nota.fecha?fechaHoraCorta(nota.fecha,nota.hora):'';
           const recorreccion=nota&&nota.recorreccionPendiente===true;
-          rows+=`<div class="eval-sub">
+          rows+=`<div class="eval-sub${sobra?' eval-sub-sobra':''}">
             <button type="button" class="eval-sub-open" onclick="event.stopPropagation();abrirCasilla('${cat.id}',${i})" title="Fecha y detalle de ${esc(etiqueta)}" aria-label="Fecha y detalle de ${esc(etiqueta)}">
               <span class="eval-sub-name">${esc(etiqueta)}</span>
-              ${fSub?`<span class="eval-sub-fecha">${esc(fSub)}</span>`:'<span class="eval-sub-fecha vacia">sin fecha</span>'}
+              ${sobra?'<span class="eval-sub-aviso">sobra en la pauta · sigue contando</span>':(fSub?`<span class="eval-sub-fecha">${esc(fSub)}</span>`:'<span class="eval-sub-fecha vacia">sin fecha</span>')}
               ${recorreccion?'<span class="recorreccion-chip">Falta mandar</span>':''}
             </button>
             <input class="eval-row-input sm" inputmode="${inputModeNota()}" autocapitalize="characters" maxlength="3" placeholder="—" value="${v!=null?textoCalificacionNota(nota):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(etiqueta)}"/>
