@@ -49,8 +49,10 @@ console.log('\n=== La muestra representa formatos, no posiciones del catálogo =
 const sample = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'catalogo-uc-review-sample-fase5.json')));
 const labels = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'catalogo-uc-manual-validation-fase5.json')));
 const metrics = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'catalogo-uc-validation-metrics-fase5.json')));
+const automaticGate = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'catalogo-uc-automatic-gate-fase5.json')));
 check('la población son los 2.001 nuevos auto_importable', sample.populationSize === 2001);
 check('la muestra queda dentro del rango aprobado y tiene 120 siglas únicas', sample.sampleSize === 120 && new Set(sample.sample.map(item => item.courseCode)).size === 120);
+check('la muestra y sus etiquetas conservan el hash aprobado', sample.sampleHash === '08523b5c5cc4b6308650ff2aea01175af55659ecfb23641f671e0ff11c69c581' && labels.sampleHash === sample.sampleHash);
 check('todos los estratos primarios quedan representados', sample.stratification.primaryStrata.every(row => row.sampleCount > 0));
 check('los formatos poco frecuentes tienen una tasa mayor que el estrato dominante', (() => {
   const rows = sample.stratification.primaryStrata;
@@ -148,8 +150,23 @@ const declared = synthetic('PER1000', 'bullet_list|3|declared|absent', { program
 declared.programVersionText = '2026-2';
 const proposalWithPeriod = tool.candidateToPresetProposal(declared, { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt });
 check('un semestre declarado llega a periodo y al diff', proposalWithPeriod.presetDefinition.periodo === '2026-2' && /periodo:'2026-2'/.test(proposalWithPeriod.diffText));
-check('el prototipo deja anotado que todavía no emite metadata por evaluación', /tercer elemento[\s\S]*slots[\s\S]*min\/cap[\s\S]*fecha/.test(fs.readFileSync(path.join(ROOT, 'bin', 'validar-candidatos-uc-fase5.js'), 'utf8')));
-check('tres Pruebas agregadas siguen siendo UNA categoría de 60%', proposal.presetDefinition.evals.filter(row => row[0] === 'Pruebas' && row[1] === 60).length === 1 && proposal.presetDefinition.evals.length === 4);
+check('el prototipo deja anotado que todavía no emite min/cap ni fecha', /tercer elemento[\s\S]*min\/cap[\s\S]*fecha/.test(fs.readFileSync(path.join(ROOT, 'bin', 'validar-candidatos-uc-fase5.js'), 'utf8')));
+check('tres Pruebas agregadas siguen siendo UNA categoría de 60% con slots 3', proposal.presetDefinition.evals.filter(row => row[0] === 'Pruebas' && row[1] === 60 && row[2] && row[2].slots === 3).length === 1 && proposal.presetDefinition.evals.length === 4);
+const astProposal = tool.candidateToPresetProposal(sample.sample.find(item => item.courseCode === 'AST1529'), { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt });
+const eaeProposal = tool.candidateToPresetProposal(sample.sample.find(item => item.courseCode === 'EAE372A'), { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt });
+const comProposal = tool.candidateToPresetProposal(sample.sample.find(item => item.courseCode === 'COM403'), { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt });
+check('AST1529 y EAE372A conservan sus dos evaluaciones declaradas', astProposal.presetDefinition.evals.some(row => row[0] === 'Interrogaciones' && row[2] && row[2].slots === 2) && eaeProposal.presetDefinition.evals.some(row => row[0] === 'Pruebas' && row[2] && row[2].slots === 2));
+check('COM403 conserva los tres trabajos declarados sin desagruparlos', comProposal.presetDefinition.evals.some(row => row[0] === 'Trabajos en clases/grupales e individuales' && row[1] === 15 && row[2] && row[2].slots === 3));
+const noDeclaredCount = synthetic('SIN1000', 'plain_lines|1-2|missing|absent');
+noDeclaredCount.evaluationSourceText = 'V. EVALUACION\nPruebas: 30% c/u\nExamen: 40%';
+noDeclaredCount.candidateWeights = [{ name: 'Pruebas', weight: 60, detail: { cantidad: 2, pesoCadaUna: 30 } }, { name: 'Examen', weight: 40 }];
+const noDeclaredCountProposal = tool.candidateToPresetProposal(noDeclaredCount, { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt });
+check('sin número declarado no se inventan slots', noDeclaredCountProposal.presetDefinition.evals.every(row => row.length === 2));
+const sampleSlots = sample.sample.flatMap(item => tool.candidateEvaluations(item)
+  .filter(row => row.slots)
+  .map(row => ({ courseCode: item.courseCode, slots: row.slots })));
+check('la muestra conserva 35 evaluaciones declaradas en 14 candidatos', new Set(sampleSlots.map(row => row.courseCode)).size === 14 && sampleSlots.length === 16 && sampleSlots.reduce((sum, row) => sum + row.slots, 0) === 35);
+check('el diff textual de IMT2100 incluye slots sin dividir la categoría', /\['Pruebas',60,\{slots:3\}\]/.test(proposal.diffText));
 check('la provenance conserva fuente, hash, parser, aprobación y alcance', proposal.provenance.sourceType === 'official_uc_catalog' && proposal.provenance.evaluationHash && proposal.provenance.parserVersion === 'uc-catalogo-3' && proposal.provenance.approvedBy === 'revisor' && proposal.provenance.scope === 'institutional_program' && proposal.provenance.semester === null);
 check('sin aprobación explícita no hay propuesta', (() => { try { tool.candidateToPresetProposal(aggregate, {}); return false; } catch (_) { return true; } })());
 check('una edición que ya no suma 100 se rechaza', (() => { try { tool.candidateToPresetProposal(aggregate, { status: 'approved', approvedBy: 'revisor', approvedAt: reviewedAt, editedEvaluations: [{ name: 'Pruebas', weight: 40 }] }); return false; } catch (_) { return true; } })());
@@ -161,6 +178,13 @@ check('dos candidatos con el mismo nombre normalizado se bloquean', (() => {
   try { tool.validateCandidateNameCollisions([first, second]); return false; }
   catch (error) { return /DPT9030/.test(error.message) && /DPT9035/.test(error.message); }
 })());
+
+console.log('\n=== La compuerta automática revisa los 2.001 candidatos ===');
+check('los pesos y nombres pasan en toda la población', automaticGate.populationSize === 2001 && automaticGate.checks.weights_sum_100.flaggedCount === 0 && automaticGate.checks.names_present_in_source.flaggedCount === 0);
+check('la compuerta deja 1.998 aprobados y marca tres porcentajes sin usar', automaticGate.passedAllChecksCount === 1998 && automaticGate.flaggedCandidatesCount === 3 && automaticGate.checks.all_source_percentages_used.flaggedCount === 3);
+check('cada marcado conserva fuente, texto y detalle contable', automaticGate.flaggedCandidates.every(item => item.sourceUrl && item.evaluationSourceText && item.failedChecks.length && Array.isArray(item.unusedPercentages)));
+check('la compuerta no habilita importación masiva', automaticGate.massImportAllowed === false);
+check('la limitación obliga a mirar la sección correcta en la fuente', /secci[oó]n equivocada/i.test(automaticGate.limitation) && /sourceUrl/.test(automaticGate.limitation));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail ? 1 : 0);

@@ -19,6 +19,24 @@ No se modificaron `PRESETS_UC`, el parser, cuentas, UI ni datos productivos.
 
 La unidad académica no está disponible de forma fiable: `ESCUELAS_UC` está vacío deliberadamente. En su lugar se conserva únicamente `DISCIPLINA` cuando el propio programa la declara; no se deduce facultad desde la sigla.
 
+## Compuerta automática sobre los 2.001 candidatos
+
+La compuerta offline revisó los **2001** candidatos: **1998** pasan las tres comprobaciones y **3** quedan marcados para revisión.
+
+| Comprobación | Pasan | Marcados |
+|---|---:|---:|
+| Pesos suman 100 | 2001 | 0 |
+| Cada nombre aparece en el texto fuente | 2001 | 0 |
+| Ningún porcentaje del texto queda sin usar | 1998 | 3 |
+
+El patrón literal `N … X% c/u` conserva `slots` en **97** candidatos, **107** categorías y **242** evaluaciones declaradas. Sin número explícito no se inventan `slots`.
+
+Informe contable completo: `docs/catalogo-uc-automatic-gate-fase5.json`. Incluye cada candidato marcado, su URL, el texto evaluativo y el detalle de la comprobación que falló.
+
+**Límite de la compuerta:** Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las tres comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta.
+
+La revisión humana de la muestra sigue siendo necesaria, pero cambia de foco: la máquina verifica la transcripción interna; la persona confirma en `sourceUrl` que el parser leyó la sección correcta del programa.
+
 ## Estratos encontrados
 
 Estrato primario: `evaluationLayout × categoryCountBucket × programVersionAvailability × additionalTextAfterPercentages`. La asignación da al menos un cupo a cada estrato y distribuye el resto según la raíz de la población, por lo que los formatos raros quedan sobrerrepresentados sin ahogar los comunes.
@@ -184,12 +202,13 @@ Seed reproducible: `gradehub-uc-fase5-v1`. Hash de la muestra: `08523b5c5cc4b630
 - Muestra estructurada: `docs/catalogo-uc-review-sample-fase5.json`.
 - Etiquetas humanas separadas: `docs/catalogo-uc-manual-validation-fase5.json`.
 - Métricas: `docs/catalogo-uc-validation-metrics-fase5.json`.
+- Compuerta automática poblacional: `docs/catalogo-uc-automatic-gate-fase5.json`.
 
 Ninguna etiqueta viene preseleccionada. El archivo de etiquetas está ligado al hash de cada sección evaluativa para impedir que una decisión vieja se aplique a una fuente nueva.
 
 ## Cómo ejecutar la revisión y calcular métricas
 
-1. Abrir cada ficha del paquete y contrastar el texto evaluativo con la URL oficial.
+1. Abrir cada ficha del paquete y confirmar en la URL oficial que el parser tomó la sección evaluativa correcta.
 2. Completar `humanLabel`, `note`, `reviewer` y `reviewedAt` en el archivo de etiquetas.
 3. Ejecutar:
 
@@ -227,8 +246,7 @@ El revisor ve la fuente, la sección completa, la estructura y cualquier compara
 - la validación realizada.
 
 No escribe `data.js`. Tampoco divide categorías agregadas: `Pruebas 40%` sigue siendo una categoría de 40%, salvo que una persona la edite con evidencia antes de aprobar.
-
-`evals` admite un tercer elemento con `slots`, `min`/`cap` y `fecha`; este prototipo todavía no lo emite y no debe inferir esos datos.
+`evals` emite un tercer elemento con `slots` únicamente cuando el texto declara literalmente `N … X% c/u`. Sin número declarado no inventa la cantidad; `min`/`cap` y `fecha` siguen fuera del prototipo.
 
 ## Provenance propuesta
 
@@ -238,7 +256,7 @@ La provenance debe vivir junto a la definición institucional o en un registro c
 
 ## Riesgos
 
-- La muestra reduce incertidumbre, pero no demuestra que los 2.001 casos sean correctos.
+- La muestra y la compuerta reducen incertidumbre, pero no demuestran que los 2.001 casos sean correctos: ambas fallan si se extrajo la sección equivocada.
 - Solo 868 candidatos declaran `DISCIPLINA`; inferir la facultad desde la sigla sería inventar metadata.
 - Los programas institucionales pueden ser más genéricos que la pauta del semestre.
 - Una edición humana puede introducir un error aunque el parser haya acertado; por eso el diff y los tests siguen siendo obligatorios.
