@@ -32,18 +32,18 @@ const connectSrc = (csp.match(/connect-src([^;]*)/) || [])[1] || '';
 
 console.log('\n=== El SW intercepta dominios y la CSP los conoce ===');
 chk('la CSP declara connect-src', connectSrc.trim().length > 0);
-chk('el SW intercepta al menos un dominio externo', interceptados.length > 0);
+// Desde el 2026-09-23 el service worker no intercepta NINGÚN dominio externo:
+// las fuentes de Google salieron de la CSP y con ellas el tramo que las
+// cacheaba. La regla se conserva igual, porque es la que hay que cumplir el día
+// que alguien vuelva a interceptar algo: lo que el SW pida por `fetch` se rige
+// por connect-src, y sin permiso falla en silencio.
+chk('ningún dominio interceptado queda fuera de connect-src',
+  interceptados.every(h => connectSrc.includes(h)));
 interceptados.forEach(h => {
   chk(`connect-src permite ${h}`, connectSrc.includes(h));
 });
-
-// La otra mitad del mismo bug: si la red falla y no hay copia en caché, el
-// handler tiene que devolver una Response igual. Una promesa rechazada dentro
-// de respondWith es un error de red para la página.
-console.log('\n=== Un fetch caído no deja la petición muerta ===');
-const ramaFuentes = sw.slice(sw.indexOf('fonts.googleapis.com'), sw.indexOf('Resto de externos'));
-chk('la rama de fuentes captura el fallo de red', /\.catch\(/.test(ramaFuentes));
-chk('y devuelve una Response, no undefined', /new Response\(/.test(ramaFuentes));
+chk('el SW ya no pide nada a un tercero al abrir la app',
+  !/fonts\.googleapis\.com|fonts\.gstatic\.com/.test(sw));
 
 console.log('\n=== Editorial usa la fuente del sistema sin descargas ===');
 const paginas = ['index.html', 'preguntas.html', 'privacidad.html', 'terminos.html', '404.html'];
