@@ -24,6 +24,13 @@ devuelve ese agregado. Un tutor nunca ve quién recibió su aviso.
 No se usa la palabra "reprobando" en la tarjeta. La intención es ofrecer una
 salida, no diagnosticar ni presionar: “Puede servirte apoyo para Cálculo II”.
 
+La primera puerta ya está implementada desde una tarjeta permanente en Inicio.
+Abre el catálogo general, permite buscar por nombre o sigla y ordena los avisos
+por ramo y vigencia. El filtro recibe únicamente los anuncios públicos ya
+descargados y el catálogo académico local; no lee `S.ramos` ni notas. La segunda
+puerta sigue apagada: este cambio no activa recomendaciones contextuales, cobro
+ni publicación automática.
+
 ## Una identidad, dos espacios separados
 
 La cuenta de Supabase sigue siendo una sola. Una persona puede usar GradeHub
