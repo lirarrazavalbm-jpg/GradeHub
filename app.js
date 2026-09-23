@@ -4027,7 +4027,7 @@ function pesoControlHTML(valor,excluirCatId){
       <div class="peso-hint" id="m-peso-hint"></div>
     </div>
     <input type="range" min="0" max="100" step="5" value="${v}" id="m-cat-peso" class="peso-slider" aria-label="Ajustar ponderación"/>
-    <div class="peso-marks" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+    <div class="peso-marks" aria-hidden="true"><span style="--p:0">0</span><span style="--p:25">25</span><span style="--p:50">50</span><span style="--p:75">75</span><span style="--p:100">100</span></div>
     <input type="hidden" id="m-peso-libre" value="${libre}"/>`;
 }
 
