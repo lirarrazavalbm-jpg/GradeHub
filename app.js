@@ -4315,6 +4315,16 @@ function sugerenciasEvaluacion(tenant){
   const comunes=['Laboratorio','Informe','Taller','Proyecto','Tarea','Presentación','Examen'];
   if(tenant==='uc')return ['Interrogación 1','Interrogación 2','Interrogación 3','Prueba 1','Prueba 2','Prueba 3','Control 1','Control 2','Control 3',...comunes];
   if(tenant==='fen')return ['Solemne 1','Solemne 2','Solemne 3','Control 1','Control 2','Control 3','Prueba sorpresa','Casos y ensayos','Trabajo individual','Trabajo en grupo','Participación',...comunes];
+  // La UAI usa las dos palabras, y eso no es una suposición: sale de sus
+  // programas. Management 2026-2 dice "tres pruebas solemnes"; Matemáticas
+  // Avanzadas II dice "pruebas de cátedra" y "controles"; Razonamiento
+  // Cuantitativo con Datos II dice "pruebas" y "laboratorios"; Civilización
+  // Contemporánea II dice "evaluaciones de lectura" y "ensayo".
+  //
+  // Hasta ahora caía en la lista neutra de abajo y nunca le ofrecía "Solemne",
+  // que es como se llaman sus evaluaciones más grandes. Lo que NO lleva es
+  // "Interrogación": ninguno de sus programas la usa, esa es de la UC.
+  if(tenant==='uai')return ['Solemne 1','Solemne 2','Solemne 3','Prueba 1','Prueba 2','Prueba 3','Control 1','Control 2','Control 3','Control de lectura','Trabajo grupal',...comunes];
   return ['Prueba 1','Prueba 2','Prueba 3','Control 1','Control 2','Control 3',...comunes];
 }
 function opcionesSugerenciasEvaluacion(tenant){

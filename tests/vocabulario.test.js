@@ -87,6 +87,17 @@ chk(`las plantillas de UC no dicen solemnes  (${plUC.map(p => p.label).join(' ·
 chk('las plantillas de FEN no dicen interrogaciones',
   !plFEN.some(p => SOLO_UC.test(p.label)));
 
+console.log('\n=== La UAI habla su propio idioma, que usa las dos palabras ===');
+// No es una suposición: sale de sus programas. Management 2026-2 dice "tres
+// pruebas solemnes"; Matemáticas Avanzadas II dice "pruebas de cátedra" y
+// "controles". Hasta que se transcribieron, la UAI caía en la lista neutra y
+// nunca le ofrecía "Solemne", que es como llama a sus evaluaciones grandes.
+const sugUAI = llamar('sugerenciasEvaluacion', 'uai');
+chk('a la UAI sí le ofrece Solemne', sugUAI.some(s => /solemne/i.test(s)));
+chk('y también Prueba y Control', sugUAI.some(s => /^prueba/i.test(s)) && sugUAI.some(s => /^control/i.test(s)));
+// Ninguno de sus cinco programas transcritos dice "interrogación": esa es UC.
+chk('pero NO le ofrece el vocabulario de la UC', !sugUAI.some(s => /interrogaci/i.test(s)));
+
 console.log('\n=== Una universidad que no conocemos no hereda el idioma de otra ===');
 // El default de sugerenciasEvaluacion era la lista de FEN, así que a cualquier
 // universidad nueva le habrían aparecido "Solemne 1, Solemne 2". Con dos
