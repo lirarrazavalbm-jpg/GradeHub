@@ -204,7 +204,7 @@ function renderHome(){
             <div class="insight-title">${esc(risky.ramo.nombre)}</div>
             <div class="insight-meta">${risky.imposible
               ?'Con lo que queda por rendir ya no se llega a 4,0'
-              :`Necesitas <span class="strong">${nf(risky.needed)}</span> promedio en lo pendiente para aprobar`}</div>
+              :`Necesitas <span class="strong">${nfNecesaria(risky.needed)}</span> promedio en lo pendiente para aprobar`}</div>
           </div>
           <span class="chevron-r">›</span>
         </div>`);
@@ -456,7 +456,7 @@ function renderRamo(){
         chipEl.className='ramo-chip bad';chipEl.textContent='Ya no es posible aprobar';
       } else {
         chipEl.style.display='inline-flex';
-        chipEl.className='ramo-chip warn';chipEl.textContent=`Necesitas ${nf(needed)} en lo pendiente para aprobar`;
+        chipEl.className='ramo-chip warn';chipEl.textContent=`Necesitas ${nfNecesaria(needed)} en lo pendiente para aprobar`;
       }
     } else {chipEl.style.display='none';}
   } else {chipEl.style.display='none';}
@@ -874,7 +874,7 @@ function renderStats(){
     const necesidadPorRamo=new Map(falta.map(x=>[x.ramo.id,x]));
     const filaNecesidad=x=>{
       const imposible=x.necesita>7.05;
-      const valor=imposible?'—':fmt(Math.max(1,x.necesita));
+      const valor=imposible?'—':nfNecesaria(Math.max(1,x.necesita));
       const color=imposible?'var(--red)':'var(--fg)';
       const sub=imposible
         ? 'Ya no alcanza solo con lo pendiente'
