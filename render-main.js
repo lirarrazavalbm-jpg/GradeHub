@@ -904,13 +904,21 @@ function renderStats(){
     `;
     {
       const proy=proyeccionSemestre(S.ramos);
+      // Se muestran solo 3, ordenados por lo que exigen. Es a propósito —una
+      // lista de ocho ramos deja de ser una prioridad— pero hay que DECIRLO:
+      // un estudiante que no encuentra su ramo acá concluye que la app se lo
+      // olvidó, no que está cuarto en la fila.
       if(falta.length){
         piezas.prioridades=`
         <div class="section-hd" style="padding:0 20px 8px;">
           <span class="section-hd-title">Tus prioridades hoy</span>
         </div>
         <div style="padding:0 20px;">
-          <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:0 0 10px;">Los ramos que más nota te exigen en lo pendiente. Tócalos para revisar su pauta.</p>
+          <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.45;margin:0 0 10px;">${
+            falta.length>3
+              ? `Los 3 de tus ${falta.length} ramos que más nota te exigen en lo pendiente. Los demás te piden menos. Tócalos para revisar su pauta.`
+              : 'Lo que te exige cada ramo en lo pendiente. Tócalos para revisar su pauta.'
+          }</p>
           ${falta.slice(0,3).map(filaNecesidad).join('')}
         </div>`;
       }
