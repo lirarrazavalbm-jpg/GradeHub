@@ -6975,6 +6975,13 @@ function openCalculadoraModal(){
 
 // ─── SIMULADOR DE ESCENARIOS ──────────────────────────────────────────────────
 let simState={}; // { catId: [ {id, valor, slot?} ] } — hipotéticas, no se guardan
+// Faltar a una evaluación, SOLO dentro del simulador: { catId: {hacia, tipo} }.
+//
+// Fuera del simulador esto exige que el programa declare a dónde pasa el
+// porcentaje, y de 88 pautas lo declaran dos. Acá no hace falta: nadie está
+// afirmando cuál es la regla de su curso, está preguntando qué le pasaría si
+// fuera esa. Por eso no se guarda en S ni toca gradehub_v1.
+let simAusencias={};
 
 // ─── SIMULADOR GLOBAL DE SEMESTRE ────────────────────────────────────────────
 // Proyecta el promedio general moviendo la nota final de cada ramo con sliders.
@@ -7149,7 +7156,7 @@ function renderSimGlobalList(){
 
 function openSimuladorModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
-  simState={};
+  simState={};simAusencias={};
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title sim-ramo">${esc(r.nombre)}${r.seccion?` · Sección ${r.seccion}`:''}</div>
     <p class="sim-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg> Simular escenario</p>
@@ -7183,10 +7190,52 @@ function simCatAvg(c){return avgPond(simCombinadas(c));}
 // Proyección del simulador: mismo motor y mismas compuertas que el promedio real.
 // Mezcla notas reales + hipotéticas y delega en ramoAvg (gate-aware).
 function simProjectedRamo(r){
-  return {...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({
+  const base={...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({
     id:n.id||('sim_'+c.id+'_'+i),nombre:n.nombre||'Nota',valor:n.valor,peso:n.peso||1,
     ...(Number.isInteger(n.slot)?{slot:n.slot}:{}),
   }))}))};
+  // Las ausencias simuladas se inyectan como si fueran una regla del programa y
+  // las resuelve el mismo motor: nada de aritmética nueva acá. Se suman a las
+  // que el ramo ya tuviera declaradas, porque "y además falto a esta" es
+  // justamente la pregunta.
+  const entradas=Object.entries(simAusencias).filter(([id,a])=>a&&a.hacia&&a.hacia!==id);
+  if(!entradas.length)return base;
+  const previa=r.reglasAusenciaJustificada||{};
+  return {...base,
+    reglasAusenciaJustificada:{
+      reemplazos:[...(previa.reemplazos||[]),
+        ...entradas.filter(([,a])=>a.tipo==='reemplazo').map(([desdeId,a])=>({desdeId,haciaId:a.hacia}))],
+      traspasos:[...(previa.traspasos||[]),
+        ...entradas.filter(([,a])=>a.tipo!=='reemplazo').map(([desdeId,a])=>({desdeId,haciaId:a.hacia}))],
+    },
+    ausenciasJustificadas:[...new Set([...(r.ausenciasJustificadas||[]),...entradas.map(([id])=>id)])],
+  };
+}
+// Solo tiene sentido faltar a algo que todavía no rendiste: si ya tienes la
+// nota, no faltaste. Tampoco se ofrece cuando le pusiste una nota hipotética,
+// que es la pregunta contraria.
+function simPuedeFaltar(c){
+  return avgPond(Array.isArray(c.notas)?c.notas:[])===null && !(simState[c.id]||[]).length;
+}
+function simToggleFalta(catId){
+  if(simAusencias[catId])delete simAusencias[catId];
+  else{
+    const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+    // Por defecto, al examen: es a donde lo manda casi toda normativa que sí
+    // lo declara, y es lo primero que alguien quiere preguntar. Se busca por
+    // nombre y, si no hay, se usa la última evaluación, que suele serlo.
+    const otras=(r.categorias||[]).filter(c=>c.id!==catId);
+    if(!otras.length){showToast('Necesitas otra evaluación a la que mover el peso',true);return;}
+    const destino=otras.find(c=>/examen/i.test(c.nombre||''))||otras[otras.length-1];
+    simAusencias[catId]={hacia:destino.id,tipo:'traspaso'};
+  }
+  renderSimulador();
+}
+function simSetFalta(catId,valor){
+  const [tipo,hacia]=String(valor||'').split('|');
+  if(!hacia)return;
+  simAusencias[catId]={hacia,tipo:tipo==='reemplazo'?'reemplazo':'traspaso'};
+  renderSimulador();
 }
 function simProjectedAvg(r){return ramoAvg(simProjectedRamo(r));}
 
@@ -7229,6 +7278,7 @@ function renderSimulador(){
     // sin el arreglo, y ahí `c.notas.map` reventaba al ABRIR el simulador —o
     // sea la ventana quedaba rota sin decir por qué. El resto del archivo ya usa
     // esta guarda; acá faltaba.
+    const falta=simAusencias[c.id]||null;
     const notasReales=Array.isArray(c.notas)?c.notas:[];
     // Una casilla con fecha y sin nota todavía no es una nota: desde que cada
     // casilla puede tener su propia fecha existen notas con `valor` en null, y
@@ -7243,7 +7293,17 @@ function renderSimulador(){
           <div class="sim-cat-avg" style="color:${getColor(catAvg)}">${fmtPromedio(catAvg)}</div>
         </div>
         ${(realChips||hypChips)?`<div class="sim-chips">${realChips}${hypChips}</div>`:''}
-        ${simCatLlena(c)?'':`<div class="sim-add">
+        ${falta?`<div class="sim-falta activa">
+          <div class="sim-falta-hd"><b>Faltas a esta</b><button type="button" class="sim-falta-x" onclick="simToggleFalta('${c.id}')" aria-label="Ya no faltar a ${esc(c.nombre)}">✕</button></div>
+          <label class="sim-falta-label" for="sim-falta-${c.id}">¿Qué pasa con su ${r2(c.peso)}%?</label>
+          <select id="sim-falta-${c.id}" onchange="simSetFalta('${c.id}',this.value)">${
+            (r.categorias||[]).filter(o=>o.id!==c.id).map(o=>{
+              const t=esc(o.nombre);
+              return `<option value="traspaso|${esc(o.id)}"${falta.tipo!=='reemplazo'&&falta.hacia===o.id?' selected':''}>El ${r2(c.peso)}% se suma a ${t}</option>`+
+                     `<option value="reemplazo|${esc(o.id)}"${falta.tipo==='reemplazo'&&falta.hacia===o.id?' selected':''}>Me ponen la nota de ${t}</option>`;
+            }).join('')}</select>
+        </div>`:(simPuedeFaltar(c)?`<button type="button" class="sim-falta-btn" onclick="simToggleFalta('${c.id}')">No la voy a dar</button>`:'')}
+        ${(simCatLlena(c)||falta)?'':`<div class="sim-add">
           <input type="text" inputmode="${inputModeNota()}" autocapitalize="characters" id="sim-in-${c.id}" placeholder="${conceptosNota().length?'Nota hipotética (1.0–7.0, D/A/R)':'Nota hipotética (1.0–7.0)'}" onkeydown="if(event.key==='Enter')simAddNota('${c.id}')"/>
           <button onclick="simAddNota('${c.id}')">+ Agregar</button>
         </div>`}

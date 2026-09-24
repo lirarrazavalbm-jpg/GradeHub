@@ -2356,3 +2356,14 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    aviso de propuestas de un agente llevaba tiempo sin color. Corregido acá. */
 .eval-sub-sobra{background:color-mix(in srgb,var(--yellow),transparent 94%);border-radius:8px;padding-left:6px;padding-right:6px;margin:0 -6px;}
 .eval-sub-aviso{font-size:0.6875rem;color:var(--yellow);font-weight:600;}
+
+/* Faltar a una evaluación dentro del simulador. Es una hipótesis, no un
+   estado del ramo: por eso comparte el gris de lo hipotético y no usa el
+   semáforo, que significa aprobado / al borde / reprobado. */
+.sim-falta-btn{width:100%;margin-top:8px;padding:7px 10px;border:1px dashed var(--border2);border-radius:9px;background:transparent;color:var(--fg3);font-size:0.75rem;font-weight:600;cursor:pointer;}
+.sim-falta-btn:hover{color:var(--fg2);border-color:var(--fg3);}
+.sim-falta.activa{margin-top:8px;padding:10px;border:1px solid color-mix(in srgb,var(--yellow),transparent 60%);border-radius:9px;background:color-mix(in srgb,var(--yellow),transparent 93%);}
+.sim-falta-hd{display:flex;align-items:center;justify-content:space-between;font-size:0.78125rem;color:var(--fg);}
+.sim-falta-x{border:none;background:transparent;color:var(--fg3);font-size:0.8125rem;line-height:1;cursor:pointer;padding:2px 4px;}
+.sim-falta-label{display:block;margin:6px 0 4px;font-size:0.71875rem;color:var(--fg3);}
+.sim-falta select{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--fg);font-size:0.78125rem;}
