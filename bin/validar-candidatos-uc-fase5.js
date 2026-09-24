@@ -528,6 +528,21 @@ function candidateEvaluations(candidate, editedEvaluations = null) {
   });
 }
 
+function weightHasPublicEvidence(candidate, evaluation) {
+  const sourcePercentages = percentageValues(candidate && candidate.evaluationSourceText);
+  const closeTo = expected => sourcePercentages.some(value => Math.abs(value - expected) < 0.000001);
+  if (closeTo(evaluation.weight)) return true;
+  const sourceRow = (candidate && candidate.candidateWeights || []).find(row => (
+    normalizar(row && (row.name ?? row.nombre)) === normalizar(evaluation.name)
+    && Math.abs(Number(row && (row.weight ?? row.peso)) - evaluation.weight) < 0.000001
+  ));
+  const count = Number(sourceRow && sourceRow.detail && sourceRow.detail.cantidad);
+  const unitWeight = Number(sourceRow && sourceRow.detail && sourceRow.detail.pesoCadaUna);
+  return Number.isInteger(count) && count >= 2 && Number.isFinite(unitWeight)
+    && Math.abs(count * unitWeight - evaluation.weight) < 0.000001
+    && closeTo(unitWeight);
+}
+
 function evaluateAutomaticChecks(candidate) {
   const evaluations = candidateEvaluations(candidate);
   const validation = validateEvaluations(evaluations);
@@ -543,7 +558,13 @@ function evaluateAutomaticChecks(candidate) {
   const unusedPercentages = [...new Set(sourcePercentages.filter(value => (
     !usedPercentages.some(used => Math.abs(used - value) < 0.000001)
   )))];
+  const declaredEvaluationCount = evaluations.reduce((sum, row) => sum + (row.slots || 1), 0);
+  const missingWeightEvidence = evaluations
+    .filter(row => !Number.isFinite(row.weight) || row.weight <= 0 || !weightHasPublicEvidence(candidate, row))
+    .map(row => row.name || null);
   const checks = {
+    minimum_two_evaluations: declaredEvaluationCount >= 2,
+    public_weights_declared: evaluations.length > 0 && missingWeightEvidence.length === 0,
     weights_sum_100: Math.abs(validation.total - 100) < 0.000001,
     names_present_in_source: missingNames.length === 0,
     all_source_percentages_used: unusedPercentages.length === 0,
@@ -556,8 +577,11 @@ function evaluateAutomaticChecks(candidate) {
     proposedEvaluations: evaluations.map(row => row.slots
       ? [row.name, row.weight, { slots: row.slots }]
       : [row.name, row.weight]),
+    declaredEvaluationCount,
+    requiresExceptionalAuthorization: declaredEvaluationCount < 2,
     weightTotal: validation.total,
     sourcePercentages,
+    missingWeightEvidence,
     missingNames,
     unusedPercentages,
     checks,
@@ -577,11 +601,20 @@ function buildAutomaticGateReport(population) {
     .filter(row => row[2] && row[2].slots)
     .map(row => ({ courseCode: item.courseCode, slots: row[2].slots })));
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     populationSize: audited.length,
     scope: 'all_new_auto_importable_candidates',
+    normativeBasis: {
+      source: 'Reglamento del Estudiante UC',
+      sourceUrl: 'https://registrosacademicos.uc.cl/informacion-para-estudiantes/inscripcion-y-retiro-de-cursos/evaluacion-y-calificacion-de-un-curso/',
+      minimumEvaluationsPerPeriod: 2,
+      singleEvaluationRequiresExceptionalAuthorization: true,
+      weightsMustBeDeclaredAndPublic: true,
+    },
     checks: {
+      minimum_two_evaluations: checkReport('minimum_two_evaluations'),
+      public_weights_declared: checkReport('public_weights_declared'),
       weights_sum_100: checkReport('weights_sum_100'),
       names_present_in_source: checkReport('names_present_in_source'),
       all_source_percentages_used: checkReport('all_source_percentages_used'),
@@ -595,7 +628,7 @@ function buildAutomaticGateReport(population) {
     passedAllChecksCount: audited.length - flagged.length,
     flaggedCandidatesCount: flagged.length,
     flaggedCandidates: flagged,
-    limitation: 'Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las tres comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta.',
+    limitation: 'Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las cinco comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta. Una pauta de una sola evaluación solo puede aprobarse si la fuente permite confirmar la autorización excepcional de la Facultad o Unidad Académica.',
     massImportAllowed: false,
   };
 }
@@ -729,12 +762,15 @@ function renderReport(sampleDocument, metrics, paths, automaticGate = null) {
       : 'La muestra completa no detectó falsos auto_importable. Esto habilita diseñar una aprobación controlada, no importar automáticamente.';
   const automaticGateLines = automaticGate ? [
     '## Compuerta automática sobre los 2.001 candidatos', '',
-    `La compuerta offline revisó los **${automaticGate.populationSize}** candidatos: **${automaticGate.passedAllChecksCount}** pasan las tres comprobaciones y **${automaticGate.flaggedCandidatesCount}** quedan marcados para revisión.`, '',
+    `La compuerta offline revisó los **${automaticGate.populationSize}** candidatos: **${automaticGate.passedAllChecksCount}** pasan las cinco comprobaciones y **${automaticGate.flaggedCandidatesCount}** quedan marcados para revisión.`, '',
     '| Comprobación | Pasan | Marcados |',
     '|---|---:|---:|',
+    `| Al menos dos evaluaciones, salvo autorización excepcional | ${automaticGate.checks.minimum_two_evaluations.passedCount} | ${automaticGate.checks.minimum_two_evaluations.flaggedCount} |`,
+    `| Cada ponderación tiene respaldo público en el texto | ${automaticGate.checks.public_weights_declared.passedCount} | ${automaticGate.checks.public_weights_declared.flaggedCount} |`,
     `| Pesos suman 100 | ${automaticGate.checks.weights_sum_100.passedCount} | ${automaticGate.checks.weights_sum_100.flaggedCount} |`,
     `| Cada nombre aparece en el texto fuente | ${automaticGate.checks.names_present_in_source.passedCount} | ${automaticGate.checks.names_present_in_source.flaggedCount} |`,
     `| Ningún porcentaje del texto queda sin usar | ${automaticGate.checks.all_source_percentages_used.passedCount} | ${automaticGate.checks.all_source_percentages_used.flaggedCount} |`, '',
+    'Las dos primeras comprobaciones vienen del Reglamento del Estudiante UC, no de una heurística: una sola evaluación requiere autorización excepcional y la ponderación debe informarse públicamente desde la primera semana. Si falta un peso, la compuerta lo trata como problema de extracción o de fuente, nunca como un curso sin ponderación.', '',
     `El patrón literal \`N … X% c/u\` conserva \`slots\` en **${automaticGate.declaredSlots.candidateCount}** candidatos, **${automaticGate.declaredSlots.categoryCount}** categorías y **${automaticGate.declaredSlots.evaluationCount}** evaluaciones declaradas. Sin número explícito no se inventan \`slots\`.`, '',
     `Informe contable completo: \`${path.relative(ROOT, paths.automaticGate)}\`. Incluye cada candidato marcado, su URL, el texto evaluativo y el detalle de la comprobación que falló.`, '',
     `**Límite de la compuerta:** ${automaticGate.limitation}`, '',
@@ -861,7 +897,7 @@ function help() {
     '',
     'prepare lee el inventario y la cache de Fase 4; no consulta la red.',
     'metrics lee únicamente la muestra y las etiquetas humanas.',
-    'gate recorre offline los 2.001 candidatos y emite las tres comprobaciones automáticas.',
+    'gate recorre offline los 2.001 candidatos y emite las cinco comprobaciones automáticas.',
   ].join('\n');
 }
 

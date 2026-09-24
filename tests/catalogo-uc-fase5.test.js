@@ -180,8 +180,25 @@ check('dos candidatos con el mismo nombre normalizado se bloquean', (() => {
 })());
 
 console.log('\n=== La compuerta automática revisa los 2.001 candidatos ===');
+const pautaUnica = synthetic('NOR1000', 'plain_lines|1-2|missing|absent');
+pautaUnica.evaluationSourceText = 'V. EVALUACION\nProyecto final: 100%';
+pautaUnica.candidateWeights = [{ name: 'Proyecto final', weight: 100 }];
+const pautaUnicaAuditada = tool.evaluateAutomaticChecks(pautaUnica);
+const pautaDoble = synthetic('NOR2000', 'plain_lines|1-2|missing|absent');
+pautaDoble.evaluationSourceText = 'V. EVALUACION\n2 Pruebas: 50% c/u';
+pautaDoble.candidateWeights = [{ name: 'Pruebas', weight: 100, detail: { cantidad: 2, pesoCadaUna: 50 } }];
+const pautaDobleAuditada = tool.evaluateAutomaticChecks(pautaDoble);
+const sinPonderaciones = synthetic('NOR3000', 'plain_lines|1-2|missing|absent');
+sinPonderaciones.evaluationSourceText = 'V. EVALUACION\nProyecto final';
+sinPonderaciones.candidateWeights = [];
+const sinPonderacionesAuditada = tool.evaluateAutomaticChecks(sinPonderaciones);
+check('una sola evaluación exige revisión por la excepción reglamentaria', pautaUnicaAuditada.checks.minimum_two_evaluations === false && pautaUnicaAuditada.declaredEvaluationCount === 1 && pautaUnicaAuditada.failedChecks.includes('minimum_two_evaluations'));
+check('dos evaluaciones declaradas como slots cumplen el mínimo', pautaDobleAuditada.checks.minimum_two_evaluations === true && pautaDobleAuditada.declaredEvaluationCount === 2);
+check('la ausencia de ponderaciones se identifica como problema de fuente o extracción', sinPonderacionesAuditada.checks.public_weights_declared === false && sinPonderacionesAuditada.failedChecks.includes('public_weights_declared'));
 check('los pesos y nombres pasan en toda la población', automaticGate.populationSize === 2001 && automaticGate.checks.weights_sum_100.flaggedCount === 0 && automaticGate.checks.names_present_in_source.flaggedCount === 0);
-check('la compuerta deja 1.998 aprobados y marca tres porcentajes sin usar', automaticGate.passedAllChecksCount === 1998 && automaticGate.flaggedCandidatesCount === 3 && automaticGate.checks.all_source_percentages_used.flaggedCount === 3);
+check('la norma marca once pautas de una evaluación', automaticGate.checks.minimum_two_evaluations.flaggedCount === 11);
+check('las 2.001 pautas conservan ponderaciones públicas', automaticGate.checks.public_weights_declared.flaggedCount === 0);
+check('la compuerta deja 1.987 aprobados y marca catorce para revisar', automaticGate.passedAllChecksCount === 1987 && automaticGate.flaggedCandidatesCount === 14 && automaticGate.checks.all_source_percentages_used.flaggedCount === 3);
 check('cada marcado conserva fuente, texto y detalle contable', automaticGate.flaggedCandidates.every(item => item.sourceUrl && item.evaluationSourceText && item.failedChecks.length && Array.isArray(item.unusedPercentages)));
 check('la compuerta no habilita importación masiva', automaticGate.massImportAllowed === false);
 check('la limitación obliga a mirar la sección correcta en la fuente', /secci[oó]n equivocada/i.test(automaticGate.limitation) && /sourceUrl/.test(automaticGate.limitation));

@@ -21,19 +21,23 @@ La unidad académica no está disponible de forma fiable: `ESCUELAS_UC` está va
 
 ## Compuerta automática sobre los 2.001 candidatos
 
-La compuerta offline revisó los **2001** candidatos: **1998** pasan las tres comprobaciones y **3** quedan marcados para revisión.
+La compuerta offline revisó los **2001** candidatos: **1987** pasan las cinco comprobaciones y **14** quedan marcados para revisión.
 
 | Comprobación | Pasan | Marcados |
 |---|---:|---:|
+| Al menos dos evaluaciones, salvo autorización excepcional | 1990 | 11 |
+| Cada ponderación tiene respaldo público en el texto | 2001 | 0 |
 | Pesos suman 100 | 2001 | 0 |
 | Cada nombre aparece en el texto fuente | 2001 | 0 |
 | Ningún porcentaje del texto queda sin usar | 1998 | 3 |
+
+Las dos primeras comprobaciones vienen del Reglamento del Estudiante UC, no de una heurística: una sola evaluación requiere autorización excepcional y la ponderación debe informarse públicamente desde la primera semana. Si falta un peso, la compuerta lo trata como problema de extracción o de fuente, nunca como un curso sin ponderación.
 
 El patrón literal `N … X% c/u` conserva `slots` en **97** candidatos, **107** categorías y **242** evaluaciones declaradas. Sin número explícito no se inventan `slots`.
 
 Informe contable completo: `docs/catalogo-uc-automatic-gate-fase5.json`. Incluye cada candidato marcado, su URL, el texto evaluativo y el detalle de la comprobación que falló.
 
-**Límite de la compuerta:** Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las tres comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta.
+**Límite de la compuerta:** Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las cinco comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta. Una pauta de una sola evaluación solo puede aprobarse si la fuente permite confirmar la autorización excepcional de la Facultad o Unidad Académica.
 
 La revisión humana de la muestra sigue siendo necesaria, pero cambia de foco: la máquina verifica la transcripción interna; la persona confirma en `sourceUrl` que el parser leyó la sección correcta del programa.
 
