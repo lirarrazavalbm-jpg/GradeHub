@@ -122,7 +122,7 @@ function focoAgendaCopy(e){
   if(e.estadoAgenda==='esperando_nota'||e.estadoAgenda==='requiere_revision')return 'Fecha pasada: agrega la nota o corrige la fecha.';
   if(e.dias===0)return 'Es hoy. Revisa lo esencial y llega con lo importante resuelto.';
   if(e.dias<=2)return `Faltan ${e.dias} día${e.dias!==1?'s':''}: es lo que más te conviene atender ahora.`;
-  if(e.necesita!==null&&e.necesita>5.0)return `Te exige ${nf(e.necesita)} en lo pendiente para aprobar: adelántate.`;
+  if(e.necesita!==null&&e.necesita>5.0)return `Te exige ${nfNecesaria(e.necesita)} en lo pendiente para aprobar: adelántate.`;
   // Sin el "cuándo": la tarjeta ya lo dice en su propia línea justo arriba.
   return 'Destacada por cercanía, peso y cómo vas en el ramo.';
 }
@@ -130,7 +130,7 @@ function focoAgendaCopy(e){
 function razonDestacadaAgenda(e){
   if(e.estadoAgenda==='esperando_nota'||e.estadoAgenda==='requiere_revision')return focoAgendaCopy(e);
   if(e.necesita!==null&&e.necesita>7.05)return 'Con lo pendiente ya no alcanza para aprobar el ramo.';
-  if(e.necesita!==null&&e.necesita>5.0)return `Necesitas ${nf(e.necesita)} en lo pendiente para aprobar.`;
+  if(e.necesita!==null&&e.necesita>5.0)return `Necesitas ${nfNecesaria(e.necesita)} en lo pendiente para aprobar.`;
   if(e.avg!==null&&!notaAprobadaRamo(e.ramo,e.avg))return `Vas ${fmtPromedio(e.avg)} en el ramo: conviene prepararla con tiempo.`;
   const peso=pesoEventoAgenda(e);
   if(peso!==null&&peso>=30)return `Define ${r2(peso)}% del ramo.`;
@@ -197,8 +197,8 @@ function referenciaEvaluacionAgenda(e){
     texto:'Incluso un promedio bajo en lo pendiente mantiene el ramo sobre 4,0.',
   };
   return {
-    titulo:`${nf(e.necesita)} para aprobar`,
-    texto:`Necesitas ${nf(e.necesita)} promedio en lo pendiente para llegar a 4,0.`,
+    titulo:`${nfNecesaria(e.necesita)} para aprobar`,
+    texto:`Necesitas ${nfNecesaria(e.necesita)} promedio en lo pendiente para llegar a 4,0.`,
   };
 }
 
