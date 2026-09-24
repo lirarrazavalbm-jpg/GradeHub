@@ -172,6 +172,15 @@ function copiarReglasAusenciaIds(regla){
   const reemplazos=copiar(regla.reemplazos),traspasos=copiar(regla.traspasos);
   return reemplazos.length||traspasos.length?{reemplazos,traspasos}:null;
 }
+function copiarReglasAusenciaUsuario(regla){
+  if(!regla||regla.declaradaPor!=='estudiante')return null;
+  const base=copiarReglasAusenciaIds(regla)||{reemplazos:[],traspasos:[]};
+  const rezagos=(Array.isArray(regla.rezagos)?regla.rezagos:[])
+    .filter(x=>x&&typeof x.desdeId==='string')
+    .map(x=>({desdeId:x.desdeId}));
+  return rezagos.length||base.reemplazos.length||base.traspasos.length
+    ?{declaradaPor:'estudiante',rezagos,reemplazos:base.reemplazos,traspasos:base.traspasos}:null;
+}
 function resolverReglasAusencia(def,categorias){
   const declaracion=!Array.isArray(def)&&def&&def.ausenciasJustificadas;
   if(!declaracion||!Array.isArray(categorias))return null;
@@ -215,6 +224,10 @@ function normalize(data) {
     // La regla viene del programa; la declaración solo dice qué ausencia fue
     // aprobada. Sin declaración, una cuenta anterior calcula exactamente igual.
     reglasAusenciaJustificada: copiarReglasAusenciaIds(r.reglasAusenciaJustificada),
+    // El formulario del curso puede exigir rezago o acumulación aunque el
+    // catálogo no lo sepa. Esta elección es del estudiante y nunca se presenta
+    // como una regla oficial del programa.
+    reglasAusenciaJustificadaUsuario: copiarReglasAusenciaUsuario(r.reglasAusenciaJustificadaUsuario),
     ausenciasJustificadas: ausenciasDeclaradas(r.ausenciasJustificadas),
     categorias: comoLista(r.categorias).map(c => ({
       ...c,
@@ -2127,9 +2140,65 @@ function declararAusenciaJustificada(catId){
   if(!r.ausenciasJustificadas.includes(catId))r.ausenciasJustificadas.push(catId);
   save();track('declarar_ausencia_justificada');renderRamo();
 }
+function configurarAusenciaJustificadaEstudiante(r,desdeId,tipo,haciaId){
+  if(!r||r.reglasAusenciaJustificada)return false;
+  const desde=(r.categorias||[]).find(c=>c.id===desdeId);
+  if(!desde||!(Number(desde.peso)>0)||avgPond(desde.notas||[])!==null)return false;
+  if(!['rezago','traspaso'].includes(tipo))return false;
+  if(tipo==='traspaso'){
+    const hacia=(r.categorias||[]).find(c=>c.id===haciaId);
+    if(!hacia||hacia.id===desde.id||!(Number(hacia.peso)>0))return false;
+  }
+  const actual=copiarReglasAusenciaUsuario(r.reglasAusenciaJustificadaUsuario)||{
+    declaradaPor:'estudiante',rezagos:[],reemplazos:[],traspasos:[]};
+  actual.rezagos=actual.rezagos.filter(x=>x.desdeId!==desdeId);
+  actual.reemplazos=actual.reemplazos.filter(x=>x.desdeId!==desdeId);
+  actual.traspasos=actual.traspasos.filter(x=>x.desdeId!==desdeId);
+  if(tipo==='rezago')actual.rezagos.push({desdeId});
+  else actual.traspasos.push({desdeId,haciaId});
+  r.reglasAusenciaJustificadaUsuario=actual;
+  if(!Array.isArray(r.ausenciasJustificadas))r.ausenciasJustificadas=[];
+  if(!r.ausenciasJustificadas.includes(desdeId))r.ausenciasJustificadas.push(desdeId);
+  return true;
+}
+function openAusenciaJustificadaModal(catId){
+  const r=S.ramos.find(x=>x.id===currentRamoId);
+  const desde=r&&(r.categorias||[]).find(c=>c.id===catId);
+  if(!r||r.reglasAusenciaJustificada||!desde||avgPond(desde.notas||[])!==null){
+    showToast('Esa ausencia ya no se puede configurar',true);return;
+  }
+  const destinos=(r.categorias||[]).filter(c=>c.id!==catId&&Number(c.peso)>0);
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Inasistencia justificada</div>
+    <p style="margin:-2px 0 16px;color:var(--fg2);line-height:1.5;">Según el formulario de <b>${esc(r.nombre)}</b>, ¿qué pasa con el ${r2(desde.peso)}% de <b>${esc(desde.nombre)}</b>?</p>
+    <button type="button" class="btn-confirm" style="width:100%;margin-bottom:8px;" onclick="declararAusenciaJustificadaEstudiante('${esc(catId)}','rezago')">Rendir en rezago</button>
+    <p style="margin:0 0 18px;color:var(--fg3);font-size:.82rem;line-height:1.45;">Mantiene su porcentaje. La evaluación seguirá pendiente hasta que ingreses la nota del rezago.</p>
+    ${destinos.length?`<label class="modal-label" for="m-ausencia-destino">Acumular porcentaje en</label>
+      <select id="m-ausencia-destino" class="feedback-select" style="width:100%;margin-bottom:10px;">${destinos.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)} · ${r2(c.peso)}%</option>`).join('')}</select>
+      <button type="button" class="btn-confirm" style="width:100%;" onclick="declararAusenciaJustificadaEstudiante('${esc(catId)}','traspaso')">Acumular porcentaje</button>
+      <p style="margin:8px 0 0;color:var(--fg3);font-size:.82rem;line-height:1.45;">La evaluación de destino no puede superar 75%. Lo que exceda ese tope cuenta con nota 1,0.</p>`:''}
+    <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancelar</button></div>`;
+  openModal();
+}
+function declararAusenciaJustificadaEstudiante(catId,tipo){
+  const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
+  const destino=document.getElementById('m-ausencia-destino');
+  const haciaId=tipo==='traspaso'&&destino?destino.value:null;
+  if(!configurarAusenciaJustificadaEstudiante(r,catId,tipo,haciaId)){
+    showToast('No pudimos guardar esa decisión; revisa la pauta',true);return;
+  }
+  save();track('declarar_ausencia_justificada_estudiante',{tipo});closeModal();renderRamo();
+}
 function corregirAusenciaJustificada(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   r.ausenciasJustificadas=(r.ausenciasJustificadas||[]).filter(id=>id!==catId);
+  const usuario=copiarReglasAusenciaUsuario(r.reglasAusenciaJustificadaUsuario);
+  if(usuario){
+    usuario.rezagos=usuario.rezagos.filter(x=>x.desdeId!==catId);
+    usuario.reemplazos=usuario.reemplazos.filter(x=>x.desdeId!==catId);
+    usuario.traspasos=usuario.traspasos.filter(x=>x.desdeId!==catId);
+    r.reglasAusenciaJustificadaUsuario=(usuario.rezagos.length||usuario.reemplazos.length||usuario.traspasos.length)?usuario:null;
+  }
   save();renderRamo();
 }
 function toggleCat(id){openCats[id]=!openCats[id];renderRamo();}
@@ -2496,12 +2565,20 @@ function fusionarPauta(r,nuevas){
   // Un cambio de pauta genera ids nuevos. La declaración pertenece a
   // una evaluación por su nombre, no al id efímero; si esa evaluación ya no
   // existe la conservamos como inactiva, igual que una fecha quitada a mano.
-  r.ausenciasJustificadas=(r.ausenciasJustificadas||[]).map(id=>{
+  const idAusenciaEnPautaNueva=id=>{
     const nombre=nombresAusencia.get(id);
     const nueva=(r.categorias||[]).find(c=>[c.nombre,...(c.nombresAnteriores||[]).map(x=>typeof x==='string'?x:x.nombre)]
       .some(n=>normName(n)===nombre));
     return nueva?nueva.id:id;
-  });
+  };
+  r.ausenciasJustificadas=(r.ausenciasJustificadas||[]).map(idAusenciaEnPautaNueva);
+  const usuario=copiarReglasAusenciaUsuario(r.reglasAusenciaJustificadaUsuario);
+  if(usuario){
+    usuario.rezagos=usuario.rezagos.map(x=>({desdeId:idAusenciaEnPautaNueva(x.desdeId)}));
+    usuario.reemplazos=usuario.reemplazos.map(x=>({desdeId:idAusenciaEnPautaNueva(x.desdeId),haciaId:idAusenciaEnPautaNueva(x.haciaId)}));
+    usuario.traspasos=usuario.traspasos.map(x=>({desdeId:idAusenciaEnPautaNueva(x.desdeId),haciaId:idAusenciaEnPautaNueva(x.haciaId)}));
+    r.reglasAusenciaJustificadaUsuario=usuario;
+  }
 }
 function aplicarPautaNueva(ramoId){
   if(!actualizarPauta(ramoId))return;
