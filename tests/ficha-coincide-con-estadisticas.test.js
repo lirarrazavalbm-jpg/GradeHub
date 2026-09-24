@@ -87,9 +87,17 @@ const casos = [
 casos.forEach(([nombre, cats]) => {
   const chip = pintar(cats);
   const enLaFicha = Number((chip.match(/Necesitas ([\d.,]+)/) || [])[1].replace(',', '.'));
-  const enStats = necesariaDeEstadisticas();
-  chk(`${nombre} → ficha ${enLaFicha} · estadísticas ${enStats.toFixed(2)}`,
-    Math.abs(enLaFicha - enStats) < 0.05);
+  const crudo = necesariaDeEstadisticas();
+  // Las dos pantallas muestran el MISMO número, y ese número se redondea hacia
+  // arriba. Antes esto comparaba lo que dibuja la ficha contra el valor crudo
+  // del motor —peras con manzanas— y pasaba de casualidad mientras los dos
+  // redondeaban al más cercano.
+  const enStats = Number(val('nfNecesaria')(crudo));
+  chk(`${nombre} → ficha ${enLaFicha} · estadísticas ${enStats}`, enLaFicha === enStats);
+  // Con el mismo margen que usa `nfNecesaria` para no inflar por ruido: el
+  // motor devuelve cosas como 3.5000000000001 y eso no es una décima más.
+  chk(`${nombre}: lo que muestra alcanza para el ${crudo.toFixed(3)} que pide el motor`,
+    enLaFicha >= crudo - 1e-9);
 });
 
 console.log('\n=== Un ramo a medio llenar no está reprobado ===');

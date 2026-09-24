@@ -824,6 +824,23 @@ function r2(n){return Math.round(n*100)/100;}
 // 3,94 queda en 3,9 y 3,95 pasa a 4,0. `r2` sigue disponible para porcentajes y
 // cuentas intermedias; no se usa para contradecir la nota que ve la persona.
 function notaFinalOficial(n){return n===null||isNaN(n)?null:Math.round(Number(n)*10)/10;}
+// La nota que necesitas se redondea HACIA ARRIBA, nunca al más cercano.
+//
+// Con `nf()` la app podía decirte un número menor al que de verdad hace falta:
+// si necesitabas 3,80357 mostraba "3,8", y 3,8 no alcanza. Lucas lo pilló en
+// Dinámica — la ficha decía 3,7, simuló 3,7 en todo y sacó 3,9.
+//
+// Es el peor error posible en la pregunta que la app existe para responder: no
+// se equivoca avisando de más, se equivoca dejándote reprobar mientras te dice
+// que vas bien. Media décima de más nunca hace daño; media décima de menos sí.
+//
+// La calculadora ya lo hacía —"nunca una nota menor a la que calcula el
+// motor"— y el resto de la app no. El epsilon evita que un 3,7000000001 de
+// punto flotante se muestre como 3,8.
+function nfNecesaria(n){
+  if(n===null||n===undefined||isNaN(n))return '\u00b7';
+  return (Math.ceil((Number(n)-1e-9)*10)/10).toFixed(1);
+}
 function nivelNota(n){
   const v=notaFinalOficial(n);
   if(v===null)return'neutral';
@@ -6906,7 +6923,11 @@ function resumenMetaCalculadora(needed){
   }
   if(needed>=7-eps)return {estado:'maxima',texto:'7.0'};
   if(needed<1)return {estado:'margen',texto:r2(needed).toFixed(1)};
-  return {estado:'normal',texto:r2(needed).toFixed(1),numero:r2(needed)};
+  // Hacia arriba, igual que el caso inalcanzable de arriba y que el resto de la
+  // app: `r2(needed).toFixed(1)` redondeaba al más cercano y podía pedir menos
+  // de lo que hace falta. `numero` conserva el valor sin redondear porque lo
+  // usan comparaciones, no la pantalla.
+  return {estado:'normal',texto:nfNecesaria(needed),numero:r2(needed)};
 }
 function openCalculadoraModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);
@@ -8002,7 +8023,7 @@ function lecturaDespuesDeNota(ramo){
   if(necesita>7.05)return `Vas ${fmtPromedio(avg)} · ya no alcanza sólo con lo pendiente`;
   if(necesita<=1.0)return `Vas ${fmtPromedio(avg)} · tienes margen para aprobar`;
   if(nivelNota(avg)==='good'&&necesita<=4.0)return `Vas ${fmtPromedio(avg)} · buen margen en lo pendiente`;
-  return `Vas ${fmtPromedio(avg)} · necesitas ${nf(necesita)} en lo pendiente para aprobar`;
+  return `Vas ${fmtPromedio(avg)} · necesitas ${nfNecesaria(necesita)} en lo pendiente para aprobar`;
 }
 
 // Hasta dónde llega "ahora". Un mes es lo que alguien alcanza a preparar y
@@ -8105,9 +8126,9 @@ function agendaItemHTML(e){
   if(!e.mostrarAlerta){
     alerta='';
   } else if(e.avg!==null&&!notaAprobadaRamo(e.ramo,e.avg)&&e.necesita!==null&&e.necesita<=7.05){
-    alerta=`<div class="ag-alert bad"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Vas ${fmtPromedio(e.avg)} · necesitas ${nf(e.necesita)} en lo que queda</div>`;
+    alerta=`<div class="ag-alert bad"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Vas ${fmtPromedio(e.avg)} · necesitas ${nfNecesaria(e.necesita)} en lo que queda</div>`;
   } else if(e.necesita!==null&&e.necesita>5.0&&e.necesita<=7.05){
-    alerta=`<div class="ag-alert warn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Necesitas ${nf(e.necesita)} en lo que queda para aprobar</div>`;
+    alerta=`<div class="ag-alert warn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Necesitas ${nfNecesaria(e.necesita)} en lo que queda para aprobar</div>`;
   } else if(e.necesita!==null&&e.necesita>7.05){
     alerta=`<div class="ag-alert bad"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><circle cx="12" cy="18" r=".8" fill="currentColor"/></svg>Ya no alcanza para aprobar este ramo</div>`;
   }
