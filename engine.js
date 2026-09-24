@@ -430,15 +430,45 @@ function gh_crearCalculoRamo(deps){
     if(!propio.children.some(c=>c.weight>0))return null;
     let estructura=propio;
     const link=ramo.aporta;
+    const resolver=(est,meta)=>solveForTarget(est,notas,meta,{}, {precision:null,extrapolate:true}).requiredAverage;
     if(link&&link.peso){
       const p=link.peso/100;
       const otro=ramoVinculado(ramo);
       const externo=otro?preparar(otro,'externo:'):{id:'externo',name:link.ramo,type:'leaf'};
       estructura={...propio,children:[{...propio,id:'propio',weight:1-p},{...externo,id:'externo',weight:p}]};
+
+      // El promedio ponderado NO basta cuando el vínculo declara un mínimo.
+      //
+      // `combinarConRamoVinculado` dice: si CUALQUIERA de las dos partes queda
+      // bajo el mínimo, la nota final es la MENOR de las dos. Dinámica y su
+      // laboratorio son el caso: 70/30 con mínimo 4,0.
+      //
+      // Resolver solo el 70/30 daba números que no sirven. Con el laboratorio
+      // en 4,0 decía "necesitas 1,07" y poniendo 1,1 la final quedaba en 3,9,
+      // porque la parte propia se iba bajo 4,0 y mandaba ella. Y con el
+      // laboratorio en 3,5 decía 1,93 cuando ya no hay nota que salve el ramo.
+      //
+      // Es el peor error posible en la pregunta que la app existe para
+      // responder: no avisa de más, deja reprobar diciendo que vas bien.
+      if(typeof link.min==='number'){
+        // Si el laboratorio ya cerró bajo el mínimo, no hay nota propia que
+        // alcance: la final será la suya. Se devuelve fuera de escala para que
+        // la interfaz diga "ya no es posible" en vez de pedir un número.
+        if(otro&&ramoCompletamenteEvaluado(otro)){
+          const suyo=ramoAvg(otro);
+          if(typeof suyo==='number'&&suyo<link.min)return (gh_meta(estructura)?.grade_scale?.max??7)+1;
+        }
+        const ponderado=resolver(estructura,objetivo);
+        // La parte propia tiene que llegar al mínimo por su cuenta.
+        const porSuCuenta=resolver(propio,link.min);
+        if(ponderado===null)return porSuCuenta;
+        if(porSuCuenta===null)return ponderado;
+        return Math.max(ponderado,porSuCuenta);
+      }
     }
     // Las compuertas se siguen comunicando por gatesActivas; acá se obtiene la
     // exigencia ponderada. Solo el solver decide cómo cambia el descarte al rendir.
-    return solveForTarget(estructura,notas,objetivo,{}, {precision:null,extrapolate:true}).requiredAverage;
+    return resolver(estructura,objetivo);
   }
   return {hojasCategoria,ramoToStructure,gradesOf,avgPond,promedioCompletoSinDescarte,estadoEximicion,categoriaEximida,categoriasVigentes,estadoAusenciasJustificadas,avgDeGrupo,avgDeGrupoCalculado,calculoRamoConCompuertas,ramoCompletamenteEvaluado,estadoRecuperativo,resumenCategoriasCalculadas,ramoAvg,ramoVinculado,combinarConRamoVinculado,gatesActivas,estadoParaNotaNecesaria,notaNecesaria};
 }
