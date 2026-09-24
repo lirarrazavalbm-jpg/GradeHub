@@ -32,6 +32,11 @@ console.log('\n=== El cargador de mallas sirve a cualquier universidad ===');
 chk('hay una tabla de archivo por universidad', /ARCHIVO_MALLAS\s*=\s*\{[^}]*uai:/.test(app));
 chk('la búsqueda de mallas extra no está atada a la UC', /function mallasExtraDe\(tenant\)/.test(app));
 chk('el paso 5 pide el archivo del tenant que corresponda', /cargarMallasUC\(selectedTenant\)/.test(app));
+// La malla llega después de pintar el paso 5. Si al llegar solo se rehace el
+// selector, el botón se queda con el texto de cero ramos: "Continuar sin ramos"
+// encima de ocho ramos marcados (UAI Comercial 2°, 2026-09-24).
+chk('al llegar la malla se repinta también el botón',
+  /cargarMallasUC\(selectedTenant\)\.then\(ok=>\{if\(ok\)\{obRamosKey=null;if\(obStep===5\)obRender\(\);\}\}\)/.test(app));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);
