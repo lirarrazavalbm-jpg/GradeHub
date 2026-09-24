@@ -18,11 +18,12 @@ function renderRecorreccionesHome(){
   if(!items.length){caja.style.display='none';caja.innerHTML='';return;}
   const urgentes=items.filter(x=>x.dias!==null&&x.dias<=RECORRECCION_DIAS_URGENTE);
   const plazo=x=>{
-    if(x.dias===null)return 'sin plazo anotado';
-    if(x.dias<0)return `el plazo venció hace ${Math.abs(x.dias)} ${Math.abs(x.dias)===1?'día':'días'}`;
-    if(x.dias===0)return 'el plazo vence hoy';
-    if(x.dias===1)return 'te queda 1 día';
-    return `te quedan ${x.dias} días`;
+    const derecho=textoPlazoRecorreccion(x.plazo);
+    if(x.dias===null)return derecho;
+    if(x.dias<0)return `${derecho} · venció hace ${Math.abs(x.dias)} ${Math.abs(x.dias)===1?'día':'días'}`;
+    if(x.dias===0)return `${derecho} · vence hoy`;
+    if(x.dias===1)return `${derecho} · queda 1 día`;
+    return `${derecho} · quedan ${x.dias} días`;
   };
   caja.style.display='block';
   caja.className='home-recorrecciones'+(urgentes.length?' urgente':'');
@@ -693,11 +694,12 @@ function renderRamo(){
           // formato corto de la ficha es el mismo que usa el chip del grupo.
           const fSub=nota&&nota.fecha?fechaHoraCorta(nota.fecha,nota.hora):'';
           const recorreccion=nota&&nota.recorreccionPendiente===true;
+          const textoRecorreccion=recorreccion?textoPlazoRecorreccion(plazoRecorreccion(nota,cat,S.tenant)):'';
           rows+=`<div class="eval-sub${sobra?' eval-sub-sobra':''}">
             <button type="button" class="eval-sub-open" onclick="event.stopPropagation();abrirCasilla('${cat.id}',${i})" title="Fecha y detalle de ${esc(etiqueta)}" aria-label="Fecha y detalle de ${esc(etiqueta)}">
               <span class="eval-sub-name">${esc(etiqueta)}</span>
               ${sobra?'<span class="eval-sub-aviso">sobra en la pauta · sigue contando</span>':(fSub?`<span class="eval-sub-fecha">${esc(fSub)}</span>`:'<span class="eval-sub-fecha vacia">sin fecha</span>')}
-              ${recorreccion?'<span class="recorreccion-chip">Falta mandar</span>':''}
+              ${recorreccion?`<span class="recorreccion-chip">Falta mandar${textoRecorreccion!=='sin plazo calculable'?` · ${esc(textoRecorreccion)}`:''}</span>`:''}
             </button>
             <input class="eval-row-input sm" inputmode="${inputModeNota()}" autocapitalize="characters" maxlength="3" placeholder="—" value="${v!=null?textoCalificacionNota(nota):''}" style="color:${v!=null?getColor(v):'var(--fg)'}" onchange="setSlotNota('${cat.id}',${i},this.value)" onclick="event.stopPropagation();" aria-label="${esc(etiqueta)}"/>
           </div>`;
@@ -725,12 +727,13 @@ function renderRamo(){
       }
       const g=notas[0]?notas[0].valor:null;
       const recorreccion=notas[0]&&notas[0].recorreccionPendiente===true;
+      const textoRecorreccion=recorreccion?textoPlazoRecorreccion(plazoRecorreccion(notas[0],cat,S.tenant)):'';
       const row=document.createElement('div');row.className='eval-row';
       if(g!=null)row.style.borderLeftColor=getColor(g);
       row.innerHTML=`
         <div class="eval-row-info" role="button" tabindex="0" onclick="openEditCatModal('${cat.id}')" style="cursor:pointer;">
           <div class="eval-row-name">${esc(cat.nombre)}</div>
-          <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}${recorreccion?' <span class="recorreccion-chip">Falta mandar</span>':''}</div>
+          <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}${recorreccion?` <span class="recorreccion-chip">Falta mandar${textoRecorreccion!=='sin plazo calculable'?` · ${esc(textoRecorreccion)}`:''}</span>`:''}</div>
         </div>
         <input class="eval-row-input" inputmode="${inputModeNota()}" autocapitalize="characters" maxlength="3" placeholder="—" value="${g!=null?textoCalificacionNota(notas[0]):''}" style="color:${g!=null?getColor(g):'var(--fg)'}" onchange="setDirectNota('${cat.id}',this.value)" onclick="event.stopPropagation();" aria-label="Nota de ${esc(cat.nombre)}"/>`;
       cl.appendChild(row);
@@ -753,12 +756,13 @@ function renderRamo(){
       `<p style="font-size:0.8125rem;color:var(--fg3);text-align:center;padding:10px 0;">Sin notas aún</p>`:
       notas.map(n=>{
         const descartada=notasDescartadas.has(n.id);
+        const textoRecorreccion=n.recorreccionPendiente===true?textoPlazoRecorreccion(plazoRecorreccion(n,cat,S.tenant)):'';
         return `
         <div class="nota-row${descartada?' nota-row-dropped':''}">
           <button class="nota-row-name" aria-label="Editar nota ${esc(n.nombre)}" onclick="openEditNotaModal('${cat.id}','${n.id}');event.stopPropagation();" style="background:none;border:none;cursor:pointer;text-align:left;padding:0;font-family:inherit;font-size:0.875rem;color:var(--fg2);flex:1;">${esc(n.nombre)}</button>
           ${n.peso!==1?`<span class="nota-row-pond">${n.peso}%</span>`:''}
           ${descartada?'<span class="nota-row-drop-tag">No cuenta</span>':''}
-          ${n.recorreccionPendiente===true?'<span class="recorreccion-chip">Falta mandar</span>':''}
+          ${n.recorreccionPendiente===true?`<span class="recorreccion-chip">Falta mandar${textoRecorreccion!=='sin plazo calculable'?` · ${esc(textoRecorreccion)}`:''}</span>`:''}
           ${n.fecha?`<span class="cat-fecha-chip">${esc(fechaCorta(n.fecha))}</span>`:''}
           <span class="nota-row-val" style="color:${getColor(n.valor)}">${textoCalificacionNota(n)}</span>
           <button class="nota-row-del" aria-label="Eliminar nota ${esc(n.nombre)}" onclick="deleteNota('${cat.id}','${n.id}');event.stopPropagation();">✕</button>

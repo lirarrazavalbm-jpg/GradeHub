@@ -20,6 +20,7 @@ function resolverRecorreccionAgenda(ramoId,catId,notaId){
   const nota=cat&&(cat.notas||[]).find(n=>n.id===notaId);
   if(!nota||nota.recorreccionPendiente!==true)return;
   delete nota.recorreccionPendiente;
+  delete nota.recorreccionHasta;
   save();renderAgenda();showToast('Listo, ya no te recordaremos mandarla');
 }
 
@@ -29,7 +30,7 @@ function agendaRecorreccionesHTML(items){
     <div class="ag-list-hd"><span class="section-hd-title">Por mandar a recorregir</span><span class="ag-count">${items.length}</span></div>
     <div class="ag-recorreccion-list">${items.map(e=>`<article class="ag-recorreccion-row">
       <span class="ag-recorreccion-mark" aria-hidden="true"></span>
-      <div><strong>${esc(nombreNotaCasilla(e.ramo,e.cat,e.nota))}</strong><span>${esc(e.ramo.nombre)} · aún no la mandas</span></div>
+      <div><strong>${esc(nombreNotaCasilla(e.ramo,e.cat,e.nota))}</strong><span>${esc(e.ramo.nombre)} · aún no la mandas · ${esc(textoPlazoRecorreccion(e.plazo))}</span></div>
       <button type="button" data-agenda-action="resolver-recorreccion" data-ramo-id="${esc(e.ramo.id)}" data-cat-id="${esc(e.cat.id)}" data-nota-id="${esc(e.nota.id)}">Ya la mandé</button>
     </article>`).join('')}</div>
   </section>`;
