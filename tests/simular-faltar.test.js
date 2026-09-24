@@ -36,7 +36,7 @@ chk('el 20% de la I2 se suma al Examen → (5·20 + 6·60)/80 = 5,75', cerca(pro
 limpiar();A.i2={hacia:'ex',tipo:'reemplazo'};
 chk('o la I2 toma la nota del Examen → (5·20 + 6·20 + 6·40)/80 = 5,75', cerca(proy(r),(5*20+6*20+6*40)/80));
 limpiar();A.i2={hacia:'ex',tipo:'traspaso'};A.i3={hacia:'ex',tipo:'traspaso'};
-chk('faltando a las dos, el Examen queda en 80% → 5,8', cerca(proy(r),(5*20+6*80)/100));
+chk('faltando a las dos, el Examen topa en 75% y el 5% excedente vale 1,0 → 5,55', cerca(proy(r),(5*20+6*75+1*5)/100));
 limpiar();A.i2={hacia:'i3',tipo:'traspaso'};
 chk('el peso también puede ir a otra pendiente, y ahí no cambia nada todavía', cerca(proy(r),(5*20+6*40)/60));
 
@@ -53,6 +53,7 @@ chk('a una evaluación pendiente sí', puede(r.categorias[1])===true);
 chk('a una que ya rendiste no', puede(r.categorias[0])===false);
 g('simState')[r.categorias[2].id]=[{id:'h',valor:4}];
 chk('ni a una con nota hipotética puesta', puede(r.categorias[2])===false);
+chk('el simulador avisa el tope antes de mostrar un resultado', /máximo de 75%/.test(fs.readFileSync(raiz+'app.js','utf8'))&&/excedente cuenta con nota 1,0/.test(fs.readFileSync(raiz+'app.js','utf8')));
 
 console.log(`\n${ok} OK, ${fail} FAIL`);
 process.exit(fail?1:0);

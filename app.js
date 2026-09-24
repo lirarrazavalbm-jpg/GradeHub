@@ -7298,7 +7298,7 @@ function simProjectedRamo(r){
   // justamente la pregunta.
   const entradas=Object.entries(simAusencias).filter(([id,a])=>a&&a.hacia&&a.hacia!==id);
   if(!entradas.length)return base;
-  const previa=r.reglasAusenciaJustificada||{};
+  const previa=r.reglasAusenciaJustificada||r.reglasAusenciaJustificadaUsuario||{};
   return {...base,
     reglasAusenciaJustificada:{
       reemplazos:[...(previa.reemplazos||[]),
@@ -7400,6 +7400,7 @@ function renderSimulador(){
               return `<option value="traspaso|${esc(o.id)}"${falta.tipo!=='reemplazo'&&falta.hacia===o.id?' selected':''}>El ${r2(c.peso)}% se suma a ${t}</option>`+
                      `<option value="reemplazo|${esc(o.id)}"${falta.tipo==='reemplazo'&&falta.hacia===o.id?' selected':''}>Me ponen la nota de ${t}</option>`;
             }).join('')}</select>
+          ${falta.tipo==='reemplazo'?'':'<small style="display:block;margin-top:6px;color:var(--fg3);line-height:1.4;">La acumulación tiene un máximo de 75%. El excedente cuenta con nota 1,0.</small>'}
         </div>`:(simPuedeFaltar(c)?`<button type="button" class="sim-falta-btn" onclick="simToggleFalta('${c.id}')">No la voy a dar</button>`:'')}
         ${(simCatLlena(c)||falta)?'':`<div class="sim-add">
           <input type="text" inputmode="${inputModeNota()}" autocapitalize="characters" id="sim-in-${c.id}" placeholder="${conceptosNota().length?'Nota hipotética (1.0–7.0, D/A/R)':'Nota hipotética (1.0–7.0)'}" onkeydown="if(event.key==='Enter')simAddNota('${c.id}')"/>
