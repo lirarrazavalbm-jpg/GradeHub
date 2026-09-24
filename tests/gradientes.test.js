@@ -12,10 +12,18 @@ const chk = (nombre, condicion) => {
 const regla = selector => (css.match(new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}')) || [])[1] || '';
 
 console.log('\n=== Inventario de gradientes ===');
-const total = (css.match(/linear-gradient\(/g) || []).length;
+// Se cuentan los gradientes que PINTAN. Un `mask-image` también es un
+// linear-gradient, pero no dibuja nada: recorta lo que ya está, y se usa para
+// desvanecer un borde. Contarlos juntos hacía que agregar un desvanecido
+// pareciera un gradiente decorativo de vuelta, que es lo que esta guarda existe
+// para impedir.
+const declaraciones = css.split(';');
+const pintan = declaraciones.filter(d => /linear-gradient\(/.test(d) && !/mask-image/.test(d));
+const total = pintan.reduce((n, d) => n + (d.match(/linear-gradient\(/g) || []).length, 0);
+const enMascaras = (css.match(/linear-gradient\(/g) || []).length - total;
 // Editorial reemplaza los tres de Home (decoración, avance y cierre) por una
 // línea de identidad y un riel neutro. El resto sigue separado de esos cambios.
-chk(`quedan los 16 gradientes ajenos al rediseño del avance de Home (${total})`, total === 16);
+chk(`quedan los 16 gradientes que pintan, ajenos al rediseño del avance de Home (${total}${enMascaras?` · ${enMascaras} más en máscaras`:''})`, total === 16);
 chk('el sistema declara una dirección para superficies y otra para acentos',
   /--gradient-surface:150deg;--gradient-accent:135deg;/.test(css));
 

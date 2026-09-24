@@ -42,6 +42,14 @@ const AGENDA_ORDENES=['recomendado','fecha','peso'];
 let agendaOrdenActual='recomendado';
 let agendaDetalleAbierto=null;
 let agendaRendidasAbiertas=false;
+// "Después" muestra tres y deja la siguiente asomada detrás.
+//
+// Antes caía la lista entera de una. Con un semestre cargado eso son quince o
+// veinte evaluaciones seguidas, y una lista así deja de ser una agenda: el
+// estudiante tiene que recorrerla para saber qué viene, que es justo lo que la
+// pantalla venía a resolver. Las dos prioridades no se tocan.
+let agendaRestantesAbiertas=false;
+const AGENDA_RESTANTES_VISIBLES=3;
 
 // La línea de tiempo exige fecha; el historial de notas no. Se arma aparte para
 // que una evaluación rendida nunca desaparezca de la Agenda por no tenerla.
@@ -69,6 +77,11 @@ function agendaRendidas(){
 
 function toggleRendidasAgenda(){
   agendaRendidasAbiertas=!agendaRendidasAbiertas;
+  renderAgenda();
+}
+
+function toggleRestantesAgenda(){
+  agendaRestantesAbiertas=!agendaRestantesAbiertas;
   renderAgenda();
 }
 
@@ -347,6 +360,7 @@ function activarAccionesAgenda(body){
     else if(accion==='corregir-fecha')corregirFechaDesdeAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId||null);
     else if(accion==='resolver-recorreccion')resolverRecorreccionAgenda(boton.dataset.ramoId,boton.dataset.catId,boton.dataset.notaId);
     else if(accion==='toggle-rendidas')toggleRendidasAgenda();
+    else if(accion==='toggle-restantes')toggleRestantesAgenda();
     else if(accion==='agregar-evaluacion'){
       openRamo(boton.dataset.ramoId);
       setTimeout(openAddCatModal,320);
@@ -545,8 +559,27 @@ function renderAgenda(){
       ramosVistos.add(e.ramo.id);
     });
     if(restantes.length){
-      html+=`<div class="ag-list-hd ag-rest-heading"><span class="section-hd-title">Después</span><span class="ag-count">${restantes.length}</span></div>`;
-      html+=restantes.map(e=>agendaEventoHTML(e,agendaItemHTML(e),porVenir)).join("");
+      const ocultas=Math.max(0,restantes.length-AGENDA_RESTANTES_VISIBLES);
+      const plegada=!agendaRestantesAbiertas&&ocultas>0;
+      // Plegada se dibujan cuatro: tres enteras y la siguiente a medio salir,
+      // borrosa. No es un decorado ni una copia: es la fila de verdad, con su
+      // markup normal y una clase encima. Anidarla dentro de un botón dejaba el
+      // contenido vacío y sacaba su detalle fuera de la lista.
+      const visibles=plegada?restantes.slice(0,AGENDA_RESTANTES_VISIBLES+1):restantes;
+      html+=`<div class="ag-list-hd ag-rest-heading"><span class="section-hd-title">Después</span><span class="ag-count">${restantes.length}</span>${
+        agendaRestantesAbiertas&&ocultas>0
+          ? `<button type="button" class="ag-rest-toggle" data-agenda-action="toggle-restantes">Ver menos</button>`
+          : ''}</div>`;
+      html+=`<div class="ag-rest-list${plegada?' plegada':''}">${
+        visibles.map((e,i)=>{
+          const fantasma=plegada&&i===AGENDA_RESTANTES_VISIBLES;
+          const fila=agendaEventoHTML(e,agendaItemHTML(e),porVenir);
+          return fantasma?fila.replace('class="ag-event ','class="ag-event ag-event-fantasma '):fila;
+        }).join('')}`;
+      if(plegada){
+        html+=`<button type="button" class="ag-rest-ver" data-agenda-action="toggle-restantes">Ver ${ocultas} más</button>`;
+      }
+      html+=`</div>`;
     }
   } else if(fechasPasadas.length>0){
     html+=`<div class="ag-alldone ag-no-upcoming">
