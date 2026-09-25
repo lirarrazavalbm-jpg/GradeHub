@@ -1700,7 +1700,8 @@ function renderBorradorProfesor(raiz,anuncio){
   raiz.innerHTML=`<div class="modal-title" id="modal-titulo">${id?'Edita tu borrador':'Prepara tu clase'}</div>
     <p class="profesor-info">Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.</p>
     <form class="profesor-form" id="profesor-borrador">
-      <h3>1. Tu clase</h3>
+      <div class="profesor-form-campos">
+      <details class="profesor-seccion" open><summary><h3>1. Tu clase</h3></summary><div class="profesor-seccion-cuerpo">
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
       <label class="modal-label" for="pr-descripcion">Descripción</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required placeholder="Qué van a trabajar, cómo son tus clases y tu experiencia con el ramo.">${valor('descripcion')}</textarea>
       <label class="modal-label" for="pr-precio">Precio por clase</label><input id="pr-precio" type="text" inputmode="numeric" autocomplete="off" required placeholder="$15.000" aria-describedby="pr-precio-ayuda" value="${esc(textoPesosEscrito(anuncio&&anuncio.precio_clp))}"><p class="profesor-info" id="pr-precio-ayuda">Si la clase es gratis, pon $0: se mostrará como "Gratis".</p>
@@ -1725,7 +1726,8 @@ function renderBorradorProfesor(raiz,anuncio){
       <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
       <button class="btn-cancel" id="pr-quitar-flyer" type="button" ${flyerActual?'':'hidden'}>Quitar flyer guardado</button>
       <div id="pr-logo"></div>
-      <h3>2. Público</h3>
+      </div></details>
+      <details class="profesor-seccion" open><summary><h3>2. Público</h3></summary><div class="profesor-seccion-cuerpo">
       <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
       <label class="modal-label" for="pr-siglas-buscar">Ramo de tu clase</label>
       <div class="profesor-ramos" id="pr-ramos-elegidos" aria-live="polite"></div>
@@ -1738,7 +1740,8 @@ function renderBorradorProfesor(raiz,anuncio){
       <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
       <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">
       <p class="profesor-info">GradeHub calcula el público sin mostrarte notas ni identidades.</p>
-      <h3>3. Tu campaña</h3>
+      </div></details>
+      <details class="profesor-seccion" open><summary><h3>3. Tu campaña</h3></summary><div class="profesor-seccion-cuerpo">
       <div class="profesor-campana">
         <div class="profesor-campana-fechas">
           <div><label class="modal-label" for="pr-inicio">Empieza · opcional</label><input id="pr-inicio" type="date" min="${hoyChileClase()}"></div>
@@ -1750,18 +1753,27 @@ function renderBorradorProfesor(raiz,anuncio){
         <p class="profesor-info">Cuesta ${pesosClase(TARIFA_CAMPANA.dia)} por día publicada y, por persona, ${pesosClase(TARIFA_CAMPANA.vista)} si la ve, ${pesosClase(TARIFA_CAMPANA.apertura)} si la abre y ${pesosClase(TARIFA_CAMPANA.contacto)} si te contacta. Cada persona cuenta una vez. Al llegar al tope deja de mostrarse. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
         <p class="profesor-campana-resumen" id="pr-campana-resumen" aria-live="polite"></p>
       </div>
-      <h3>4. Así la van a ver</h3>
+      </div></details>
+      </div>
+      <section class="profesor-form-vista" aria-labelledby="pr-vista-titulo">
+      <div class="vista-cabeza"><h3 id="pr-vista-titulo">4. Así la van a ver</h3>
+        <div class="vista-switch" role="group" aria-label="Ver cómo se ve en">
+          <button type="button" data-vista-modo="pc">Computador</button><button type="button" data-vista-modo="celular">Celular</button>
+        </div></div>
       <div class="profesor-vista-previa" id="pr-vista">
-        <p class="profesor-info">En computador, en la casilla de al lado del ramo del estudiante:</p>
-        <div class="vista-marco"><div class="vista-grilla">${filaRamoVistaPrevia(' junto-der')}<aside class="clase-apoyo en-casilla a-la-derecha vista-anuncio"></aside></div></div>
-        <p class="profesor-info">En celular, bajo el ramo:</p>
-        <div class="vista-celular">${filaRamoVistaPrevia('')}<aside class="clase-apoyo vista-anuncio"></aside></div>
+        <div class="vista-solo-pc"><p class="profesor-info">En Inicio, en la casilla de al lado del ramo del estudiante:</p>
+        <div class="vista-marco"><div class="vista-grilla">${filaRamoVistaPrevia(' junto-der')}<aside class="clase-apoyo en-casilla a-la-derecha vista-anuncio"></aside></div></div></div>
+        <div class="vista-solo-cel"><p class="profesor-info">En Inicio, bajo el ramo del estudiante:</p>
+        <div class="vista-celular">${filaRamoVistaPrevia('')}<aside class="clase-apoyo vista-anuncio"></aside></div></div>
         <p class="profesor-info">La nota del ramo es la de cada estudiante: acá va una raya porque cambia para cada uno.</p>
         <p class="profesor-info">Al abrirla, y en el catálogo de clases, con tu flyer si subiste uno:</p>
         <div class="vista-catalogo" aria-hidden="true"></div>
       </div>
+      </section>
+      <div class="profesor-form-acciones">
       <div class="modal-btns"><button class="btn-cancel" id="pr-guardar" type="button">Guardar borrador</button><button class="btn-confirm" id="pr-enviar" type="button">Enviar a revisión</button></div>
       <p class="profesor-estado" role="status" aria-live="polite">${id?'Borrador recuperado. Puedes seguir editándolo.':'Completa la clase para guardar el primer borrador.'}</p>
+      </div>
     </form>`;
   const form=raiz.querySelector('#profesor-borrador'),campo=id=>form.querySelector('#pr-'+id),estado=form.querySelector('.profesor-estado');
   let procesando=false;
@@ -1845,6 +1857,17 @@ function renderBorradorProfesor(raiz,anuncio){
     g.style.zoom=String(Math.min(1,marco.clientWidth/ANCHO_VISTA_PC));
   };
   if(vista&&typeof ResizeObserver==='function')new ResizeObserver(()=>{if(form.isConnected)ajustarMiniatura();}).observe(vista);
+  // Computador o celular: cambia el banner de Inicio y la tarjeta abierta.
+  // Parte en el aparato que está usando el profesor.
+  const ponerModoVista=modo=>{
+    if(!vista||!vista.classList){actualizarVista();return;}
+    vista.classList.toggle('modo-pc',modo==='pc');vista.classList.toggle('modo-celular',modo!=='pc');
+    botonesModo.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.vistaModo===modo)));
+    actualizarVista();
+  };
+  const botonesModo=typeof form.querySelectorAll==='function'?[...form.querySelectorAll('[data-vista-modo]')]:[];
+  botonesModo.forEach(b=>b.addEventListener('click',()=>ponerModoVista(b.dataset.vistaModo)));
+  const modoInicialVista=typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(min-width:768px)').matches?'pc':'celular';
   form.addEventListener('input',actualizarVista);form.addEventListener('change',actualizarVista);
   // El logo vive en la ficha: se pide una vez y se actualiza cuando lo cambian.
   if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('gradehub:logo-profesor',e=>{
@@ -1901,7 +1924,7 @@ function renderBorradorProfesor(raiz,anuncio){
   const leerDetalles=()=>listaDetalles&&typeof listaDetalles.querySelectorAll==='function'
     ?[...listaDetalles.querySelectorAll('.profesor-detalle')].map(f=>({etiqueta:f.querySelector('.detalle-etiqueta').value,valor:f.querySelector('.detalle-valor').value})):[];
   detallesClase(anuncio).forEach(d=>filaDetalle(d));
-  actualizarVista();
+  ponerModoVista(modoInicialVista);
   activarBuscadorRamosClase(form,campo);
   const cajaLogo=campo('logo');
   if(cajaLogo)renderLogoProfesor(cajaLogo);
@@ -1927,13 +1950,18 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent=resultado.ok?resultado.aviso||'Flyer quitado del borrador.':resultado.error;
     if(resultado.ok){flyerActual=null;campo('flyer').value='';preview.hidden=true;form.querySelector('#pr-quitar-flyer').hidden=true;flyerVista='';actualizarVista();}
   });
+  // Un campo pendiente dentro de una sección cerrada no se puede mostrar:
+  // se abre su sección antes de avisar o de llevar el foco ahí.
+  const abrirSeccionDe=el=>{const d=el&&typeof el.closest==='function'?el.closest('details'):null;if(d)d.open=true;return el;};
+  const enfocar=el=>{abrirSeccionDe(el);if(el&&typeof el.focus==='function')el.focus();};
   const procesar=async enviar=>{
     if(procesando)return;
+    if(typeof form.querySelectorAll==='function')[...form.querySelectorAll(':invalid')].forEach(abrirSeccionDe);
     if(!form.reportValidity())return;
     const file=campo('flyer').files&&campo('flyer').files[0],validacion=validarFlyerClase(file);
     if(!validacion.ok){estado.textContent=validacion.error;campo('flyer').focus();return;}
     const campana=validarCampanaClase({dias:Number(valorCampo('dias')),inicio:valorCampo('inicio'),tope_clp:pesosDeTexto(valorCampo('tope'))});
-    if(!campana.ok){estado.textContent=campana.error;campo(campana.campo)?.focus();return;}
+    if(!campana.ok){estado.textContent=campana.error;enfocar(campo(campana.campo));return;}
     const datos={tenant:campo('tenant').value,ramos_siglas:campo('siglas').value.split(',').map(s=>s.trim()),
       criterios:{promedioMenorA:Number(campo('promedio').value),avanceMinimo:Number(campo('avance').value)},
       titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:pesosDeTexto(campo('precio').value),
@@ -1946,7 +1974,7 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
       id=guardado.anuncio.id;
       const guardadaCampana=await guardarCampanaClase(id,campana.datos);
       if(!guardadaCampana.ok&&!guardadaCampana.falta){estado.textContent='Tu clase se guardó, pero '+guardadaCampana.error;return;}
