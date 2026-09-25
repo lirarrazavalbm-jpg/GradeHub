@@ -1,9 +1,24 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "2026-09-23T21:04:08.615Z",
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-24T14:11:48.708Z",
   "populationSize": 2001,
   "scope": "all_new_auto_importable_candidates",
+  "normativeBasis": {
+    "source": "Reglamento del Estudiante UC",
+    "sourceUrl": "https://registrosacademicos.uc.cl/informacion-para-estudiantes/inscripcion-y-retiro-de-cursos/evaluacion-y-calificacion-de-un-curso/",
+    "minimumEvaluationsPerPeriod": 2,
+    "singleEvaluationRequiresExceptionalAuthorization": true,
+    "weightsMustBeDeclaredAndPublic": true
+  },
   "checks": {
+    "minimum_two_evaluations": {
+      "passedCount": 1990,
+      "flaggedCount": 11
+    },
+    "public_weights_declared": {
+      "passedCount": 2001,
+      "flaggedCount": 0
+    },
     "weights_sum_100": {
       "passedCount": 2001,
       "flaggedCount": 0
@@ -23,9 +38,361 @@
     "evaluationCount": 242,
     "rule": "Solo N … X% c/u declarado literalmente; sin número no se emiten slots."
   },
-  "passedAllChecksCount": 1998,
-  "flaggedCandidatesCount": 3,
+  "passedAllChecksCount": 1987,
+  "flaggedCandidatesCount": 14,
   "flaggedCandidates": [
+    {
+      "courseCode": "AQD2010",
+      "courseName": "Video y Proyecto",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=AQD2010",
+      "evaluationSourceText": "V.  EVALUACION\n- Examen final (proyecto): 100%",
+      "proposedEvaluations": [
+        [
+          "Examen final (proyecto)",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "DER512L",
+      "courseName": "Literatura e Instituciones Políticas de Occidente",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=DER512L",
+      "evaluationSourceText": "V.ESTRATEGIAS EVALUATIVAS\n-Ensayos: 100%",
+      "proposedEvaluations": [
+        [
+          "Ensayos",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "DNO097",
+      "courseName": "Desarrollo Web y Diseño Visual de Información",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=DNO097",
+      "evaluationSourceText": "V.ESTRATEGIAS EVALUATIVAS\n-Talleres de aplicacion: 100%",
+      "proposedEvaluations": [
+        [
+          "Talleres de aplicacion",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "ICH2103",
+      "courseName": "Evaluación Ambiental de Proyectos (Capstone)",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=ICH2103",
+      "evaluationSourceText": "V. EVALUACION\n- Proyecto desarrollado durante el semestre: 100%",
+      "proposedEvaluations": [
+        [
+          "Proyecto desarrollado durante el semestre",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "IIC2553",
+      "courseName": "Taller de Programación Competitiva II",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=IIC2553",
+      "evaluationSourceText": "V.EVALUACION DE APRENDIZAJES\n-Rendimiento agregado en competencias de programacion semanales a lo largo del semestre: 100%",
+      "proposedEvaluations": [
+        [
+          "Rendimiento agregado en competencias de programacion semanales a lo largo del semestre",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "LET001A",
+      "courseName": "Aleman I",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=LET001A",
+      "evaluationSourceText": "V.ESTRATEGIAS EVALUATIVAS\n-Control escrito: 100%",
+      "proposedEvaluations": [
+        [
+          "Control escrito",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "MED860",
+      "courseName": "Inserción Temprana en Investigación en Salud",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=MED860",
+      "evaluationSourceText": "V.ESTRATEGIAS EVALUATIVAS\n-Informe escrito de resultados, propuesta de proyecto, poster o articulo: 100%",
+      "proposedEvaluations": [
+        [
+          "Informe escrito de resultados, propuesta de proyecto, poster o articulo",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "MUC593",
+      "courseName": "Metodología Musicologica 1",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=MUC593",
+      "evaluationSourceText": "V.   EVALUACION\n- Trabajos : 100%",
+      "proposedEvaluations": [
+        [
+          "Trabajos",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "MUC594",
+      "courseName": "Metodología Musicologica 2",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=MUC594",
+      "evaluationSourceText": "IV.  EVALUACION\n- Trabajos : 100%",
+      "proposedEvaluations": [
+        [
+          "Trabajos",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "MUC595",
+      "courseName": "Metodología Musicologica 3",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=MUC595",
+      "evaluationSourceText": "V.   EVALUACION\n- Proyecto de Tesina: 100%",
+      "proposedEvaluations": [
+        [
+          "Proyecto de Tesina",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
+    {
+      "courseCode": "MUC596",
+      "courseName": "Metodología Musicologica 4",
+      "sourceUrl": "https://catalogo.uc.cl/index.php?tmpl=component&option=com_catalogo&view=programa&sigla=MUC596",
+      "evaluationSourceText": "IV.  EVALUACION\n- Tesina:           100%",
+      "proposedEvaluations": [
+        [
+          "Tesina",
+          100
+        ]
+      ],
+      "declaredEvaluationCount": 1,
+      "requiresExceptionalAuthorization": true,
+      "weightTotal": 100,
+      "sourcePercentages": [
+        100
+      ],
+      "missingWeightEvidence": [],
+      "missingNames": [],
+      "unusedPercentages": [],
+      "checks": {
+        "minimum_two_evaluations": false,
+        "public_weights_declared": true,
+        "weights_sum_100": true,
+        "names_present_in_source": true,
+        "all_source_percentages_used": true
+      },
+      "failedChecks": [
+        "minimum_two_evaluations"
+      ],
+      "passesAllChecks": false
+    },
     {
       "courseCode": "PSI2440",
       "courseName": "Psicología del Delito",
@@ -41,16 +408,21 @@
           40
         ]
       ],
+      "declaredEvaluationCount": 2,
+      "requiresExceptionalAuthorization": false,
       "weightTotal": 100,
       "sourcePercentages": [
         30,
         40
       ],
+      "missingWeightEvidence": [],
       "missingNames": [],
       "unusedPercentages": [
         30
       ],
       "checks": {
+        "minimum_two_evaluations": true,
+        "public_weights_declared": true,
         "weights_sum_100": true,
         "names_present_in_source": true,
         "all_source_percentages_used": false
@@ -79,17 +451,22 @@
           30
         ]
       ],
+      "declaredEvaluationCount": 3,
+      "requiresExceptionalAuthorization": false,
       "weightTotal": 100,
       "sourcePercentages": [
         20,
         25,
         30
       ],
+      "missingWeightEvidence": [],
       "missingNames": [],
       "unusedPercentages": [
         25
       ],
       "checks": {
+        "minimum_two_evaluations": true,
+        "public_weights_declared": true,
         "weights_sum_100": true,
         "names_present_in_source": true,
         "all_source_percentages_used": false
@@ -118,17 +495,22 @@
           25
         ]
       ],
+      "declaredEvaluationCount": 3,
+      "requiresExceptionalAuthorization": false,
       "weightTotal": 100,
       "sourcePercentages": [
         20,
         35,
         25
       ],
+      "missingWeightEvidence": [],
       "missingNames": [],
       "unusedPercentages": [
         20
       ],
       "checks": {
+        "minimum_two_evaluations": true,
+        "public_weights_declared": true,
         "weights_sum_100": true,
         "names_present_in_source": true,
         "all_source_percentages_used": false
@@ -139,6 +521,6 @@
       "passesAllChecks": false
     }
   ],
-  "limitation": "Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las tres comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta.",
+  "limitation": "Si el parser tomó la sección equivocada, evaluationSourceText y candidateWeights pueden concordar y pasar las cinco comprobaciones. La revisión humana debe abrir sourceUrl y confirmar que se leyó la sección correcta. Una pauta de una sola evaluación solo puede aprobarse si la fuente permite confirmar la autorización excepcional de la Facultad o Unidad Académica.",
   "massImportAllowed": false
 }
