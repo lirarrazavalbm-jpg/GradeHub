@@ -797,11 +797,15 @@ function renderRamo(){
 // propósito: con cinco participantes el porcentaje solo puede ser 0, 25, 50, 75
 // o 100, y sin saber cuántos son suena mucho más fino de lo que es.
 //
+// "Igual o por sobre": los empates cuentan a favor (ver curso_posicion.sql). Con
+// un 7 en un curso lleno de sietes decía "por sobre el 44%" y se leía como que
+// la mitad te ganaba, cuando nadie te ganaba.
+//
 // La frase es la misma para 0 y para 100. "Todos" o "ninguno" sería categórico
 // sobre un número redondeado: 199 de 200 también llega acá como 100.
 function frasePosicionCurso(mejorQue,total){
   const otros=Math.max(Number(total)-1,0);
-  return `Por sobre el <b>${Number(mejorQue)}%</b> de tus ${otros} compañeros`;
+  return `Igual o por sobre el <b>${Number(mejorQue)}%</b> de tus ${otros} compañeros`;
 }
 
 async function pintarPosicionesCurso(){

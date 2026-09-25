@@ -91,9 +91,16 @@ $$;
 
 -- Devuelve el lugar de quien llama entre los de su mismo ramo.
 --
--- `mejor_que` es el porcentaje de compañeros que tiene una nota MENOR que la
+-- `mejor_que` es el porcentaje de compañeros con una nota MENOR O IGUAL que la
 -- suya. Se redondea a entero: un decimal acá, con pocos participantes, permite
 -- deducir cuántos son y de ahí tirar del hilo.
+--
+-- LOS EMPATES CUENTAN A FAVOR. Hasta el 2026-09-24 contaba solo los
+-- estrictamente menores, y un 7 en un curso donde medio curso tenía 7 salía
+-- "por sobre el 44%": cierto, pero se leía como que la mitad le ganaba, y nadie
+-- le ganaba. La columna conserva el nombre para no cambiar el tipo de retorno.
+--
+-- REAPLICAR: el tipo de retorno no cambió, así que `create or replace` basta.
 create or replace function public.curso_posicion(
   p_tenant text,
   p_sigla text
@@ -109,7 +116,7 @@ declare
   v_tenant text := nullif(lower(trim(p_tenant)), '');
   mi numeric;
   n integer;
-  debajo integer;
+  debajo_o_igual integer;
 begin
   if uid is null or v_sigla is null or v_tenant is null then
     return;
@@ -130,12 +137,13 @@ begin
     return;
   end if;
 
-  select count(*) into debajo from public.curso_notas
+  -- `<=` incluye a quien pregunta: por eso se le resta uno.
+  select count(*) - 1 into debajo_o_igual from public.curso_notas
     where tenant = v_tenant and ramo_sigla = v_sigla
-      and promedio < mi;
+      and promedio <= mi;
 
   total := n;
-  mejor_que := round(100.0 * debajo / nullif(n - 1, 0));
+  mejor_que := round(100.0 * debajo_o_igual / nullif(n - 1, 0));
   return next;
 end;
 $$;

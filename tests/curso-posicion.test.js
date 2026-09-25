@@ -27,6 +27,11 @@ chk('cada quien solo puede escribir su propia nota',
 
 console.log('\n=== El piso de cinco se respeta ===');
 chk('bajo cinco participantes no se devuelve nada', /if n < 5 then\s*\n\s*return;/.test(sql));
+// Un 7 entre muchos 7 salía "por sobre el 44%" (2026-09-24): los empates no
+// contaban y se leía como que la mitad le ganaba. Ahora cuentan a favor, y
+// como `<=` incluye a quien pregunta, se le resta a sí mismo.
+chk('los empates cuentan a favor', /count\(\*\) - 1 into debajo_o_igual[\s\S]*?promedio <= mi;/.test(sql));
+chk('ya no cuenta solo a los estrictamente menores', !/promedio < mi;/.test(sql));
 // Decir "te faltan 2 para ver la comparación" también informa sobre cuántos
 // hay, y de ahí sobre quiénes son.
 chk('y no se filtra cuántos faltan para llegar',
