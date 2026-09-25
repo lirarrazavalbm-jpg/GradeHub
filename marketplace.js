@@ -2182,3 +2182,127 @@ if(typeof document!=='undefined'){
   const entradaProfesor=document.getElementById('um-profesor');
   if(entradaProfesor)entradaProfesor.addEventListener('click',()=>umGo(openEspacioProfesor));
 }
+
+// ─── ADMINISTRACIÓN DE CLASES ───────────────────────────────────────────────
+//
+// Una pestaña que aparece solo en cuentas de admin.administradores (pedido de
+// Lucas del 2026-09-25). Que aparezca o no es cosmético: cada dato y cada
+// acción pasa por funciones del servidor que exigen estar en la lista Y haber
+// entrado con el segundo factor (supabase/administradores.sql). Por eso la
+// página parte por renderPuertaDosPasos.
+let soyAdministradorCache=false;
+async function cargarSoyAdministrador(){
+  if(!supabaseClient||!currentUser)return false;
+  try{
+    const {data,error}=await supabaseClient.rpc('soy_administrador');
+    soyAdministradorCache=!error&&data===true;
+  }catch(e){soyAdministradorCache=false;}
+  return soyAdministradorCache;
+}
+function esAdministrador(){return soyAdministradorCache;}
+
+async function renderAdmin(){
+  const raiz=document.getElementById('admin-body');
+  if(!raiz)return;
+  if(typeof renderPuertaDosPasos!=='function'){raiz.innerHTML='<p class="profesor-info">No disponible.</p>';return;}
+  await renderPuertaDosPasos(raiz,{titulo:'Entra con tu segundo factor',alPasar:()=>pintarPanelAdmin(raiz)});
+}
+
+// Qué pasa con un anuncio hoy, en palabras de quien administra.
+function estadoAdminAnuncio(a,costo,ahora=Date.now()){
+  const vig=vigenciaAnuncio(a,ahora);
+  if(vig==='publicado'&&costo&&costo.agotada)return ['Llegó al tope','agotado'];
+  return [(ESTADOS_ANUNCIO[vig]||[vig])[0],vig];
+}
+function resumenAdminClases(profesores,ahora=Date.now()){
+  const r={profesores:0,pendientes:0,suspendidos:0,activas:0,programadas:0,revision:0,gastado:0,cobrado:0,deuda:0};
+  for(const p of profesores||[]){
+    if(p.estado==='aprobado')r.profesores++;else if(p.estado==='pendiente')r.pendientes++;else if(p.estado==='suspendido')r.suspendidos++;
+    for(const a of p.anuncios||[]){
+      const vig=vigenciaAnuncio(a,ahora),costo=costoCampanaClase(a.campana);
+      if(vig==='publicado')r.activas++;else if(vig==='programado')r.programadas++;else if(vig==='en_revision')r.revision++;
+      if(costo)r.gastado+=costo.total;
+      if(a.cobro&&a.cobro.estado==='cobrado')r.cobrado+=a.cobro.monto_clp;
+      if(a.cobro&&a.cobro.estado==='deuda')r.deuda+=a.cobro.monto_clp;
+    }
+  }
+  return r;
+}
+function filaAdminAnuncio(a,ahora=Date.now()){
+  const costo=costoCampanaClase(a.campana),[estado,clase]=estadoAdminAnuncio(a,costo,ahora);
+  const vig=vigenciaAnuncio(a,ahora),publicado=!!a.publicado_at;
+  const cobro=a.cobro&&a.cobro.estado||'pendiente',monto=a.cobro?a.cobro.monto_clp:(costo?costo.total:0);
+  const fecha=t=>t?new Date(t).toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'';
+  return `<article class="admin-anuncio" data-admin-anuncio="${esc(a.id)}">
+    <div class="admin-anuncio-top"><strong>${esc(a.titulo||'Sin título')}</strong><span class="clase-estado clase-estado-${esc(clase)}">${esc(estado)}</span></div>
+    <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))} · ${esc(precioClase(a))}${publicado?` · ${fecha(a.publicado_at)} → ${fecha(a.vence_at)}`:''}</p>
+    ${costo?`<p class="admin-anuncio-costo"><b>${pesosClase(costo.total)}</b>${costo.tope!==null?` de ${pesosClase(costo.tope)}`:' · sin tope'}</p>
+      <p class="clase-sin-datos">${esc(lineaCostoCampanaClase(costo))}</p>`:''}
+    <div class="admin-anuncio-acciones">
+      ${publicado?`<label class="admin-cobro"><span>Cobro</span>
+        <select data-cobro-estado>${[['pendiente','Pendiente'],['cobrado','Cobrado'],['deuda','En deuda']].map(([v,t])=>`<option value="${v}"${v===cobro?' selected':''}>${t}</option>`).join('')}</select>
+        <input type="text" inputmode="numeric" data-cobro-monto aria-label="Monto" value="${esc(textoPesosEscrito(monto))}">
+        <button type="button" class="clase-accion" data-cobro-guardar>Guardar</button></label>`:''}
+      ${vig==='publicado'||vig==='programado'?`<button type="button" class="clase-accion" data-admin-pausar="${esc(a.id)}">Pausar aviso</button>`:''}
+    </div>
+  </article>`;
+}
+function tarjetaAdminProfesor(p,ahora=Date.now()){
+  const estados={aprobado:'Aprobado',pendiente:'Esperando revisión',suspendido:'Pausado',rechazado:'Rechazado'};
+  const anuncios=p.anuncios||[];
+  const gastado=anuncios.reduce((n,a)=>{const c=costoCampanaClase(a.campana);return n+(c?c.total:0);},0);
+  const accion=p.estado==='aprobado'?`<button type="button" class="clase-accion" data-admin-profesor="${esc(p.user_id)}" data-estado="suspendido">Pausar profesor</button>`
+    :p.estado==='suspendido'?`<button type="button" class="clase-accion" data-admin-profesor="${esc(p.user_id)}" data-estado="aprobado">Reactivar</button>`:'';
+  return `<section class="admin-profesor">
+    <div class="admin-profesor-top"><div><h3>${esc(p.nombre||'Sin nombre')}</h3><p class="clase-card-meta">${esc(p.correo||'')}</p></div>
+      <span class="clase-estado clase-estado-${esc(p.estado)}">${esc(estados[p.estado]||p.estado)}</span></div>
+    <p class="clase-card-meta">${anuncios.length} ${anuncios.length===1?'anuncio':'anuncios'} · lleva ${pesosClase(gastado)}</p>
+    ${accion}
+    ${anuncios.length?`<div class="admin-anuncios">${anuncios.map(a=>filaAdminAnuncio(a,ahora)).join('')}</div>`:''}
+  </section>`;
+}
+async function pintarPanelAdmin(raiz){
+  raiz.innerHTML='<p class="profesor-info" role="status">Cargando…</p>';
+  let profesores;
+  try{
+    const {data,error}=await supabaseClient.rpc('admin_panel_clases');
+    if(error){console.warn('No se pudo cargar la administración:',error.code||'',error.message||error);
+      raiz.innerHTML=`<p class="profesor-info" role="alert">${error.code==='42501'?'Esta cuenta no tiene acceso de administración.':'No pudimos cargar la administración. Intenta de nuevo.'}</p>`;return;}
+    profesores=Array.isArray(data)?data:[];
+  }catch(e){raiz.innerHTML='<p class="profesor-info" role="alert">No pudimos cargar la administración. Intenta de nuevo.</p>';return;}
+  const ahora=Date.now(),r=resumenAdminClases(profesores,ahora);
+  const kpi=(t,v,d)=>`<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`;
+  raiz.innerHTML=`<div class="clase-nums clases-kpis">
+      ${kpi('Profesores',r.profesores,`${r.pendientes} esperando · ${r.suspendidos} pausados`)}
+      ${kpi('Campañas activas',r.activas,`${r.programadas} programadas · ${r.revision} en revisión`)}
+      ${kpi('Gastado',pesosClase(r.gastado),'lo que costaría')}
+      ${kpi('Cobrado',pesosClase(r.cobrado),`${pesosClase(r.deuda)} en deuda`)}
+    </div>
+    <p class="clase-privacidad">Aprobar profesores y publicar anuncios sigue siendo desde el SQL Editor. Cada acción de esta página queda registrada.</p>
+    ${profesores.length?profesores.map(p=>tarjetaAdminProfesor(p,ahora)).join(''):'<p class="clase-sin-datos">Todavía no hay profesores.</p>'}`;
+  const repintar=()=>pintarPanelAdmin(raiz);
+  const llamar=async(fn,args,ok)=>{
+    const {error}=await supabaseClient.rpc(fn,args);
+    if(error){console.warn('Acción de administración rechazada:',error.code||'',error.message||error);showToast('No se pudo: '+(error.message||'error'),true);return;}
+    showToast(ok);repintar();
+  };
+  raiz.querySelectorAll('[data-admin-pausar]').forEach(b=>b.addEventListener('click',()=>
+    showConfirm('¿Pausar este aviso?','Deja de mostrarse al tiro. Para volver, el profesor lo manda a revisión otra vez.',
+      ()=>llamar('admin_pausar_anuncio',{p_anuncio_id:b.dataset.adminPausar},'Aviso pausado'),{label:'Pausar',danger:false})));
+  raiz.querySelectorAll('[data-admin-profesor]').forEach(b=>b.addEventListener('click',()=>{
+    const pausar=b.dataset.estado==='suspendido';
+    showConfirm(pausar?'¿Pausar a este profesor?':'¿Reactivar a este profesor?',
+      pausar?'Todos sus avisos dejan de mostrarse al tiro. No se borra nada y se puede revertir.':'Sus avisos publicados y vigentes vuelven a mostrarse.',
+      ()=>llamar('admin_estado_profesor',{p_user_id:b.dataset.adminProfesor,p_estado:b.dataset.estado},pausar?'Profesor pausado':'Profesor reactivado'),
+      {label:pausar?'Pausar':'Reactivar',danger:false});
+  }));
+  raiz.querySelectorAll('[data-admin-anuncio]').forEach(fila=>{
+    const guardar=fila.querySelector('[data-cobro-guardar]'),monto=fila.querySelector('[data-cobro-monto]');
+    if(monto)campoPesos(monto);
+    if(guardar)guardar.addEventListener('click',()=>{
+      const estado=fila.querySelector('[data-cobro-estado]').value,valor=pesosDeTexto(monto.value);
+      if(estado!=='pendiente'&&!Number.isSafeInteger(valor)){showToast('Escribe el monto',true);return;}
+      llamar('admin_marcar_cobro',{p_anuncio_id:fila.dataset.adminAnuncio,p_estado:estado,p_monto_clp:estado==='pendiente'?null:valor},'Cobro guardado');
+    });
+  });
+}

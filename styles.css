@@ -1584,7 +1584,8 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .app.tab-mode #screen-stats,
 .app.tab-mode #screen-home,
 .app.tab-mode #screen-agenda,
-.app.tab-mode #screen-profesor{
+.app.tab-mode #screen-profesor,
+.app.tab-mode #screen-admin{
   position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;bottom:0;
   display:flex!important;flex-direction:column;
   will-change:transform;animation:none;
@@ -1596,11 +1597,13 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
    de Clases quedaba ENCIMA de Inicio para quien no es profesor: en blanco y
    tapando todo, porque además no la mueve `setTabTransforms` al no estar en
    NAV_TABS. Esta regla la devuelve a su sitio. */
-.app.tab-mode #screen-profesor[hidden]{display:none!important;}
+.app.tab-mode #screen-profesor[hidden],
+.app.tab-mode #screen-admin[hidden]{display:none!important;}
 .app.tab-mode.dragging #screen-stats,
 .app.tab-mode.dragging #screen-home,
 .app.tab-mode.dragging #screen-agenda,
-.app.tab-mode.dragging #screen-profesor{transition:none;}
+.app.tab-mode.dragging #screen-profesor,
+.app.tab-mode.dragging #screen-admin{transition:none;}
 /* Overlay screens (auth, onboard, reset, ramo): pisan a los tab-screens cuando active */
 .app.tab-mode #screen-auth.active,
 .app.tab-mode #screen-onboard.active,
@@ -2581,3 +2584,17 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .dos-pasos-secreto{font-size:.8125rem;overflow-wrap:anywhere;user-select:all;}
 .dos-pasos-estado{margin:0;font-size:.8125rem;color:var(--fg2);}
 
+/* Administración de clases: un bloque por profesor, sus anuncios adentro. */
+.admin-profesor{margin-top:16px;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--card);display:grid;gap:8px;}
+.admin-profesor-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.admin-profesor h3{margin:0;font-size:1rem;}
+.admin-anuncios{display:grid;gap:8px;}
+.admin-anuncio{padding:12px;border-radius:10px;background:var(--muted);display:grid;gap:6px;}
+.admin-anuncio-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+.admin-anuncio-costo{margin:0;font-size:.875rem;font-variant-numeric:tabular-nums;}
+.admin-anuncio-acciones{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.admin-cobro{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.8125rem;color:var(--fg2);}
+.admin-cobro select,.admin-cobro input{min-height:36px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--fg);font:inherit;font-size:.8125rem;}
+.admin-cobro input{width:96px;font-variant-numeric:tabular-nums;}
+
+.admin-profesor .clase-accion{width:auto;justify-self:start;margin:0;padding-left:14px;padding-right:14px;}
