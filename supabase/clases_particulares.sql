@@ -298,16 +298,8 @@ grant update (linea_datos) on public.tutor_anuncios to authenticated;
 -- columnas: la política solo deja editar en borrador, revisión o pausa.
 grant update (tenant) on public.tutor_anuncios to authenticated;
 
-drop policy if exists tutor_anuncios_select_publicados_o_propios on public.tutor_anuncios;
-create policy tutor_anuncios_select_publicados_o_propios
-on public.tutor_anuncios
-for select
-to anon, authenticated
-using (
-  (estado = 'publicado' and (vence_at is null or vence_at > now())
-    and public.tutor_aprobado(autor_id))
-  or (select auth.uid()) = autor_id
-);
+-- La política de lectura de los anuncios está al final del archivo, en
+-- CAMPAÑAS: depende de funciones que se definen allá (programación y tope).
 
 -- Solo una cuenta cuya postulación de profesor ya fue aprobada puede crear
 -- borradores. Aun así no puede aprobar el aviso ni marcarlo como pagado desde
@@ -874,6 +866,11 @@ begin
   ) then
     raise exception 'anuncio no disponible';
   end if;
+  -- Desde CAMPAÑAS (2026-09-25): no cuenta un anuncio programado o que ya
+  -- llegó a su tope, ni el propio profesor, ni una cuenta sin ramos.
+  if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
+    return false;
+  end if;
 
   insert into public.anuncio_alcance (anuncio_id, user_id, canal)
   values (p_anuncio_id, auth.uid(), p_canal)
@@ -970,3 +967,304 @@ revoke all on function public.limpiar_alcance_anuncios(integer) from public, ano
 grant execute on function public.registrar_alcance_anuncio(uuid, text) to authenticated;
 grant execute on function public.alcance_anuncio(uuid) to authenticated;
 grant execute on function public.alcance_anuncio_por_canal(uuid) to authenticated;
+
+-- ─── CAMPAÑAS ───────────────────────────────────────────────────────────────
+--
+-- Decidido por Lucas el 2026-09-25. Una campaña dura los días que elige el
+-- profesor, puede empezar en una fecha futura (queda programada) y tiene un
+-- TOPE: lo máximo que pagaría. Cuesta:
+--
+--   $100 por día que estuvo visible
+--   $10 por persona que la vio, $50 por persona que la abrió,
+--   $1.000 por persona que la contactó
+--
+-- Cada persona cuenta una vez por anuncio en cada cosa. No cuentan el propio
+-- profesor ni una cuenta sin ramos guardados. Al llegar al tope deja de
+-- mostrarse sola. En el piloto nada de esto se cobra: se muestra.
+
+-- La configuración de la campaña va en su propia tabla y no en el anuncio: el
+-- anuncio publicado lo lee cualquiera, y el tope es un dato del profesor.
+create table if not exists public.anuncio_campanas (
+  anuncio_id   uuid primary key references public.tutor_anuncios(id) on delete cascade,
+  dias         integer not null check (dias between 1 and 60),
+  inicio       date,
+  tope_clp     integer not null check (tope_clp between 1000 and 5000000),
+  -- Cuándo dejó de mostrarse antes de tiempo (pausa). Los días se cobran hasta
+  -- acá. Lo marca el trigger de abajo, nunca el cliente.
+  detenido_at  timestamptz,
+  updated_at   timestamptz not null default now()
+);
+alter table public.anuncio_campanas enable row level security;
+revoke all on public.anuncio_campanas from public, anon, authenticated;
+grant select (anuncio_id, dias, inicio, tope_clp, detenido_at) on public.anuncio_campanas to authenticated;
+grant insert (anuncio_id, dias, inicio, tope_clp) on public.anuncio_campanas to authenticated;
+grant update (dias, inicio, tope_clp) on public.anuncio_campanas to authenticated;
+
+-- Las políticas preguntan por el dueño con una función: `autor_id` no tiene
+-- permiso de lectura para nadie (a propósito), así que una subconsulta directa
+-- sobre tutor_anuncios fallaría con "permission denied".
+create or replace function public.anuncio_propio(p_anuncio_id uuid, p_editable boolean)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.tutor_anuncios t
+    where t.id = p_anuncio_id and t.autor_id = auth.uid()
+      and (not p_editable or t.estado in ('borrador', 'en_revision', 'pausado'))
+  );
+$$;
+revoke all on function public.anuncio_propio(uuid, boolean) from public, anon;
+grant execute on function public.anuncio_propio(uuid, boolean) to authenticated;
+
+drop policy if exists anuncio_campanas_select_propia on public.anuncio_campanas;
+create policy anuncio_campanas_select_propia on public.anuncio_campanas
+for select to authenticated
+using (public.anuncio_propio(anuncio_id, false));
+
+-- Se escribe mientras el anuncio no está publicado: cambiar el tope o los
+-- días de una campaña en curso es otra revisión.
+drop policy if exists anuncio_campanas_insert_propia on public.anuncio_campanas;
+create policy anuncio_campanas_insert_propia on public.anuncio_campanas
+for insert to authenticated
+with check (public.anuncio_propio(anuncio_id, true));
+drop policy if exists anuncio_campanas_update_propia on public.anuncio_campanas;
+create policy anuncio_campanas_update_propia on public.anuncio_campanas
+for update to authenticated
+using (public.anuncio_propio(anuncio_id, true))
+with check (public.anuncio_propio(anuncio_id, true));
+
+-- Aperturas y contactos por PERSONA, igual que anuncio_alcance para las
+-- vistas: una fila por (anuncio, cuenta, tipo). Nadie la lee; sale solo como
+-- totales. Se borra con la cuenta y con el anuncio.
+create table if not exists public.anuncio_interacciones (
+  anuncio_id  uuid not null references public.tutor_anuncios(id) on delete cascade,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  tipo        text not null check (tipo in ('apertura', 'contacto')),
+  dia         date not null default current_date,
+  primary key (anuncio_id, user_id, tipo)
+);
+alter table public.anuncio_interacciones enable row level security;
+revoke all on public.anuncio_interacciones from public, anon, authenticated;
+
+-- La tarifa, en un solo lugar del servidor. marketplace.js tiene la misma
+-- (TARIFA_CAMPANA) y un test exige que coincidan.
+create or replace function public.tarifa_campana_clp(p_concepto text)
+returns integer
+language sql
+immutable
+as $$
+  select case p_concepto
+    when 'dia' then 100 when 'vista' then 10 when 'apertura' then 50 when 'contacto' then 1000
+  end;
+$$;
+
+-- Lo que lleva una campaña. Uso interno: no tiene grant.
+create or replace function public.costo_campana(p_anuncio_id uuid)
+returns table (dias integer, inicio date, tope_clp integer, dias_cobrados integer,
+               vistas integer, aperturas integer, contactos integer, costo_bruto integer)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  a public.tutor_anuncios%rowtype;
+  c public.anuncio_campanas%rowtype;
+  hasta timestamptz;
+begin
+  select * into a from public.tutor_anuncios where id = p_anuncio_id;
+  if not found then return; end if;
+  select * into c from public.anuncio_campanas where anuncio_id = p_anuncio_id;
+
+  dias := coalesce(c.dias, case when a.publicado_at is not null and a.vence_at is not null
+                                then ceil(extract(epoch from (a.vence_at - a.publicado_at)) / 86400)::integer end);
+  inicio := c.inicio;
+  tope_clp := c.tope_clp;
+  dias_cobrados := 0;
+  if a.publicado_at is not null and a.publicado_at <= now() then
+    hasta := least(now(), coalesce(a.vence_at, 'infinity'), coalesce(c.detenido_at, 'infinity'));
+    dias_cobrados := greatest(0, ceil(extract(epoch from (hasta - a.publicado_at)) / 86400)::integer);
+    if dias is not null then dias_cobrados := least(dias_cobrados, dias); end if;
+  end if;
+  select count(*)::integer into vistas from public.anuncio_alcance where anuncio_id = p_anuncio_id;
+  select count(*) filter (where tipo = 'apertura')::integer, count(*) filter (where tipo = 'contacto')::integer
+    into aperturas, contactos
+    from public.anuncio_interacciones where anuncio_id = p_anuncio_id;
+  costo_bruto := dias_cobrados * public.tarifa_campana_clp('dia')
+               + vistas * public.tarifa_campana_clp('vista')
+               + aperturas * public.tarifa_campana_clp('apertura')
+               + contactos * public.tarifa_campana_clp('contacto');
+  return next;
+end;
+$$;
+revoke all on function public.costo_campana(uuid) from public, anon, authenticated;
+
+-- ¿Se puede mostrar hoy? Publicado, ya empezado, sin vencer, con profesor
+-- aprobado y sin haber llegado al tope. Un anuncio sin campaña (de antes de
+-- esto) no tiene tope.
+create or replace function public.campana_visible(p_anuncio_id uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  a public.tutor_anuncios%rowtype;
+  k record;
+begin
+  select * into a from public.tutor_anuncios where id = p_anuncio_id;
+  if not found or a.estado <> 'publicado' then return false; end if;
+  if a.publicado_at is not null and a.publicado_at > now() then return false; end if;
+  if a.vence_at is not null and a.vence_at <= now() then return false; end if;
+  if not public.tutor_aprobado(a.autor_id) then return false; end if;
+  select * into k from public.costo_campana(p_anuncio_id);
+  return k.tope_clp is null or k.costo_bruto < k.tope_clp;
+end;
+$$;
+revoke all on function public.campana_visible(uuid) from public;
+grant execute on function public.campana_visible(uuid) to anon, authenticated;
+
+-- ¿Cuenta esta persona para la campaña? Solo si se puede mostrar, no es el
+-- profesor y tiene ramos guardados. Uso interno de los registros.
+create or replace function public.cuenta_para_campana(p_anuncio_id uuid, p_user_id uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if p_user_id is null or not public.campana_visible(p_anuncio_id) then return false; end if;
+  if exists (select 1 from public.tutor_anuncios where id = p_anuncio_id and autor_id = p_user_id) then
+    return false;
+  end if;
+  return exists (select 1 from public.user_ramos where user_id = p_user_id);
+end;
+$$;
+revoke all on function public.cuenta_para_campana(uuid, uuid) from public, anon, authenticated;
+
+-- La lectura pública de anuncios, ahora con programación y tope.
+drop policy if exists tutor_anuncios_select_publicados_o_propios on public.tutor_anuncios;
+create policy tutor_anuncios_select_publicados_o_propios
+on public.tutor_anuncios
+for select
+to anon, authenticated
+using (
+  (estado = 'publicado' and (vence_at is null or vence_at > now())
+    and public.tutor_aprobado(autor_id)
+    and public.campana_visible(id))
+  or (select auth.uid()) = autor_id
+);
+
+-- Abrió la clase o tocó contactar. Devuelve true solo la primera vez que esa
+-- persona lo hace en ese anuncio: es lo que se cobraría.
+create or replace function public.registrar_interaccion_anuncio(p_anuncio_id uuid, p_tipo text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  filas integer := 0;
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+  if p_tipo not in ('apertura', 'contacto') then
+    raise exception 'tipo inválido';
+  end if;
+  if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
+    return false;
+  end if;
+  insert into public.anuncio_interacciones (anuncio_id, user_id, tipo)
+  values (p_anuncio_id, auth.uid(), p_tipo)
+  on conflict do nothing;
+  get diagnostics filas = row_count;
+  return filas = 1;
+end;
+$$;
+revoke all on function public.registrar_interaccion_anuncio(uuid, text) from public, anon;
+grant execute on function public.registrar_interaccion_anuncio(uuid, text) to authenticated;
+
+-- La campaña del propio anuncio, para el panel del profesor: totales, nunca
+-- personas. `costo` ya viene topeado.
+create or replace function public.campana_anuncio(p_anuncio_id uuid)
+returns table (dias integer, inicio date, tope_clp integer, dias_cobrados integer,
+               vistas integer, aperturas integer, contactos integer, costo integer, agotada boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  k record;
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+  if not exists (select 1 from public.tutor_anuncios where id = p_anuncio_id and autor_id = auth.uid()) then
+    raise exception 'no puedes ver esta campaña';
+  end if;
+  select * into k from public.costo_campana(p_anuncio_id);
+  dias := k.dias; inicio := k.inicio; tope_clp := k.tope_clp; dias_cobrados := k.dias_cobrados;
+  vistas := k.vistas; aperturas := k.aperturas; contactos := k.contactos;
+  costo := case when k.tope_clp is null then k.costo_bruto else least(k.costo_bruto, k.tope_clp) end;
+  agotada := k.tope_clp is not null and k.costo_bruto >= k.tope_clp;
+  return next;
+end;
+$$;
+revoke all on function public.campana_anuncio(uuid) from public, anon;
+grant execute on function public.campana_anuncio(uuid) to authenticated;
+
+-- Al dejar de estar publicado antes de tiempo, los días se dejan de contar.
+-- Al volver a publicarse, se retoma.
+create or replace function public.anuncio_marca_detencion()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if old.estado = 'publicado' and new.estado <> 'publicado' then
+    update public.anuncio_campanas set detenido_at = now()
+     where anuncio_id = new.id and detenido_at is null;
+  elsif new.estado = 'publicado' and old.estado <> 'publicado' then
+    update public.anuncio_campanas set detenido_at = null where anuncio_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.anuncio_marca_detencion() from public, anon, authenticated;
+drop trigger if exists tutor_anuncios_marca_detencion on public.tutor_anuncios;
+create trigger tutor_anuncios_marca_detencion
+after update of estado on public.tutor_anuncios
+for each row
+execute function public.anuncio_marca_detencion();
+
+-- Las interacciones se van con el mismo plazo que el alcance.
+create or replace function public.limpiar_interacciones_anuncios(p_dias integer default 90)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  filas integer := 0;
+begin
+  if p_dias is null or p_dias < 30 then
+    raise exception 'el plazo mínimo de conservación es 30 días';
+  end if;
+  delete from public.anuncio_interacciones as i
+   using public.tutor_anuncios as t
+   where t.id = i.anuncio_id
+     and t.vence_at is not null
+     and t.vence_at < now() - make_interval(days => p_dias);
+  get diagnostics filas = row_count;
+  return filas;
+end;
+$$;
+revoke all on function public.limpiar_interacciones_anuncios(integer) from public, anon, authenticated;
+

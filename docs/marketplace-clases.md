@@ -201,6 +201,13 @@ alcance único efectivo, con un máximo de presupuesto por campaña:
 - **Precio de la clase:** lo que cobra el tutor por enseñar (`precio_clp` en el aviso).
 - **Tarifa publicitaria:** lo que cobra GradeHub por cada cuenta alcanzada. Es aparte.
 
+> **Reemplazado el 2026-09-25.** Lo que sigue en esta sección (cargo fijo,
+> recargo por exigencia, precios por camino y `cotizarCampanaClases`) describe
+> el modelo anterior. El vigente es por campaña: $100 por día y, por persona,
+> $10 si la vio, $50 si la abrió y $1.000 si contactó, con un tope elegido por
+> el profesor. Ver `TARIFA_CAMPANA` en marketplace.js y la sección CAMPAÑAS de
+> `supabase/clases_particulares.sql`.
+
 `cotizarCampanaClases` recibe conteos agregados y una tarifa configurable. No
 recibe notas ni listas de estudiantes.
 

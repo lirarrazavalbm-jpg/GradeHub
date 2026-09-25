@@ -14,7 +14,9 @@ function element(id,value=''){
 }
 const form=element('#profesor-borrador');form.reportValidity=()=>true;
 ['titulo','descripcion','precio','modalidad','ubicacion','contacto-tipo','contacto','flyer',
-  'tenant','siglas','promedio','avance'].forEach(id=>element('#pr-'+id));
+  'tenant','siglas','promedio','avance','inicio','dias','fin','tope','campana-resumen'].forEach(id=>element('#pr-'+id));
+Object.assign(elements['#pr-dias'],{value:'10'});
+Object.assign(elements['#pr-tope'],{value:'$10.000'});
 Object.assign(elements['#pr-titulo'],{value:'Clases de Cálculo I'});
 Object.assign(elements['#pr-descripcion'],{value:'Trabajamos ejercicios y preparamos las pruebas de Cálculo I.'});
 Object.assign(elements['#pr-precio'],{value:'15000'});
@@ -39,7 +41,9 @@ ctx.guardarSimulado=async(datos,id)=>{
   return {ok:true,anuncio:{id:'cccccccc-cccc-4ccc-cccc-cccccccccccc',estado:'borrador',...datos}};
 };
 ctx.enviarSimulado=async()=>{enviados++;return {ok:true};};
-run('guardarBorradorClase=guardarSimulado; enviarBorradorClase=enviarSimulado');
+let campanas=0;
+ctx.campanaSimulada=async()=>{campanas++;return {ok:true};};
+run('guardarBorradorClase=guardarSimulado; enviarBorradorClase=enviarSimulado; guardarCampanaClase=campanaSimulada');
 let n=0;
 function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
 (async()=>{
@@ -51,7 +55,7 @@ function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
     /No se guardó/.test(elements['.profesor-estado'].textContent));
   fallar=false;
   await events['#pr-guardar:click']();
-  check('guardar no publica ni envía',guardados===2&&enviados===0&&
+  check('guardar no publica ni envía, y guarda la campaña',guardados===2&&enviados===0&&campanas===1&&
     /Borrador guardado/.test(elements['.profesor-estado'].textContent));
   ctx.subirSimulado=async()=>({ok:false,error:'No se pudo subir el flyer.'});
   run('subirFlyerClase=subirSimulado');
@@ -63,5 +67,8 @@ function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
   await events['#pr-enviar:click']();
   check('enviar pasa por guardado y queda en revisión',guardados===4&&enviados===1&&
     /En revisión/.test(raiz.innerHTML)&&!/publicado/i.test(raiz.innerHTML));
+  elements['#pr-tope'].value='$500';
+  await events['#pr-guardar:click']();
+  check('un tope imposible no guarda nada',guardados===4&&/tope/.test(elements['.profesor-estado'].textContent));
   console.log(`Formulario de profesor OK: ${n}`);
 })().catch(e=>{console.error('FAIL:',e.message);process.exitCode=1;});
