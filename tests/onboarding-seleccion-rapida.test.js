@@ -36,5 +36,28 @@ if(match){
   chk('desmarcar tampoco reconstruye toda la lista',ctx.repintados===0);
 }
 
+console.log('\n=== Avanzar orienta; marcar conserva la posición ===');
+const render=app.match(/function obRender\(\)\{[\s\S]*?\n\}/)[0];
+let focoTitulo=0,focoCampo=0;
+const titulo={focus(){focoTitulo++;}};
+const wrap={scrollTop:250};
+const pantalla={dataset:{},scrollTop:180,querySelector:s=>s==='.ob-wrap'?wrap:titulo};
+const generico={style:{},focus(){focoCampo++;}};
+const renderCtx={
+  obStep:1,OB_TOTAL:5,obRamos:[],prepararObRamos(){},obTrackPaso(){},obProgressPct:s=>s*20,obStepValid:()=>true,
+  setTimeout:fn=>fn(),
+  document:{querySelectorAll:()=>[],getElementById:id=>id==='screen-onboard'?pantalla:generico},
+};
+vm.createContext(renderCtx);vm.runInContext(render,renderCtx);
+vm.runInContext('obRender()',renderCtx);
+chk('el primer paso enfoca su título sin abrir el teclado',focoTitulo===1&&focoCampo===0);
+wrap.scrollTop=250;pantalla.scrollTop=180;renderCtx.obStep=2;
+vm.runInContext('obRender()',renderCtx);
+chk('avanzar devuelve el contenido arriba y enfoca el nuevo paso',focoTitulo===2&&wrap.scrollTop===0&&pantalla.scrollTop===0);
+renderCtx.obStep=5;vm.runInContext('obRender()',renderCtx);
+wrap.scrollTop=250;pantalla.scrollTop=180;const focoAntes=focoTitulo;
+vm.runInContext('obRender()',renderCtx);
+chk('actualizar la selección del mismo paso no roba foco ni scroll',focoTitulo===focoAntes&&wrap.scrollTop===250&&pantalla.scrollTop===180);
+
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);

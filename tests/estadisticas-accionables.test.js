@@ -13,7 +13,7 @@ const stats=render.slice(inicio,fin);
 
 console.log('\n=== Estadísticas guía decisiones, no cuenta tarjetas ===');
 chk('el estado temprano reconoce el semestre sin notas y lo que ya está configurado',
-  stats.includes('Tu semestre todavía está empezando.')&&stats.includes('evaluaciones configuradas'));
+  stats.includes('Parte con tu primera nota')&&stats.includes('evaluaciones configuradas'));
 chk('la situación parte por el avance y deja el promedio general en Inicio',
   /stats-situation-card[^>]*aria-label="\$\{avance\.pct\}% de las evaluaciones evaluado"/.test(stats)&&
   /section-hd-title">Avance del semestre<\/span>[\s\S]{0,500}stats-situation-top[\s\S]{0,300}\$\{avance\.pct\}%/.test(stats)&&

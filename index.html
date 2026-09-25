@@ -98,9 +98,9 @@
     </button>
     <div class="oauth-divider"><span>o con tu correo</span></div>
     <div class="ob-card">
-      <label class="field-label" id="auth-user-label">Correo electrónico</label>
+      <label class="field-label" id="auth-user-label" for="auth-user">Correo electrónico</label>
       <input type="email" id="auth-user" placeholder="tu@correo.com" maxlength="60" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" onkeydown="if(event.key==='Enter')document.getElementById('auth-pass').focus()"/>
-      <label class="field-label" style="margin-top:14px;">Contraseña</label>
+      <label class="field-label" for="auth-pass" style="margin-top:14px;">Contraseña</label>
       <div class="password-input-wrap">
         <input type="password" id="auth-pass" placeholder="Tu contraseña" maxlength="60" autocomplete="current-password" onkeydown="if(event.key==='Enter'){if(document.getElementById('auth-pass-confirm-wrap').style.display!=='none')document.getElementById('auth-pass2').focus();else submitAuth()}"/>
         <button class="password-toggle" type="button" data-password-for="auth-pass" aria-label="Mostrar contraseña" aria-pressed="false" onclick="togglePasswordVisibility('auth-pass',this)">
@@ -109,7 +109,7 @@
         </button>
       </div>
       <div id="auth-pass-confirm-wrap" style="display:none;">
-        <label class="field-label" style="margin-top:14px;">Repetir contraseña</label>
+        <label class="field-label" for="auth-pass2" style="margin-top:14px;">Repetir contraseña</label>
         <div class="password-input-wrap">
           <input type="password" id="auth-pass2" placeholder="Repite tu contraseña" maxlength="60" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitAuth()"/>
           <button class="password-toggle" type="button" data-password-for="auth-pass2" aria-label="Mostrar contraseña" aria-pressed="false" onclick="togglePasswordVisibility('auth-pass2',this)">
@@ -118,10 +118,12 @@
           </button>
         </div>
       </div>
-      <p id="auth-legal-accept-wrap" class="auth-legal" style="display:none;" aria-hidden="true">
-        <label><input type="checkbox" id="auth-legal-accept" aria-describedby="auth-error"/>
-        Acepto los <a href="/terminos.html">términos de uso</a> y la <a href="/privacidad.html">política de privacidad</a>, incluido que GradeHub use mis notas y ramos para ordenar recomendaciones de clases. Se calcula dentro de GradeHub; los profesores no ven mis notas ni saben quién eres.</label>
-      </p>
+      <div id="auth-legal-accept-wrap" class="auth-consent" style="display:none;" aria-hidden="true">
+        <label><input type="checkbox" id="auth-legal-accept" aria-describedby="auth-legal-detail auth-error"/>
+          <span>Acepto los <a href="/terminos.html" target="_blank" rel="noopener">términos de uso</a> y la <a href="/privacidad.html" target="_blank" rel="noopener">política de privacidad</a>.</span>
+        </label>
+        <p id="auth-legal-detail">GradeHub usa tus notas y ramos para ordenar recomendaciones de clases dentro de tu navegador. Los profesores no reciben tus notas ni tu identidad.</p>
+      </div>
       <div id="auth-error" role="alert" aria-live="assertive" style="display:none;font-size:12px;color:var(--red);margin-top:10px;line-height:1.4;"></div>
     </div>
     <button class="btn-primary" id="auth-btn" onclick="submitAuth()">Iniciar sesión</button>
@@ -150,7 +152,7 @@
         <div class="ap-row ap-row-extra"><div class="ap-row-info"><b>Control 2</b><small>10% · 16 oct</small></div><span class="ap-val ap-val-empty">—</span></div>
         <div class="ap-row ap-row-extra"><div class="ap-row-info"><b>Examen</b><small>35% de la nota final</small></div><span class="ap-val ap-val-empty">—</span></div>
       </div>
-      <div class="ap-caption">Así se ve un ramo en GradeHub</div>
+      <div class="ap-caption">Ejemplo de un ramo</div>
     </aside>
     <!-- La tercera columna muestra el otro lado del producto: no son cifras de
          marketing, sino una miniatura fiel de la pantalla de Estadísticas. -->
@@ -173,14 +175,17 @@
         <div class="asp-section-title">Rango del semestre</div>
         <div class="asp-range"><span>3.1</span><small> a </small><b>6.4</b></div>
       </div>
-      <div class="ap-caption">Así se ven tus estadísticas en GradeHub</div>
+      <div class="ap-caption">Ejemplo de tus estadísticas</div>
     </aside>
     <!-- Quien llega sin que se la recomienden ve un login y nada más. Este es el
          único enlace de la pantalla que responde "¿qué es esto y me conviene?"
          antes de pedirle una cuenta. -->
     <footer class="auth-legal-row">
-      <p class="auth-legal"><a href="/preguntas.html">¿Qué es GradeHub? Preguntas frecuentes</a></p>
-      <p class="auth-legal">Al crear tu cuenta aceptas nuestros <a href="/terminos.html">términos de uso</a> y nuestra <a href="/privacidad.html">política de privacidad</a>.</p>
+      <nav class="auth-footer-links" aria-label="Información sobre GradeHub">
+        <a href="/preguntas.html" target="_blank" rel="noopener">Preguntas frecuentes</a>
+        <a href="/terminos.html" target="_blank" rel="noopener">Términos de uso</a>
+        <a href="/privacidad.html" target="_blank" rel="noopener">Privacidad</a>
+      </nav>
     </footer>
   </div>
 </div>
@@ -223,17 +228,16 @@
 
 <!-- ONBOARDING -->
 <div id="screen-onboard" class="screen">
-  <div class="ob-wrap">
+  <div class="ob-wrap ob-wrap-steps">
     <div class="ob-icon ob-icon-logo ob-icon-brand"><img src="logo.svg?v=__ASSET_VERSION__" alt="GradeHub" width="72" height="72" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;"/></div>
     <div class="ob-progress" aria-hidden="true"><div class="ob-progress-bar" id="ob-progress-bar"></div></div>
 
     <div class="ob-step" data-step="1">
       <div class="ob-step-num">Paso 1 de 5</div>
-      <h1 class="ob-title ob-title-left">Partamos por lo básico.</h1>
-      <div class="ob-sub ob-sub-left">¿Cómo te llamas? Lo usamos solo para saludarte.</div>
-      <p class="ob-claim">Hecho por estudiantes, para estudiantes.</p>
+      <h1 class="ob-title ob-title-left" tabindex="-1">¿Cómo te llamas?</h1>
+      <div class="ob-sub ob-sub-left">Puede ser tu nombre o un apodo.</div>
       <div class="ob-card">
-        <label class="field-label">Tu nombre</label>
+        <label class="field-label" for="ob-name">Nombre o apodo</label>
         <input type="text" id="ob-name" placeholder="Nombre o apodo" maxlength="30" autocomplete="given-name" onkeydown="if(event.key===&apos;Enter&apos;)obNext()"/>
       </div>
       <!-- Declaración de edad. Va acá y no en el formulario de correo porque
@@ -247,29 +251,29 @@
 
     <div class="ob-step" data-step="2" style="display:none;">
       <div class="ob-step-num">Paso 2 de 5</div>
-      <h1 class="ob-title ob-title-left">¿Dónde estudias?</h1>
-      <div class="ob-sub ob-sub-left">Adaptamos los colores y los ramos precargados a tu universidad.</div>
+      <h1 class="ob-title ob-title-left" tabindex="-1">¿Dónde estudias?</h1>
+      <div class="ob-sub ob-sub-left">Así te mostramos los ramos de tu universidad.</div>
       <div id="tenant-grid" class="ob-options"></div>
     </div>
 
     <div class="ob-step" data-step="3" style="display:none;">
       <div class="ob-step-num">Paso 3 de 5</div>
-      <h1 class="ob-title ob-title-left">¿Qué carrera?</h1>
-      <div class="ob-sub ob-sub-left">Si tenemos tu malla, te cargamos los ramos solos. Si todavía no, igual queremos saber qué estudias.</div>
-      <div class="modal-input" style="margin-bottom:10px;"><input type="text" id="ob-carrera-buscar" placeholder="Busca tu carrera" autocomplete="off" oninput="filtrarCarreras(this.value)"/></div>
+      <h1 class="ob-title ob-title-left" tabindex="-1">¿Qué estudias?</h1>
+      <div class="ob-sub ob-sub-left">Busca tu carrera. Si no aparece, puedes escribirla.</div>
+      <div class="modal-input" style="margin-bottom:10px;"><input type="text" id="ob-carrera-buscar" aria-label="Buscar carrera" placeholder="Busca tu carrera" autocomplete="off" oninput="filtrarCarreras(this.value)"/></div>
       <div id="carrera-grid" class="ob-options"></div>
     </div>
 
     <div class="ob-step" data-step="4" style="display:none;">
       <div class="ob-step-num">Paso 4 de 5</div>
-      <h1 class="ob-title ob-title-left">¿En qué semestre vas?</h1>
-      <div class="ob-sub ob-sub-left">Para sugerirte los ramos que te tocan ahora.</div>
+      <h1 class="ob-title ob-title-left" tabindex="-1">¿En qué semestre vas?</h1>
+      <div class="ob-sub ob-sub-left">Lo usamos para sugerirte ramos, cuando tenemos tu malla.</div>
       <div class="sem-grid" id="sem-grid"></div>
     </div>
 
     <div class="ob-step" data-step="5" style="display:none;">
       <div class="ob-step-num">Paso 5 de 5</div>
-      <h1 class="ob-title ob-title-left">Armemos tus ramos.</h1>
+      <h1 class="ob-title ob-title-left" tabindex="-1">Elige tus ramos</h1>
       <div id="ob-course-picker"></div>
     </div>
 
@@ -277,7 +281,7 @@
       <button class="ob-back" id="ob-back" onclick="obBack()" style="visibility:hidden;">Atrás</button>
       <button class="btn-primary ob-next" id="ob-next" onclick="obNext()" disabled>Continuar</button>
     </div>
-    <p class="ob-note">Puedes cambiar todo esto después desde Ajustes</p>
+    <p class="ob-note">Puedes editar tus datos y ramos más adelante.</p>
   </div>
 </div>
 
@@ -302,7 +306,7 @@
       <div class="gpa-sub" id="home-gpa-method" style="display:none;"></div>
       <div class="gpa-tags" id="gpa-tags" style="display:none;"></div>
       <div id="gpa-empty-hint" style="display:none;">
-        <div class="gpa-empty-hint">Sin ramos aún. Agrega el primero y empezamos a llevar tu promedio.</div>
+        <div class="gpa-empty-hint">Agrega tu primer ramo para empezar a llevar tus notas.</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
           <button class="gpa-start-btn" onclick="openAddRamoModal()">Agregar ramo</button>
           <button class="gpa-start-btn" id="gpa-malla-btn" onclick="openMallaModal()" style="display:none;">Ver mi malla</button>

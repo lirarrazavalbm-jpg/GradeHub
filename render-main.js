@@ -141,6 +141,9 @@ function renderHome(){
   if(detalleMetodo){
     gpaMethod.textContent=detalleMetodo.texto;
     gpaMethod.style.display='block';
+  }else if(g===null){
+    gpaMethod.textContent='Abre un ramo para ingresar tu primera nota.';
+    gpaMethod.style.display='block';
   }else gpaMethod.style.display='none';
 
   // Chips de estado — contexto exclusivo del promedio general
@@ -891,9 +894,9 @@ function renderStats(){
           <path d="M8 56h48"/><rect x="12" y="34" width="8" height="18" rx="1.5"/><rect x="28" y="22" width="8" height="30" rx="1.5"/><rect x="44" y="14" width="8" height="38" rx="1.5"/>
         </svg>
       </div>
-      <div class="ag-empty-title">${S.ramos.length?'Tu semestre todavía está empezando.':'Todavía no hay ramos este semestre.'}</div>
-      <div class="ag-empty-desc">${S.ramos.length?`Ya tienes ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'} y ${evaluaciones} ${evaluaciones===1?'evaluación configurada':'evaluaciones configuradas'}. `:'Agrégalos desde Inicio. '}Cuando llegue tu primera nota, acá vas a ver qué ramo pide más atención y cuánto necesitas en cada uno.</div>
-      ${ramosConPauta<S.ramos.length?`<div class="ag-empty-desc" style="margin-top:8px;">${S.ramos.length-ramosConPauta} ${S.ramos.length-ramosConPauta===1?'ramo todavía no tiene':'ramos todavía no tienen'} pauta para poder estimar lo que falta.</div>`:''}
+      <div class="ag-empty-title">${S.ramos.length?'Parte con tu primera nota':'Agrega tu primer ramo'}</div>
+      <div class="ag-empty-desc">${S.ramos.length?`Tienes ${S.ramos.length} ${S.ramos.length===1?'ramo':'ramos'} y ${evaluaciones} ${evaluaciones===1?'evaluación configurada':'evaluaciones configuradas'}. Ingresa una nota desde Inicio para ver cuánto necesitas en cada ramo.`:'Puedes buscarlo desde Inicio. Acá verás tu avance cuando ingreses notas.'}</div>
+      ${ramosConPauta<S.ramos.length?`<div class="ag-empty-desc" style="margin-top:8px;">Falta configurar las evaluaciones de ${S.ramos.length-ramosConPauta} ${S.ramos.length-ramosConPauta===1?'ramo':'ramos'}.</div>`:''}
     </div>`;
   } else {
     const avance=avanceEvaluaciones(S.ramos);
@@ -998,7 +1001,7 @@ function renderStats(){
       <button type="button" class="stats-hist-add" onclick="openSemestreAnteriorModal()">+ Semestre anterior</button>
     </div>`;
     if(!validos.length){
-      hist+=`<p class="stats-hist-vacio">Si empezaste la carrera antes de usar GradeHub, agrega tus semestres anteriores con la nota final de cada ramo. Sirve para que tu promedio de carrera cuente todo lo que llevas.</p>`;
+      hist+=`<p class="stats-hist-vacio">Agrega las notas finales de semestres anteriores para incluirlos en tu promedio de carrera.</p>`;
     }
     if(validos.length>0){
       validos.forEach(h=>{

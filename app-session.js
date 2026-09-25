@@ -67,7 +67,7 @@ function authError(msg,kind){
 function toggleAuthMode(){
   authMode=authMode==='login'?'signup':'login';
   resetPasswordVisibility();
-  document.getElementById('auth-sub').textContent=authMode==='login'?'Tus notas, tu promedio y cuánto te falta para aprobar.':'Crea tu cuenta gratis y guarda tus notas en la nube.';
+  document.getElementById('auth-sub').textContent=authMode==='login'?'Tus notas, tu promedio y cuánto te falta para aprobar.':'Guarda tus notas y revísalas desde cualquier dispositivo.';
   document.getElementById('auth-btn').textContent=authMode==='login'?'Iniciar sesión':'Crear cuenta';
   document.getElementById('auth-toggle').textContent=authMode==='login'?'¿No tienes cuenta? Crea una':'¿Ya tienes cuenta? Inicia sesión';
   document.getElementById('auth-pass').setAttribute('autocomplete',authMode==='login'?'current-password':'new-password');
