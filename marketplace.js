@@ -1981,8 +1981,9 @@ function renderBorradorProfesor(raiz,anuncio){
 // - Una en la mañana y una en la tarde (decisión de Lucas del 2026-09-25). Se
 //   muestra en la primera entrada de cada franja y se mantiene mientras dure
 //   esa visita. Si cierras la app y vuelves a entrar en la misma franja, no
-//   aparece; ni tampoco si la cerraste. Cerrarla la esconde hasta la próxima
-//   franja: no la descarta para siempre.
+//   aparece; ni tampoco si la cerraste. La primera vez que cierras una clase,
+//   se esconde hasta la próxima franja; la segunda vez, esa clase no vuelve
+//   más en este dispositivo, y recién ahí se le dice.
 // - No dice "reprobando" ni diagnostica: ofrece apoyo para el ramo.
 // - El cierre y el día viven en `gradehub_marketplace_v1`, aparte de
 //   gradehub_v1: apagar esto no toca el estado académico.
@@ -2024,21 +2025,29 @@ function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now(),visit
     // Misma visita: la misma clase, si sigue calzando. Si subiste una nota y
     // dejó de calzar, desaparece en vez de quedarse pegada.
     if(e.anuncioId){
-      const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===e.anuncioId),ramos,tenant,{descartados:[],ahora});
+      const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===e.anuncioId),ramos,tenant,{descartados:definitivasClases(e),ahora});
       return {sel,estado:e};
     }
   }
-  // Cerrar ya no descarta para siempre: la lista vieja `descartados` se ignora.
-  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados:[],ahora});
+  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados:definitivasClases(e),ahora});
   // La franja queda tomada solo si se mostró una. Si no calza ninguna, no se
   // anota nada: una clase publicada más tarde tiene que poder aparecer.
   if(!sel)return {sel:null,estado:e};
   return {sel,estado:{...e,franja,visita,anuncioId:sel.anuncio.id,cerrada:false}};
 }
 
+// Las clases cerradas dos veces. La lista `descartados` de la versión anterior
+// se ignora: ahí bastaba cerrarla una vez, y con la regla nueva eso no alcanza.
+function definitivasClases(e){return Array.isArray(e&&e.descartadasDefinitivas)?e.descartadasDefinitivas:[];}
+// Devuelve true si con este cierre la clase queda descartada para siempre.
 function descartarRecomendacionClase(anuncioId,ahora=Date.now(),visita=VISITA_CLASES){
   const estado=leerEstadoMarketplace();
-  guardarEstadoMarketplace({...estado,franja:franjaClases(ahora),visita,anuncioId:null,cerrada:true});
+  const cierres={...(estado.cierres&&typeof estado.cierres==='object'?estado.cierres:{})};
+  cierres[anuncioId]=(Number(cierres[anuncioId])||0)+1;
+  const definitiva=cierres[anuncioId]>=2;
+  const descartadasDefinitivas=definitiva?[...new Set([...definitivasClases(estado),anuncioId])].slice(-MAX_DESCARTADOS_CLASES):definitivasClases(estado);
+  guardarEstadoMarketplace({...estado,cierres,descartadasDefinitivas,franja:franjaClases(ahora),visita,anuncioId:null,cerrada:true});
+  return definitiva;
 }
 
 let anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
@@ -2128,9 +2137,10 @@ function pintarRecomendacionClase(contenedor){
     abrirClaseRecomendada(anuncio,ramo,sigla);
   });
   banner.querySelector('.clase-apoyo-cerrar').addEventListener('click',()=>{
-    descartarRecomendacionClase(anuncio.id);
+    const definitiva=descartarRecomendacionClase(anuncio.id);
     fila.classList.remove('tiene-clase-apoyo','junto-der','junto-izq');
     banner.remove();
+    if(definitiva&&typeof showToast==='function')showToast('Listo, no te la volvemos a mostrar');
   });
   // El logo del profesor, si tiene uno aprobado. Llega después: el banner no
   // espera a Storage para aparecer, y sin logo simplemente no se muestra.

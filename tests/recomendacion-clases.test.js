@@ -43,7 +43,7 @@ chk('sin un ramo que calce, no hay nada',dia(bien,{},lunes).sel===null);
 chk('una franja sin nada que mostrar no queda tomada',(r=>r.sel===null&&!r.estado.franja)(dia(bien,{},lunes)));
 ctx.__avisos=[];const vacio=dia(complicado,{},lunes).estado;ctx.__avisos=[aviso('a1'),aviso('a2')];
 chk('si la clase se publica más tarde, aparece',dia(complicado,vacio,lunes+3600e3,'v2').sel?.anuncio.id==='a1');
-chk('un estado de la versión anterior (por día) no bloquea',dia(complicado,{dia:'2026-09-28',anuncioId:null,cerradaHoy:true,descartados:['a1']},lunes).sel?.anuncio.id==='a1');
+chk('un estado de la versión anterior (una sola vez cerrada) no la descarta',dia(complicado,{dia:'2026-09-28',anuncioId:null,cerradaHoy:true,descartados:['a1']},lunes).sel?.anuncio.id==='a1');
 
 console.log('\n=== Cerrarla ===');
 run(`descartarRecomendacionClase('a1',${lunes},'v1')`);
@@ -51,6 +51,13 @@ const tras=JSON.parse(guardado.gradehub_marketplace_v1);
 chk('cerrarla la esconde por esta franja, aun en la misma visita',dia(complicado,tras,lunes).sel===null);
 chk('pero no la descarta para siempre: en la tarde vuelve',dia(complicado,tras,lunesTarde,'v2').sel?.anuncio.id==='a1');
 chk('y al día siguiente también',dia(complicado,tras,martes,'v3').sel?.anuncio.id==='a1');
+chk('la primera vez no dice "no te la volvemos a mostrar"',run(`descartarRecomendacionClase('a2',${lunes},'v1')`)===false);
+chk('la segunda vez sí, y la descarta para siempre',run(`descartarRecomendacionClase('a1',${lunesTarde},'v2')`)===true);
+const dos=JSON.parse(guardado.gradehub_marketplace_v1);
+chk('esa clase ya no vuelve, ni otro día',(r=>r.sel&&r.sel.anuncio.id==='a2')(dia(complicado,dos,martes,'v4')));
+ctx.__avisos=[aviso('a1')];
+chk('si era la única que calzaba, no hay nada',dia(complicado,dos,martes,'v5').sel===null);
+ctx.__avisos=[aviso('a1'),aviso('a2')];
 
 console.log('\n=== Dónde vive ===');
 chk('se guarda en su propia clave, no en gradehub_v1',!('gradehub_v1' in guardado)&&'gradehub_marketplace_v1' in guardado);

@@ -730,8 +730,9 @@ La recomendación usa universidad, sigla, promedio y avance, pero se decide dent
 de GradeHub y el profesor recibe solo agregados. Se muestra solo en Inicio, una
 vez en la mañana (hasta las 14:00) y una en la tarde: en la primera entrada de
 cada franja, y no vuelve si la persona entra de nuevo en la misma franja o la
-cerró. Cerrarla la esconde hasta la próxima franja, no para siempre (decisión
-de Lucas del 2026-09-25). Los anuncios también se pueden explorar en un
+cerró. La primera vez que se cierra una clase se esconde hasta la próxima
+franja; la segunda, no vuelve más en ese dispositivo y recién ahí se avisa "no
+te la volvemos a mostrar" (decisión de Lucas del 2026-09-25). Los anuncios también se pueden explorar en un
 catálogo general.
 
 La tarifa cambió el 2026-09-25 (decisión de Lucas): $100 por día publicada y,
