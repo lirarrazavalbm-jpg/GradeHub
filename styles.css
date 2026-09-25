@@ -748,7 +748,25 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .profesor-vista-previa .vista-sin-nota{color:var(--fg3);}
 .vista-grilla .clase-apoyo,.vista-celular .clase-apoyo{margin:0;animation:none;}
 .vista-celular{max-width:380px;}
-.vista-catalogo{max-width:520px;pointer-events:none;}
+.vista-catalogo{pointer-events:none;}
+.vista-cabeza{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.vista-cabeza h3{margin:18px 0 2px;}
+.vista-switch{display:inline-flex;padding:3px;border:1px solid var(--border2);border-radius:10px;background:var(--bg2);}
+.vista-switch button{min-height:32px;padding:0 12px;border:0;border-radius:7px;background:none;color:var(--fg2);font:inherit;font-size:.8125rem;font-weight:600;cursor:pointer;}
+.vista-switch button[aria-pressed="true"]{background:var(--card);color:var(--fg);box-shadow:0 1px 2px color-mix(in srgb,var(--fg) 12%,transparent);}
+.vista-switch button:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+.vista-solo-pc,.vista-solo-cel{display:grid;gap:8px;min-width:0;}
+.profesor-vista-previa.modo-pc .vista-solo-cel,.profesor-vista-previa.modo-celular .vista-solo-pc{display:none;}
+/* La tarjeta abierta como en cada aparato, aunque el profesor esté en otro:
+   en computador el flyer va al lado; en celular, arriba y a lo ancho. */
+.modo-pc .vista-catalogo{max-width:460px;}
+.modo-pc .vista-catalogo .catalogo-clase-card{flex-direction:row;}
+.modo-pc .vista-catalogo .catalogo-clase-flyer{width:34%;max-width:170px;min-height:0;max-height:none;}
+.modo-pc .vista-catalogo .catalogo-clase-flyer img{min-height:210px;max-height:none;}
+.modo-celular .vista-catalogo{max-width:380px;}
+.modo-celular .vista-catalogo .catalogo-clase-card{flex-direction:column;}
+.modo-celular .vista-catalogo .catalogo-clase-flyer{width:100%;max-width:none;min-height:160px;max-height:210px;}
+.modo-celular .vista-catalogo .catalogo-clase-flyer img{min-height:160px;max-height:210px;}
 .clase-apoyo-abrir[tabindex="-1"]{cursor:default;}
 
 .ramo-reordering .ramo-row.tiene-clase-apoyo{background:transparent;margin-bottom:10px;border-radius:6px;}
