@@ -1,6 +1,7 @@
 // Las mallas UAI y las 69 mallas UC extra se cargan bajo demanda. El selector
-// de ramos tiene que pedir la malla propia y rehacer su índice cuando llega,
-// sin mezclar las carreras vecinas de la misma universidad.
+// de ramos tiene que pedirlas y rehacer su índice cuando llegan. Busca en TODA
+// la universidad —decisión de Lucas del 2026-09-24: electivos, minors y ramos
+// de otra carrera también se cursan—, con la malla propia primero.
 const fs=require('fs'),vm=require('vm'),path=require('path');
 const raiz=path.join(__dirname,'..');
 const appPath=process.env.GRADEHUB_APP||path.join(raiz,'app.js');
@@ -57,9 +58,11 @@ const run=source=>vm.runInContext(source,ctx);
   }
 
   const ajenos=run("searchCatalog('destrezas forenses','uai','UAI-INGENIERIA-CIVIL-INFORMATICA',2)");
-  if(ajenos.some(r=>r.nombre==='Destrezas Forenses')){
-    throw new Error('El buscador mezcló un ramo exclusivo de Derecho UAI');
+  const forenses=ajenos.find(r=>r.nombre==='Destrezas Forenses');
+  if(!forenses)throw new Error('Informática UAI no encuentra un ramo de Derecho UAI');
+  if(forenses.propio||forenses.semestre!==0){
+    throw new Error('Un ramo de otra carrera no puede presentarse como propio ni con el semestre de esa carrera');
   }
 
-  console.log('Buscador por malla propia: carga diferida, caché renovada y carreras UAI aisladas');
+  console.log('Buscador: carga diferida, caché renovada y toda la universidad con la malla propia primero');
 })().catch(error=>{console.error(error);process.exit(1);});
