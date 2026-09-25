@@ -1680,11 +1680,16 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
   /* El ramo se estira hasta el fondo de su fila y cruza el espacio entre filas,
      así su tinte se une con el del banner sin una franja negra entremedio. La
      esquina del banner bajo el ramo queda recta para que se lean como una pieza. */
-  #home-ramos .ramo-row.tiene-clase-apoyo{align-self:stretch;margin:0 0 -12px;border-radius:10px 10px 0 0;}
+  /* El ramo conserva su alto (la barra de avance y la línea de color quedan
+     donde siempre) y un puente del mismo tinte baja desde su borde hasta el
+     banner. El alto del puente lo mide marketplace.js en pantalla. */
+  #home-ramos .ramo-row.tiene-clase-apoyo{margin:0;border-radius:10px 10px 0 0;}
+  #home-ramos .ramo-row.tiene-clase-apoyo::after{content:'';position:absolute;left:0;right:0;top:100%;height:var(--puente-apoyo,0px);background:inherit;pointer-events:none;}
   #home-ramos .clase-apoyo.en-grilla{grid-column:1/-1;margin:0;border-radius:10px;border-top:0;position:relative;}
   #home-ramos .clase-apoyo.en-grilla[data-col="primera"]{border-top-left-radius:0;}
   #home-ramos .clase-apoyo.en-grilla[data-col="ultima"]{border-top-right-radius:0;}
   #home-ramos.ramo-reordering .ramo-row.tiene-clase-apoyo{margin:0;border-radius:10px;}
+  #home-ramos.ramo-reordering .ramo-row.tiene-clase-apoyo::after{display:none;}
 }
 
 @media(min-width:1024px){

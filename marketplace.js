@@ -1814,7 +1814,7 @@ function observarRecomendacionClase(banner,anuncio,sigla){
 function pintarRecomendacionClase(contenedor){
   if(!RECOMENDACIONES_CLASES_ACTIVAS||!contenedor||!currentUser||!supabaseClient||!S||!S.tenant)return;
   contenedor.querySelectorAll('.clase-apoyo').forEach(b=>b.remove());
-  contenedor.querySelectorAll('.tiene-clase-apoyo').forEach(f=>f.classList.remove('tiene-clase-apoyo'));
+  contenedor.querySelectorAll('.tiene-clase-apoyo').forEach(f=>{f.classList.remove('tiene-clase-apoyo');f.style.removeProperty('--puente-apoyo');});
   if(anunciosRecomendacion.tenant!==S.tenant||anunciosRecomendacion.lista===null){
     cargarAnunciosRecomendacion(S.tenant,()=>{if(contenedor.isConnected)pintarRecomendacionClase(contenedor);});
     return;
@@ -1870,7 +1870,25 @@ function pintarRecomendacionClase(contenedor){
     banner.dataset.col=i%columnas===0?'primera':i%columnas===columnas-1?'ultima':'medio';
   }
   filas[fin].after(banner);
+  if(columnas>1)unirRamoConBanner(contenedor,fila,banner);
   observarRecomendacionClase(banner,anuncio,sigla);
+}
+
+// En la grilla, el espacio entre el ramo y el banner depende del alto de la
+// fila (otro ramo de la misma fila puede ser más alto) y del gap. Se mide en
+// pantalla y se vuelve a medir si cambia el tamaño; al desaparecer el banner
+// se deja de observar.
+function unirRamoConBanner(contenedor,fila,banner){
+  const medir=()=>{
+    if(!banner.isConnected||!fila.isConnected){if(obs)obs.disconnect();return;}
+    // offsetTop no cuenta transformaciones: la animación de entrada del banner
+    // lo desplaza unos píxeles y con getBoundingClientRect quedaba una rendija.
+    const h=banner.offsetTop-(fila.offsetTop+fila.offsetHeight);
+    fila.style.setProperty('--puente-apoyo',Math.max(0,Math.round(h))+'px');
+  };
+  const obs=typeof ResizeObserver==='function'?new ResizeObserver(medir):null;
+  if(obs)obs.observe(contenedor);
+  requestAnimationFrame(medir);
 }
 
 async function abrirClaseRecomendada(anuncio,ramo,sigla){
