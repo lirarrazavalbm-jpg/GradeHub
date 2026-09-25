@@ -643,6 +643,42 @@ begin
 end;
 $$;
 
+-- Totales para los gráficos del profesor. `resumen_metricas_anuncio` corta por
+-- día, tipo y ramo a la vez, y con poco tráfico casi ningún corte llega a
+-- quince: el panel quedaba vacío. Esto suma por UNA dimensión a la vez —tipo,
+-- día o ramo— y aplica el mismo umbral de quince EVENTOS a cada total. No
+-- revela más que antes: un total de quince o más no identifica a nadie, y los
+-- que no llegan siguen sin salir.
+create or replace function public.totales_metricas_anuncio(p_anuncio_id uuid)
+returns table (vista text, clave text, tipo text, eventos integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+  if not exists (
+    select 1 from public.tutor_anuncios
+    where id = p_anuncio_id and autor_id = auth.uid()
+  ) then
+    raise exception 'no puedes ver las métricas de este anuncio';
+  end if;
+
+  return query
+  with m as (select * from public.anuncio_metricas where anuncio_id = p_anuncio_id)
+  select 'total'::text, ''::text, m.tipo, sum(m.eventos)::integer from m group by m.tipo having sum(m.eventos) >= 15
+  union all
+  select 'dia', m.dia::text, m.tipo, sum(m.eventos)::integer from m group by m.dia, m.tipo having sum(m.eventos) >= 15
+  union all
+  select 'ramo', m.ramo_sigla, m.tipo, sum(m.eventos)::integer from m group by m.ramo_sigla, m.tipo having sum(m.eventos) >= 15;
+end;
+$$;
+
+revoke all on function public.totales_metricas_anuncio(uuid) from public, anon;
+grant execute on function public.totales_metricas_anuncio(uuid) to authenticated;
+
 revoke all on function public.registrar_metrica_anuncio(uuid, text, text) from public, anon;
 revoke all on function public.resumen_metricas_anuncio(uuid) from public, anon;
 grant execute on function public.registrar_metrica_anuncio(uuid, text, text) to authenticated;
