@@ -1573,6 +1573,15 @@ async function renderLogoProfesor(caja){
   });
 }
 
+// La tarjeta de ramo de la vista previa es la misma de Inicio (mismas clases,
+// mismo tamaño), con una raya en vez de nota: la nota es de cada estudiante.
+function filaRamoVistaPrevia(extra){
+  return `<div class="ramo-row has-progress tiene-clase-apoyo${extra}" style="--ramo-tint:var(--fg3);--ramo-progress-scale:.3" aria-hidden="true">
+      <div class="ramo-band"></div>
+      <div class="ramo-info"><span class="ramo-name">Tu ramo</span><div class="ramo-meta"><span class="ramo-sigla">Sigla</span><span class="ramo-meta-text">30% evaluado</span></div></div>
+      <div class="ramo-grade-action"><div class="ramo-nota vista-sin-nota">—</div><span class="chevron-r">›</span></div>
+      <span class="ramo-progress-track"><span class="ramo-progress-fill"></span></span></div>`;
+}
 function renderBorradorProfesor(raiz,anuncio){
   let id=anuncio&&anuncio.id||null,flyerActual=anuncio&&anuncio.flyer_path||null;
   const valor=(campo,defecto='')=>esc(anuncio&&anuncio[campo]!=null?anuncio[campo]:defecto);
@@ -1617,9 +1626,9 @@ function renderBorradorProfesor(raiz,anuncio){
       <h3>3. Así la van a ver</h3>
       <div class="profesor-vista-previa" id="pr-vista">
         <p class="profesor-info">En computador, en la casilla de al lado del ramo del estudiante:</p>
-        <div class="vista-marco"><div class="vista-grilla"><div class="vista-ramo"><div class="vista-ramo-texto"><b class="vista-ramo-nombre">Tu ramo</b><span class="vista-ramo-meta">Sigla · 30% evaluado</span></div><span class="vista-ramo-nota">—</span><i class="vista-ramo-barra"></i></div><aside class="clase-apoyo en-casilla a-la-derecha vista-anuncio"></aside></div></div>
+        <div class="vista-marco"><div class="vista-grilla">${filaRamoVistaPrevia(' junto-der')}<aside class="clase-apoyo en-casilla a-la-derecha vista-anuncio"></aside></div></div>
         <p class="profesor-info">En celular, bajo el ramo:</p>
-        <div class="vista-celular"><div class="vista-ramo"><div class="vista-ramo-texto"><b class="vista-ramo-nombre">Tu ramo</b><span class="vista-ramo-meta">Sigla · 30% evaluado</span></div><span class="vista-ramo-nota">—</span></div><aside class="clase-apoyo vista-anuncio"></aside></div>
+        <div class="vista-celular">${filaRamoVistaPrevia('')}<aside class="clase-apoyo vista-anuncio"></aside></div>
         <p class="profesor-info">La nota del ramo es la de cada estudiante: acá va una raya porque cambia para cada uno.</p>
       </div>
       <div class="modal-btns"><button class="btn-cancel" id="pr-guardar" type="button">Guardar borrador</button><button class="btn-confirm" id="pr-enviar" type="button">Enviar a revisión</button></div>
@@ -1640,14 +1649,16 @@ function renderBorradorProfesor(raiz,anuncio){
     vista.querySelectorAll('.vista-anuncio').forEach(el=>{el.innerHTML=contenidoRecomendacionClase(borrador,{logoUrl:logoVista,vistaPrevia:true});});
     const sigla=valorCampo('siglas').split(',').map(x=>siglaAnuncio(x)).filter(Boolean)[0]||'';
     const nombre=sigla?(nombresRamosParaClases(valorCampo('tenant')||S.tenant)[sigla]||sigla):'Tu ramo';
-    vista.querySelectorAll('.vista-ramo-nombre').forEach(el=>{el.textContent=nombre;});
-    vista.querySelectorAll('.vista-ramo-meta').forEach(el=>{el.textContent=(sigla||'Sigla')+' · 30% evaluado';});
+    vista.querySelectorAll('.ramo-name').forEach(el=>{el.textContent=nombre;});
+    vista.querySelectorAll('.ramo-sigla').forEach(el=>{el.textContent=sigla||'Sigla';});
     ajustarMiniatura();
+    const grilla=vista.querySelector('.vista-grilla');
+    if(grilla&&typeof requestAnimationFrame==='function')alinearRecomendacionConRamo(grilla,grilla.querySelector('.ramo-row'),grilla.querySelector('.clase-apoyo'));
   };
   // La versión de computador se dibuja a un ancho real de pantalla y se achica
   // entera para caber en el formulario: el profesor ve las proporciones que
   // verá el estudiante, no una versión apretada.
-  const ANCHO_VISTA_PC=620;
+  const ANCHO_VISTA_PC=904;
   const ajustarMiniatura=()=>{
     const g=vista&&typeof vista.querySelector==='function'?vista.querySelector('.vista-grilla'):null;
     const marco=g&&g.parentElement;
@@ -1944,8 +1955,11 @@ function alinearRecomendacionConRamo(contenedor,fila,banner){
     const nombre=fila.querySelector('.ramo-name'),meta=fila.querySelector('.ramo-meta');
     const cabeza=banner.querySelector('.ca-cabeza strong'),pie=banner.querySelector('.clase-apoyo-datos');
     banner.style.setProperty('--ajuste-titulo','0px');banner.style.setProperty('--ajuste-datos','0px');
-    if(nombre&&cabeza)banner.style.setProperty('--ajuste-titulo',Math.round(nombre.getBoundingClientRect().top-cabeza.getBoundingClientRect().top)+'px');
-    if(meta&&pie)banner.style.setProperty('--ajuste-datos',Math.round(meta.getBoundingClientRect().top-pie.getBoundingClientRect().top)+'px');
+    // En la vista previa del profesor la grilla va achicada: las distancias en
+    // pantalla se pasan a las de la tarjeta sin achicar.
+    const escala=(fila.offsetWidth&&fila.getBoundingClientRect().width/fila.offsetWidth)||1;
+    if(nombre&&cabeza)banner.style.setProperty('--ajuste-titulo',Math.round((nombre.getBoundingClientRect().top-cabeza.getBoundingClientRect().top)/escala)+'px');
+    if(meta&&pie)banner.style.setProperty('--ajuste-datos',Math.round((meta.getBoundingClientRect().top-pie.getBoundingClientRect().top)/escala)+'px');
   };
   if(typeof ResizeObserver==='function'){obs=new ResizeObserver(medir);obs.observe(contenedor);}
   requestAnimationFrame(medir);
