@@ -1833,14 +1833,19 @@ const NAV_TABS_BASE=['stats','home','agenda'];
 let NAV_TABS=NAV_TABS_BASE.slice();
 function recalcularNavTabs(){
   const conProfesor=typeof esProfesorAprobado==='function'&&esProfesorAprobado();
-  const nuevas=conProfesor?[...NAV_TABS_BASE,'profesor']:NAV_TABS_BASE.slice();
-  const btn=document.getElementById('nav-profesor');if(btn)btn.hidden=!conProfesor;
-  const pantalla=document.getElementById('screen-profesor');if(pantalla)pantalla.hidden=!conProfesor;
+  // La de administración, solo para cuentas administradoras. Que aparezca no da
+  // acceso a nada: el servidor exige además el segundo factor.
+  const conAdmin=typeof esAdministrador==='function'&&esAdministrador();
+  const nuevas=[...NAV_TABS_BASE,...(conProfesor?['profesor']:[]),...(conAdmin?['admin']:[])];
+  [['profesor',conProfesor],['admin',conAdmin]].forEach(([t,ver])=>{
+    const btn=document.getElementById('nav-'+t);if(btn)btn.hidden=!ver;
+    const pantalla=document.getElementById('screen-'+t);if(pantalla)pantalla.hidden=!ver;
+  });
   if(nuevas.join()===NAV_TABS.join())return false;
   NAV_TABS=nuevas;
   // Si a alguien le quitan el acceso estando en su pestaña, no se le deja la
   // pantalla en blanco: vuelve a Inicio.
-  if(!conProfesor&&currentTab==='profesor')showTab('home');
+  if(!NAV_TABS.includes(currentTab))showTab('home');
   else setTabTransforms(Math.max(0,NAV_TABS.indexOf(currentTab)),0);
   return true;
 }
@@ -1869,6 +1874,7 @@ function showTab(tab,skipAnim){
     else if(tab==='stats')renderStats();
     else if(tab==='agenda')renderAgenda();
     else if(tab==='profesor'&&typeof renderProfesor==='function')renderProfesor();
+    else if(tab==='admin'&&typeof renderAdmin==='function')renderAdmin();
     track('screen_view',{screen_name:tab});
   } else {
     // Modo overlay (ramo, auth, etc.)

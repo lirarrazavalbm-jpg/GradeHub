@@ -40,17 +40,20 @@ chk('y `hidden` le gana al display de la barra',
 // La regla del carrusel lleva display:flex!important, que le gana a `hidden`:
 // sin esto la pantalla de Clases quedaba ENCIMA de Inicio para quien no es
 // profesor —en blanco y tapando todo—, porque tampoco la mueve setTabTransforms.
-chk('la pantalla de Clases está en la lista del carrusel',
-  /\.app\.tab-mode #screen-profesor\{/.test(css));
-chk('y escondida gana a ese display, para no taparle Inicio a nadie',
-  /\.app\.tab-mode #screen-profesor\[hidden\]\{display:none!important;\}/.test(css));
+// Las reglas agrupan a Clases y Administración: se busca cada selector dentro
+// del grupo que lleva la declaración.
+const grupo=(sel,decl)=>new RegExp('(^|[,}\\s])'+sel.replace(/[.#[\]]/g,'\\$&')+'[\\s,]*(\\.app[^{]*)?\\{'+decl).test(css);
+for(const t of ['profesor','admin']){
+  chk(`la pantalla ${t} está en la lista del carrusel`,grupo(`.app.tab-mode #screen-${t}`,'\\s*position:absolute'));
+  chk(`y escondida (${t}) gana a ese display, para no taparle Inicio a nadie`,grupo(`.app.tab-mode #screen-${t}[hidden]`,'display:none!important;'));
+}
 chk('al abrirla se pinta el espacio de profesor',
   /tab==='profesor'&&typeof renderProfesor==='function'/.test(app) &&
   /async function renderProfesor\(\)/.test(mk));
 
 console.log('\n=== Y si te suspenden estando ahí, no te deja en blanco ===');
 chk('vuelve a Inicio cuando la pestaña desaparece',
-  /if\(!conProfesor&&currentTab==='profesor'\)showTab\('home'\)/.test(app));
+  /if\(!NAV_TABS\.includes\(currentTab\)\)showTab\('home'\)/.test(app));
 chk('el carrusel se reacomoda con la lista nueva',
   /setTabTransforms\(Math\.max\(0,NAV_TABS\.indexOf\(currentTab\)\),0\)/.test(app));
 

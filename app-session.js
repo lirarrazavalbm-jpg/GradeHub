@@ -513,6 +513,12 @@ async function afterLogin(){
       .then(()=>{if(typeof recalcularNavTabs==='function')recalcularNavTabs();})
       .catch(()=>{});
   }
+  // Igual para la pestaña de administración: una pregunta, sin bloquear nada.
+  if(typeof cargarSoyAdministrador==='function'){
+    cargarSoyAdministrador()
+      .then(()=>{if(typeof recalcularNavTabs==='function')recalcularNavTabs();})
+      .catch(()=>{});
+  }
   // Es una bandeja de revisión, no una sincronización del semestre: se lee
   // aparte y nunca bloquea entrar. Si llega una propuesta, se muestra completa
   // para que la persona la aplique o descarte en vez de mover su promedio sola.
