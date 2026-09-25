@@ -350,10 +350,10 @@ async function quitarFlyerClase(anuncioId){
 
 // ─── LOGO DEL PROFESOR ──────────────────────────────────────────────────────
 //
-// Uno por profesor, en todos sus anuncios. El que sube queda PROPUESTO y no se
-// muestra hasta que GradeHub lo revisa: aparece en anuncios ya aprobados, y
-// cambiarlo sin revisión dejaría poner cualquier imagen en ellos. Quitarlo sí
-// es inmediato. Mismas reglas de archivo que el flyer: JPG, PNG o WebP ≤ 5 MB.
+// Uno por profesor, en todos sus anuncios. Desde el 2026-09-25 se muestra al
+// tiro, sin revisión (lo resuelve un trigger en el servidor). El estado "en
+// revisión" se mantiene por si se vuelve a revisar, o si el SQL no está al día.
+// Mismas reglas de archivo que el flyer: JPG, PNG o WebP ≤ 5 MB.
 function estadoLogoProfesor(perfil){
   if(!perfil||!('logo_id' in perfil))return 'no-disponible';
   if(perfil.logo_path&&perfil.logo_path!==perfil.logo_aprobado_path)return 'en-revision';
@@ -382,11 +382,12 @@ async function subirLogoProfesor(file){
       await supabaseClient.storage.from('tutor-flyers').remove([path]);
       return {ok:false,error:'El logo subió, pero no pudimos guardarlo en tu ficha. Intenta de nuevo.'};
     }
-    // El propuesto anterior ya no sirve. El aprobado se queda: se sigue viendo
-    // hasta que se apruebe el nuevo.
-    const anterior=String(ficha.perfil.logo_path||'');
-    if(anterior&&anterior!==path&&anterior!==ficha.perfil.logo_aprobado_path)
-      await supabaseClient.storage.from('tutor-flyers').remove([anterior]);
+    // Lo que ya no se muestra sobra. Sin revisión el servidor iguala las dos
+    // columnas al tiro, así que el logo anterior también se va. Si algún día
+    // se vuelve a revisar, el que se sigue mostrando se conserva.
+    const enUso=new Set([path,data.logo_aprobado_path].filter(Boolean));
+    const sobran=[...new Set([ficha.perfil.logo_path,ficha.perfil.logo_aprobado_path].filter(r=>r&&!enUso.has(r)))];
+    if(sobran.length)try{await supabaseClient.storage.from('tutor-flyers').remove(sobran);}catch(e){}
     return {ok:true,perfil:{...ficha.perfil,...data}};
   }catch(e){return {ok:false,error:'No pudimos subir el logo. Intenta de nuevo.'};}
 }
@@ -1293,7 +1294,7 @@ async function renderLogoProfesor(caja){
   const perfil=ficha.ok?ficha.perfil:null,estado=estadoLogoProfesor(perfil);
   if(estado==='no-disponible'){caja.innerHTML='';return;}
   const textos={
-    'sin-logo':'Sale a la derecha en todos tus anuncios. Lo revisamos antes de mostrarlo.',
+    'sin-logo':'Sale a la derecha en todos tus anuncios publicados.',
     'en-revision':perfil.logo_aprobado_path?'Tu logo nuevo está en revisión. Mientras tanto se sigue mostrando el anterior.':'Tu logo está en revisión. Aparecerá en tus anuncios cuando lo aprobemos.',
     'aprobado':'Se muestra en todos tus anuncios publicados.',
   };
