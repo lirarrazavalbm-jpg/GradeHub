@@ -1429,19 +1429,19 @@ function obRamosVisibles(sugeridos,elegidos){
 // semestre: sería cargarle cursos que quizá nunca toma.
 function obCoursePickerIntro(sugeridos){
   if(selectedTenant==='uc'&&selectedCarrera==='ING-PC'&&selectedSem>=5){
-    return 'Desde 5° Ingeniería UC se separa por major. No asumimos cuál tomas: busca por nombre o sigla de tu horario y arma este semestre a tu medida.';
+    return 'Desde 5° Ingeniería UC se separa por major. Busca cada ramo por nombre o sigla de tu horario.';
   }
   // Hay universidades con carreras declarables pero sin malla ni catálogo
   // verificados. Un buscador sin datos ofrece una salida que no existe: acá se
   // parte directo por el único camino honesto, los ramos del horario.
   if(Object.keys(mallaFor(selectedTenant)||{}).length===0&&selectedCarreraNombre){
-    return `Todavía no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Para empezar, agrega los ramos de tu horario a mano.`;
+    return `Aún no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Agrega los ramos de tu horario a mano.`;
   }
   if(!selectedCarrera&&selectedCarreraNombre){
-    return `Todavía no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Puedes armar tu semestre buscando ramos de tu universidad o agregando los de tu horario.`;
+    return `Aún no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Busca tus ramos o agrégalos a mano.`;
   }
   return sugeridos.length
-    ? 'Partimos con una sugerencia según tu avance. Puedes sumar ramos de cualquier otro semestre.'
+    ? 'Marca los que tomas este semestre. Puedes buscar y sumar otros ramos.'
     : 'No tenemos ramos sugeridos para este semestre. Busca los de tu horario o agrégalos a mano.';
 }
 function obCourseSearchLabel(){return selectedTenant==='uc'?'Buscar por nombre o sigla':'Buscar otro ramo';}
@@ -1576,8 +1576,17 @@ function obRender(){
     next.textContent=obStep===OB_TOTAL?(obRamos.length?`Continuar con ${obRamos.length} ramo${obRamos.length!==1?'s':''}`:'Continuar sin ramos'):'Continuar';
     next.disabled=!obStepValid(obStep);
   }
-  // Foco automático en el input del paso 1
-  if(obStep===1){setTimeout(()=>{const i=document.getElementById('ob-name');if(i)i.focus();},80);}
+  // Solo al cambiar de paso: marcar ramos también llama obRender y debe
+  // conservar el foco y la posición. El título orienta sin abrir el teclado.
+  const screen=document.getElementById('screen-onboard');
+  if(screen&&screen.dataset.activeStep!==String(obStep)){
+    screen.dataset.activeStep=String(obStep);
+    screen.scrollTop=0;
+    const wrap=screen.querySelector('.ob-wrap');
+    if(wrap)wrap.scrollTop=0;
+    const title=screen.querySelector('.ob-step[data-step="'+obStep+'"] .ob-title');
+    if(title)title.focus({preventScroll:true});
+  }
 }
 
 function obNext(){
@@ -1648,11 +1657,11 @@ function mostrarRamosCargados(cantidad,oficiales){
   const modal=document.getElementById('modal-content');
   if(!cantidad){
     modal.innerHTML=`
-      <div class="modal-title">Sin ramos por ahora</div>
+      <div class="modal-title">Ya puedes explorar GradeHub</div>
       <div class="courses-loaded">
-        <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0;">Cuando tengas tu carga, agrégala desde la malla o busca cada ramo.</p>
+        <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0;">Cuando quieras, agrega tu primer ramo desde Inicio.</p>
       </div>
-      <div class="modal-btns"><button class="btn-confirm" onclick="closeModal();openAddRamoModal()">Agregar ramo</button></div>`;
+      <div class="modal-btns"><button class="btn-confirm" onclick="closeModal()">Ir a Inicio</button></div>`;
     openModal();return;
   }
 
@@ -1661,15 +1670,15 @@ function mostrarRamosCargados(cantidad,oficiales){
   const pendientes=cantidad-oficiales;
   let titulo,principal,detalle;
   if(oficiales===cantidad){
-    titulo='Pautas oficiales listas';
+    titulo='Tu semestre está listo';
     principal=oficialesTxt;
     detalle='Los porcentajes ya están configurados. Cuando tengas una nota, ingrésala en el ramo.';
   }else if(oficiales>0){
-    titulo='Pautas oficiales listas';
+    titulo='Tus ramos están listos';
     principal=oficialesTxt;
     detalle=`En esos ramos, los porcentajes ya están configurados. En ${pendientes===1?'el otro':`los otros ${pendientes}`}, agrega evaluaciones y sus porcentajes antes de ingresar notas.`;
   }else{
-    titulo='Tus ramos están agregados';
+    titulo='Ahora, las evaluaciones';
     principal=ramosTxt;
     detalle='Antes de ingresar una nota, agrega las evaluaciones y sus porcentajes en cada ramo.';
   }

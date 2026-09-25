@@ -475,12 +475,12 @@ function renderAgenda(){
     const hayRamos=S.ramos.length>0;
     const primerRamo=hayRamos?S.ramos[0]:null;
     const primeraSinFecha=sinFecha[0];
-    const title=primeraSinFecha?"Tu agenda está a un paso.":hayRamos?"Organiza tu semestre.":"Empecemos por lo primero.";
+    const title=primeraSinFecha?"Anota tu primera fecha":hayRamos?"Agrega tus evaluaciones":"Agrega tu primer ramo";
     const desc=primeraSinFecha
-      ? `Tienes ${sinFecha.length} evaluación${sinFecha.length!==1?'es':''} pendiente${sinFecha.length!==1?'s':''} de agendar. Parte por ${esc(primeraSinFecha.cat.nombre)}.`
+      ? `Tienes ${sinFecha.length} ${sinFecha.length===1?'evaluación sin fecha':'evaluaciones sin fecha'}. Puedes partir por ${esc(primeraSinFecha.cat.nombre)}.`
       : hayRamos
-      ? "Agrega la fecha de tus pruebas, entregas y exámenes. Van a aparecer acá ordenadas por lo que más te conviene atender primero."
-      : "Necesitas al menos un ramo con evaluaciones para empezar a llenar la agenda.";
+      ? "Registra tus pruebas, entregas y exámenes para organizarlos acá."
+      : "Después podrás poner fecha a sus evaluaciones y ver qué se viene.";
     const ctaLabel=primeraSinFecha?"Poner primera fecha":hayRamos?"Agregar evaluación":"Agregar mi primer ramo";
     const ctaAction=primeraSinFecha?'agregar-fecha':hayRamos?'agregar-evaluacion':'agregar-ramo';
     const ctaRamo=hayRamos?` data-ramo-id="${esc(primerRamo.id)}"`:'';

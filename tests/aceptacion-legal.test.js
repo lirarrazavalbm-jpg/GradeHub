@@ -20,6 +20,13 @@ console.log('\n=== Aceptación explícita al registrarse ===');
 const casillas=[...html.matchAll(/<input\b[^>]*type="checkbox"[^>]*>/g)].filter(m=>/id="auth-legal-accept"/.test(m[0]));
 chk('hay una sola casilla de aceptación en registro',casillas.length===1);
 chk('la casilla parte desmarcada',casillas.length===1&&!/\bchecked\b/.test(casillas[0][0]));
+const etiquetaLegal=(html.match(/<label[^>]*>\s*<input[^>]*id="auth-legal-accept"[\s\S]*?<\/label>/)||[])[0]||'';
+const textoEtiqueta=etiquetaLegal.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+chk('la etiqueta de aceptación se puede leer de una vez, sin el párrafo de datos',
+  textoEtiqueta.length>0&&textoEtiqueta.length<100&&!/recomendaciones/.test(textoEtiqueta));
+chk('el detalle del uso de datos acompaña la casilla como descripción accesible',
+  /aria-describedby="[^"]*auth-legal-detail/.test(casillas[0]?.[0]||'')&&
+  /id="auth-legal-detail"[^>]*>[\s\S]*?notas y ramos[\s\S]*?recomendaciones de clases[\s\S]*?<\/p>/.test(html));
 chk('la casilla enlaza términos, privacidad y el uso local para recomendaciones',
   /auth-legal-accept[\s\S]{0,900}términos de uso[\s\S]{0,900}política de privacidad[\s\S]{0,900}notas y ramos[\s\S]{0,900}recomendaciones de clases/i.test(html));
 chk('sin marcarla el registro se detiene antes de llamar a Supabase',
