@@ -29,6 +29,7 @@ async function consultaCamposClase(hacer,base){
   }
   return hacer(base);
 }
+const MAX_RAMOS_POR_ANUNCIO=1;
 const MAX_DETALLES_CLASE=4,MAX_ETIQUETA_DETALLE=30,MAX_VALOR_DETALLE=80;
 const MODALIDADES_CLASE=[['individual','Individual'],['grupal','Grupal']];
 const UBICACIONES_CLASE=[['online','Online'],['presencial','Presencial'],['hibrido','Híbrida']];
@@ -44,8 +45,13 @@ function validarBorradorClase(entrada){
   const descripcion=String(entrada.descripcion||'').trim();
   if(descripcion.length<20||descripcion.length>1500)return {ok:false,campo:'descripcion',error:'Cuenta qué harás en la clase (20 a 1500 caracteres).'};
   const siglas=Array.isArray(entrada.ramos_siglas)?entrada.ramos_siglas.map(s=>String(s||'').trim().toUpperCase()):[];
-  if(siglas.length<1||siglas.length>12||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s))||new Set(siglas).size!==siglas.length)
-    return {ok:false,campo:'ramos_siglas',error:'Elige entre 1 y 12 ramos, sin repetir siglas.'};
+  // Un ramo por anuncio (decisión de Lucas del 2026-09-25): cada clase se
+  // muestra y se mide en su ramo. Quien enseña varios arma un anuncio por
+  // cada uno. La base lo exige también, con un trigger.
+  if(siglas.length<1||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s)))
+    return {ok:false,campo:'ramos_siglas',error:'Elige el ramo de tu clase.'};
+  if(siglas.length>MAX_RAMOS_POR_ANUNCIO||new Set(siglas).size!==siglas.length)
+    return {ok:false,campo:'ramos_siglas',error:'Cada anuncio es para un solo ramo. Si enseñas otro, arma otro anuncio.'};
   if(!criteriosClaseValidos(entrada.criterios))return {ok:false,campo:'criterios',error:'Revisa el promedio y el avance elegidos para tu público.'};
   // Formato y lugar son opcionales. "Otra" exige escribirla: una opción
   // elegida sin texto se mostraría como nada.
@@ -1045,7 +1051,7 @@ const ANUNCIO_YA_SE_MOSTRO=new Set(['publicado','pausado','expirado']);
 // aplicar): ahí se usa el total de siempre y todo se cobra como segmentado,
 // que es como se cotizaba antes. Nunca se inventa un reparto.
 async function metricasDeAnuncio(anuncio){
-  const salida={alcance:null,porCanal:null,cortes:[]};
+  const salida={alcance:null,porCanal:null,cortes:[],agregados:null};
   if(!anuncio||!ANUNCIO_YA_SE_MOSTRO.has(anuncio.estado))return salida;
   try{
     const {data,error}=await supabaseClient.rpc('alcance_anuncio_por_canal',{p_anuncio_id:anuncio.id});
@@ -1063,7 +1069,31 @@ async function metricasDeAnuncio(anuncio){
     const {data,error}=await supabaseClient.rpc('resumen_metricas_anuncio',{p_anuncio_id:anuncio.id});
     if(!error&&Array.isArray(data))salida.cortes=data;
   }catch(e){}
+  // Totales por una dimensión a la vez, con el mismo umbral de quince. Si el
+  // servidor todavía no tiene la función, se arman desde los cortes finos.
+  try{
+    const {data,error}=await supabaseClient.rpc('totales_metricas_anuncio',{p_anuncio_id:anuncio.id});
+    if(!error&&Array.isArray(data))salida.agregados=agregadosDeFilas(data);
+  }catch(e){}
+  if(!salida.agregados)salida.agregados=agregadosDeFilas([
+    ...salida.cortes.map(c=>({vista:'dia',clave:c.dia,tipo:c.tipo,eventos:c.eventos})),
+    ...salida.cortes.map(c=>({vista:'ramo',clave:c.ramo_sigla,tipo:c.tipo,eventos:c.eventos})),
+    ...salida.cortes.map(c=>({vista:'total',clave:'',tipo:c.tipo,eventos:c.eventos}))]);
   return salida;
+}
+
+// {total:{impresion,clic,contacto}, dias:{'2026-09-25':{...}}, ramos:{MAT1620:{...}}}
+function agregadosDeFilas(filas){
+  const vacio=()=>({impresion:0,clic:0,contacto:0});
+  const a={total:vacio(),dias:{},ramos:{}};
+  for(const f of filas||[]){
+    const n=Number(f.eventos)||0;
+    if(!(f.tipo in a.total)||n<=0)continue;
+    if(f.vista==='total')a.total[f.tipo]+=n;
+    else if(f.vista==='dia'){(a.dias[f.clave]=a.dias[f.clave]||vacio())[f.tipo]+=n;}
+    else if(f.vista==='ramo'){(a.ramos[f.clave]=a.ramos[f.clave]||vacio())[f.tipo]+=n;}
+  }
+  return a;
 }
 
 function totalesDeCortes(cortes){
@@ -1164,6 +1194,8 @@ function cifrasClase({alcance,totales,hayCortes,costo},pesos){
   if(hayCortes&&totales.impresion&&totales.contacto)
     f.push(['Tasa de contacto',new Intl.NumberFormat('es-CL',{style:'percent',maximumFractionDigits:1}).format(totales.contacto/totales.impresion),'de quienes la vieron']);
   if(costo)f.push(['Va costando',pesos(costo.totalPorAlcance),'hasta ahora']);
+  if(costo&&alcance)f.push(['Por persona',pesos(Math.round(costo.totalPorAlcance/alcance)),'contando la publicación']);
+  if(costo&&hayCortes&&totales.contacto)f.push(['Por contacto',pesos(Math.round(costo.totalPorAlcance/totales.contacto)),'lo que costó cada uno']);
   return `<div class="clase-nums">${f.map(([t,v,d])=>
     `<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`).join('')}</div>`;
 }
@@ -1176,6 +1208,121 @@ function embudoClase(totales){
   if(filas.length<2)return '';
   return `<div class="clase-embudo" aria-label="De quienes vieron tu clase, cuántos avanzaron">${filas.map(([t,n])=>
     `<div class="clase-embudo-fila"><span>${t}</span><div class="clase-barra"><i style="transform:scaleX(${(n/totales.impresion).toFixed(3)})"></i></div><b>${n}</b></div>`).join('')}</div>`;
+}
+
+// ─── GRÁFICOS DEL PANEL ─────────────────────────────────────────────────────
+//
+// SVG a mano, sin librerías. Los tres caminos van en tonos de un mismo turquesa,
+// del más oscuro al más claro, porque están ordenados por precio. Nada usa el
+// semáforo: esto no es una nota. Cada marca lleva su número escrito o en su
+// <title>, así el color nunca es lo único que dice algo.
+const CANALES_VIZ=[['recomendacion','Recomendado en Inicio','viz-c1'],['busqueda','Buscaron el ramo','viz-c2'],['lista','Vieron el catálogo','viz-c3']];
+const milesViz=n=>new Intl.NumberFormat('es-CL').format(n);
+const pctViz=(n,t)=>t?new Intl.NumberFormat('es-CL',{style:'percent',maximumFractionDigits:0}).format(n/t):'—';
+
+function donaCanalesClase(porCanal){
+  if(!porCanal)return '';
+  const total=porCanal.recomendacion+porCanal.busqueda+porCanal.lista;
+  const R=34,C=2*Math.PI*R,GAP=total&&CANALES_VIZ.filter(([k])=>porCanal[k]>0).length>1?2:0;
+  let off=0;
+  const arcos=total?CANALES_VIZ.filter(([k])=>porCanal[k]>0).map(([k,t,cls])=>{
+    const largo=Math.max(C*porCanal[k]/total-GAP,0.5);
+    const arco=`<circle class="${cls}" r="${R}" cx="45" cy="45" fill="none" stroke-width="12" stroke-dasharray="${largo.toFixed(2)} ${(C-largo).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 45 45)"><title>${t}: ${milesViz(porCanal[k])} (${pctViz(porCanal[k],total)})</title></circle>`;
+    off+=C*porCanal[k]/total;return arco;
+  }).join(''):`<circle r="${R}" cx="45" cy="45" fill="none" stroke-width="12" class="viz-vacio"/>`;
+  return `<figure class="viz viz-dona" aria-label="Cómo llegaron: ${CANALES_VIZ.map(([k,t])=>t+' '+porCanal[k]).join(', ')}">
+    <figcaption>Cómo llegaron</figcaption>
+    <div class="viz-dona-cuerpo">
+      <svg viewBox="0 0 90 90" role="img" aria-hidden="true">${arcos}<text x="45" y="44" text-anchor="middle" class="viz-dona-num">${milesViz(total)}</text><text x="45" y="57" text-anchor="middle" class="viz-dona-sub">personas</text></svg>
+      <ul class="viz-leyenda">${CANALES_VIZ.map(([k,t,cls])=>`<li><i class="${cls}"></i><span>${t}</span><b>${milesViz(porCanal[k])}</b><small>${pctViz(porCanal[k],total)}</small></li>`).join('')}</ul>
+    </div></figure>`;
+}
+
+function sumarCostos(costos){
+  const c=costos.filter(Boolean);
+  if(!c.length)return null;
+  const s=(f)=>c.reduce((n,x)=>n+(Number(f(x))||0),0);
+  return {cargoFijo:s(x=>x.cargoFijo),costoSegmentado:s(x=>x.costoSegmentado??x.costoPorAlcance),
+    busqueda:s(x=>x.catalogoCobrado?x.catalogoCobrado.busqueda*x.precioCatalogoBusqueda:0),
+    lista:s(x=>x.catalogoCobrado?x.catalogoCobrado.lista*x.precioCatalogoLista:0),totalPorAlcance:s(x=>x.totalPorAlcance)};
+}
+// En qué se va la plata: una barra apilada con la publicación y cada camino.
+function costoApiladoClase(costo,pesos){
+  if(!costo)return '';
+  const c=costo.costoSegmentado!==undefined&&costo.busqueda!==undefined?costo:sumarCostos([costo]);
+  const partes=[['Publicación',c.cargoFijo,'viz-fijo'],['Recomendado en Inicio',c.costoSegmentado,'viz-c1'],
+    ['Buscaron el ramo',c.busqueda,'viz-c2'],['Vieron el catálogo',c.lista,'viz-c3']].filter(([,v])=>v>0);
+  const total=partes.reduce((n,[,v])=>n+v,0);
+  if(!total)return '';
+  return `<figure class="viz viz-costo" aria-label="En qué se va el costo">
+    <figcaption>En qué se va · ${pesos(total)}</figcaption>
+    <div class="viz-apilada">${partes.map(([t,v,cls])=>`<span class="${cls}" style="flex-grow:${v}" title="${t}: ${pesos(v)}"></span>`).join('')}</div>
+    <ul class="viz-leyenda">${partes.map(([t,v,cls])=>`<li><i class="${cls}"></i><span>${t}</span><b>${pesos(v)}</b><small>${pctViz(v,total)}</small></li>`).join('')}</ul>
+  </figure>`;
+}
+
+// Cuánto de la campaña ya pasó, como anillo, con los días que quedan al centro.
+function anilloCampanaClase(a,ahora){
+  const avance=avanceCampanaAnuncio(a,ahora),dias=diasRestantesAnuncio(a,ahora);
+  if(avance===null||dias===null)return '';
+  const R=34,C=2*Math.PI*R;
+  return `<figure class="viz viz-anillo" aria-label="Campaña: quedan ${dias} días">
+    <figcaption>Campaña</figcaption>
+    <svg viewBox="0 0 90 90" role="img" aria-hidden="true">
+      <circle r="${R}" cx="45" cy="45" fill="none" stroke-width="8" class="viz-vacio"/>
+      <circle r="${R}" cx="45" cy="45" fill="none" stroke-width="8" class="viz-avance" stroke-linecap="round" stroke-dasharray="${(C*avance).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 45 45)"><title>${pctViz(avance,1)} de la campaña</title></circle>
+      <text x="45" y="47" text-anchor="middle" class="viz-dona-num">${dias}</text><text x="45" y="60" text-anchor="middle" class="viz-dona-sub">${dias===1?'día queda':'días quedan'}</text>
+    </svg></figure>`;
+}
+
+// Veces que se mostró por día desde que se publicó. Un día sin barra no es un
+// cero: es un día con menos de quince eventos, y se dice así.
+function barrasDiasClase(a,agregados,ahora){
+  if(!agregados)return '';
+  const desde=Date.parse(a.publicado_at||''),hasta=Math.min(ahora,Date.parse(a.vence_at||'')||ahora);
+  if(!Number.isFinite(desde))return '';
+  const dias=[];
+  for(let t=desde;t<=hasta&&dias.length<31;t+=864e5)dias.push(new Date(t).toISOString().slice(0,10));
+  if(!dias.length)return '';
+  const serie=dias.map(d=>({d,n:(agregados.dias[d]||{}).impresion||0,c:(agregados.dias[d]||{}).contacto||0}));
+  const max=Math.max(...serie.map(x=>x.n),1),W=Math.max(dias.length*12,120),H=64;
+  const ancho=Math.min(8,W/dias.length-3);
+  const barras=serie.map((x,i)=>{
+    const cx=i*(W/dias.length)+(W/dias.length-ancho)/2,fecha=new Date(x.d+'T12:00:00').toLocaleDateString('es-CL',{day:'numeric',month:'short'});
+    if(!x.n)return `<rect x="${cx.toFixed(1)}" y="${H-2}" width="${ancho.toFixed(1)}" height="2" rx="1" class="viz-vacio-marca"><title>${fecha}: menos de 15 eventos</title></rect>`;
+    const h=Math.max(3,(H-6)*x.n/max);
+    return `<rect x="${cx.toFixed(1)}" y="${(H-h).toFixed(1)}" width="${ancho.toFixed(1)}" height="${h.toFixed(1)}" rx="2" class="viz-c1"><title>${fecha}: se mostró ${milesViz(x.n)} veces${x.c?`, ${milesViz(x.c)} contactos`:''}</title></rect>`;
+  }).join('');
+  const conDatos=serie.filter(x=>x.n);
+  const mejor=conDatos.sort((p,q)=>q.n-p.n)[0];
+  return `<figure class="viz viz-dias" aria-label="Veces que se mostró por día">
+    <figcaption>Veces que se mostró por día${mejor?` · mejor día ${new Date(mejor.d+'T12:00:00').toLocaleDateString('es-CL',{weekday:'long'})}`:''}</figcaption>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-hidden="true"><line x1="0" x2="${W}" y1="${H-0.5}" y2="${H-0.5}" class="viz-base"/>${barras}</svg>
+    <div class="viz-eje"><span>${new Date(dias[0]+'T12:00:00').toLocaleDateString('es-CL',{day:'numeric',month:'short'})}</span><span>${new Date(dias[dias.length-1]+'T12:00:00').toLocaleDateString('es-CL',{day:'numeric',month:'short'})}</span></div>
+    ${conDatos.length?'':'<p class="clase-sin-datos">Cada día aparece cuando junta al menos quince eventos.</p>'}
+  </figure>`;
+}
+
+// Qué ramo del anuncio mueve más, si el anuncio tiene más de uno.
+function barrasRamosClase(a,agregados){
+  const siglas=Array.isArray(a.ramos_siglas)?a.ramos_siglas:[];
+  if(!agregados||siglas.length<2)return '';
+  const filas=siglas.map(sg=>({sg,n:(agregados.ramos[sg]||{}).impresion||0,c:(agregados.ramos[sg]||{}).contacto||0}));
+  if(!filas.some(f=>f.n))return '';
+  const max=Math.max(...filas.map(f=>f.n),1);
+  return `<figure class="viz viz-ramos" aria-label="Veces que se mostró por ramo">
+    <figcaption>Por ramo</figcaption>
+    ${filas.sort((p,q)=>q.n-p.n).map(f=>`<div class="clase-embudo-fila"><span>${esc(f.sg)}</span><div class="clase-barra"><i style="transform:scaleX(${(f.n/max).toFixed(3)})"></i></div><b>${f.n?milesViz(f.n):'—'}</b></div>`).join('')}
+  </figure>`;
+}
+
+function graficosClase(d,pesos,ahora){
+  const arriba=donaCanalesClase(d.porCanal)+anilloCampanaClase(d.a,ahora);
+  return (arriba?`<div class="viz-fila">${arriba}</div>`:'')+
+    barrasDiasClase(d.a,d.agregados,ahora)+
+    costoApiladoClase(d.costo,pesos)+
+    barrasRamosClase(d.a,d.agregados)+
+    embudoClase(d.totales);
 }
 
 function tarjetaPanelClase(a,pesos,ahora){
@@ -1266,12 +1413,14 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   // dice y las otras siguen andando.
   const medidas=await Promise.all(conNumeros.map(async a=>{
     const m=await metricasDeAnuncio(a);
-    return {a,alcance:m.alcance,porCanal:m.porCanal,totales:totalesDeCortes(m.cortes),hayCortes:m.cortes.length>0,costo:costoDeAnuncio(a,m.alcance,m.porCanal)};
+    const totales=m.agregados?m.agregados.total:totalesDeCortes(m.cortes);
+    return {a,alcance:m.alcance,porCanal:m.porCanal,totales,agregados:m.agregados,
+      hayCortes:Object.values(totales).some(n=>n>0),costo:costoDeAnuncio(a,m.alcance,m.porCanal)};
   }));
   for(const d of medidas){
     const caja=raiz.querySelector(`[data-metricas="${d.a.id}"]`);
     if(!caja||!caja.isConnected)continue;
-    caja.innerHTML=cifrasClase(d,pesos)+embudoClase(d.totales)+
+    caja.innerHTML=cifrasClase(d,pesos)+graficosClase(d,pesos,ahora)+
       (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró, los clics y los contactos aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
       (d.costo?`<p class="clase-sin-datos">${desgloseCostoClase(d.costo,pesos)}</p>`:'');
   }
@@ -1286,10 +1435,92 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
     activas.forEach(d=>Object.keys(totales).forEach(k=>totales[k]+=d.totales[k]));
     const costos=activas.filter(d=>d.costo);
     const costo=costos.length?{totalPorAlcance:costos.reduce((n,d)=>n+d.costo.totalPorAlcance,0)}:null;
-    kpis.innerHTML=cifrasClase({alcance:conAlcance.length?conAlcance.reduce((n,d)=>n+d.alcance,0):null,
-      totales,hayCortes:activas.some(d=>d.hayCortes),costo},pesos).replace('class="clase-nums"','class="clase-nums clases-kpis"')+
+    const conCanal=activas.filter(d=>d.porCanal);
+    const porCanal=conCanal.length?conCanal.reduce((s,d)=>({recomendacion:s.recomendacion+d.porCanal.recomendacion,
+      busqueda:s.busqueda+d.porCanal.busqueda,lista:s.lista+d.porCanal.lista}),{recomendacion:0,busqueda:0,lista:0}):null;
+    const alcanceTotal=conAlcance.length?conAlcance.reduce((n,d)=>n+d.alcance,0):null;
+    kpis.innerHTML=cifrasClase({alcance:alcanceTotal,totales,hayCortes:activas.some(d=>d.hayCortes),costo},pesos)
+      .replace('class="clase-nums"','class="clase-nums clases-kpis"')+
+      `<div class="viz-fila">${donaCanalesClase(porCanal)}${costoApiladoClase(sumarCostos(costos.map(d=>d.costo)),pesos)}</div>`+
       embudoClase(totales);
   }
+}
+
+// ─── RAMOS DE LA CLASE ──────────────────────────────────────────────────────
+//
+// El profesor busca el ramo por nombre o sigla en vez de escribir la sigla
+// exacta. Las elegidas se guardan igual que antes, separadas por coma, en el
+// campo oculto #pr-siglas: la validación y la base no cambian. La búsqueda usa
+// el mismo índice sigla → nombre que el catálogo de clases.
+function buscarRamosParaClase(indice,consulta,elegidas=[],max=8){
+  // "cálculo 2" tiene que encontrar "Cálculo II": misma regla que el buscador
+  // de ramos de la app (normBusqueda pasa romanos a números en ambos lados).
+  const romanos=t=>typeof normBusqueda==='function'?normBusqueda(t):t;
+  const q=romanos(normalizarBusquedaClase(consulta));
+  if(!q)return [];
+  const tokens=q.split(' ').filter(Boolean),ya=new Set(elegidas);
+  const qSigla=q.replace(/\s+/g,'').toUpperCase();
+  const out=[];
+  for(const [sigla,nombre] of Object.entries(indice||{})){
+    if(ya.has(sigla))continue;
+    // Cada palabra escrita tiene que ser el comienzo de una palabra del ramo:
+    // "2" calza con "Cálculo II" pero no con el 2 perdido dentro de MAT1492.
+    const palabras=romanos(normalizarBusquedaClase(sigla+' '+nombre)).split(/[\s()\-.,]+/);
+    if(!tokens.every(t=>palabras.some(w=>w.startsWith(t)))&&!sigla.startsWith(qSigla))continue;
+    const n=romanos(normalizarBusquedaClase(nombre));
+    out.push({sigla,nombre,rango:sigla===qSigla?0:sigla.startsWith(qSigla)?1:n.startsWith(q)?2:3});
+  }
+  out.sort((a,b)=>a.rango-b.rango||a.nombre.localeCompare(b.nombre,'es')||a.sigla.localeCompare(b.sigla));
+  // Una sigla bien formada que no está en el índice también se puede usar: el
+  // índice no es exhaustivo (UAI no publica siglas, y UC carga su catálogo
+  // completo recién cuando se busca).
+  if(/^[A-Z0-9-]{2,24}$/.test(qSigla)&&!/\s/.test(consulta.trim())&&!indice[qSigla]&&!ya.has(qSigla)&&/\d/.test(qSigla))
+    out.push({sigla:qSigla,nombre:'Usar esta sigla',rango:9});
+  return out.slice(0,max);
+}
+
+function activarBuscadorRamosClase(form,campo){
+  const buscar=campo('siglas-buscar'),oculto=campo('siglas'),lista=campo('ramos-resultados'),elegidasCaja=campo('ramos-elegidos'),tenantSel=campo('tenant');
+  if(!buscar||!oculto||!lista||!elegidasCaja||typeof buscar.addEventListener!=='function')return;
+  let indice={};
+  const leer=()=>String(oculto.value||'').split(',').map(x=>siglaAnuncio(x)).filter(Boolean);
+  const escribir=siglas=>{oculto.value=siglas.join(', ');pintarElegidas();};
+  const nombreDe=sg=>indice[sg]||'';
+  const pintarElegidas=()=>{
+    const siglas=leer();
+    elegidasCaja.innerHTML=siglas.map(sg=>`<span class="profesor-ramo-chip"><b>${esc(sg)}</b>${nombreDe(sg)?`<span>${esc(nombreDe(sg))}</span>`:''}<button type="button" data-quitar-sigla="${esc(sg)}" aria-label="Quitar ${esc(sg)}">×</button></span>`).join('');
+    elegidasCaja.querySelectorAll('[data-quitar-sigla]').forEach(b=>b.addEventListener('click',()=>escribir(leer().filter(x=>x!==b.dataset.quitarSigla))));
+    buscar.placeholder=siglas.length?'Cambiar de ramo':'Busca por nombre o sigla, ej. Cálculo II';
+  };
+  const cerrar=()=>{lista.hidden=true;lista.innerHTML='';buscar.setAttribute('aria-expanded','false');};
+  const mostrar=()=>{
+    const res=buscarRamosParaClase(indice,buscar.value,leer());
+    if(!res.length){cerrar();return;}
+    lista.innerHTML=res.map((x,i)=>`<li role="option" id="pr-ramo-op-${i}" data-sigla="${esc(x.sigla)}"><b>${esc(x.sigla)}</b><span>${esc(x.nombre)}</span></li>`).join('');
+    lista.hidden=false;buscar.setAttribute('aria-expanded','true');
+    lista.querySelectorAll('[data-sigla]').forEach(li=>li.addEventListener('mousedown',e=>{e.preventDefault();elegir(li.dataset.sigla);}));
+  };
+  const elegir=sg=>{
+    // Elegir otro reemplaza al anterior: un anuncio lleva un solo ramo.
+    if(sg)escribir([...leer().filter(x=>x!==sg),sg].slice(-MAX_RAMOS_POR_ANUNCIO));
+    buscar.value='';cerrar();buscar.focus();
+  };
+  const reindexar=()=>{indice=nombresRamosParaClases(tenantSel?tenantSel.value:S.tenant);pintarElegidas();if(buscar.value)mostrar();};
+  buscar.addEventListener('input',mostrar);
+  buscar.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();const primera=lista.querySelector('[data-sigla]');if(primera)elegir(primera.dataset.sigla);}
+    else if(e.key==='Escape')cerrar();
+  });
+  buscar.addEventListener('blur',()=>setTimeout(cerrar,120));
+  if(tenantSel)tenantSel.addEventListener('change',()=>{
+    reindexar();
+    if(tenantSel.value==='uc'&&typeof cargarCursosUC==='function')cargarCursosUC().then(ok=>{if(ok&&form.isConnected)reindexar();}).catch(()=>{});
+  });
+  reindexar();
+  // El catálogo UC completo llega diferido: se busca con lo que hay y se
+  // enriquece cuando termina de bajar.
+  if((tenantSel?tenantSel.value:S.tenant)==='uc'&&typeof cargarCursosUC==='function')
+    cargarCursosUC().then(ok=>{if(ok&&form.isConnected)reindexar();}).catch(()=>{});
 }
 
 // El logo es de la ficha, no del anuncio: el mismo bloque aparece en el
@@ -1365,7 +1596,14 @@ function renderBorradorProfesor(raiz,anuncio){
       <div id="pr-logo"></div>
       <h3>2. Público</h3>
       <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
-      <label class="modal-label" for="pr-siglas">Siglas de los ramos · separadas por coma</label><input id="pr-siglas" type="text" required placeholder="MAT1610, FIS1514" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
+      <label class="modal-label" for="pr-siglas-buscar">Ramo de tu clase</label>
+      <div class="profesor-ramos" id="pr-ramos-elegidos" aria-live="polite"></div>
+      <div class="profesor-ramos-buscar">
+        <input id="pr-siglas-buscar" type="search" autocomplete="off" placeholder="Busca por nombre o sigla, ej. Cálculo II" aria-describedby="pr-siglas-ayuda" aria-controls="pr-ramos-resultados">
+        <ul class="profesor-ramos-resultados" id="pr-ramos-resultados" role="listbox" hidden></ul>
+      </div>
+      <p class="profesor-info" id="pr-siglas-ayuda">Un ramo por anuncio: si enseñas varios, arma uno para cada uno. Si no aparece, escribe su sigla completa.</p>
+      <input id="pr-siglas" type="hidden" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
       <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
       <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">
       <p class="profesor-info">GradeHub calcula el público sin mostrarte notas ni identidades. Esta pantalla aún no cotiza ni cobra campañas.</p>
@@ -1400,6 +1638,7 @@ function renderBorradorProfesor(raiz,anuncio){
   detallesClase(anuncio).forEach(d=>filaDetalle(d));
   const leerDetalles=()=>listaDetalles&&typeof listaDetalles.querySelectorAll==='function'
     ?[...listaDetalles.querySelectorAll('.profesor-detalle')].map(f=>({etiqueta:f.querySelector('.detalle-etiqueta').value,valor:f.querySelector('.detalle-valor').value})):[];
+  activarBuscadorRamosClase(form,campo);
   const cajaLogo=campo('logo');
   if(cajaLogo)renderLogoProfesor(cajaLogo);
   // WhatsApp e Instagram parten con su prefijo escrito. Al cambiar de canal se
@@ -1451,7 +1690,7 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
       id=guardado.anuncio.id;
       if(file){estado.textContent='Borrador guardado. Subiendo flyer…';const subida=await subirFlyerClase(id,file);
         if(!subida.ok){estado.textContent='Borrador guardado, pero '+subida.error;return;}
@@ -1591,8 +1830,8 @@ function pintarRecomendacionClase(contenedor){
   banner.setAttribute('aria-label','Publicidad: clase particular');
   banner.innerHTML=`<button type="button" class="clase-apoyo-abrir">
       <small>Publicidad · Clase particular</small>
-      <strong>Puede servirte apoyo para ${esc(ramo.nombre)}</strong>
-      <span>${esc(anuncio.titulo||'Clase particular')} · ${pesosClase(anuncio.precio_clp)} por clase</span>
+      <strong>${esc(anuncio.titulo||'Clase particular')}</strong>
+      <span>Para ${esc(ramo.nombre)} · ${pesosClase(anuncio.precio_clp)} por clase</span>
     </button>
     <span class="clase-apoyo-logo" aria-hidden="true" hidden></span>
     <button type="button" class="clase-apoyo-cerrar" aria-label="No mostrar esta clase">
@@ -1625,7 +1864,11 @@ function pintarRecomendacionClase(contenedor){
   let columnas=1;
   try{const cs=getComputedStyle(contenedor);if(cs.display==='grid')columnas=cs.gridTemplateColumns.split(' ').filter(Boolean).length||1;}catch(e){}
   const i=filas.indexOf(fila),fin=Math.min(filas.length-1,i-i%columnas+columnas-1);
-  if(columnas>1)banner.classList.add('en-grilla');
+  if(columnas>1){
+    // La columna del ramo decide qué esquina del banner se une a él.
+    banner.classList.add('en-grilla');
+    banner.dataset.col=i%columnas===0?'primera':i%columnas===columnas-1?'ultima':'medio';
+  }
   filas[fin].after(banner);
   observarRecomendacionClase(banner,anuncio,sigla);
 }

@@ -30,10 +30,12 @@ const anuncio=(extra)=>Object.assign({id:'a1',titulo:'Clases de Cálculo II',est
 // Supabase de mentira: se le dice qué contesta cada RPC.
 // Sin `porCanal`, la función por camino no existe: es un servidor sin el SQL
 // nuevo, y el panel tiene que caer al total de siempre.
-function montar({alcance=null,cortes=[],porCanal=null}={}){
-  ctx.__alcance=alcance;ctx.__cortes=cortes;ctx.__porCanal=porCanal;
+// Lo mismo con `totales`: sin ella, los totales se arman desde los cortes.
+function montar({alcance=null,cortes=[],porCanal=null,totales=null}={}){
+  ctx.__alcance=alcance;ctx.__cortes=cortes;ctx.__porCanal=porCanal;ctx.__totales=totales;
   run(`supabaseClient={rpc:(n)=>Promise.resolve(
     n==='alcance_anuncio_por_canal'?(__porCanal?{data:__porCanal,error:null}:{data:null,error:{message:'no existe'}})
+    :n==='totales_metricas_anuncio'?(__totales?{data:__totales,error:null}:{data:null,error:{message:'no existe'}})
     :n==='alcance_anuncio'?{data:__alcance,error:null}:{data:__cortes,error:null})};`);
 }
 const pintar=async(anuncios,datos)=>{
@@ -71,6 +73,17 @@ const pintar=async(anuncios,datos)=>{
     {dia:'2026-09-19',tipo:'clic',tenant:'uc',ramo_sigla:'MAT1620',eventos:15}]});
   chk('suma los clics de todos los días',/Clics/.test(html)&&/>37</.test(html));
   chk('y los contactos',/Contactos/.test(html)&&/>17</.test(html));
+
+  console.log('\n=== Con los totales del servidor ===');
+  // 40 impresiones en total, aunque ningún día por separado llegue a quince.
+  html=await pintar([anuncio({publicado_at:new Date(Date.now()-3*864e5).toISOString(),vence_at:new Date(Date.now()+27*864e5).toISOString()})],
+    {porCanal:[{canal:'recomendacion',cuentas:6},{canal:'lista',cuentas:2}],
+     totales:[{vista:'total',clave:'',tipo:'impresion',eventos:40},{vista:'total',clave:'',tipo:'contacto',eventos:16}]});
+  chk('usa el total aunque ningún día llegue a quince',/Se mostró/.test(html)&&/>40</.test(html));
+  chk('dibuja la dona de cómo llegaron, con números escritos',/Cómo llegaron/.test(html)&&/Recomendado en Inicio/.test(html)&&/>6</.test(html));
+  chk('el anillo de la campaña dice cuántos días quedan',/días quedan/.test(html));
+  chk('un día sin datos suficientes no se dibuja como cero',/menos de 15 eventos/.test(html));
+  chk('y el costo por contacto sale del total',/Por contacto/.test(html));
 
   console.log('\n=== Lo que nadie vio todavía no tiene números ===');
   html=await pintar([anuncio({estado:'borrador',id:'b1'})],{alcance:99});

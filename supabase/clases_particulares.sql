@@ -197,6 +197,32 @@ $$;
 alter table public.tutor_anuncios add column if not exists detalles jsonb
   check (public.detalles_clase_validos(detalles));
 
+-- UN RAMO POR ANUNCIO desde el 2026-09-25 (decisión de Lucas). Es un trigger
+-- y no un CHECK a propósito: un CHECK revisa la fila entera en cada UPDATE, y
+-- un anuncio antiguo con dos ramos quedaría trabado —ni pausarlo se podría—.
+-- El trigger mira solo cuando se ESCRIBEN los ramos: crear o editarlos exige
+-- uno, y cambiar el estado de un anuncio viejo sigue funcionando.
+create or replace function public.anuncio_un_ramo()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if cardinality(new.ramos_siglas) <> 1 then
+    raise exception 'cada anuncio es para un solo ramo'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.anuncio_un_ramo() from public, anon, authenticated;
+
+drop trigger if exists tutor_anuncios_un_ramo on public.tutor_anuncios;
+create trigger tutor_anuncios_un_ramo
+before insert or update of ramos_siglas on public.tutor_anuncios
+for each row
+execute function public.anuncio_un_ramo();
+
 create index if not exists tutor_anuncios_publicados_por_tenant
   on public.tutor_anuncios (tenant, publicado_at desc)
   where estado = 'publicado';
@@ -642,6 +668,42 @@ begin
   order by m.dia desc, m.tipo, m.ramo_sigla;
 end;
 $$;
+
+-- Totales para los gráficos del profesor. `resumen_metricas_anuncio` corta por
+-- día, tipo y ramo a la vez, y con poco tráfico casi ningún corte llega a
+-- quince: el panel quedaba vacío. Esto suma por UNA dimensión a la vez —tipo,
+-- día o ramo— y aplica el mismo umbral de quince EVENTOS a cada total. No
+-- revela más que antes: un total de quince o más no identifica a nadie, y los
+-- que no llegan siguen sin salir.
+create or replace function public.totales_metricas_anuncio(p_anuncio_id uuid)
+returns table (vista text, clave text, tipo text, eventos integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+  if not exists (
+    select 1 from public.tutor_anuncios
+    where id = p_anuncio_id and autor_id = auth.uid()
+  ) then
+    raise exception 'no puedes ver las métricas de este anuncio';
+  end if;
+
+  return query
+  with m as (select * from public.anuncio_metricas where anuncio_id = p_anuncio_id)
+  select 'total'::text, ''::text, m.tipo, sum(m.eventos)::integer from m group by m.tipo having sum(m.eventos) >= 15
+  union all
+  select 'dia', m.dia::text, m.tipo, sum(m.eventos)::integer from m group by m.dia, m.tipo having sum(m.eventos) >= 15
+  union all
+  select 'ramo', m.ramo_sigla, m.tipo, sum(m.eventos)::integer from m group by m.ramo_sigla, m.tipo having sum(m.eventos) >= 15;
+end;
+$$;
+
+revoke all on function public.totales_metricas_anuncio(uuid) from public, anon;
+grant execute on function public.totales_metricas_anuncio(uuid) to authenticated;
 
 revoke all on function public.registrar_metrica_anuncio(uuid, text, text) from public, anon;
 revoke all on function public.resumen_metricas_anuncio(uuid) from public, anon;

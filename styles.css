@@ -701,7 +701,9 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .clase-apoyo-abrir small{font-size:.625rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--primary);}
 .clase-apoyo-abrir strong{font-size:.875rem;line-height:1.3;color:var(--fg);letter-spacing:-.01em;}
 .clase-apoyo-abrir span{font-size:.75rem;color:var(--fg2);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
-.clase-apoyo-abrir:focus-visible,.clase-apoyo-cerrar:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;border-radius:8px;}
+.clase-apoyo-abrir:focus-visible{outline:none;}
+.clase-apoyo:has(.clase-apoyo-abrir:focus-visible){outline:2px solid var(--primary);outline-offset:-2px;}
+.clase-apoyo-cerrar:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;border-radius:8px;}
 .clase-apoyo-logo{flex:none;align-self:center;width:40px;height:40px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);}
 .clase-apoyo-logo[hidden]{display:none;}
 .clase-apoyo-logo img{display:block;width:100%;height:100%;object-fit:contain;}
@@ -960,6 +962,41 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .clase-barra i,.clase-riel i{display:block;height:100%;background:var(--primary);transform-origin:left center;}
 .clase-riel{height:4px;margin-top:6px;}
 .clase-riel i{background:var(--fg3);}
+/* Gráficos del panel de Clases. Los tres caminos son tres tonos del acento,
+   del más oscuro al más claro, validados como rampa ordinal (72% y 48% de
+   mezcla con la tarjeta dejan el más claro sobre 2:1 en claro y en oscuro).
+   Nunca el semáforo: esto no es una nota. */
+.viz-c1{--viz:var(--primary);}
+.viz-c2{--viz:color-mix(in srgb,var(--primary) 72%,var(--card));}
+.viz-c3{--viz:color-mix(in srgb,var(--primary) 48%,var(--card));}
+.viz-fijo{--viz:var(--fg3);}
+.viz circle.viz-c1,.viz circle.viz-c2,.viz circle.viz-c3{stroke:var(--viz);}
+.viz rect.viz-c1{fill:var(--viz);}
+.viz .viz-vacio{stroke:var(--muted);}
+.viz .viz-vacio-marca{fill:var(--border2);}
+.viz .viz-avance{stroke:var(--primary);}
+.viz .viz-base{stroke:var(--border);stroke-width:1;}
+.viz{margin:14px 0 0;min-width:0;}
+.viz figcaption{margin:0 0 8px;font-size:0.6875rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--fg3);}
+.viz-fila{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:14px;align-items:start;}
+.viz-fila:has(> :only-child){grid-template-columns:minmax(0,1fr);}
+.viz-dona-cuerpo{display:flex;align-items:center;gap:14px;min-width:0;}
+.viz-dona svg,.viz-anillo svg{flex:none;width:92px;height:92px;}
+.viz-dona-num{font-size:17px;font-weight:800;fill:var(--fg);font-variant-numeric:tabular-nums;}
+.viz-dona-sub{font-size:8px;fill:var(--fg3);}
+.viz-leyenda{list-style:none;margin:0;padding:0;display:grid;gap:5px;min-width:0;flex:1;font-size:.75rem;}
+.viz-leyenda li{display:grid;grid-template-columns:10px minmax(0,1fr) auto auto;align-items:center;gap:6px;color:var(--fg2);}
+.viz-leyenda i{width:10px;height:10px;border-radius:3px;background:var(--viz);}
+.viz-leyenda span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.viz-leyenda b{color:var(--fg);font-variant-numeric:tabular-nums;}
+.viz-leyenda small{color:var(--fg3);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;}
+.viz-apilada{display:flex;gap:2px;height:12px;border-radius:4px;overflow:hidden;margin-bottom:10px;}
+.viz-apilada span{flex-basis:0;min-width:3px;background:var(--viz);}
+.viz-ramos{display:grid;gap:8px;}
+.viz-ramos figcaption{margin-bottom:0;}
+.viz-dias svg{display:block;width:100%;height:64px;}
+.viz-eje{display:flex;justify-content:space-between;margin-top:4px;font-size:.6875rem;color:var(--fg3);font-variant-numeric:tabular-nums;}
+@media(max-width:420px){.viz-fila{grid-template-columns:minmax(0,1fr);}}
 .clase-vigencia{margin:8px 0 0;font-size:0.75rem;color:var(--fg2);font-variant-numeric:tabular-nums;}
 /* Catálogo público de clases. Es la puerta del estudiante, separada del panel
    privado de quien publica. El acento es de navegación: no reutiliza ningún
@@ -1029,6 +1066,20 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 }
 @media(prefers-reduced-motion:reduce){.home-clases-card::before{transition:none;}.home-clases-card:active,.catalogo-clase-contacto:active{transform:none;}}
 /* Detalles a medida: nombre corto y texto, en una fila que se puede quitar. */
+/* Ramos de la clase: chips con sigla y nombre, y un buscador con resultados. */
+.profesor-ramos{display:flex;flex-wrap:wrap;gap:6px;}
+.profesor-ramos:empty{display:none;}
+.profesor-ramo-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:5px 6px 5px 10px;border:1px solid var(--border2);border-radius:999px;font-size:.8125rem;color:var(--fg2);}
+.profesor-ramo-chip b{color:var(--fg);font-variant-numeric:tabular-nums;}
+.profesor-ramo-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.profesor-ramo-chip button{flex:none;width:24px;height:24px;border:0;border-radius:999px;background:var(--muted);color:var(--fg2);font:inherit;line-height:1;cursor:pointer;}
+.profesor-ramo-chip button:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
+.profesor-ramos-buscar{position:relative;}
+.profesor-ramos-resultados{position:absolute;z-index:5;left:0;right:0;top:calc(100% + 4px);margin:0;padding:4px;list-style:none;max-height:260px;overflow:auto;border:1px solid var(--border2);border-radius:10px;background:var(--card);box-shadow:0 8px 24px color-mix(in srgb,var(--fg) 12%,transparent);}
+.profesor-ramos-resultados[hidden]{display:none;}
+.profesor-ramos-resultados li{display:flex;gap:10px;align-items:baseline;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:.875rem;color:var(--fg2);}
+.profesor-ramos-resultados li:hover{background:var(--muted);}
+.profesor-ramos-resultados li b{flex:none;color:var(--fg);font-variant-numeric:tabular-nums;}
 .profesor-detalle{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr) auto;gap:6px;align-items:center;margin-top:6px;}
 .profesor-form .profesor-detalle input{padding:9px 10px;}
 .profesor-detalle-quitar{min-height:40px;padding:0 10px;border:1px solid var(--border2);border-radius:10px;background:none;color:var(--fg2);font:inherit;font-size:.75rem;font-weight:600;cursor:pointer;}
@@ -1626,8 +1677,14 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
   #home-ramos .ramo-row{margin:0;}
   /* En la grilla el banner no puede ir pegado a su tarjeta: ocupa todo el
      ancho bajo la fila, y el ramo conserva su tinte para decir de quién es. */
-  #home-ramos .ramo-row.tiene-clase-apoyo{border-radius:10px;margin:0;}
-  #home-ramos .clase-apoyo.en-grilla{grid-column:1/-1;margin:0;border-radius:10px;border-top:0;}
+  /* El ramo se estira hasta el fondo de su fila y cruza el espacio entre filas,
+     así su tinte se une con el del banner sin una franja negra entremedio. La
+     esquina del banner bajo el ramo queda recta para que se lean como una pieza. */
+  #home-ramos .ramo-row.tiene-clase-apoyo{align-self:stretch;margin:0 0 -12px;border-radius:10px 10px 0 0;}
+  #home-ramos .clase-apoyo.en-grilla{grid-column:1/-1;margin:0;border-radius:10px;border-top:0;position:relative;}
+  #home-ramos .clase-apoyo.en-grilla[data-col="primera"]{border-top-left-radius:0;}
+  #home-ramos .clase-apoyo.en-grilla[data-col="ultima"]{border-top-right-radius:0;}
+  #home-ramos.ramo-reordering .ramo-row.tiene-clase-apoyo{margin:0;border-radius:10px;}
 }
 
 @media(min-width:1024px){
