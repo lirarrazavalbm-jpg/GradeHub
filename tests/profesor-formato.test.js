@@ -3,7 +3,7 @@
 // campaña que ya terminó.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const src=fs.readFileSync(path.join(__dirname,'..','marketplace.js'),'utf8');
-const ctx={console,Intl,S:{tenant:'uc'},currentUser:{id:'u1'},supabaseClient:null,
+const ctx={console,Intl,URL,S:{tenant:'uc'},currentUser:{id:'u1'},supabaseClient:null,
   document:{getElementById(){return null;}},esc:s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')};
 vm.createContext(ctx);vm.runInContext(src,ctx);
 const run=s=>vm.runInContext(s,ctx);
@@ -32,7 +32,24 @@ const base="({tenant:'uc',ramos_siglas:['MAT1610'],criterios:{promedioMenorA:5,a
 const valida=(tipo,valor)=>run(`validarBorradorClase({...${base},contacto_tipo:${JSON.stringify(tipo)},contacto_valor:${JSON.stringify(valor)}})`);
 chk('"+56 9 " sin número no pasa',!valida('whatsapp','+56 9 ').ok&&/WhatsApp/.test(valida('whatsapp','+56 9 ').error));
 chk('un número completo sí pasa',valida('whatsapp','+56 9 1234 5678').ok);
-chk('Instagram ya no se acepta',!valida('instagram','@profe.calculo').ok);
+chk('en una clase pagada Instagram no se acepta',!valida('instagram','@profe.calculo').ok&&/WhatsApp/.test(valida('instagram','@profe.calculo').error));
+chk('ni un link de inscripción',!valida('enlace','https://forms.gle/abc').ok);
+
+console.log('\n=== Una clase gratis puede usar Instagram o un link ===');
+const gratis=(tipo,valor)=>run(`validarBorradorClase({...${base},precio_clp:0,contacto_tipo:${JSON.stringify(tipo)},contacto_valor:${JSON.stringify(valor)}})`);
+chk('gratis con Instagram pasa',(r=>r.ok&&r.datos.contacto_tipo==='instagram')(gratis('instagram','@profe.calculo')));
+chk('gratis con un link https pasa',(r=>r.ok&&r.datos.contacto_tipo==='enlace')(gratis('enlace','https://forms.gle/abc')));
+chk('gratis con WhatsApp sigue pasando',gratis('whatsapp','+56 9 1234 5678').ok);
+chk('un link http no pasa',!gratis('enlace','http://forms.gle/abc').ok);
+chk('javascript: no pasa',!gratis('enlace','javascript:alert(1)').ok);
+chk('el prefijo solo no pasa',!gratis('enlace','https://').ok);
+chk('un link con usuario y clave no pasa',!gratis('enlace','https://a:b@forms.gle/x').ok);
+chk('una @ sola no pasa',!gratis('instagram','@').ok);
+chk('un correo sigue sin pasar',!gratis('email','profe@ejemplo.cl').ok);
+chk('el link abre tal cual',run("enlaceContactoClase('enlace','https://forms.gle/abc','hola')")==='https://forms.gle/abc');
+chk('Instagram abre el perfil',run("enlaceContactoClase('instagram','@profe.calculo','hola')")==='https://www.instagram.com/profe.calculo/');
+chk('el botón dice Inscribirme',run("textoContactoClase('enlace')")==='Inscribirme');
+chk('solo WhatsApp si es pagada',run("contactosPermitidosClase(15000).join()")==='whatsapp'&&run("contactosPermitidosClase(0).join()")==='whatsapp,instagram,enlace');
 chk('correo tampoco',!valida('email','profe@ejemplo.cl').ok);
 
 console.log('\n=== Formato, lugar y detalles a medida ===');

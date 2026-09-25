@@ -747,7 +747,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .profesor-vista-previa .ramo-row{margin:0;cursor:default;pointer-events:none;}
 .profesor-vista-previa .vista-sin-nota{color:var(--fg3);}
 .vista-grilla .clase-apoyo,.vista-celular .clase-apoyo{margin:0;animation:none;}
-.vista-celular{max-width:380px;}
+.vista-celular{max-width:380px;width:100%;margin-inline:auto;}
 .vista-catalogo{pointer-events:none;}
 .vista-cabeza{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .vista-cabeza h3{margin:18px 0 2px;}
@@ -763,7 +763,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .modo-pc .vista-catalogo{max-width:440px;}
 .modo-pc .vista-catalogo:has(.catalogo-clase-flyer:not([hidden])){max-width:900px;}
 .modo-pc .vista-catalogo .catalogo-clase-bloque:has(>.catalogo-clase-flyer:not([hidden])){grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
-.modo-celular .vista-catalogo{max-width:380px;}
+.modo-celular .vista-catalogo{max-width:380px;width:100%;margin-inline:auto;}
 .modo-celular .vista-catalogo .catalogo-clase-bloque:has(>.catalogo-clase-flyer){grid-template-columns:minmax(0,1fr);}
 .clase-apoyo-abrir[tabindex="-1"]{cursor:default;}
 
@@ -1143,6 +1143,8 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .profesor-detalle-quitar:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .profesor-detalle-agregar{margin-top:8px;width:100%;}
 .profesor-linea{margin:0;padding:0;border:0;min-width:0;}
+.profesor-contacto-tipo[hidden]{display:none;}
+.profesor-contacto-tipo{display:grid;gap:4px;}
 .profesor-campana-fechas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
 .profesor-campana-resumen{margin:8px 0 0;font-size:.8125rem;font-weight:600;color:var(--fg);}
 .profesor-campana-resumen:empty{display:none;}

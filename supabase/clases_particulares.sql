@@ -237,6 +237,14 @@ alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_conta
 alter table public.tutor_anuncios add constraint tutor_anuncios_contacto_tipo_check
   check (contacto_tipo = 'whatsapp');
 
+-- Una clase GRATIS puede llevar a un Instagram o a un link de inscripción
+-- (decisión de Lucas del 2026-09-25). Las pagadas siguen solo con WhatsApp.
+-- El link lo valida la app (https, sin credenciales) y lo revisa quien aprueba.
+alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_contacto_tipo_check;
+alter table public.tutor_anuncios add constraint tutor_anuncios_contacto_tipo_check
+  check (contacto_tipo = 'whatsapp'
+         or (precio_clp = 0 and contacto_tipo in ('instagram', 'enlace')));
+
 -- UN RAMO POR ANUNCIO desde el 2026-09-25 (decisión de Lucas). Es un trigger
 -- y no un CHECK a propósito: un CHECK revisa la fila entera en cada UPDATE, y
 -- un anuncio antiguo con dos ramos quedaría trabado —ni pausarlo se podría—.
