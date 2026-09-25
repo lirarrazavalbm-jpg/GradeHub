@@ -1701,7 +1701,7 @@ function renderBorradorProfesor(raiz,anuncio){
     <p class="profesor-info">Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.</p>
     <form class="profesor-form" id="profesor-borrador">
       <div class="profesor-form-campos">
-      <h3>1. Tu clase</h3>
+      <details class="profesor-seccion" open><summary><h3>1. Tu clase</h3></summary><div class="profesor-seccion-cuerpo">
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
       <label class="modal-label" for="pr-descripcion">Descripción</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required placeholder="Qué van a trabajar, cómo son tus clases y tu experiencia con el ramo.">${valor('descripcion')}</textarea>
       <label class="modal-label" for="pr-precio">Precio por clase</label><input id="pr-precio" type="text" inputmode="numeric" autocomplete="off" required placeholder="$15.000" aria-describedby="pr-precio-ayuda" value="${esc(textoPesosEscrito(anuncio&&anuncio.precio_clp))}"><p class="profesor-info" id="pr-precio-ayuda">Si la clase es gratis, pon $0: se mostrará como "Gratis".</p>
@@ -1726,7 +1726,8 @@ function renderBorradorProfesor(raiz,anuncio){
       <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
       <button class="btn-cancel" id="pr-quitar-flyer" type="button" ${flyerActual?'':'hidden'}>Quitar flyer guardado</button>
       <div id="pr-logo"></div>
-      <h3>2. Público</h3>
+      </div></details>
+      <details class="profesor-seccion" open><summary><h3>2. Público</h3></summary><div class="profesor-seccion-cuerpo">
       <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
       <label class="modal-label" for="pr-siglas-buscar">Ramo de tu clase</label>
       <div class="profesor-ramos" id="pr-ramos-elegidos" aria-live="polite"></div>
@@ -1739,7 +1740,8 @@ function renderBorradorProfesor(raiz,anuncio){
       <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
       <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">
       <p class="profesor-info">GradeHub calcula el público sin mostrarte notas ni identidades.</p>
-      <h3>3. Tu campaña</h3>
+      </div></details>
+      <details class="profesor-seccion" open><summary><h3>3. Tu campaña</h3></summary><div class="profesor-seccion-cuerpo">
       <div class="profesor-campana">
         <div class="profesor-campana-fechas">
           <div><label class="modal-label" for="pr-inicio">Empieza · opcional</label><input id="pr-inicio" type="date" min="${hoyChileClase()}"></div>
@@ -1751,6 +1753,7 @@ function renderBorradorProfesor(raiz,anuncio){
         <p class="profesor-info">Cuesta ${pesosClase(TARIFA_CAMPANA.dia)} por día publicada y, por persona, ${pesosClase(TARIFA_CAMPANA.vista)} si la ve, ${pesosClase(TARIFA_CAMPANA.apertura)} si la abre y ${pesosClase(TARIFA_CAMPANA.contacto)} si te contacta. Cada persona cuenta una vez. Al llegar al tope deja de mostrarse. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
         <p class="profesor-campana-resumen" id="pr-campana-resumen" aria-live="polite"></p>
       </div>
+      </div></details>
       </div>
       <section class="profesor-form-vista" aria-labelledby="pr-vista-titulo">
       <div class="vista-cabeza"><h3 id="pr-vista-titulo">4. Así la van a ver</h3>
@@ -1947,13 +1950,18 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent=resultado.ok?resultado.aviso||'Flyer quitado del borrador.':resultado.error;
     if(resultado.ok){flyerActual=null;campo('flyer').value='';preview.hidden=true;form.querySelector('#pr-quitar-flyer').hidden=true;flyerVista='';actualizarVista();}
   });
+  // Un campo pendiente dentro de una sección cerrada no se puede mostrar:
+  // se abre su sección antes de avisar o de llevar el foco ahí.
+  const abrirSeccionDe=el=>{const d=el&&typeof el.closest==='function'?el.closest('details'):null;if(d)d.open=true;return el;};
+  const enfocar=el=>{abrirSeccionDe(el);if(el&&typeof el.focus==='function')el.focus();};
   const procesar=async enviar=>{
     if(procesando)return;
+    if(typeof form.querySelectorAll==='function')[...form.querySelectorAll(':invalid')].forEach(abrirSeccionDe);
     if(!form.reportValidity())return;
     const file=campo('flyer').files&&campo('flyer').files[0],validacion=validarFlyerClase(file);
     if(!validacion.ok){estado.textContent=validacion.error;campo('flyer').focus();return;}
     const campana=validarCampanaClase({dias:Number(valorCampo('dias')),inicio:valorCampo('inicio'),tope_clp:pesosDeTexto(valorCampo('tope'))});
-    if(!campana.ok){estado.textContent=campana.error;campo(campana.campo)?.focus();return;}
+    if(!campana.ok){estado.textContent=campana.error;enfocar(campo(campana.campo));return;}
     const datos={tenant:campo('tenant').value,ramos_siglas:campo('siglas').value.split(',').map(s=>s.trim()),
       criterios:{promedioMenorA:Number(campo('promedio').value),avanceMinimo:Number(campo('avance').value)},
       titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:pesosDeTexto(campo('precio').value),
@@ -1966,7 +1974,7 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
       id=guardado.anuncio.id;
       const guardadaCampana=await guardarCampanaClase(id,campana.datos);
       if(!guardadaCampana.ok&&!guardadaCampana.falta){estado.textContent='Tu clase se guardó, pero '+guardadaCampana.error;return;}

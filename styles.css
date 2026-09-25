@@ -957,6 +957,14 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .profesor-info{font-size:.8125rem;line-height:1.5;color:var(--fg2);margin:0 0 16px;}
 .profesor-form{display:grid;gap:8px;min-width:0;}
 .profesor-form-campos,.profesor-form-vista,.profesor-form-acciones{display:grid;gap:8px;min-width:0;}
+/* Las secciones del borrador se pliegan: el título es el botón. */
+.profesor-seccion{border-bottom:1px solid var(--border);padding-bottom:10px;}
+.profesor-seccion>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;border-radius:8px;}
+.profesor-seccion>summary::-webkit-details-marker{display:none;}
+.profesor-seccion>summary::after{content:'';width:8px;height:8px;margin:14px 6px 0 0;border-right:2px solid var(--fg3);border-bottom:2px solid var(--fg3);transform:rotate(45deg);transition:transform var(--motion-fast) var(--ease-out);}
+.profesor-seccion:not([open])>summary::after{transform:rotate(-45deg);}
+.profesor-seccion>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.profesor-seccion-cuerpo{display:grid;gap:8px;min-width:0;}
 /* En la pestaña Clases de un computador el formulario deja media pantalla
    vacía. Ahí la vista previa pasa a una columna a la derecha que se queda fija
    mientras el profesor baja: ve cambiar su anuncio mientras lo escribe. En el
