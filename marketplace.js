@@ -253,7 +253,14 @@ async function guardarBorradorClase(entrada,id){
     };
     const {data,error}=await consultaCamposClase(escribir,CAMPOS_BORRADOR_CLASE);
     if(error&&error.message==='sin-columnas-nuevas')return {ok:false,campo:'detalles',error:'Todavía no podemos guardar "Otra", un formato vacío ni detalles a medida. Usa las opciones de la lista por ahora.'};
-    if(error||!data||data.estado!=='borrador')return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};
+    if(error||!data||data.estado!=='borrador'){
+      // El motivo real queda en la consola: "revisa tu conexión" también sale
+      // cuando el servidor rechaza, y sin esto hay que ir a buscarlo a mano.
+      if(error)console.warn('No se guardó el borrador:',error.code||'',error.message||error);
+      return {ok:false,error:error&&error.code==='42501'
+        ?'No pudimos guardar: falta un permiso en el servidor. Tu borrador anterior sigue ahí.'
+        :'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};
+    }
     return {ok:true,anuncio:data};
   }catch(e){return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};}
 }

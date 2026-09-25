@@ -222,6 +222,12 @@ grant update (ramos_siglas, criterios, modalidad, ubicacion, precio_clp, titulo,
 grant select (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to anon, authenticated;
 grant insert (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to authenticated;
 grant update (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to authenticated;
+-- El formulario manda la universidad también al editar un borrador. Sin este
+-- grant, TODA edición de un borrador ya guardado fallaba con "permission
+-- denied": Postgres rechaza el UPDATE entero por una sola columna. Encontrado
+-- el 2026-09-25 en producción. Cambiarla es seguro por lo mismo que las otras
+-- columnas: la política solo deja editar en borrador, revisión o pausa.
+grant update (tenant) on public.tutor_anuncios to authenticated;
 
 drop policy if exists tutor_anuncios_select_publicados_o_propios on public.tutor_anuncios;
 create policy tutor_anuncios_select_publicados_o_propios
