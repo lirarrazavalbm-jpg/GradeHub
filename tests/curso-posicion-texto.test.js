@@ -33,8 +33,8 @@ const frase = (m, t) => vm.runInContext(`frasePosicionCurso(${m},${t})`, ctx);
 const plano = (m, t) => frase(m, t).replace(/<[^>]+>/g, '');
 
 console.log('=== La frase se entiende sola ===');
-chk('dice "por sobre el X%" y no un número suelto',
-  plano(75, 12) === 'Por sobre el 75% de tus 11 compañeros');
+chk('dice "igual o por sobre el X%" y no un número suelto',
+  plano(75, 12) === 'Igual o por sobre el 75% de tus 11 compañeros');
 chk('el porcentaje va destacado dentro de la frase', /<b>75%<\/b>/.test(frase(75, 12)));
 
 console.log('\n=== El denominador son los compañeros, no el total ===');
@@ -47,8 +47,8 @@ chk('nunca dice un número negativo de compañeros', /de tus 0 compañeros/.test
 console.log('\n=== Ni 0 ni 100 se vuelven categóricos ===');
 // mejor_que viene redondeado: 199 de 200 también llega como 100, y 1 de 300
 // llega como 0. Decir "todos" o "ninguno" sería afirmar algo que puede ser falso.
-chk('100% no dice "todos"', !/todos/i.test(plano(100, 12)) && /Por sobre el 100%/.test(plano(100, 12)));
-chk('0% no dice "ninguno" ni "último"', !/(ninguno|último|ultimo)/i.test(plano(0, 31)) && /Por sobre el 0%/.test(plano(0, 31)));
+chk('100% no dice "todos"', !/todos/i.test(plano(100, 12)) && /Igual o por sobre el 100%/.test(plano(100, 12)));
+chk('0% no dice "ninguno" ni "último"', !/(ninguno|último|ultimo)/i.test(plano(0, 31)) && /Igual o por sobre el 0%/.test(plano(0, 31)));
 
 console.log('\n=== No quedó nada del formato viejo ===');
 const render = leer('render-main.js'), css = leer('styles.css');
