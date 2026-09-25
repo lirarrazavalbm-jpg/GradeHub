@@ -757,10 +757,14 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .vista-switch button:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
 .vista-solo-pc,.vista-solo-cel{display:grid;gap:8px;min-width:0;}
 .profesor-vista-previa.modo-pc .vista-solo-cel,.profesor-vista-previa.modo-celular .vista-solo-pc{display:none;}
-/* La tarjeta abierta con el ancho de cada aparato: en computador es una
-   columna del catálogo; en celular, la pantalla. */
+/* La tarjeta abierta con el ancho de cada aparato, aunque el profesor esté en
+   el otro: en computador, con flyer, anuncio y flyer lado a lado; en celular,
+   el flyer abajo. */
 .modo-pc .vista-catalogo{max-width:440px;}
+.modo-pc .vista-catalogo:has(.catalogo-clase-flyer:not([hidden])){max-width:900px;}
+.modo-pc .vista-catalogo .catalogo-clase-bloque:has(>.catalogo-clase-flyer:not([hidden])){grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
 .modo-celular .vista-catalogo{max-width:380px;}
+.modo-celular .vista-catalogo .catalogo-clase-bloque:has(>.catalogo-clase-flyer){grid-template-columns:minmax(0,1fr);}
 .clase-apoyo-abrir[tabindex="-1"]{cursor:default;}
 
 .ramo-reordering .ramo-row.tiene-clase-apoyo{background:transparent;margin-bottom:10px;border-radius:6px;}
@@ -1112,6 +1116,10 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 @media(min-width:768px){
   .modal-sheet:has(.catalogo-clases){max-width:min(920px,92vw);}
   .catalogo-clases-resultados{grid-template-columns:repeat(2,minmax(0,1fr));}
+  /* En computador, la clase abierta con flyer toma la fila entera: el anuncio
+     a un lado y el flyer entero al otro, en vez de dejar media fila vacía. */
+  .catalogo-clases-resultados>.catalogo-clase-bloque:has(>.catalogo-clase-flyer:not([hidden])){grid-column:1/-1;}
+  .catalogo-clase-bloque:has(>.catalogo-clase-flyer:not([hidden])){grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
 }
 @media(prefers-reduced-motion:reduce){.home-clases-card::before{transition:none;}.home-clases-card:active,.catalogo-clase-contacto:active{transform:none;}}
 /* Detalles a medida: nombre corto y texto, en una fila que se puede quitar. */
