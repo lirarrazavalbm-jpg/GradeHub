@@ -810,8 +810,10 @@ function tarjetaCatalogoClase(a,{sigla,abierta=false}={}){
   const siglaMetrica=sigla||a.ramos_siglas[0]||'';
     const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor,mensajeContactoClase(a));
     const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos||[])].join(' · ');
-    return `<article class="catalogo-clase-card" data-catalogo-anuncio="${esc(a.id)}">
-      ${a.flyer_path?`<div class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"><span>Cargando flyer…</span></div>`:''}
+    // El flyer va como tarjeta aparte, bajo el anuncio y entero: metido al lado
+    // del texto se recortaba y en celular no se veía nada. Aparece al abrir la
+    // clase, así el catálogo cerrado no se alarga.
+    return `<div class="catalogo-clase-bloque"><article class="catalogo-clase-card" data-catalogo-anuncio="${esc(a.id)}">
       <div class="catalogo-clase-contenido">
         <div class="catalogo-clase-cabeza"><div><small>Publicidad · Clase particular</small>
         <h3>${esc(a.titulo||'Clase particular')}</h3></div>${logosCatalogoClases.get(a.id)?`<div class="catalogo-clase-logo" data-logo="${esc(logosCatalogoClases.get(a.id))}"></div>`:''}</div>
@@ -825,7 +827,7 @@ function tarjetaCatalogoClase(a,{sigla,abierta=false}={}){
           :'<p class="catalogo-clase-sin-contacto">El contacto de esta clase necesita revisión.</p>'}
         </div>
       </div>
-    </article>`;
+    </article>${a.flyer_path?`<figure class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"${abierta?'':' hidden'}><span>Cargando flyer…</span></figure>`:''}</div>`;
 }
 
 function renderCatalogoClases(busqueda=''){
@@ -852,6 +854,8 @@ function activarTarjetasClases(raiz){
     const tarjeta=boton.closest('.catalogo-clase-card'),mas=tarjeta&&tarjeta.querySelector('.catalogo-clase-mas');
     if(!mas)return;
     mas.hidden=false;boton.remove();
+    const bloque=tarjeta.closest('.catalogo-clase-bloque'),flyer=bloque&&bloque.querySelector('.catalogo-clase-flyer');
+    if(flyer)flyer.hidden=false;
     registrarMetricaAnuncio(boton.dataset.abrir,'clic',boton.dataset.sigla);
     registrarInteraccionAnuncio(boton.dataset.abrir,'apertura');
     const contacto=mas.querySelector('.catalogo-clase-contacto');if(contacto)contacto.focus();
@@ -1842,7 +1846,7 @@ function renderBorradorProfesor(raiz,anuncio){
       descripcion:valorCampo('descripcion').trim()||'Acá va la descripción de tu clase.',ramos_siglas:[sigla],nombres_ramos:nombre?[nombre]:[],
       contacto_tipo:'whatsapp',contacto_valor:valorCampo('contacto')||'+56 9 0000 0000',flyer_path:flyerVista?'vista-previa':null},{abierta:true});
     const flyer=caja.querySelector('.catalogo-clase-flyer');
-    if(flyer){flyer.removeAttribute('data-flyer');flyer.innerHTML=`<img src="${esc(flyerVista)}" alt="">`;}
+    if(flyer){flyer.removeAttribute('data-flyer');flyer.hidden=false;flyer.innerHTML=`<img src="${esc(flyerVista)}" alt="">`;}
     if(logoVista){const cabeza=caja.querySelector('.catalogo-clase-cabeza');if(cabeza)cabeza.insertAdjacentHTML('beforeend',`<div class="catalogo-clase-logo">${imgLogoClase(logoVista)}</div>`);}
     caja.querySelectorAll('a').forEach(a=>{a.removeAttribute('href');a.setAttribute('tabindex','-1');});
   };
