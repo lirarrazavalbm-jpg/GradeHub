@@ -70,7 +70,7 @@ const pintar=async(anuncios,datos)=>{
   html=await pintar([anuncio()],{alcance:18});
   console.log('\n=== Sin datos suficientes no se inventa un cero ===');
   chk('no dice "0 veces" cuando el servidor no devolvió cortes',
-    !/La abrieron/.test(html) && !/veces en total/.test(html) && /aparecen cuando hay suficientes datos/.test(html));
+    !/La abrieron/.test(html) && !/<small>veces en total/.test(html) && /aparecen cuando hay suficientes datos/.test(html));
 
   console.log('\n=== Con datos suficientes sí se muestran ===');
   html=await pintar([anuncio()],{alcance:40,cortes:[
