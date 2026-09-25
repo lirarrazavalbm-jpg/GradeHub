@@ -37,6 +37,37 @@ chk('un número completo sí pasa',valida('whatsapp','+56 9 1234 5678').ok);
 chk('un usuario con @ sí pasa',valida('instagram','@profe.calculo').ok);
 chk('un correo mal escrito no pasa',!valida('email','profe@').ok);
 
+console.log('\n=== Formato, lugar y detalles a medida ===');
+const conCampos=extra=>run(`validarBorradorClase({...${base},contacto_tipo:'email',contacto_valor:'profe@ejemplo.cl',...${JSON.stringify(extra)}})`);
+chk('formato y lugar se pueden dejar sin indicar',(r=>r.ok&&r.datos.modalidad===null&&r.datos.ubicacion===null)(conCampos({modalidad:'',ubicacion:''})));
+chk('"Otra" guarda su texto',(r=>r.ok&&r.datos.ubicacion==='otra'&&r.datos.ubicacion_otra==='En la biblioteca')(conCampos({ubicacion:'otra',ubicacion_otra:' En la biblioteca '})));
+chk('"Otra" sin texto no pasa',!conCampos({modalidad:'otra',modalidad_otra:''}).ok);
+chk('el texto de "Otra" no se guarda si no se eligió "Otra"',conCampos({modalidad:'grupal',modalidad_otra:'basura'}).datos.modalidad_otra===null);
+chk('una opción inventada no pasa',!conCampos({modalidad:'vip'}).ok);
+chk('los detalles vacíos se descartan',(r=>r.ok&&r.datos.detalles===null)(conCampos({detalles:[{etiqueta:'',valor:''}]})));
+chk('un detalle se guarda recortado',JSON.stringify(conCampos({detalles:[{etiqueta:' Duración ',valor:'90 minutos '}]}).datos.detalles)==='[{"etiqueta":"Duración","valor":"90 minutos"}]');
+chk('un detalle a medias no pasa',!conCampos({detalles:[{etiqueta:'Duración',valor:''}]}).ok);
+chk('no más de cuatro',!conCampos({detalles:Array.from({length:5},()=>({etiqueta:'a',valor:'b'}))}).ok);
+chk('ni textos largos',!conCampos({detalles:[{etiqueta:'x'.repeat(31),valor:'b'}]}).ok&&!conCampos({detalles:[{etiqueta:'a',valor:'x'.repeat(81)}]}).ok);
+chk('un detalle no puede traer campos extra al servidor',Object.keys(conCampos({detalles:[{etiqueta:'a',valor:'b',href:'http://x'}]}).datos.detalles[0]).join()==='etiqueta,valor');
+chk('el catálogo muestra el texto de "Otra"',run("formatoClase({modalidad:'otra',modalidad_otra:'Grupos de 3',ubicacion:'online'})")==='Grupos de 3 · Online');
+chk('y nada si no se indicó',run("formatoClase({modalidad:null,ubicacion:null})")==='');
+
+console.log('\n=== Si el servidor todavía no tiene las columnas nuevas ===');
+(async()=>{
+  const pedidas=[];
+  ctx.__hacer=async campos=>{pedidas.push(campos);return campos.includes('detalles')?{data:null,error:{code:'42703',message:'column tutor_anuncios.detalles does not exist'}}:{data:[1],error:null};};
+  const r=await run('consultaCamposClase(__hacer,"id,titulo")');
+  chk('repite la consulta con los campos de siempre',r.data&&pedidas.length===2&&pedidas[1]==='id,titulo');
+  await run('consultaCamposClase(__hacer,"id,titulo")');
+  chk('y no vuelve a pedir las nuevas',pedidas.length===3&&pedidas[2]==='id,titulo');
+  run('columnasNuevasClase=true');
+  ctx.__hacer=async()=>({data:null,error:{code:'42501',message:'permission denied'}});
+  const otro=await run('consultaCamposClase(__hacer,"id")');
+  chk('un error distinto no se disfraza de columna faltante',otro.error&&otro.error.code==='42501'&&run('columnasNuevasClase')===true);
+  terminar();
+})();
+
 console.log('\n=== Cursor al formatear ===');
 // Un input de mentira: escribir un dígito en medio no manda el cursor al final.
 function input(valor,cursor){
@@ -66,5 +97,4 @@ chk('el vencido se ofrece volver a publicar, no pausar',/data-retomar="vencido"/
 chk('un borrador se puede seguir editando',/data-editar="borrador"/.test(run("tarjetaPanelClase(__lista[3],n=>'$'+n,__ahora)")));
 chk('el embudo no se dibuja con width',!/width/.test(run("embudoClase({impresion:40,clic:10,contacto:4})")));
 
-console.log('\nPASS: '+ok+'   FAIL: '+fail);
-process.exit(fail?1:0);
+function terminar(){console.log('\nPASS: '+ok+'   FAIL: '+fail);process.exit(fail?1:0);}

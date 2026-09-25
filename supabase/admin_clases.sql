@@ -23,6 +23,7 @@
 --   select admin.publicar_anuncio('<anuncio_id>', 0);         -- cargo en pesos; 0 = piloto sin cargo
 --   select admin.publicar_anuncio('<anuncio_id>', 3000, 30);  -- con cargo y días explícitos
 --   select admin.devolver_anuncio('<anuncio_id>');            -- vuelve a borrador para corregir
+--   select admin.aprobar_logo('<user_id>');                   -- o admin.rechazar_logo
 
 create schema if not exists admin;
 revoke all on schema admin from public, anon, authenticated;
@@ -77,8 +78,9 @@ as $$
            'tenant', a.tenant,
            'ramos', a.ramos_siglas,
            'precio_clase_clp', a.precio_clp,
-           'modalidad', a.modalidad,
-           'ubicacion', a.ubicacion,
+           'modalidad', coalesce(a.modalidad_otra, a.modalidad),
+           'ubicacion', coalesce(a.ubicacion_otra, a.ubicacion),
+           'detalles', a.detalles,
            'contacto', a.contacto_tipo || ': ' || a.contacto_valor,
            'criterios', a.criterios,
            'tiene_flyer', a.flyer_path is not null,
@@ -89,6 +91,15 @@ as $$
     join auth.users u on u.id = a.autor_id
     left join public.tutor_perfiles p on p.user_id = a.autor_id
    where a.estado = 'en_revision'
+  union all
+  -- Un logo propuesto que todavía no se muestra. Se revisa abriendo la ruta
+  -- en Storage → tutor-flyers.
+  select 'logo', p.user_id, p.nombre_publico, u.email::text, p.revisado_at,
+         jsonb_build_object('ruta', p.logo_path, 'reemplaza', p.logo_aprobado_path)
+    from public.tutor_perfiles p
+    join auth.users u on u.id = p.user_id
+   where p.logo_path is not null
+     and p.logo_path is distinct from p.logo_aprobado_path
   order by 5;
 $$;
 
@@ -196,6 +207,39 @@ begin
 
   update public.tutor_anuncios set estado = 'borrador' where id = p_anuncio_id;
   return 'en_revision → borrador';
+end;
+$$;
+
+-- El logo propuesto pasa a ser el que se ve en todos sus anuncios.
+create or replace function admin.aprobar_logo(p_user_id uuid)
+returns text
+language plpgsql
+set search_path = public, admin
+as $$
+declare
+  propuesto text;
+begin
+  select logo_path into propuesto from public.tutor_perfiles where user_id = p_user_id for update;
+  if propuesto is null then
+    raise exception 'ese profesor no tiene un logo propuesto';
+  end if;
+  update public.tutor_perfiles set logo_aprobado_path = propuesto where user_id = p_user_id;
+  return 'logo aprobado: ' || propuesto;
+end;
+$$;
+
+-- Descarta el propuesto: vuelve al que ya se mostraba (o a ninguno).
+create or replace function admin.rechazar_logo(p_user_id uuid)
+returns text
+language plpgsql
+set search_path = public, admin
+as $$
+begin
+  update public.tutor_perfiles set logo_path = logo_aprobado_path where user_id = p_user_id;
+  if not found then
+    raise exception 'no hay ficha de profesor para %', p_user_id;
+  end if;
+  return 'logo propuesto descartado';
 end;
 $$;
 

@@ -276,7 +276,9 @@ vm.runInContext(`
   chk('el profesor no puede aprobar ni suspender su propia ficha',
     /grant insert \(user_id, nombre_publico, presentacion\)[\s\S]*?to authenticated/i.test(sql)&&
     /grant update \(nombre_publico, presentacion\)[\s\S]*?to authenticated/i.test(sql)&&
-    !/grant (?:insert|update) \([^)]*estado[^)]*\)[\s\S]*?public\.tutor_perfiles to authenticated/i.test(sql));
+    // Dentro de UNA sentencia: [^;] no cruza a la siguiente.
+    !/grant (?:insert|update) \([^)]*estado[^)]*\)[^;]*public\.tutor_perfiles to authenticated/i.test(sql)&&
+    !/grant (?:insert|update) \([^)]*logo_aprobado_path[^)]*\)[^;]*public\.tutor_perfiles to authenticated/i.test(sql));
   chk('solo una ficha aprobada puede crear anuncios',
     /tutor_anuncios_insert_borrador_propio[\s\S]*?estado = 'borrador'[\s\S]*?tutor_aprobado\(\(select auth\.uid\(\)\)\)/.test(sql));
   chk('suspender al profesor oculta también sus anuncios publicados',

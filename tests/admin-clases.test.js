@@ -20,8 +20,8 @@ const sql = fs.readFileSync(archivo, 'utf8')
   .split('\n').map(l => l.replace(/--.*$/, '')).join('\n');
 
 const funciones = [...sql.matchAll(/create\s+or\s+replace\s+function\s+([\w.]+)\s*\(/gi)].map(m => m[1]);
-chk('define las cuatro funciones de administración',
-  ['admin.pendientes', 'admin.revisar_profesor', 'admin.publicar_anuncio', 'admin.devolver_anuncio']
+chk('define las funciones de administración',
+  ['admin.pendientes', 'admin.revisar_profesor', 'admin.publicar_anuncio', 'admin.devolver_anuncio', 'admin.aprobar_logo', 'admin.rechazar_logo']
     .every(f => funciones.includes(f)));
 chk('todas viven en el esquema admin, ninguna en public',
   funciones.length > 0 && funciones.every(f => f.startsWith('admin.')));

@@ -976,6 +976,17 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .catalogo-clase-ramos strong{color:var(--fg);font-variant-numeric:tabular-nums;}
 .catalogo-clase-ramos span{color:var(--fg3);}
 .catalogo-clase-descripcion{display:-webkit-box;margin:11px 0 13px;color:var(--fg2);font-size:.8125rem;line-height:1.48;white-space:pre-line;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:4;}
+/* Logo del profesor a la derecha del título, y detalles como pares cortos. */
+.catalogo-clase-cabeza{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.catalogo-clase-cabeza>div:first-child{display:flex;flex-direction:column;min-width:0;}
+.catalogo-clase-cabeza small{margin-bottom:5px;color:var(--primary);font-size:.65625rem;font-weight:700;letter-spacing:.045em;text-transform:uppercase;}
+.catalogo-clase-logo{flex:none;width:48px;height:48px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);}
+.catalogo-clase-logo img{display:block;width:100%;height:100%;object-fit:contain;}
+.catalogo-clase-detalles{display:grid;gap:4px;margin:10px 0 0;font-size:.75rem;}
+.catalogo-clase-detalles div{display:flex;gap:6px;min-width:0;}
+.catalogo-clase-detalles dt{flex:none;color:var(--fg3);font-weight:600;}
+.catalogo-clase-detalles dt::after{content:':';}
+.catalogo-clase-detalles dd{margin:0;color:var(--fg2);overflow-wrap:anywhere;}
 .catalogo-clase-datos{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:auto;padding-top:10px;border-top:1px solid var(--border);color:var(--fg2);font-size:.75rem;}
 .catalogo-clase-datos strong{color:var(--fg);font-size:.875rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .catalogo-clase-datos strong small{color:var(--fg3);font-size:.625rem;font-weight:600;}
@@ -994,6 +1005,20 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
   .catalogo-clase-flyer img{min-height:160px;max-height:210px;}
 }
 @media(prefers-reduced-motion:reduce){.home-clases-card::before{transition:none;}.home-clases-card:active,.catalogo-clase-contacto:active{transform:none;}}
+/* Detalles a medida: nombre corto y texto, en una fila que se puede quitar. */
+.profesor-detalle{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr) auto;gap:6px;align-items:center;margin-top:6px;}
+.profesor-form .profesor-detalle input{padding:9px 10px;}
+.profesor-detalle-quitar{min-height:40px;padding:0 10px;border:1px solid var(--border2);border-radius:10px;background:none;color:var(--fg2);font:inherit;font-size:.75rem;font-weight:600;cursor:pointer;}
+.profesor-detalle-quitar:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.profesor-detalle-agregar{margin-top:8px;width:100%;}
+.profesor-logo{display:flex;align-items:center;gap:12px;margin-top:14px;}
+.profesor-logo-img{flex:none;width:52px;height:52px;border-radius:12px;overflow:hidden;border:1px dashed var(--border2);background:var(--bg2);}
+.profesor-logo-img img{display:block;width:100%;height:100%;object-fit:contain;}
+.profesor-logo-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.profesor-logo-texto strong{font-size:.875rem;color:var(--fg);}
+.profesor-logo-texto span{font-size:.75rem;line-height:1.4;color:var(--fg3);}
+.profesor-logo-acciones{display:flex;gap:8px;margin-top:10px;}
+.profesor-logo-acciones>*{flex:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}
 .profesor-estado{min-height:20px;color:var(--fg2);font-size:.75rem;line-height:1.45;margin:8px 0 0;}
 .btn-cancel{flex:1;padding:12px;background:var(--muted);color:var(--fg2);border:none;border-radius:10px;font-size:0.875rem;font-weight:600;cursor:pointer;}
 .btn-confirm{flex:2;padding:12px;background:var(--primary);color:var(--primary-fg);border:none;border-radius:10px;font-size:0.875rem;font-weight:700;cursor:pointer;}

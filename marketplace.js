@@ -11,6 +11,28 @@ const FLYER_CLASE_TIPOS = new Set(['image/jpeg','image/png','image/webp']);
 const CAMPOS_PUBLICOS_ANUNCIO = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,publicado_at,vence_at,created_at';
 const CAMPOS_BORRADOR_CLASE = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,created_at';
 
+// Columnas que llegaron después (formato y lugar "otra", detalles a medida).
+// El SQL se aplica a mano, así que la app puede salir antes que él: si el
+// servidor dice que no existen, la consulta se repite con las de siempre y el
+// catálogo, el panel y los borradores siguen andando. Se recuerda para no
+// pedirlas de nuevo en cada consulta.
+const CAMPOS_NUEVOS_CLASE=',modalidad_otra,ubicacion_otra,detalles';
+let columnasNuevasClase=true;
+function faltaColumnaClase(error){
+  return !!error&&(error.code==='42703'||error.code==='PGRST204'||/column|columna/i.test(String(error.message||'')));
+}
+async function consultaCamposClase(hacer,base){
+  if(columnasNuevasClase){
+    const r=await hacer(base+CAMPOS_NUEVOS_CLASE);
+    if(!faltaColumnaClase(r&&r.error))return r;
+    columnasNuevasClase=false;
+  }
+  return hacer(base);
+}
+const MAX_DETALLES_CLASE=4,MAX_ETIQUETA_DETALLE=30,MAX_VALOR_DETALLE=80;
+const MODALIDADES_CLASE=[['individual','Individual'],['grupal','Grupal']];
+const UBICACIONES_CLASE=[['online','Online'],['presencial','Presencial'],['hibrido','Híbrida']];
+
 // Un borrador en Supabase es una clase COMPLETA, todavía no un formulario a
 // medio escribir: la tabla exige estos campos. No se añade nada a gradehub_v1.
 function validarBorradorClase(entrada){
@@ -25,9 +47,32 @@ function validarBorradorClase(entrada){
   if(siglas.length<1||siglas.length>12||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s))||new Set(siglas).size!==siglas.length)
     return {ok:false,campo:'ramos_siglas',error:'Elige entre 1 y 12 ramos, sin repetir siglas.'};
   if(!criteriosClaseValidos(entrada.criterios))return {ok:false,campo:'criterios',error:'Revisa el promedio y el avance elegidos para tu público.'};
-  const modalidad=String(entrada.modalidad||''),ubicacion=String(entrada.ubicacion||'');
-  if(!['individual','grupal'].includes(modalidad))return {ok:false,campo:'modalidad',error:'Elige si la clase es individual o grupal.'};
-  if(!['online','presencial','hibrido'].includes(ubicacion))return {ok:false,campo:'ubicacion',error:'Indica dónde haces la clase.'};
+  // Formato y lugar son opcionales. "Otra" exige escribirla: una opción
+  // elegida sin texto se mostraría como nada.
+  const opcion=(valor,validas,texto,campo,nombre)=>{
+    const v=String(valor||'');
+    if(!v)return {ok:true,valor:null,otra:null};
+    if(v==='otra'){
+      const t=String(texto||'').trim();
+      if(t.length<2||t.length>40)return {ok:false,campo:campo+'_otra',error:`Escribe ${nombre} en 2 a 40 caracteres.`};
+      return {ok:true,valor:'otra',otra:t};
+    }
+    return validas.includes(v)?{ok:true,valor:v,otra:null}:{ok:false,campo,error:`Revisa ${nombre}.`};
+  };
+  const mod=opcion(entrada.modalidad,MODALIDADES_CLASE.map(o=>o[0]),entrada.modalidad_otra,'modalidad','el formato');
+  if(!mod.ok)return mod;
+  const ubi=opcion(entrada.ubicacion,UBICACIONES_CLASE.map(o=>o[0]),entrada.ubicacion_otra,'ubicacion','dónde es la clase');
+  if(!ubi.ok)return ubi;
+  const detallesCrudos=entrada.detalles==null?[]:entrada.detalles;
+  if(!Array.isArray(detallesCrudos))return {ok:false,campo:'detalles',error:'Revisa los detalles de tu clase.'};
+  // Una fila sin nada escrito no es un detalle: es una casilla que quedó vacía.
+  const detalles=detallesCrudos.map(d=>({etiqueta:String(d&&d.etiqueta||'').trim(),valor:String(d&&d.valor||'').trim()}))
+    .filter(d=>d.etiqueta||d.valor);
+  if(detalles.length>MAX_DETALLES_CLASE)return {ok:false,campo:'detalles',error:`Puedes agregar hasta ${MAX_DETALLES_CLASE} detalles.`};
+  if(detalles.some(d=>!d.etiqueta||!d.valor))return {ok:false,campo:'detalles',error:'Cada detalle necesita un nombre y lo que dice, por ejemplo "Duración: 90 minutos".'};
+  if(detalles.some(d=>d.etiqueta.length>MAX_ETIQUETA_DETALLE||d.valor.length>MAX_VALOR_DETALLE))
+    return {ok:false,campo:'detalles',error:`Cada detalle va con un nombre de hasta ${MAX_ETIQUETA_DETALLE} caracteres y un texto de hasta ${MAX_VALOR_DETALLE}.`};
+  const modalidad=mod.valor,ubicacion=ubi.valor;
   if(!Number.isSafeInteger(entrada.precio_clp)||entrada.precio_clp<1000||entrada.precio_clp>500000)
     return {ok:false,campo:'precio_clp',error:'Indica el precio de la clase en pesos, entre $1.000 y $500.000.'};
   const contacto_tipo=String(entrada.contacto_tipo||''),contacto_valor=String(entrada.contacto_valor||'').trim();
@@ -41,7 +86,8 @@ function validarBorradorClase(entrada){
   // datos académicos del estudiante enviados junto con el formulario.
   return {ok:true,datos:{tenant,ramos_siglas:siglas,
     criterios:{promedioMenorA:entrada.criterios.promedioMenorA,avanceMinimo:entrada.criterios.avanceMinimo},
-    modalidad,ubicacion,precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
+    modalidad,ubicacion,modalidad_otra:mod.otra,ubicacion_otra:ubi.otra,detalles:detalles.length?detalles:null,
+    precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
 }
 
 const ERROR_CONTACTO_CLASE={
@@ -143,9 +189,10 @@ async function perfilProfesorActual(){
   const uid=sesionProfesorClase();
   if(!uid)return {ok:false,error:'Inicia sesión para entrar al espacio de profesor.'};
   try{
-    const {data,error}=await supabaseClient.from('tutor_perfiles')
-      .select('nombre_publico,presentacion,estado,solicitado_at,revisado_at')
-      .eq('user_id',uid).maybeSingle();
+    // El logo llegó después: sin su SQL aplicado se pide la ficha de siempre.
+    const pedir=campos=>supabaseClient.from('tutor_perfiles').select(campos).eq('user_id',uid).maybeSingle();
+    let {data,error}=await pedir('nombre_publico,presentacion,estado,solicitado_at,revisado_at,logo_id,logo_path,logo_aprobado_path');
+    if(faltaColumnaClase(error))({data,error}=await pedir('nombre_publico,presentacion,estado,solicitado_at,revisado_at'));
     if(error)return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};
     return {ok:true,perfil:data||null};
   }catch(e){return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};}
@@ -173,10 +220,11 @@ async function abrirBorradorClase(id){
   try{
     // RLS delimita al dueño. autor_id no tiene SELECT público: filtrarlo aquí
     // provocaría un error de permisos o expondría identidades si se concediera.
-    let consulta=supabaseClient.from('tutor_anuncios').select(CAMPOS_BORRADOR_CLASE)
-      .eq('estado','borrador');
-    consulta=id?consulta.eq('id',id):consulta.order('created_at',{ascending:false}).limit(1);
-    const {data,error}=await consulta.maybeSingle();
+    const {data,error}=await consultaCamposClase(campos=>{
+      let consulta=supabaseClient.from('tutor_anuncios').select(campos).eq('estado','borrador');
+      consulta=id?consulta.eq('id',id):consulta.order('created_at',{ascending:false}).limit(1);
+      return consulta.maybeSingle();
+    },CAMPOS_BORRADOR_CLASE);
     if(error)return {ok:false,error:'No pudimos abrir tu borrador. Intenta de nuevo.'};
     return {ok:true,anuncio:data||null};
   }catch(e){return {ok:false,error:'No pudimos abrir tu borrador. Intenta de nuevo.'};}
@@ -189,10 +237,22 @@ async function guardarBorradorClase(entrada,id){
   if(!uid)return {ok:false,error:'Inicia sesión para guardar el borrador.'};
   if(id&&!/^[0-9a-f-]{36}$/i.test(String(id)))return {ok:false,error:'No encontramos ese borrador.'};
   try{
-    let consulta=id
-      ?supabaseClient.from('tutor_anuncios').update(valido.datos).eq('id',id).eq('estado','borrador')
-      :supabaseClient.from('tutor_anuncios').insert({...valido.datos,autor_id:uid});
-    const {data,error}=await consulta.select(CAMPOS_BORRADOR_CLASE).single();
+    const escribir=async campos=>{
+      const datos={...valido.datos};
+      if(!campos.includes('detalles')){
+        // El servidor todavía no tiene estas columnas: lo clásico se guarda
+        // igual, y lo nuevo se avisa en vez de perderse callado.
+        if(datos.modalidad==='otra'||datos.ubicacion==='otra'||datos.detalles||datos.modalidad===null||datos.ubicacion===null)
+          return {data:null,error:{message:'sin-columnas-nuevas'}};
+        delete datos.modalidad_otra;delete datos.ubicacion_otra;delete datos.detalles;
+      }
+      const consulta=id
+        ?supabaseClient.from('tutor_anuncios').update(datos).eq('id',id).eq('estado','borrador')
+        :supabaseClient.from('tutor_anuncios').insert({...datos,autor_id:uid});
+      return consulta.select(campos).single();
+    };
+    const {data,error}=await consultaCamposClase(escribir,CAMPOS_BORRADOR_CLASE);
+    if(error&&error.message==='sin-columnas-nuevas')return {ok:false,campo:'detalles',error:'Todavía no podemos guardar "Otra", un formato vacío ni detalles a medida. Usa las opciones de la lista por ahora.'};
     if(error||!data||data.estado!=='borrador')return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};
     return {ok:true,anuncio:data};
   }catch(e){return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};}
@@ -286,6 +346,76 @@ async function quitarFlyerClase(anuncioId){
       return borradoError?{ok:true,aviso:'Flyer quitado del anuncio; quedó una copia privada por limpiar.'}:{ok:true};
     }catch(e){return {ok:true,aviso:'Flyer quitado del anuncio; quedó una copia privada por limpiar.'};}
   }catch(e){return {ok:false,error:'No pudimos quitar el flyer. Intenta de nuevo.'};}
+}
+
+// ─── LOGO DEL PROFESOR ──────────────────────────────────────────────────────
+//
+// Uno por profesor, en todos sus anuncios. El que sube queda PROPUESTO y no se
+// muestra hasta que GradeHub lo revisa: aparece en anuncios ya aprobados, y
+// cambiarlo sin revisión dejaría poner cualquier imagen en ellos. Quitarlo sí
+// es inmediato. Mismas reglas de archivo que el flyer: JPG, PNG o WebP ≤ 5 MB.
+function estadoLogoProfesor(perfil){
+  if(!perfil||!('logo_id' in perfil))return 'no-disponible';
+  if(perfil.logo_path&&perfil.logo_path!==perfil.logo_aprobado_path)return 'en-revision';
+  return perfil.logo_aprobado_path?'aprobado':'sin-logo';
+}
+
+async function subirLogoProfesor(file){
+  const valido=validarFlyerClase(file);
+  if(!valido.ok)return {ok:false,error:valido.error.replace(/flyer/gi,'logo')};
+  if(valido.opcional)return {ok:false,error:'Elige una imagen para tu logo.'};
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para subir tu logo.'};
+  const ficha=await perfilProfesorActual();
+  if(!ficha.ok||!ficha.perfil)return {ok:false,error:'No pudimos leer tu ficha de profesor.'};
+  const logoId=String(ficha.perfil.logo_id||'');
+  if(!/^[0-9a-f-]{36}$/i.test(logoId))return {ok:false,error:'Los logos todavía no están disponibles.'};
+  const aleatorio=typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'';
+  if(!aleatorio)return {ok:false,error:'Tu navegador no pudo preparar un nombre seguro para el logo.'};
+  const path=`logos/${logoId}/${aleatorio}.${extensionFlyerClase(file.type)}`;
+  try{
+    const {error:subidaError}=await supabaseClient.storage.from('tutor-flyers').upload(path,file,{contentType:file.type,upsert:false});
+    if(subidaError)return {ok:false,error:'No pudimos subir el logo. Intenta de nuevo.'};
+    const {data,error}=await supabaseClient.from('tutor_perfiles').update({logo_path:path})
+      .eq('user_id',uid).select('logo_path,logo_aprobado_path').single();
+    if(error||!data||data.logo_path!==path){
+      await supabaseClient.storage.from('tutor-flyers').remove([path]);
+      return {ok:false,error:'El logo subió, pero no pudimos guardarlo en tu ficha. Intenta de nuevo.'};
+    }
+    // El propuesto anterior ya no sirve. El aprobado se queda: se sigue viendo
+    // hasta que se apruebe el nuevo.
+    const anterior=String(ficha.perfil.logo_path||'');
+    if(anterior&&anterior!==path&&anterior!==ficha.perfil.logo_aprobado_path)
+      await supabaseClient.storage.from('tutor-flyers').remove([anterior]);
+    return {ok:true,perfil:{...ficha.perfil,...data}};
+  }catch(e){return {ok:false,error:'No pudimos subir el logo. Intenta de nuevo.'};}
+}
+
+async function quitarLogoProfesor(){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para quitar tu logo.'};
+  const ficha=await perfilProfesorActual();
+  if(!ficha.ok||!ficha.perfil)return {ok:false,error:'No pudimos leer tu ficha de profesor.'};
+  try{
+    const {error}=await supabaseClient.rpc('quitar_mi_logo');
+    if(error)return {ok:false,error:'No pudimos quitar el logo. Intenta de nuevo.'};
+    // Ya no se muestra en ninguna parte aunque falle la limpieza de Storage.
+    const rutas=[ficha.perfil.logo_path,ficha.perfil.logo_aprobado_path].filter(Boolean);
+    if(rutas.length)try{await supabaseClient.storage.from('tutor-flyers').remove([...new Set(rutas)]);}catch(e){}
+    return {ok:true};
+  }catch(e){return {ok:false,error:'No pudimos quitar el logo. Intenta de nuevo.'};}
+}
+
+// Logos aprobados de los anuncios del catálogo, por id de anuncio. El
+// catálogo no conoce al autor de cada anuncio y no tiene por qué conocerlo.
+async function logosDeAnuncios(ids){
+  const lista=[...new Set((ids||[]).filter(id=>/^[0-9a-f-]{36}$/i.test(String(id))))].slice(0,100);
+  if(!supabaseClient||!lista.length)return new Map();
+  try{
+    const {data,error}=await supabaseClient.rpc('logos_de_anuncios',{p_ids:lista});
+    if(error||!Array.isArray(data))return new Map();
+    return new Map(data.filter(f=>f&&f.anuncio_id&&f.logo_path).map(f=>[f.anuncio_id,f.logo_path]));
+  }catch(e){return new Map();}
 }
 
 function siglaAnuncio(sigla){
@@ -486,11 +616,11 @@ async function cargarAnunciosClases(tenant){
   try{
     const anuncios=[],vistos=new Set(),tamano=60;
     for(let desde=0;;desde+=tamano){
-      const {data,error}=await supabaseClient.from('tutor_anuncios')
-        .select(CAMPOS_PUBLICOS_ANUNCIO).eq('tenant',universidad).eq('estado','publicado')
+      const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
+        .select(campos).eq('tenant',universidad).eq('estado','publicado')
         .or(`vence_at.is.null,vence_at.gt.${ahora}`)
         .order('publicado_at',{ascending:false}).order('id',{ascending:true})
-        .range(desde,desde+tamano-1);
+        .range(desde,desde+tamano-1),CAMPOS_PUBLICOS_ANUNCIO);
       if(error)throw error;
       const pagina=Array.isArray(data)?data:[];
       pagina.forEach(a=>{if(!vistos.has(a.id)){vistos.add(a.id);anuncios.push(a);}});
@@ -577,9 +707,17 @@ function enlaceContactoClase(tipo,valor){
 }
 
 function formatoClase(anuncio){
-  const modalidad={individual:'Individual',grupal:'Grupal'}[anuncio&&anuncio.modalidad]||'';
-  const ubicacion={online:'Online',presencial:'Presencial',hibrido:'Híbrida'}[anuncio&&anuncio.ubicacion]||'';
-  return [modalidad,ubicacion].filter(Boolean).join(' · ');
+  const a=anuncio||{};
+  const texto=(lista,valor,otra)=>valor==='otra'?String(otra||'').trim():(new Map(lista).get(valor)||'');
+  return [texto(MODALIDADES_CLASE,a.modalidad,a.modalidad_otra),texto(UBICACIONES_CLASE,a.ubicacion,a.ubicacion_otra)]
+    .filter(Boolean).join(' · ');
+}
+// Los detalles que el profesor agregó, ya validados por el servidor. Se vuelven
+// a filtrar al mostrarlos: una fila rara no rompe la tarjeta.
+function detallesClase(anuncio){
+  const d=anuncio&&anuncio.detalles;
+  return Array.isArray(d)?d.filter(x=>x&&typeof x.etiqueta==='string'&&typeof x.valor==='string'&&x.etiqueta.trim()&&x.valor.trim())
+    .slice(0,MAX_DETALLES_CLASE):[];
 }
 function pesosClase(valor){
   // Nunca un precio negativo. El formulario ya exige entre 1.000 y 500.000, así
@@ -606,10 +744,11 @@ function renderCatalogoClases(busqueda=''){
     return `<article class="catalogo-clase-card" data-catalogo-anuncio="${esc(a.id)}">
       ${a.flyer_path?`<div class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"><span>Cargando flyer…</span></div>`:''}
       <div class="catalogo-clase-contenido">
-        <small>Publicidad · Clase particular</small>
-        <h3>${esc(a.titulo||'Clase particular')}</h3>
+        <div class="catalogo-clase-cabeza"><div><small>Publicidad · Clase particular</small>
+        <h3>${esc(a.titulo||'Clase particular')}</h3></div>${logosCatalogoClases.get(a.id)?`<div class="catalogo-clase-logo" data-logo="${esc(logosCatalogoClases.get(a.id))}"></div>`:''}</div>
         <p class="catalogo-clase-ramos"><strong>${esc(siglas)}</strong>${nombres?`<span>${esc(nombres)}</span>`:''}</p>
         <p class="catalogo-clase-descripcion">${esc(a.descripcion||'')}</p>
+        ${detallesClase(a).length?`<dl class="catalogo-clase-detalles">${detallesClase(a).map(d=>`<div><dt>${esc(d.etiqueta)}</dt><dd>${esc(d.valor)}</dd></div>`).join('')}</dl>`:''}
         <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${pesosClase(a.precio_clp)} <small>por clase</small></strong></div>
         ${contacto?`<a class="catalogo-clase-contacto" href="${esc(contacto)}" ${a.contacto_tipo==='email'?'':'target="_blank" rel="noopener noreferrer"'} data-contactar="${esc(a.id)}" data-sigla="${esc(a.ramos_siglas[0]||'')}">${esc(textoContactoClase(a.contacto_tipo))}</a>`
           :'<p class="catalogo-clase-sin-contacto">El contacto de esta clase necesita revisión.</p>'}
@@ -620,6 +759,11 @@ function renderCatalogoClases(busqueda=''){
     registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
   }));
   observarImpresionesClases(raiz,anuncios,busqueda);
+  raiz.querySelectorAll('[data-logo]').forEach(async caja=>{
+    const url=await urlFlyerClase(caja.dataset.logo);
+    if(!caja.isConnected)return;
+    if(url)caja.innerHTML=`<img src="${esc(url)}" alt="" loading="lazy">`;else caja.remove();
+  });
   raiz.querySelectorAll('[data-flyer]').forEach(async caja=>{
     const url=await urlFlyerClase(caja.dataset.flyer);
     if(!caja.isConnected)return;
@@ -637,7 +781,7 @@ function renderCatalogoClases(busqueda=''){
 // catálogo —lo que sí se cobraría, a un precio menor que el segmentado— espera
 // a que el servidor distinga por qué camino llegó cada cuenta.
 const IMPRESION_VISIBLE=0.5,IMPRESION_MS=1000;
-let impresionesCatalogo=new Set(),observadorCatalogo=null;
+let impresionesCatalogo=new Set(),observadorCatalogo=null,logosCatalogoClases=new Map();
 function observarImpresionesClases(raiz,anuncios,busqueda=''){
   // Si la persona escribió algo, las tarjetas que ve son resultado de buscar.
   const canal=String(busqueda||'').trim()?'busqueda':'lista';
@@ -686,6 +830,8 @@ async function openCatalogoClases(){
   if(tenant==='uc'&&typeof cargarCursosUC==='function'&&typeof cursosUcExtra==='function'&&!cursosUcExtra())
     cargarCursosUC().then(ok=>{if(ok&&sigueAbierto()){nombresCatalogoClasesActual=nombresRamosParaClases(tenant);renderCatalogoClases(input.value);}}).catch(()=>{});
   catalogoClasesActual=await cargarAnunciosClases(tenant);
+  if(!sigueAbierto())return;
+  logosCatalogoClases=await logosDeAnuncios(catalogoClasesActual.map(a=>a.id));
   if(!sigueAbierto())return;
   nombresCatalogoClasesActual=nombresRamosParaClases(tenant);
   const resultados=raiz.querySelector('#catalogo-clases-resultados');if(resultados)resultados.setAttribute('aria-busy','false');
@@ -850,9 +996,8 @@ async function misAnunciosClase(){
   const uid=sesionProfesorClase();
   if(!uid)return {ok:false,error:'Inicia sesión para ver tus clases.'};
   try{
-    const {data,error}=await supabaseClient.from('tutor_anuncios')
-      .select(CAMPOS_PUBLICOS_ANUNCIO)
-      .order('created_at',{ascending:false});
+    const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
+      .select(campos).order('created_at',{ascending:false}),CAMPOS_PUBLICOS_ANUNCIO);
     if(error)throw error;
     // Los publicados de otros tutores también pasan la RLS: se descartan por
     // los que uno puede editar, que son los únicos con métricas propias.
@@ -928,8 +1073,8 @@ async function cambiarEstadoAnuncio(id,estado){
   if(!uid)return {ok:false,error:'Inicia sesión para administrar tus clases.'};
   if(!['borrador','en_revision','pausado'].includes(estado))return {ok:false,error:'Ese cambio no te corresponde a ti.'};
   try{
-    const {data,error}=await supabaseClient.from('tutor_anuncios')
-      .update({estado}).eq('id',id).select(CAMPOS_PUBLICOS_ANUNCIO).single();
+    const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
+      .update({estado}).eq('id',id).select(campos).single(),CAMPOS_PUBLICOS_ANUNCIO);
     if(error||!data)return {ok:false,error:'No pudimos cambiar el estado. Intenta de nuevo.'};
     return {ok:true,anuncio:data};
   }catch(e){return {ok:false,error:'No pudimos cambiar el estado. Intenta de nuevo.'};}
@@ -1070,6 +1215,7 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
     seccionPanelClases('En revisión',g.revision,pesos,ahora)+
     seccionPanelClases('Borradores',g.borradores,pesos,ahora)+
     seccionPanelClases('Pausadas y terminadas',g.cerrados,pesos,ahora)+
+    '<section class="clases-seccion"><h3>Tu perfil</h3><div id="clases-logo"></div></section>'+
     salida();
   // Al cambiar el estado se vuelve a pedir la lista: el estado, los números y
   // los botones de cada tarjeta dependen de él, y repintar a mano lo que uno
@@ -1077,6 +1223,8 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   const repintar=()=>renderEspacioProfesor(raiz,{titulo:!!cabecera('x')});
   const nueva=raiz.querySelector('#clase-nueva');
   if(nueva)nueva.addEventListener('click',()=>renderBorradorProfesor(raiz,null));
+  const cajaLogo=raiz.querySelector('#clases-logo');
+  if(cajaLogo&&cajaLogo.isConnected&&typeof cajaLogo.addEventListener==='function')renderLogoProfesor(cajaLogo);
   raiz.querySelectorAll('[data-editar]').forEach(b=>
     b.addEventListener('click',()=>renderBorradorProfesor(raiz,anuncios.find(a=>a.id===b.dataset.editar)||null)));
   raiz.querySelectorAll('[data-pausar]').forEach(b=>
@@ -1125,6 +1273,49 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   }
 }
 
+// El logo es de la ficha, no del anuncio: el mismo bloque aparece en el
+// formulario y en la página de Clases, y cambiarlo en uno cambia el otro.
+async function renderLogoProfesor(caja){
+  if(!caja)return;
+  const ficha=await perfilProfesorActual();
+  if(!caja.isConnected)return;
+  const perfil=ficha.ok?ficha.perfil:null,estado=estadoLogoProfesor(perfil);
+  if(estado==='no-disponible'){caja.innerHTML='';return;}
+  const textos={
+    'sin-logo':'Sale a la derecha en todos tus anuncios. Lo revisamos antes de mostrarlo.',
+    'en-revision':perfil.logo_aprobado_path?'Tu logo nuevo está en revisión. Mientras tanto se sigue mostrando el anterior.':'Tu logo está en revisión. Aparecerá en tus anuncios cuando lo aprobemos.',
+    'aprobado':'Se muestra en todos tus anuncios publicados.',
+  };
+  caja.innerHTML=`<div class="profesor-logo">
+      <div class="profesor-logo-img" aria-hidden="true"></div>
+      <div class="profesor-logo-texto"><strong>Tu logo${estado==='en-revision'?' · en revisión':''}</strong><span>${textos[estado]}</span></div>
+    </div>
+    <div class="profesor-logo-acciones">
+      <label class="btn-cancel profesor-logo-subir">${estado==='sin-logo'?'Subir logo':'Cambiar logo'}<input type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+      ${estado==='sin-logo'?'':'<button type="button" class="btn-cancel profesor-logo-quitar">Quitar</button>'}
+    </div>
+    <p class="profesor-estado" role="status" aria-live="polite"></p>`;
+  const aviso=caja.querySelector('.profesor-estado');
+  const ruta=perfil.logo_path||perfil.logo_aprobado_path;
+  if(ruta)urlFlyerClase(ruta).then(url=>{const img=caja.querySelector('.profesor-logo-img');if(url&&img&&img.isConnected)img.innerHTML=`<img src="${esc(url)}" alt="">`;});
+  caja.querySelector('input[type=file]').addEventListener('change',async e=>{
+    const file=e.target.files&&e.target.files[0];if(!file)return;
+    aviso.textContent='Subiendo logo…';
+    const r=await subirLogoProfesor(file);
+    if(!caja.isConnected)return;
+    if(!r.ok){aviso.textContent=r.error;e.target.value='';return;}
+    renderLogoProfesor(caja);
+  });
+  const quitar=caja.querySelector('.profesor-logo-quitar');
+  if(quitar)quitar.addEventListener('click',async()=>{
+    aviso.textContent='Quitando logo…';
+    const r=await quitarLogoProfesor();
+    if(!caja.isConnected)return;
+    if(!r.ok){aviso.textContent=r.error;return;}
+    renderLogoProfesor(caja);
+  });
+}
+
 function renderBorradorProfesor(raiz,anuncio){
   let id=anuncio&&anuncio.id||null,flyerActual=anuncio&&anuncio.flyer_path||null;
   const valor=(campo,defecto='')=>esc(anuncio&&anuncio[campo]!=null?anuncio[campo]:defecto);
@@ -1137,13 +1328,22 @@ function renderBorradorProfesor(raiz,anuncio){
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
       <label class="modal-label" for="pr-descripcion">Descripción</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required placeholder="Qué van a trabajar, cómo son tus clases y tu experiencia con el ramo.">${valor('descripcion')}</textarea>
       <label class="modal-label" for="pr-precio">Precio por clase</label><input id="pr-precio" type="text" inputmode="numeric" autocomplete="off" required placeholder="$15.000" value="${esc(textoPesosEscrito(anuncio&&anuncio.precio_clp))}">
-      <label class="modal-label" for="pr-modalidad">Formato</label><select id="pr-modalidad">${elegir([['individual','Individual'],['grupal','Grupal']],anuncio&&anuncio.modalidad)}</select>
-      <label class="modal-label" for="pr-ubicacion">Dónde</label><select id="pr-ubicacion">${elegir([['online','Online'],['presencial','Presencial'],['hibrido','Híbrido']],anuncio&&anuncio.ubicacion)}</select>
+      <label class="modal-label" for="pr-modalidad">Formato · opcional</label><select id="pr-modalidad">${elegir([['','No indicar'],...MODALIDADES_CLASE,['otra','Otra…']],anuncio&&anuncio.modalidad||'')}</select>
+      <input id="pr-modalidad-otra" type="text" maxlength="40" aria-label="Escribe el formato" placeholder="Ej. grupos de hasta 3" value="${valor('modalidad_otra')}" ${anuncio&&anuncio.modalidad==='otra'?'':'hidden'}>
+      <label class="modal-label" for="pr-ubicacion">Dónde · opcional</label><select id="pr-ubicacion">${elegir([['','No indicar'],...UBICACIONES_CLASE,['otra','Otra…']],anuncio&&anuncio.ubicacion||'')}</select>
+      <input id="pr-ubicacion-otra" type="text" maxlength="40" aria-label="Escribe dónde es la clase" placeholder="Ej. en tu casa o en la biblioteca" value="${valor('ubicacion_otra')}" ${anuncio&&anuncio.ubicacion==='otra'?'':'hidden'}>
+      <div class="profesor-detalles" id="pr-detalles-caja">
+        <span class="modal-label">Detalles · opcional</span>
+        <p class="profesor-info">Lo que quieras destacar, como "Duración: 90 minutos" o "Incluye: guía de ejercicios". Hasta ${MAX_DETALLES_CLASE}.</p>
+        <div id="pr-detalles"></div>
+        <button class="btn-cancel profesor-detalle-agregar" id="pr-agregar-detalle" type="button">Agregar un detalle</button>
+      </div>
       <label class="modal-label" for="pr-contacto-tipo">Cómo te contactarán</label><select id="pr-contacto-tipo">${elegir([['whatsapp','WhatsApp'],['instagram','Instagram'],['email','Correo']],anuncio&&anuncio.contacto_tipo)}</select>
       <label class="modal-label" for="pr-contacto">Tu contacto</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
       <label class="modal-label" for="pr-flyer">Flyer · opcional</label><input id="pr-flyer" type="file" accept="image/jpeg,image/png,image/webp"><p class="profesor-info">JPG, PNG o WebP · máximo 5 MB. Primero se guarda el borrador y después se sube la imagen.</p>
       <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
       <button class="btn-cancel" id="pr-quitar-flyer" type="button" ${flyerActual?'':'hidden'}>Quitar flyer guardado</button>
+      <div id="pr-logo"></div>
       <h3>2. Público</h3>
       <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
       <label class="modal-label" for="pr-siglas">Siglas de los ramos · separadas por coma</label><input id="pr-siglas" type="text" required placeholder="MAT1610, FIS1514" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
@@ -1160,6 +1360,29 @@ function renderBorradorProfesor(raiz,anuncio){
   const actualizarVista=()=>{vista.querySelector('strong').textContent=campo('titulo').value.trim()||'Tu clase';vista.querySelector('p').textContent=campo('descripcion').value.trim()||'Aquí aparecerá lo que ofreces.';};
   form.addEventListener('input',actualizarVista);actualizarVista();
   campoPesos(campo('precio'));
+  // "Otra…" abre su casilla de texto; cualquier otra opción la esconde.
+  [['modalidad','modalidad-otra'],['ubicacion','ubicacion-otra']].forEach(([sel,texto])=>{
+    const selector=campo(sel),caja=campo(texto);
+    if(!selector||!caja)return;
+    selector.addEventListener('change',()=>{caja.hidden=selector.value!=='otra';if(!caja.hidden&&typeof caja.focus==='function')caja.focus();});
+  });
+  const listaDetalles=campo('detalles'),agregarDetalle=campo('agregar-detalle');
+  const filaDetalle=(d={})=>{
+    if(!listaDetalles||typeof document==='undefined'||!document.createElement)return;
+    const fila=document.createElement('div');fila.className='profesor-detalle';
+    fila.innerHTML=`<input type="text" class="detalle-etiqueta" maxlength="${MAX_ETIQUETA_DETALLE}" placeholder="Duración" aria-label="Nombre del detalle" value="${esc(d.etiqueta||'')}">
+      <input type="text" class="detalle-valor" maxlength="${MAX_VALOR_DETALLE}" placeholder="90 minutos" aria-label="Qué dice el detalle" value="${esc(d.valor||'')}">
+      <button type="button" class="profesor-detalle-quitar" aria-label="Quitar este detalle">Quitar</button>`;
+    fila.querySelector('.profesor-detalle-quitar').addEventListener('click',()=>{fila.remove();refrescarDetalles();});
+    listaDetalles.appendChild(fila);refrescarDetalles();
+  };
+  const refrescarDetalles=()=>{if(agregarDetalle&&listaDetalles&&listaDetalles.children)agregarDetalle.hidden=listaDetalles.children.length>=MAX_DETALLES_CLASE;};
+  if(agregarDetalle)agregarDetalle.addEventListener('click',()=>{filaDetalle();const ultima=listaDetalles&&listaDetalles.lastElementChild;ultima&&ultima.querySelector('input').focus();});
+  detallesClase(anuncio).forEach(d=>filaDetalle(d));
+  const leerDetalles=()=>listaDetalles&&typeof listaDetalles.querySelectorAll==='function'
+    ?[...listaDetalles.querySelectorAll('.profesor-detalle')].map(f=>({etiqueta:f.querySelector('.detalle-etiqueta').value,valor:f.querySelector('.detalle-valor').value})):[];
+  const cajaLogo=campo('logo');
+  if(cajaLogo)renderLogoProfesor(cajaLogo);
   // WhatsApp e Instagram parten con su prefijo escrito. Al cambiar de canal se
   // cambia el prefijo solo si el campo no tiene nada más que un prefijo: lo que
   // la persona ya escribió no se borra por tocar el selector.
@@ -1201,13 +1424,15 @@ function renderBorradorProfesor(raiz,anuncio){
       criterios:{promedioMenorA:Number(campo('promedio').value),avanceMinimo:Number(campo('avance').value)},
       titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:pesosDeTexto(campo('precio').value),
       modalidad:campo('modalidad').value,ubicacion:campo('ubicacion').value,
+      modalidad_otra:campo('modalidad-otra')?campo('modalidad-otra').value:'',ubicacion_otra:campo('ubicacion-otra')?campo('ubicacion-otra').value:'',
+      detalles:leerDetalles(),
       contacto_tipo:campo('contacto-tipo').value,contacto_valor:campo('contacto').value};
     procesando=true;
     const botones=[form.querySelector('#pr-guardar'),form.querySelector('#pr-enviar')];botones.forEach(b=>b.disabled=true);
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
       id=guardado.anuncio.id;
       if(file){estado.textContent='Borrador guardado. Subiendo flyer…';const subida=await subirFlyerClase(id,file);
         if(!subida.ok){estado.textContent='Borrador guardado, pero '+subida.error;return;}
