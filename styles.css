@@ -707,9 +707,15 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .clase-apoyo-abrir:focus-visible{outline:none;}
 .clase-apoyo:has(.clase-apoyo-abrir:focus-visible){outline:2px solid var(--primary);outline-offset:-2px;}
 .clase-apoyo-cerrar:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;border-radius:8px;}
-.clase-apoyo-logo{flex:none;align-self:center;width:40px;height:40px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);}
+/* El logo va sin marco: uno con fondo transparente se ve sin fondo, y uno
+   ancho usa su ancho (hasta un tope) en vez de encogerse en un cuadrado.
+   `.logo-placa` la pone marketplace.js solo cuando un logo transparente no se
+   leería sobre el fondo del tema (verde oscuro en modo oscuro, por ejemplo). */
+.clase-apoyo-logo{flex:none;align-self:center;display:flex;align-items:center;justify-content:center;height:40px;max-width:96px;}
 .clase-apoyo-logo[hidden]{display:none;}
-.clase-apoyo-logo img{display:block;width:100%;height:100%;object-fit:contain;}
+.clase-apoyo-logo img,.catalogo-clase-logo img{display:block;height:100%;width:auto;max-width:100%;object-fit:contain;border-radius:8px;}
+.logo-placa{padding:4px 6px;border-radius:9px;background:var(--fg);}
+.logo-placa img{border-radius:0;}
 .clase-apoyo-cerrar{flex:none;display:flex;align-items:center;justify-content:center;width:44px;border:0;background:none;color:var(--fg3);cursor:pointer;}
 .clase-apoyo-cerrar .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;}
 .ramo-reordering .clase-apoyo{display:none;}
@@ -732,7 +738,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .clase-apoyo.en-casilla .clase-apoyo-datos{font-size:.6875rem;line-height:1.4;}
 .clase-apoyo.en-casilla .clase-apoyo-ver{display:block;margin:0;position:absolute;left:0;top:calc(100% + 8px);font-size:.6875rem;font-weight:700;color:var(--primary);}
 /* 44px = alto del título más los datos: logo y texto se leen como un bloque. */
-.clase-apoyo.en-casilla .clase-apoyo-logo{width:44px;height:44px;border-radius:10px;margin-right:22px;}
+.clase-apoyo.en-casilla .clase-apoyo-logo{height:44px;max-width:104px;margin-right:22px;}
 .clase-apoyo.en-casilla .clase-apoyo-cerrar{position:absolute;top:4px;right:4px;width:32px;height:32px;}
 /* Vista previa del profesor: una réplica mínima de Inicio, sin datos reales. */
 .profesor-vista-previa{display:grid;gap:8px;}
@@ -1063,8 +1069,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .catalogo-clase-cabeza{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .catalogo-clase-cabeza>div:first-child{display:flex;flex-direction:column;min-width:0;}
 .catalogo-clase-cabeza small{margin-bottom:5px;color:var(--primary);font-size:.65625rem;font-weight:700;letter-spacing:.045em;text-transform:uppercase;}
-.catalogo-clase-logo{flex:none;width:48px;height:48px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);}
-.catalogo-clase-logo img{display:block;width:100%;height:100%;object-fit:contain;}
+.catalogo-clase-logo{flex:none;display:flex;align-items:center;justify-content:flex-end;height:48px;max-width:120px;}
 .catalogo-clase-detalles{display:grid;gap:4px;margin:10px 0 0;font-size:.75rem;}
 .catalogo-clase-detalles div{display:flex;gap:6px;min-width:0;}
 .catalogo-clase-detalles dt{flex:none;color:var(--fg3);font-weight:600;}

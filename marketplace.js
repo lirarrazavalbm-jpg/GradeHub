@@ -391,6 +391,64 @@ function estadoLogoProfesor(perfil){
   return perfil.logo_aprobado_path?'aprobado':'sin-logo';
 }
 
+// Logos sin fondo. Un PNG o WebP transparente se muestra tal cual, sin marco.
+// El riesgo es el contraste: un logo verde oscuro sin fondo desaparece en el
+// tema oscuro. Al cargar se mira la imagen en chico y, solo si es transparente
+// y no se leería sobre el fondo que tiene detrás, se le pone una placa.
+// Un logo con fondo propio (un JPG) no se toca.
+function imgLogoClase(url,extra=''){
+  return `<img class="logo-clase" src="${esc(url)}" alt="" crossorigin="anonymous"${extra}>`;
+}
+function luminanciaClase(r,g,b){
+  const c=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};
+  return .2126*c(r)+.7152*c(g)+.0722*c(b);
+}
+// El color de fondo real detrás del logo: el primer antepasado que no es
+// transparente. Chrome devuelve color-mix() como color(srgb …), en 0–1.
+function fondoDetrasClase(el){
+  for(let n=el;n&&n.nodeType===1;n=n.parentElement){
+    const bg=String(getComputedStyle(n).backgroundColor||'');
+    const nums=(bg.match(/-?[\d.]+/g)||[]).map(Number);
+    if(nums.length<3)continue;
+    const srgb=/^color\(/.test(bg),alfa=nums.length>3?nums[3]:1;
+    if(alfa<.5)continue;
+    const [r,g,b]=srgb?nums.slice(0,3).map(v=>v*255):nums.slice(0,3);
+    return luminanciaClase(r,g,b);
+  }
+  return 1;
+}
+function revisarLogoClase(img){
+  const caja=img.parentElement;
+  if(!caja||!img.naturalWidth)return;
+  let px;
+  try{
+    const lado=24,canvas=document.createElement('canvas');canvas.width=canvas.height=lado;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(img,0,0,lado,lado);px=ctx.getImageData(0,0,lado,lado).data;
+  }catch(e){return;}
+  let transparentes=0,suma=0,visibles=0;
+  for(let k=0;k<px.length;k+=4){
+    if(px[k+3]<200){transparentes++;continue;}
+    suma+=luminanciaClase(px[k],px[k+1],px[k+2]);visibles++;
+  }
+  caja.classList.remove('logo-placa');
+  if(!visibles||transparentes/(px.length/4)<.1)return;
+  const logo=suma/visibles,fondo=fondoDetrasClase(caja);
+  if((Math.max(logo,fondo)+.05)/(Math.min(logo,fondo)+.05)<2)caja.classList.add('logo-placa');
+}
+if(typeof document!=='undefined'&&typeof document.addEventListener==='function'){
+  // load y error no burbujean: se escuchan en captura para todos los logos.
+  document.addEventListener('load',e=>{
+    const img=e.target;if(img&&img.classList&&img.classList.contains('logo-clase'))revisarLogoClase(img);
+  },true);
+  // Si el almacenamiento no respondiera con CORS, la imagen se carga igual,
+  // sin revisión de contraste: nunca un logo roto por esto.
+  document.addEventListener('error',e=>{
+    const img=e.target;
+    if(img&&img.classList&&img.classList.contains('logo-clase')&&img.hasAttribute('crossorigin')){const src=img.src;img.removeAttribute('crossorigin');img.src=src;}
+  },true);
+}
+
 async function subirLogoProfesor(file){
   const valido=validarFlyerClase(file);
   if(!valido.ok)return {ok:false,error:valido.error.replace(/flyer/gi,'logo')};
@@ -807,7 +865,7 @@ function activarTarjetasClases(raiz){
   raiz.querySelectorAll('[data-logo]').forEach(async caja=>{
     const url=await urlFlyerClase(caja.dataset.logo);
     if(!caja.isConnected)return;
-    if(url)caja.innerHTML=`<img src="${esc(url)}" alt="" loading="lazy">`;else caja.remove();
+    if(url)caja.innerHTML=imgLogoClase(url,' loading="lazy"');else caja.remove();
   });
   raiz.querySelectorAll('[data-flyer]').forEach(async caja=>{
     const url=await urlFlyerClase(caja.dataset.flyer);
@@ -1951,7 +2009,7 @@ function contenidoRecomendacionClase(anuncio,{logoUrl='',vistaPrevia=false}={}){
         <span class="ca-pie"><span class="clase-apoyo-datos">${esc(linea||'Formato · Lugar · Precio')}</span><span class="clase-apoyo-ver">Ver clase ›</span></span>
       </span>
     </button>
-    <span class="clase-apoyo-logo" aria-hidden="true"${logoUrl?'':' hidden'}>${logoUrl?`<img src="${esc(logoUrl)}" alt="">`:''}</span>
+    <span class="clase-apoyo-logo" aria-hidden="true"${logoUrl?'':' hidden'}>${logoUrl?imgLogoClase(logoUrl):''}</span>
     <button type="button" class="clase-apoyo-cerrar" aria-label="No mostrar esta clase"${vistaPrevia?' tabindex="-1"':''}>
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>`;
@@ -1992,7 +2050,7 @@ function pintarRecomendacionClase(contenedor){
     if(!ruta||!caja)return;
     const url=await urlFlyerClase(ruta);
     if(!url||!banner.isConnected)return;
-    caja.innerHTML=`<img src="${esc(url)}" alt="">`;caja.hidden=false;
+    caja.innerHTML=imgLogoClase(url);caja.hidden=false;
   }).catch(()=>{});
   fila.classList.add('tiene-clase-apoyo');
   // En celular la lista es una columna y el banner va pegado bajo su ramo. En
