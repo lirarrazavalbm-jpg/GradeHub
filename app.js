@@ -1319,8 +1319,11 @@ function prepararObRamos(){
   const key=[selectedTenant,selectedCarrera,selectedSem].join(':');
   // Traer la malla antes de decidir qué sugerir. Si no llega, el paso 5 muestra
   // el buscador sin sugerencias, que es como funcionan hoy estas carreras.
+  // Al llegar se repinta el paso entero y no solo el selector: el botón ya se
+  // había escrito con cero ramos, y decía "Continuar sin ramos" con la malla
+  // completa marcada encima.
   if(selectedCarrera&&ARCHIVO_MALLAS[selectedTenant]&&!(mallaFor(selectedTenant)||{})[selectedCarrera]&&!mallasExtraDe(selectedTenant)){
-    cargarMallasUC(selectedTenant).then(ok=>{if(ok){obRamosKey=null;prepararObRamos();}});
+    cargarMallasUC(selectedTenant).then(ok=>{if(ok){obRamosKey=null;if(obStep===5)obRender();}});
   }
   if(key===obRamosKey)return;
   obRamosKey=key;obManualOpen=false;
