@@ -697,10 +697,13 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
    dice nada de si vas aprobando. Mientras se arrastra un ramo, se esconde. */
 .ramo-row.tiene-clase-apoyo{background:color-mix(in srgb,var(--primary) 6%,var(--bg2));margin-bottom:0;border-radius:10px 10px 0 0;}
 .clase-apoyo{display:flex;align-items:stretch;margin:0 20px 12px;border-radius:0 0 10px 10px;background:color-mix(in srgb,var(--primary) 6%,var(--bg2));border-top:1px solid color-mix(in srgb,var(--primary) 18%,transparent);animation:claseApoyoEntra var(--motion-base) var(--ease-out);}
-.clase-apoyo-abrir{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;padding:11px 4px 12px 14px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.clase-apoyo-abrir{display:flex;flex:1;min-width:0;flex-direction:column;justify-content:center;padding:11px 4px 12px 14px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.clase-apoyo-texto,.ca-cabeza,.ca-pie{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.clase-apoyo-texto{gap:2px;}
 .clase-apoyo-abrir small{font-size:.625rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--primary);}
-.clase-apoyo-abrir strong{font-size:.875rem;line-height:1.3;color:var(--fg);letter-spacing:-.01em;}
-.clase-apoyo-abrir span{font-size:.75rem;color:var(--fg2);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.clase-apoyo-abrir strong{font-size:.875rem;line-height:1.3;color:var(--fg);letter-spacing:-.01em;overflow-wrap:anywhere;}
+.clase-apoyo-datos{font-size:.75rem;color:var(--fg2);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.clase-apoyo-ver{display:none;}
 .clase-apoyo-abrir:focus-visible{outline:none;}
 .clase-apoyo:has(.clase-apoyo-abrir:focus-visible){outline:2px solid var(--primary);outline-offset:-2px;}
 .clase-apoyo-cerrar:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;border-radius:8px;}
@@ -710,6 +713,43 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .clase-apoyo-cerrar{flex:none;display:flex;align-items:center;justify-content:center;width:44px;border:0;background:none;color:var(--fg3);cursor:pointer;}
 .clase-apoyo-cerrar .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;}
 .ramo-reordering .clase-apoyo{display:none;}
+/* La clase como casilla de la grilla (Inicio en escritorio y la vista previa
+   del profesor). El puente cruza el espacio entre columnas con el mismo tinte;
+   la etiqueta va encima del título y "Ver clase" a la altura de la barra del
+   ramo, así las dos tarjetas terminan en la misma línea. */
+.clase-apoyo.en-casilla{position:relative;align-items:center;border-top:0;border-radius:10px;padding:20px 8px 20px 16px;}
+.clase-apoyo.en-casilla.a-la-derecha{border-radius:0 10px 10px 0;}
+.clase-apoyo.en-casilla.a-la-izquierda{border-radius:10px 0 0 10px;}
+.clase-apoyo.en-casilla.a-la-derecha::before,.clase-apoyo.en-casilla.a-la-izquierda::after{content:'';position:absolute;top:0;bottom:0;width:26px;background:inherit;pointer-events:none;}
+.clase-apoyo.en-casilla.a-la-derecha::before{right:100%;}
+.clase-apoyo.en-casilla.a-la-izquierda::after{left:100%;}
+.clase-apoyo.en-casilla .clase-apoyo-abrir{padding:0;align-self:stretch;}
+.clase-apoyo.en-casilla .clase-apoyo-texto{gap:0;}
+.clase-apoyo.en-casilla .ca-cabeza{position:relative;transform:translateY(var(--ajuste-titulo,0px));}
+.clase-apoyo.en-casilla .ca-cabeza small{position:absolute;left:0;bottom:100%;margin-bottom:3px;white-space:nowrap;}
+.clase-apoyo.en-casilla .ca-cabeza strong{font-size:1rem;font-weight:650;line-height:1.3;}
+.clase-apoyo.en-casilla .ca-pie{position:relative;margin-top:6px;transform:translateY(var(--ajuste-datos,0px));}
+.clase-apoyo.en-casilla .clase-apoyo-datos{font-size:.6875rem;line-height:1.4;}
+.clase-apoyo.en-casilla .clase-apoyo-ver{display:block;position:absolute;left:0;top:calc(100% + 8px);font-size:.6875rem;font-weight:700;color:var(--primary);}
+/* 44px = alto del título más los datos: logo y texto se leen como un bloque. */
+.clase-apoyo.en-casilla .clase-apoyo-logo{width:44px;height:44px;border-radius:10px;margin-right:22px;}
+.clase-apoyo.en-casilla .clase-apoyo-cerrar{position:absolute;top:4px;right:4px;width:32px;height:32px;}
+/* Vista previa del profesor: una réplica mínima de Inicio, sin datos reales. */
+.profesor-vista-previa{display:grid;gap:8px;}
+.vista-marco{min-width:0;overflow:hidden;}
+.vista-grilla{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 26px;width:620px;}
+.vista-ramo{position:relative;display:flex;align-items:center;gap:10px;padding:20px 12px 20px 14px;border-radius:10px 0 0 10px;background:color-mix(in srgb,var(--primary) 6%,var(--bg2));min-width:0;}
+.vista-celular .vista-ramo{border-radius:10px 10px 0 0;}
+.vista-ramo::before{content:'';position:absolute;left:0;top:calc(50% - 20px);height:40px;width:2px;border-radius:2px;background:var(--fg3);}
+.vista-ramo-texto{flex:1;min-width:0;display:flex;flex-direction:column;}
+.vista-ramo-nombre{font-size:1rem;font-weight:500;line-height:1.3;color:var(--fg);overflow-wrap:anywhere;}
+.vista-ramo-meta{margin-top:6px;font-size:.6875rem;line-height:1.4;color:var(--fg3);font-variant-numeric:tabular-nums;}
+.vista-ramo-nota{font-size:1.375rem;font-weight:700;color:var(--fg3);}
+.vista-ramo-barra{position:absolute;left:14px;right:30px;top:calc(50% + 34px);height:2px;background:var(--border);}
+.vista-grilla .clase-apoyo,.vista-celular .clase-apoyo{margin:0;animation:none;}
+.vista-celular{max-width:380px;}
+.clase-apoyo-abrir[tabindex="-1"]{cursor:default;}
+
 .ramo-reordering .ramo-row.tiene-clase-apoyo{background:transparent;margin-bottom:10px;border-radius:6px;}
 .clase-apoyo-porque{margin:14px 0 0;font-size:.8125rem;color:var(--fg2);}
 .clase-apoyo-porque summary{cursor:pointer;font-weight:600;color:var(--fg);}
@@ -904,22 +944,6 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .profesor-flyer-preview{border:1px solid var(--border);border-radius:10px;overflow:hidden;max-height:220px;}
 .profesor-flyer-preview[hidden],.profesor-form button[hidden]{display:none;}
 .profesor-flyer-preview img{display:block;width:100%;max-height:220px;object-fit:contain;}
-.profesor-vista{position:relative;isolation:isolate;overflow:hidden;border:1px solid var(--border2);border-radius:12px;padding:14px 14px 14px 20px;min-width:0;}
-/* La vista previa repite la línea editorial de Inicio, no el levantamiento de
-   una tarjeta clickeable: aquí se revisa contenido, no se abre otra pantalla. */
-.profesor-vista::before{content:'';position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--primary);pointer-events:none;transform:scaleY(.6);transform-origin:center;transition:transform var(--motion-fast) var(--ease-out),filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
-@media(hover:hover) and (pointer:fine){
-  .profesor-vista:hover::before{transform:scaleX(1.65) scaleY(1);filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--primary) 35%,transparent);}
-}
-@media(prefers-reduced-motion:reduce){
-  .profesor-vista::before{transform:none;transition:filter var(--motion-fast) var(--ease-out),box-shadow var(--motion-fast) var(--ease-out);}
-}
-@media(prefers-reduced-motion:reduce) and (hover:hover) and (pointer:fine){
-  .profesor-vista:hover::before{transform:none;filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--primary) 35%,transparent);}
-}
-.profesor-vista small{display:block;color:var(--fg3);font-size:.6875rem;margin-bottom:8px;}
-.profesor-vista strong{display:block;color:var(--fg);overflow-wrap:anywhere;}
-.profesor-vista p{margin:6px 0 0;color:var(--fg2);font-size:.8125rem;line-height:1.45;overflow-wrap:anywhere;}
 /* La página de Clases: la lista de anuncios con sus números. */
 .clase-lista{display:grid;gap:12px;margin:4px 0 16px;}
 .clase-card{border:1px solid var(--border);border-radius:14px;padding:14px;min-width:0;}
@@ -1675,21 +1699,17 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
   .modal-sheet{max-width:600px;}
   #home-ramos{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;}
   #home-ramos .ramo-row{margin:0;}
-  /* En la grilla el banner no puede ir pegado a su tarjeta: ocupa todo el
-     ancho bajo la fila, y el ramo conserva su tinte para decir de quién es. */
-  /* El ramo se estira hasta el fondo de su fila y cruza el espacio entre filas,
-     así su tinte se une con el del banner sin una franja negra entremedio. La
-     esquina del banner bajo el ramo queda recta para que se lean como una pieza. */
-  /* El ramo conserva su alto (la barra de avance y la línea de color quedan
-     donde siempre) y un puente del mismo tinte baja desde su borde hasta el
-     banner. El alto del puente lo mide marketplace.js en pantalla. */
-  #home-ramos .ramo-row.tiene-clase-apoyo{margin:0;border-radius:10px 10px 0 0;}
-  #home-ramos .ramo-row.tiene-clase-apoyo::after{content:'';position:absolute;left:0;right:0;top:100%;height:var(--puente-apoyo,0px);background:inherit;pointer-events:none;}
-  #home-ramos .clase-apoyo.en-grilla{grid-column:1/-1;margin:0;border-radius:10px;border-top:0;position:relative;}
-  #home-ramos .clase-apoyo.en-grilla[data-col="primera"]{border-top-left-radius:0;}
-  #home-ramos .clase-apoyo.en-grilla[data-col="ultima"]{border-top-right-radius:0;}
-  #home-ramos.ramo-reordering .ramo-row.tiene-clase-apoyo{margin:0;border-radius:10px;}
-  #home-ramos.ramo-reordering .ramo-row.tiene-clase-apoyo::after{display:none;}
+  /* En la grilla la clase ocupa la casilla vecina del ramo (a la derecha, o a
+     la izquierda si el ramo está en la última columna). Los dos se estiran al
+     alto de la fila y centran su texto; marketplace.js mide y alinea el título
+     con el nombre del ramo y los datos con su sigla. */
+  #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo{align-self:stretch;margin:0;align-items:center;padding-top:20px;padding-bottom:20px;}
+  #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo.junto-der{border-radius:10px 0 0 10px;}
+  #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo.junto-izq{border-radius:0 10px 10px 0;}
+  #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo .ramo-progress-track{bottom:auto;top:calc(50% + var(--info-mitad,22px) + 12px);}
+  #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo .ramo-band{top:calc(50% - var(--info-mitad,22px));bottom:auto;height:calc(2 * var(--info-mitad,22px));transform:none;}
+  #home-ramos .clase-apoyo.en-casilla{align-self:stretch;margin:0;animation:none;}
+  #home-ramos.ramo-reordering .ramo-row.tiene-clase-apoyo{border-radius:6px;background:transparent;margin:0;}
 }
 
 @media(min-width:1024px){

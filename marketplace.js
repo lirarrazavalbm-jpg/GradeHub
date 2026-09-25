@@ -1484,7 +1484,12 @@ function activarBuscadorRamosClase(form,campo){
   if(!buscar||!oculto||!lista||!elegidasCaja||typeof buscar.addEventListener!=='function')return;
   let indice={};
   const leer=()=>String(oculto.value||'').split(',').map(x=>siglaAnuncio(x)).filter(Boolean);
-  const escribir=siglas=>{oculto.value=siglas.join(', ');pintarElegidas();};
+  const escribir=siglas=>{
+    oculto.value=siglas.join(', ');pintarElegidas();
+    // El campo oculto no dispara eventos solo: se avisa para que la vista
+    // previa muestre el ramo elegido.
+    try{if(typeof Event==='function'&&oculto.dispatchEvent)oculto.dispatchEvent(new Event('input',{bubbles:true}));}catch(e){}
+  };
   const nombreDe=sg=>indice[sg]||'';
   const pintarElegidas=()=>{
     const siglas=leer();
@@ -1547,7 +1552,9 @@ async function renderLogoProfesor(caja){
     <p class="profesor-estado" role="status" aria-live="polite"></p>`;
   const aviso=caja.querySelector('.profesor-estado');
   const ruta=perfil.logo_path||perfil.logo_aprobado_path;
-  if(ruta)urlFlyerClase(ruta).then(url=>{const img=caja.querySelector('.profesor-logo-img');if(url&&img&&img.isConnected)img.innerHTML=`<img src="${esc(url)}" alt="">`;});
+  const avisarLogo=url=>{try{document.dispatchEvent(new CustomEvent('gradehub:logo-profesor',{detail:url||''}));}catch(e){}};
+  if(ruta)urlFlyerClase(ruta).then(url=>{const img=caja.querySelector('.profesor-logo-img');if(url&&img&&img.isConnected)img.innerHTML=`<img src="${esc(url)}" alt="">`;avisarLogo(url);});
+  else avisarLogo('');
   caja.querySelector('input[type=file]').addEventListener('change',async e=>{
     const file=e.target.files&&e.target.files[0];if(!file)return;
     aviso.textContent='Subiendo logo…';
@@ -1607,15 +1614,53 @@ function renderBorradorProfesor(raiz,anuncio){
       <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
       <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">
       <p class="profesor-info">GradeHub calcula el público sin mostrarte notas ni identidades. Esta pantalla aún no cotiza ni cobra campañas.</p>
-      <h3>3. Revisa antes de enviar</h3><div class="profesor-vista"><small>Publicidad · Clase particular</small><strong></strong><p></p></div>
+      <h3>3. Así la van a ver</h3>
+      <div class="profesor-vista-previa" id="pr-vista">
+        <p class="profesor-info">En computador, en la casilla de al lado del ramo del estudiante:</p>
+        <div class="vista-marco"><div class="vista-grilla"><div class="vista-ramo"><div class="vista-ramo-texto"><b class="vista-ramo-nombre">Tu ramo</b><span class="vista-ramo-meta">Sigla · 30% evaluado</span></div><span class="vista-ramo-nota">—</span><i class="vista-ramo-barra"></i></div><aside class="clase-apoyo en-casilla a-la-derecha vista-anuncio"></aside></div></div>
+        <p class="profesor-info">En celular, bajo el ramo:</p>
+        <div class="vista-celular"><div class="vista-ramo"><div class="vista-ramo-texto"><b class="vista-ramo-nombre">Tu ramo</b><span class="vista-ramo-meta">Sigla · 30% evaluado</span></div><span class="vista-ramo-nota">—</span></div><aside class="clase-apoyo vista-anuncio"></aside></div>
+        <p class="profesor-info">La nota del ramo es la de cada estudiante: acá va una raya porque cambia para cada uno.</p>
+      </div>
       <div class="modal-btns"><button class="btn-cancel" id="pr-guardar" type="button">Guardar borrador</button><button class="btn-confirm" id="pr-enviar" type="button">Enviar a revisión</button></div>
       <p class="profesor-estado" role="status" aria-live="polite">${id?'Borrador recuperado. Puedes seguir editándolo.':'Completa la clase para guardar el primer borrador.'}</p>
     </form>`;
   const form=raiz.querySelector('#profesor-borrador'),campo=id=>form.querySelector('#pr-'+id),estado=form.querySelector('.profesor-estado');
   let procesando=false;
-  const vista=form.querySelector('.profesor-vista');
-  const actualizarVista=()=>{vista.querySelector('strong').textContent=campo('titulo').value.trim()||'Tu clase';vista.querySelector('p').textContent=campo('descripcion').value.trim()||'Aquí aparecerá lo que ofreces.';};
-  form.addEventListener('input',actualizarVista);actualizarVista();
+  // Vista previa en vivo: el mismo contenido que verá el estudiante en Inicio,
+  // armado con lo que el profesor lleva escrito y su logo.
+  const vista=form.querySelector('#pr-vista');
+  let logoVista='';
+  const valorCampo=id=>{const el=campo(id);return el?String(el.value||''):'';};
+  const actualizarVista=()=>{
+    if(!vista||typeof vista.querySelectorAll!=='function')return;
+    const borrador={titulo:valorCampo('titulo').trim(),precio_clp:pesosDeTexto(valorCampo('precio')),
+      modalidad:valorCampo('modalidad'),modalidad_otra:valorCampo('modalidad-otra').trim(),
+      ubicacion:valorCampo('ubicacion'),ubicacion_otra:valorCampo('ubicacion-otra').trim()};
+    vista.querySelectorAll('.vista-anuncio').forEach(el=>{el.innerHTML=contenidoRecomendacionClase(borrador,{logoUrl:logoVista,vistaPrevia:true});});
+    const sigla=valorCampo('siglas').split(',').map(x=>siglaAnuncio(x)).filter(Boolean)[0]||'';
+    const nombre=sigla?(nombresRamosParaClases(valorCampo('tenant')||S.tenant)[sigla]||sigla):'Tu ramo';
+    vista.querySelectorAll('.vista-ramo-nombre').forEach(el=>{el.textContent=nombre;});
+    vista.querySelectorAll('.vista-ramo-meta').forEach(el=>{el.textContent=(sigla||'Sigla')+' · 30% evaluado';});
+    ajustarMiniatura();
+  };
+  // La versión de computador se dibuja a un ancho real de pantalla y se achica
+  // entera para caber en el formulario: el profesor ve las proporciones que
+  // verá el estudiante, no una versión apretada.
+  const ANCHO_VISTA_PC=620;
+  const ajustarMiniatura=()=>{
+    const g=vista&&typeof vista.querySelector==='function'?vista.querySelector('.vista-grilla'):null;
+    const marco=g&&g.parentElement;
+    if(!g||!marco||!marco.clientWidth)return;
+    g.style.zoom=String(Math.min(1,marco.clientWidth/ANCHO_VISTA_PC));
+  };
+  if(vista&&typeof ResizeObserver==='function')new ResizeObserver(()=>{if(form.isConnected)ajustarMiniatura();}).observe(vista);
+  form.addEventListener('input',actualizarVista);form.addEventListener('change',actualizarVista);
+  // El logo vive en la ficha: se pide una vez y se actualiza cuando lo cambian.
+  if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('gradehub:logo-profesor',e=>{
+    if(!form.isConnected)return;logoVista=e.detail||'';actualizarVista();
+  });
+  actualizarVista();
   campoPesos(campo('precio'));
   // "Otra…" abre su casilla de texto; cualquier otra opción la esconde.
   [['modalidad','modalidad-otra'],['ubicacion','ubicacion-otra']].forEach(([sel,texto])=>{
@@ -1811,10 +1856,30 @@ function observarRecomendacionClase(banner,anuncio,sigla){
 
 // La llama renderHome después de pintar los ramos. Si los anuncios todavía no
 // llegan, los pide y vuelve a pintar solo el banner cuando llegan.
+// La línea bajo el título: formato, lugar y precio, lo que el profesor llenó.
+function lineaDatosClase(a){
+  return [formatoClase(a),a&&Number(a.precio_clp)>0?pesosClase(a.precio_clp):''].filter(Boolean).join(' · ');
+}
+// El mismo contenido para el banner de Inicio y para la vista previa que ve el
+// profesor al armar su clase: lo que ve uno es exactamente lo que verá el otro.
+function contenidoRecomendacionClase(anuncio,{logoUrl='',vistaPrevia=false}={}){
+  const a=anuncio||{},linea=lineaDatosClase(a);
+  return `<button type="button" class="clase-apoyo-abrir"${vistaPrevia?' tabindex="-1" aria-hidden="true"':''}>
+      <span class="clase-apoyo-texto">
+        <span class="ca-cabeza"><small>Publicidad · Clase particular</small><strong>${esc(a.titulo||'Tu clase')}</strong></span>
+        <span class="ca-pie"><span class="clase-apoyo-datos">${esc(linea||'Formato · Lugar · Precio')}</span><span class="clase-apoyo-ver">Ver clase ›</span></span>
+      </span>
+    </button>
+    <span class="clase-apoyo-logo" aria-hidden="true"${logoUrl?'':' hidden'}>${logoUrl?`<img src="${esc(logoUrl)}" alt="">`:''}</span>
+    <button type="button" class="clase-apoyo-cerrar" aria-label="No mostrar esta clase"${vistaPrevia?' tabindex="-1"':''}>
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>`;
+}
+
 function pintarRecomendacionClase(contenedor){
   if(!RECOMENDACIONES_CLASES_ACTIVAS||!contenedor||!currentUser||!supabaseClient||!S||!S.tenant)return;
   contenedor.querySelectorAll('.clase-apoyo').forEach(b=>b.remove());
-  contenedor.querySelectorAll('.tiene-clase-apoyo').forEach(f=>{f.classList.remove('tiene-clase-apoyo');f.style.removeProperty('--puente-apoyo');});
+  contenedor.querySelectorAll('.tiene-clase-apoyo').forEach(f=>{f.classList.remove('tiene-clase-apoyo','junto-der','junto-izq');f.style.removeProperty('--info-mitad');});
   if(anunciosRecomendacion.tenant!==S.tenant||anunciosRecomendacion.lista===null){
     cargarAnunciosRecomendacion(S.tenant,()=>{if(contenedor.isConnected)pintarRecomendacionClase(contenedor);});
     return;
@@ -1828,22 +1893,14 @@ function pintarRecomendacionClase(contenedor){
   const banner=document.createElement('aside');
   banner.className='clase-apoyo';
   banner.setAttribute('aria-label','Publicidad: clase particular');
-  banner.innerHTML=`<button type="button" class="clase-apoyo-abrir">
-      <small>Publicidad · Clase particular</small>
-      <strong>${esc(anuncio.titulo||'Clase particular')}</strong>
-      <span>Para ${esc(ramo.nombre)} · ${pesosClase(anuncio.precio_clp)} por clase</span>
-    </button>
-    <span class="clase-apoyo-logo" aria-hidden="true" hidden></span>
-    <button type="button" class="clase-apoyo-cerrar" aria-label="No mostrar esta clase">
-      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-    </button>`;
+  banner.innerHTML=contenidoRecomendacionClase(anuncio);
   banner.querySelector('.clase-apoyo-abrir').addEventListener('click',()=>{
     registrarMetricaAnuncio(anuncio.id,'clic',sigla);
     abrirClaseRecomendada(anuncio,ramo,sigla);
   });
   banner.querySelector('.clase-apoyo-cerrar').addEventListener('click',()=>{
     descartarRecomendacionClase(anuncio.id);
-    fila.classList.remove('tiene-clase-apoyo');
+    fila.classList.remove('tiene-clase-apoyo','junto-der','junto-izq');
     banner.remove();
     if(typeof showToast==='function')showToast('Listo, no te la volvemos a mostrar');
   });
@@ -1858,36 +1915,39 @@ function pintarRecomendacionClase(contenedor){
   }).catch(()=>{});
   fila.classList.add('tiene-clase-apoyo');
   // En celular la lista es una columna y el banner va pegado bajo su ramo. En
-  // la grilla de escritorio iría a la casilla de al lado como si fuera otro
-  // ramo, así que ocupa todo el ancho bajo la fila visual donde está el ramo.
+  // la grilla de escritorio la clase ocupa UNA casilla: la de la derecha del
+  // ramo, o la de su izquierda si el ramo está en la última columna. Así ramo
+  // y clase quedan siempre en la misma fila, juntos.
   const filas=[...contenedor.querySelectorAll('.ramo-row')];
   let columnas=1;
   try{const cs=getComputedStyle(contenedor);if(cs.display==='grid')columnas=cs.gridTemplateColumns.split(' ').filter(Boolean).length||1;}catch(e){}
-  const i=filas.indexOf(fila),fin=Math.min(filas.length-1,i-i%columnas+columnas-1);
   if(columnas>1){
-    // La columna del ramo decide qué esquina del banner se une a él.
-    banner.classList.add('en-grilla');
-    banner.dataset.col=i%columnas===0?'primera':i%columnas===columnas-1?'ultima':'medio';
-  }
-  filas[fin].after(banner);
-  if(columnas>1)unirRamoConBanner(contenedor,fila,banner);
+    const derecha=filas.indexOf(fila)%columnas<columnas-1;
+    banner.classList.add('en-casilla',derecha?'a-la-derecha':'a-la-izquierda');
+    fila.classList.add(derecha?'junto-der':'junto-izq');
+    if(derecha)fila.after(banner);else fila.before(banner);
+    alinearRecomendacionConRamo(contenedor,fila,banner);
+  }else fila.after(banner);
   observarRecomendacionClase(banner,anuncio,sigla);
 }
 
-// En la grilla, el espacio entre el ramo y el banner depende del alto de la
-// fila (otro ramo de la misma fila puede ser más alto) y del gap. Se mide en
-// pantalla y se vuelve a medir si cambia el tamaño; al desaparecer el banner
-// se deja de observar.
-function unirRamoConBanner(contenedor,fila,banner){
+// En la grilla el ramo y su clase se estiran al alto de la fila. El texto de
+// los dos queda centrado, y el título de la clase se alinea con el nombre del
+// ramo y sus datos con la sigla. Se mide en pantalla porque un nombre de ramo
+// puede ocupar una o dos líneas; se vuelve a medir si cambia el tamaño.
+function alinearRecomendacionConRamo(contenedor,fila,banner){
+  let obs=null;
   const medir=()=>{
     if(!banner.isConnected||!fila.isConnected){if(obs)obs.disconnect();return;}
-    // offsetTop no cuenta transformaciones: la animación de entrada del banner
-    // lo desplaza unos píxeles y con getBoundingClientRect quedaba una rendija.
-    const h=banner.offsetTop-(fila.offsetTop+fila.offsetHeight);
-    fila.style.setProperty('--puente-apoyo',Math.max(0,Math.round(h))+'px');
+    const info=fila.querySelector('.ramo-info');
+    if(info)fila.style.setProperty('--info-mitad',(info.offsetHeight/2)+'px');
+    const nombre=fila.querySelector('.ramo-name'),meta=fila.querySelector('.ramo-meta');
+    const cabeza=banner.querySelector('.ca-cabeza strong'),pie=banner.querySelector('.clase-apoyo-datos');
+    banner.style.setProperty('--ajuste-titulo','0px');banner.style.setProperty('--ajuste-datos','0px');
+    if(nombre&&cabeza)banner.style.setProperty('--ajuste-titulo',Math.round(nombre.getBoundingClientRect().top-cabeza.getBoundingClientRect().top)+'px');
+    if(meta&&pie)banner.style.setProperty('--ajuste-datos',Math.round(meta.getBoundingClientRect().top-pie.getBoundingClientRect().top)+'px');
   };
-  const obs=typeof ResizeObserver==='function'?new ResizeObserver(medir):null;
-  if(obs)obs.observe(contenedor);
+  if(typeof ResizeObserver==='function'){obs=new ResizeObserver(medir);obs.observe(contenedor);}
   requestAnimationFrame(medir);
 }
 
