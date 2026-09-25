@@ -798,7 +798,7 @@ body.ramo-drag-active{overflow:hidden;-webkit-user-select:none;user-select:none;
 .chevron-r{color:var(--fg3);font-size:0.875rem;opacity:.5;margin-left:2px;}
 /* La grilla de la vista previa copia la de Inicio en computador aunque el
    profesor esté en un teléfono: es una miniatura de esa pantalla. */
-.vista-grilla .ramo-row.tiene-clase-apoyo{align-self:stretch;align-items:center;padding-top:20px;padding-bottom:20px;border-radius:10px 0 0 10px;}
+.vista-grilla .ramo-row.tiene-clase-apoyo{align-self:stretch;align-items:center;padding-top:20px;padding-bottom:20px;min-height:124px;border-radius:10px 0 0 10px;}
 .vista-grilla .ramo-row.tiene-clase-apoyo .ramo-progress-track{bottom:auto;top:calc(50% + var(--info-mitad,22px) + 12px);}
 .vista-grilla .ramo-row.tiene-clase-apoyo .ramo-band{top:calc(50% - var(--info-mitad,22px));bottom:auto;height:calc(2 * var(--info-mitad,22px));transform:none;}
 /* EMPTY */
@@ -1108,6 +1108,16 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .profesor-detalle-quitar{min-height:40px;padding:0 10px;border:1px solid var(--border2);border-radius:10px;background:none;color:var(--fg2);font:inherit;font-size:.75rem;font-weight:600;cursor:pointer;}
 .profesor-detalle-quitar:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .profesor-detalle-agregar{margin-top:8px;width:100%;}
+.profesor-linea{margin:0;padding:0;border:0;min-width:0;}
+.profesor-linea legend{padding:0;}
+.profesor-linea-opciones{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.profesor-linea-opcion{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border:1px solid var(--border2);border-radius:10px;font-size:.8125rem;color:var(--fg2);cursor:pointer;max-width:100%;}
+.profesor-linea-opcion span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.profesor-linea-opcion b{color:var(--fg);font-weight:600;}
+.profesor-linea-opcion:has(input:checked){border-color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent);}
+.profesor-linea-opcion:has(input:disabled){opacity:.5;cursor:default;}
+.profesor-form .profesor-linea-opcion input{flex:none;width:18px;height:18px;min-height:0;margin:0;padding:0;border:0;box-shadow:none;background:none;accent-color:var(--primary);}
+.profesor-linea-opcion span{min-width:0;}
 .profesor-logo{display:flex;align-items:center;gap:12px;margin-top:14px;}
 .profesor-logo-img{flex:none;width:52px;height:52px;border-radius:12px;overflow:hidden;border:1px dashed var(--border2);background:var(--bg2);}
 .profesor-logo-img img{display:block;width:100%;height:100%;object-fit:contain;}
@@ -1702,7 +1712,9 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
      la izquierda si el ramo está en la última columna). Los dos se estiran al
      alto de la fila y centran su texto; marketplace.js mide y alinea el título
      con el nombre del ramo y los datos con su sigla. */
-  #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo{align-self:stretch;margin:0;align-items:center;padding-top:20px;padding-bottom:20px;}
+  /* 124px de mínimo: con un ramo de nombre corto la fila quedaba en 88px y
+     "Publicidad" y "Ver clase ›" tocaban los bordes de la clase. */
+  #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo{align-self:stretch;margin:0;align-items:center;padding-top:20px;padding-bottom:20px;min-height:124px;}
   #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo.junto-der{border-radius:10px 0 0 10px;}
   #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo.junto-izq{border-radius:0 10px 10px 0;}
   #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo .ramo-progress-track{bottom:auto;top:calc(50% + var(--info-mitad,22px) + 12px);}

@@ -53,18 +53,41 @@ chk('un detalle no puede traer campos extra al servidor',Object.keys(conCampos({
 chk('el catálogo muestra el texto de "Otra"',run("formatoClase({modalidad:'otra',modalidad_otra:'Grupos de 3',ubicacion:'online'})")==='Grupos de 3 · Online');
 chk('y nada si no se indicó',run("formatoClase({modalidad:null,ubicacion:null})")==='');
 
+console.log('\n=== Qué va bajo el título ===');
+const conDetalle={detalles:[{etiqueta:'Duración',valor:'90 minutos'}]};
+chk('sin elegir nada queda null: lo de siempre',conCampos(conDetalle).datos.linea_datos===null);
+chk('se puede elegir un detalle',JSON.stringify(conCampos({...conDetalle,linea_datos:['precio','detalle:Duración']}).datos.linea_datos)==='["precio","detalle:Duración"]');
+chk('un detalle que no existe no pasa',!conCampos({...conDetalle,linea_datos:['detalle:Incluye']}).ok);
+chk('ninguno no pasa',!conCampos({linea_datos:[]}).ok);
+chk('más de tres no pasa',!conCampos({...conDetalle,modalidad:'grupal',ubicacion:'online',linea_datos:['modalidad','ubicacion','precio','detalle:Duración']}).ok);
+chk('una clave inventada no pasa',!conCampos({linea_datos:['href']}).ok);
+const aviso={modalidad:'grupal',ubicacion:'online',precio_clp:15000,detalles:[{etiqueta:'Duración',valor:'90 minutos'}]};
+ctx.__aviso=aviso;
+chk('un anuncio viejo muestra formato, lugar y precio',run('lineaDatosClase(__aviso)')==='Grupal · Online · $15.000');
+ctx.__aviso={...aviso,linea_datos:['detalle:Duración','precio']};
+chk('lo elegido sale en el orden del formulario',run('lineaDatosClase(__aviso)')==='$15.000 · 90 minutos');
+ctx.__aviso={...aviso,linea_datos:['detalle:Borrado','precio']};
+chk('un detalle que ya no está se salta',run('lineaDatosClase(__aviso)')==='$15.000');
+
 console.log('\n=== Si el servidor todavía no tiene las columnas nuevas ===');
 (async()=>{
   const pedidas=[];
+  // Falta la capa más vieja (detalles): se baja capa por capa hasta los campos de siempre.
   ctx.__hacer=async campos=>{pedidas.push(campos);return campos.includes('detalles')?{data:null,error:{code:'42703',message:'column tutor_anuncios.detalles does not exist'}}:{data:[1],error:null};};
   const r=await run('consultaCamposClase(__hacer,"id,titulo")');
-  chk('repite la consulta con los campos de siempre',r.data&&pedidas.length===2&&pedidas[1]==='id,titulo');
+  chk('repite la consulta con los campos de siempre',r.data&&pedidas[pedidas.length-1]==='id,titulo');
+  const antes=pedidas.length;
   await run('consultaCamposClase(__hacer,"id,titulo")');
-  chk('y no vuelve a pedir las nuevas',pedidas.length===3&&pedidas[2]==='id,titulo');
-  run('columnasNuevasClase=true');
+  chk('y no vuelve a pedir las nuevas',pedidas.length===antes+1&&pedidas[antes]==='id,titulo');
+  // Falta solo la última (linea_datos): se conservan formato, lugar y detalles.
+  run('capasColumnasClase=CAPAS_CAMPOS_CLASE.length');pedidas.length=0;
+  ctx.__hacer=async campos=>{pedidas.push(campos);return campos.includes('linea_datos')?{data:null,error:{code:'PGRST204',message:"Could not find the 'linea_datos' column"}}:{data:[1],error:null};};
+  await run('consultaCamposClase(__hacer,"id")');
+  chk('sin linea_datos se siguen pidiendo los detalles',pedidas.length===2&&pedidas[1]==='id,modalidad_otra,ubicacion_otra,detalles');
+  run('capasColumnasClase=CAPAS_CAMPOS_CLASE.length');
   ctx.__hacer=async()=>({data:null,error:{code:'42501',message:'permission denied'}});
   const otro=await run('consultaCamposClase(__hacer,"id")');
-  chk('un error distinto no se disfraza de columna faltante',otro.error&&otro.error.code==='42501'&&run('columnasNuevasClase')===true);
+  chk('un error distinto no se disfraza de columna faltante',otro.error&&otro.error.code==='42501'&&run('capasColumnasClase')===run('CAPAS_CAMPOS_CLASE.length'));
   terminar();
 })();
 
