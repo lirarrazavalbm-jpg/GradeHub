@@ -2520,9 +2520,9 @@ const PRESETS_UAI={
   //
   // OJO CON EL NOMBRE: el programa dice "Civilización Contemporánea II" y la
   // malla UAI tiene "Civilización Contemporánea", sin número, en primer
-  // semestre. Se transcribe con el nombre del documento, que es el que manda;
-  // si resulta que son el mismo ramo o que falta el I en la malla, eso se
-  // arregla en la malla y no renombrando la pauta.
+  // semestre. Se transcribe con el nombre del documento, que es el que manda.
+  // Resultó que faltaba la II en la malla —el CORE dura dos semestres— y se
+  // arregló allá: va en 2° de Ingeniería Comercial (mallas-uai.js).
   //
   // El documento se contradice sobre cuántas evaluaciones de lectura son: el
   // encabezado de la ponderación declara "cantidad: 10" y el cuerpo habla de

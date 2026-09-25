@@ -45,13 +45,9 @@ const enAlgunaMalla=new Set(Object.values(M).flatMap(c=>Object.values(c).flat())
 // Pautas con programa oficial en mano de un ramo que las mallas NO tienen. No
 // es una excepción para que el test pase: es la lista de huecos detectados, y
 // cada una dice qué falta comprobar. Si se resuelve, se saca de acá.
-const FUERA_DE_MALLA={
-  // Programa CORE oficial 2026-2 de un estudiante de Comercial que lo cursa en
-  // SEGUNDO semestre. Las mallas solo tienen "Civilización Contemporánea", sin
-  // número, en primero, y ponen "Literatura y Humanidades" como el CORE de
-  // segundo. Falta confirmar si la secuencia CORE cambió o si hay más de una.
-  'Civilización Contemporánea II':'la malla no tiene la II; ver si la secuencia CORE cambió',
-};
+// ("Civilización Contemporánea II" estuvo acá hasta el 2026-09-25: el CORE dura
+// dos semestres y la malla dibuja uno. Ya va en 2° de Comercial.)
+const FUERA_DE_MALLA={};
 const huerfanas=presets.filter(p=>!enAlgunaMalla.has(p)&&!FUERA_DE_MALLA[p]);
 chk('cada pauta UAI corresponde a un ramo de alguna malla'+(huerfanas.length?' → '+huerfanas.join(' · '):''),
   presets.length>0 && huerfanas.length===0);
@@ -59,6 +55,11 @@ chk('cada pauta UAI corresponde a un ramo de alguna malla'+(huerfanas.length?' �
 // mallas en vez de seguir agregando excepciones.
 chk(`los huecos conocidos entre pauta y malla siguen siendo pocos (${Object.keys(FUERA_DE_MALLA).length})`,
   Object.keys(FUERA_DE_MALLA).length<=3);
+
+// Un estudiante de Comercial la cursa en 2° y hay programa oficial 2026-2: si
+// sale de la malla, vuelve a llegarle sin pauta y sin sugerencia.
+chk('Comercial sugiere Civilización Contemporánea II en 2°',
+  (M['UAI-INGENIERIA-COMERCIAL']['2']||[]).includes('Civilización Contemporánea II'));
 
 // El plan común de ingeniería de la UAI está en seis mallas transcritas aparte.
 // Industrial tiene que calzar con ellas o una de las dos fuentes está mal.
