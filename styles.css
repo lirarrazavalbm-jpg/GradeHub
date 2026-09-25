@@ -2571,3 +2571,13 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
   color:var(--primary);font-size:0.75rem;font-weight:650;cursor:pointer;position:relative;}
 .ag-rest-ver:hover{text-decoration:underline;}
 .ag-rest-toggle{margin-left:auto;border:none;background:transparent;color:var(--primary);font-size:0.75rem;font-weight:650;cursor:pointer;padding:2px 4px;}
+
+/* Verificación en dos pasos: la puerta de la página de administración. */
+.dos-pasos{display:grid;gap:10px;max-width:420px;}
+.dos-pasos h3{margin:0;font-size:1rem;}
+.dos-pasos-form{display:grid;gap:8px;}
+.dos-pasos-form input{font-size:1.25rem;letter-spacing:.2em;font-variant-numeric:tabular-nums;}
+.dos-pasos-qr{width:180px;height:180px;background:#fff;border-radius:10px;padding:8px;}
+.dos-pasos-secreto{font-size:.8125rem;overflow-wrap:anywhere;user-select:all;}
+.dos-pasos-estado{margin:0;font-size:.8125rem;color:var(--fg2);}
+
