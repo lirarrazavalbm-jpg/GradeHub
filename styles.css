@@ -702,6 +702,9 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .clase-apoyo-abrir strong{font-size:.875rem;line-height:1.3;color:var(--fg);letter-spacing:-.01em;}
 .clase-apoyo-abrir span{font-size:.75rem;color:var(--fg2);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
 .clase-apoyo-abrir:focus-visible,.clase-apoyo-cerrar:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;border-radius:8px;}
+.clase-apoyo-logo{flex:none;align-self:center;width:40px;height:40px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--bg2);}
+.clase-apoyo-logo[hidden]{display:none;}
+.clase-apoyo-logo img{display:block;width:100%;height:100%;object-fit:contain;}
 .clase-apoyo-cerrar{flex:none;display:flex;align-items:center;justify-content:center;width:44px;border:0;background:none;color:var(--fg3);cursor:pointer;}
 .clase-apoyo-cerrar .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;}
 .ramo-reordering .clase-apoyo{display:none;}

@@ -1594,6 +1594,7 @@ function pintarRecomendacionClase(contenedor){
       <strong>Puede servirte apoyo para ${esc(ramo.nombre)}</strong>
       <span>${esc(anuncio.titulo||'Clase particular')} · ${pesosClase(anuncio.precio_clp)} por clase</span>
     </button>
+    <span class="clase-apoyo-logo" aria-hidden="true" hidden></span>
     <button type="button" class="clase-apoyo-cerrar" aria-label="No mostrar esta clase">
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>`;
@@ -1607,6 +1608,15 @@ function pintarRecomendacionClase(contenedor){
     banner.remove();
     if(typeof showToast==='function')showToast('Listo, no te la volvemos a mostrar');
   });
+  // El logo del profesor, si tiene uno aprobado. Llega después: el banner no
+  // espera a Storage para aparecer, y sin logo simplemente no se muestra.
+  logosDeAnuncios([anuncio.id]).then(async logos=>{
+    const ruta=logos.get(anuncio.id),caja=banner.querySelector('.clase-apoyo-logo');
+    if(!ruta||!caja)return;
+    const url=await urlFlyerClase(ruta);
+    if(!url||!banner.isConnected)return;
+    caja.innerHTML=`<img src="${esc(url)}" alt="">`;caja.hidden=false;
+  }).catch(()=>{});
   fila.classList.add('tiene-clase-apoyo');
   // En celular la lista es una columna y el banner va pegado bajo su ramo. En
   // la grilla de escritorio iría a la casilla de al lado como si fuera otro
