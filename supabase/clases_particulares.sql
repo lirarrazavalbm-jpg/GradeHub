@@ -464,9 +464,32 @@ create table if not exists public.anuncio_alcance (
 alter table public.anuncio_alcance enable row level security;
 revoke all on public.anuncio_alcance from public, anon, authenticated;
 
--- Devuelve true solo la PRIMERA vez que esta cuenta ve el aviso. El cliente no
--- decide si cuenta o no: el servidor lo resuelve con la llave primaria.
-create or replace function public.registrar_alcance_anuncio(p_anuncio_id uuid)
+-- POR QUÉ CAMINO LLEGÓ. Cada camino se cobra distinto (docs/marketplace-clases.md):
+-- la recomendación al precio del público segmentado, el catálogo a una fracción
+-- de la base que sube si la persona buscó el ramo. Una cuenta sigue siendo UNA
+-- fila por campaña; si llega por un camino más caro, la fila sube y nunca baja.
+-- Aditivo: una fila anterior queda como 'recomendacion', que era el único
+-- camino que existía cuando se diseñó la tabla. No guarda qué se buscó.
+alter table public.anuncio_alcance add column if not exists canal text not null default 'recomendacion'
+  check (canal in ('recomendacion', 'busqueda', 'lista'));
+
+create or replace function public.rango_canal_alcance(p_canal text)
+returns integer
+language sql
+immutable
+as $$
+  select case p_canal when 'recomendacion' then 3 when 'busqueda' then 2 when 'lista' then 1 else 0 end;
+$$;
+
+-- Devuelve true la PRIMERA vez que esta cuenta ve el aviso, o cuando llega por
+-- un camino más caro que el registrado. El cliente no decide si cuenta: el
+-- servidor lo resuelve con la llave primaria y el rango del canal.
+--
+-- La firma cambió de (uuid) a (uuid, text). La vieja se borra antes: con las
+-- dos, una llamada de un solo argumento sería ambigua. El default mantiene a
+-- los clientes que todavía llaman sin canal.
+drop function if exists public.registrar_alcance_anuncio(uuid);
+create or replace function public.registrar_alcance_anuncio(p_anuncio_id uuid, p_canal text default 'recomendacion')
 returns boolean
 language plpgsql
 security definer
@@ -478,6 +501,9 @@ begin
   if auth.uid() is null then
     raise exception 'hay que haber iniciado sesión';
   end if;
+  if public.rango_canal_alcance(p_canal) = 0 then
+    raise exception 'canal inválido';
+  end if;
 
   if not exists (
     select 1 from public.tutor_anuncios
@@ -488,9 +514,11 @@ begin
     raise exception 'anuncio no disponible';
   end if;
 
-  insert into public.anuncio_alcance (anuncio_id, user_id)
-  values (p_anuncio_id, auth.uid())
-  on conflict (anuncio_id, user_id) do nothing;
+  insert into public.anuncio_alcance (anuncio_id, user_id, canal)
+  values (p_anuncio_id, auth.uid(), p_canal)
+  on conflict (anuncio_id, user_id) do update
+    set canal = excluded.canal
+    where public.rango_canal_alcance(excluded.canal) > public.rango_canal_alcance(public.anuncio_alcance.canal);
 
   get diagnostics filas = row_count;
   return filas = 1;
@@ -520,6 +548,33 @@ begin
 end;
 $$;
 
+-- Lo mismo, separado por camino: es lo que el panel necesita para aplicar el
+-- precio de cada uno. Siguen siendo solo totales de la propia campaña.
+create or replace function public.alcance_anuncio_por_canal(p_anuncio_id uuid)
+returns table (canal text, cuentas integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+  if not exists (
+    select 1 from public.tutor_anuncios
+    where id = p_anuncio_id and autor_id = auth.uid()
+  ) then
+    raise exception 'no puedes ver el alcance de este anuncio';
+  end if;
+
+  return query
+  select a.canal, count(*)::integer
+  from public.anuncio_alcance a
+  where a.anuncio_id = p_anuncio_id
+  group by a.canal;
+end;
+$$;
+
 -- El registro existe para poder cobrar, así que se borra cuando ya no hay nada
 -- que cobrar: 90 días después de que la campaña venció, como dice
 -- docs/marketplace-clases.md. La ejecuta el equipo (o pg_cron) y devuelve
@@ -546,8 +601,11 @@ begin
 end;
 $$;
 
-revoke all on function public.registrar_alcance_anuncio(uuid) from public, anon;
+revoke all on function public.registrar_alcance_anuncio(uuid, text) from public, anon;
 revoke all on function public.alcance_anuncio(uuid) from public, anon;
+revoke all on function public.alcance_anuncio_por_canal(uuid) from public, anon;
+revoke all on function public.rango_canal_alcance(text) from public, anon;
 revoke all on function public.limpiar_alcance_anuncios(integer) from public, anon, authenticated;
-grant execute on function public.registrar_alcance_anuncio(uuid) to authenticated;
+grant execute on function public.registrar_alcance_anuncio(uuid, text) to authenticated;
 grant execute on function public.alcance_anuncio(uuid) to authenticated;
+grant execute on function public.alcance_anuncio_por_canal(uuid) to authenticated;

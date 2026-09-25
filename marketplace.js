@@ -619,7 +619,7 @@ function renderCatalogoClases(busqueda=''){
   raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',()=>{
     registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
   }));
-  observarImpresionesClases(raiz,anuncios);
+  observarImpresionesClases(raiz,anuncios,busqueda);
   raiz.querySelectorAll('[data-flyer]').forEach(async caja=>{
     const url=await urlFlyerClase(caja.dataset.flyer);
     if(!caja.isConnected)return;
@@ -638,7 +638,9 @@ function renderCatalogoClases(busqueda=''){
 // a que el servidor distinga por qué camino llegó cada cuenta.
 const IMPRESION_VISIBLE=0.5,IMPRESION_MS=1000;
 let impresionesCatalogo=new Set(),observadorCatalogo=null;
-function observarImpresionesClases(raiz,anuncios){
+function observarImpresionesClases(raiz,anuncios,busqueda=''){
+  // Si la persona escribió algo, las tarjetas que ve son resultado de buscar.
+  const canal=String(busqueda||'').trim()?'busqueda':'lista';
   if(observadorCatalogo){observadorCatalogo.disconnect();observadorCatalogo=null;}
   if(typeof IntersectionObserver!=='function'||!raiz)return;
   const sigla=new Map((anuncios||[]).map(a=>[a.id,(a.ramos_siglas||[])[0]||'']));
@@ -646,13 +648,14 @@ function observarImpresionesClases(raiz,anuncios){
   observadorCatalogo=new IntersectionObserver(entradas=>{
     for(const e of entradas){
       const id=e.target.dataset.catalogoAnuncio;
-      if(!id||impresionesCatalogo.has(id))continue;
+      if(!id||impresionesCatalogo.has(id+':'+canal))continue;
       if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
         if(!timers.has(id))timers.set(id,setTimeout(()=>{
           timers.delete(id);
-          if(!e.target.isConnected||impresionesCatalogo.has(id))return;
-          impresionesCatalogo.add(id);
+          if(!e.target.isConnected||impresionesCatalogo.has(id+':'+canal))return;
+          impresionesCatalogo.add(id+':'+canal);
           registrarMetricaAnuncio(id,'impresion',sigla.get(id));
+          registrarAlcanceAnuncio(id,canal);
         },IMPRESION_MS));
       }else if(timers.has(id)){clearTimeout(timers.get(id));timers.delete(id);}
     }
@@ -727,14 +730,20 @@ async function resumenMetricasAnuncio(anuncioId){
 // El Set evita repetir la llamada dentro de la misma visita. No es la
 // deduplicación: esa la hace la llave primaria en el servidor, que es la que
 // cuenta para facturar. Acá solo se ahorra red.
+// El canal dice por qué camino llegó la cuenta —recomendación, búsqueda o
+// lista— porque cada uno se cobra distinto. Es una palabra: lo que la persona
+// escribió en el buscador no viaja. El servidor guarda el camino más caro y
+// nunca lo baja, así que mandar uno más barato después no descuenta nada.
+const CANALES_ALCANCE=new Set(['recomendacion','busqueda','lista']);
 const ALCANCE_REGISTRADO=new Set();
-async function registrarAlcanceAnuncio(anuncioId){
-  if(!supabaseClient||!currentUser||!anuncioId||ALCANCE_REGISTRADO.has(anuncioId))return false;
-  ALCANCE_REGISTRADO.add(anuncioId);
-  const {data,error}=await supabaseClient.rpc('registrar_alcance_anuncio',{p_anuncio_id:anuncioId});
+async function registrarAlcanceAnuncio(anuncioId,canal='recomendacion'){
+  const clave=anuncioId+':'+canal;
+  if(!supabaseClient||!currentUser||!anuncioId||!CANALES_ALCANCE.has(canal)||ALCANCE_REGISTRADO.has(clave))return false;
+  ALCANCE_REGISTRADO.add(clave);
+  const {data,error}=await supabaseClient.rpc('registrar_alcance_anuncio',{p_anuncio_id:anuncioId,p_canal:canal});
   if(error){
     // Si falló, no quedó registrado: se puede reintentar en la próxima vista.
-    ALCANCE_REGISTRADO.delete(anuncioId);
+    ALCANCE_REGISTRADO.delete(clave);
     console.warn('No se pudo registrar el alcance del anuncio:',error.message||error);
     return false;
   }
@@ -868,10 +877,21 @@ const ESTADOS_ANUNCIO={
 // costando $49.000" a quien todavía espera el visto bueno es inventarle un
 // gasto que no existe.
 const ANUNCIO_YA_SE_MOSTRO=new Set(['publicado','pausado','expirado']);
+// `porCanal` es null si el servidor todavía no separa caminos (SQL sin
+// aplicar): ahí se usa el total de siempre y todo se cobra como segmentado,
+// que es como se cotizaba antes. Nunca se inventa un reparto.
 async function metricasDeAnuncio(anuncio){
-  const salida={alcance:null,cortes:[]};
+  const salida={alcance:null,porCanal:null,cortes:[]};
   if(!anuncio||!ANUNCIO_YA_SE_MOSTRO.has(anuncio.estado))return salida;
   try{
+    const {data,error}=await supabaseClient.rpc('alcance_anuncio_por_canal',{p_anuncio_id:anuncio.id});
+    if(!error&&Array.isArray(data)){
+      const por={recomendacion:0,busqueda:0,lista:0};
+      data.forEach(f=>{if(por[f.canal]!==undefined&&Number.isInteger(f.cuentas))por[f.canal]=f.cuentas;});
+      salida.porCanal=por;salida.alcance=por.recomendacion+por.busqueda+por.lista;
+    }
+  }catch(e){}
+  if(salida.alcance===null)try{
     const {data,error}=await supabaseClient.rpc('alcance_anuncio',{p_anuncio_id:anuncio.id});
     if(!error&&Number.isInteger(data))salida.alcance=data;
   }catch(e){}
@@ -891,9 +911,11 @@ function totalesDeCortes(cortes){
 // Lo que lleva gastado esta campaña, con la misma tarifa que cotiza al armarla.
 // Solo se muestra cuando hay alcance medido: inventar un costo sobre un número
 // que no existe es peor que no mostrarlo.
-function costoDeAnuncio(anuncio,alcance){
+function costoDeAnuncio(anuncio,alcance,porCanal=null){
   if(alcance===null||!criteriosClaseValidos(anuncio&&anuncio.criterios))return null;
   const ramos=Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.length:1;
+  if(porCanal)return cotizarCampanaClases(anuncio.criterios,null,{alcanzados:porCanal.recomendacion,ramos,
+    catalogo:{lista:porCanal.lista,busqueda:porCanal.busqueda}});
   return cotizarCampanaClases(anuncio.criterios,null,{alcanzados:alcance,ramos});
 }
 
@@ -1015,6 +1037,16 @@ function tarjetaPanelClase(a,pesos,ahora){
   </article>`;
 }
 
+// De dónde sale "Va costando", camino por camino, con el precio de cada uno.
+function desgloseCostoClase(c,pesos){
+  const partes=[`${pesos(c.cargoFijo)} de publicación`];
+  const n=x=>x===1?'1 persona':`${x} personas`;
+  if(c.alcanzados)partes.push(`${n(c.alcanzados)} de tu público × ${pesos(c.precioPorCuenta)}`);
+  if(c.catalogoCobrado&&c.catalogoCobrado.busqueda)partes.push(`${n(c.catalogoCobrado.busqueda)} que buscaron el ramo × ${pesos(c.precioCatalogoBusqueda)}`);
+  if(c.catalogoCobrado&&c.catalogoCobrado.lista)partes.push(`${n(c.catalogoCobrado.lista)} que la vieron en el catálogo × ${pesos(c.precioCatalogoLista)}`);
+  return partes.join(' + ')+'.';
+}
+
 function seccionPanelClases(titulo,lista,pesos,ahora,vacio){
   if(!lista.length&&!vacio)return '';
   return `<section class="clases-seccion"><h3>${titulo}${lista.length?` <span>${lista.length}</span>`:''}</h3>
@@ -1067,14 +1099,14 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   // dice y las otras siguen andando.
   const medidas=await Promise.all(conNumeros.map(async a=>{
     const m=await metricasDeAnuncio(a);
-    return {a,alcance:m.alcance,totales:totalesDeCortes(m.cortes),hayCortes:m.cortes.length>0,costo:costoDeAnuncio(a,m.alcance)};
+    return {a,alcance:m.alcance,porCanal:m.porCanal,totales:totalesDeCortes(m.cortes),hayCortes:m.cortes.length>0,costo:costoDeAnuncio(a,m.alcance,m.porCanal)};
   }));
   for(const d of medidas){
     const caja=raiz.querySelector(`[data-metricas="${d.a.id}"]`);
     if(!caja||!caja.isConnected)continue;
     caja.innerHTML=cifrasClase(d,pesos)+embudoClase(d.totales)+
       (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró, los clics y los contactos aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
-      (d.costo?`<p class="clase-sin-datos">${pesos(d.costo.cargoFijo)} de publicación${d.costo.alcanzados?` + ${pesos(d.costo.precioPorCuenta)} por cada una de las ${d.costo.alcanzados} personas`:''}.</p>`:'');
+      (d.costo?`<p class="clase-sin-datos">${desgloseCostoClase(d.costo,pesos)}</p>`:'');
   }
 
   // El resumen suma solo las clases activas: es "cómo me va ahora". Suma lo que
