@@ -22,7 +22,7 @@ chk('pero una palabra suelta no se ofrece como sigla',!buscar('hola').some(x=>/U
 chk('vacío no muestra nada',buscar('  ').length===0);
 
 const valida=siglas=>vm.runInContext(`validarBorradorClase({tenant:'uc',ramos_siglas:${JSON.stringify(siglas)},criterios:{promedioMenorA:5,avanceMinimo:20},
-  precio_clp:15000,titulo:'Clases de Cálculo',descripcion:'Repasamos ejercicios y preparamos evaluaciones.',contacto_tipo:'email',contacto_valor:'a@b.cl'})`,ctx);
+  precio_clp:15000,titulo:'Clases de Cálculo',descripcion:'Repasamos ejercicios y preparamos evaluaciones.',contacto_tipo:'whatsapp',contacto_valor:'+56 9 1234 5678'})`,ctx);
 chk('un ramo por anuncio: uno pasa',valida(['MAT1620']).ok);
 chk('dos no pasan, y el mensaje dice qué hacer',(r=>!r.ok&&/otro anuncio/.test(r.error))(valida(['MAT1610','MAT1620'])));
 chk('ninguno tampoco',!valida([]).ok);
