@@ -221,6 +221,14 @@ $$;
 alter table public.tutor_anuncios add column if not exists linea_datos text[]
   check (public.linea_datos_clase_valida(linea_datos));
 
+-- CLASES GRATIS. Pedido de Lucas del 2026-09-25: $0 es una clase gratis y se
+-- muestra como "Gratis". Relaja la restricción; toda fila existente sigue
+-- siendo válida. Si en producción la restricción tiene otro nombre, el drop no
+-- la encuentra y $0 sigue rechazándose al guardar: se nota al tiro.
+alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_precio_clp_check;
+alter table public.tutor_anuncios add constraint tutor_anuncios_precio_clp_check
+  check (precio_clp = 0 or precio_clp between 1000 and 500000);
+
 -- UN RAMO POR ANUNCIO desde el 2026-09-25 (decisión de Lucas). Es un trigger
 -- y no un CHECK a propósito: un CHECK revisa la fila entera en cada UPDATE, y
 -- un anuncio antiguo con dos ramos quedaría trabado —ni pausarlo se podría—.

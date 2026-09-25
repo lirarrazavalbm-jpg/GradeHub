@@ -53,6 +53,17 @@ chk('un detalle no puede traer campos extra al servidor',Object.keys(conCampos({
 chk('el catálogo muestra el texto de "Otra"',run("formatoClase({modalidad:'otra',modalidad_otra:'Grupos de 3',ubicacion:'online'})")==='Grupos de 3 · Online');
 chk('y nada si no se indicó',run("formatoClase({modalidad:null,ubicacion:null})")==='');
 
+console.log('\n=== Clase gratis ===');
+chk('un borrador guardado con $0 se reabre con $0, no vacío',run("textoPesosEscrito(0)")==='$0'&&run("textoPesosEscrito(null)")==='');
+chk('$0 se escribe como $0',run("textoPesosEscrito('0')")==='$0'&&run("pesosDeTexto('$0')")===0);
+chk('$0 pasa como clase gratis',conCampos({precio_clp:0}).ok&&conCampos({precio_clp:0}).datos.precio_clp===0);
+chk('entre $1 y $999 no pasa',!conCampos({precio_clp:500}).ok&&!conCampos({precio_clp:1}).ok);
+chk('un campo vacío no es gratis',!conCampos({precio_clp:NaN}).ok);
+ctx.__gratis={precio_clp:0,modalidad:'grupal'};
+chk('el estudiante lee "Gratis"',run('precioClase(__gratis)')==='Gratis'&&run('lineaDatosClase(__gratis)')==='Grupal · Gratis');
+ctx.__sin={precio_clp:null};
+chk('sin precio no dice "Gratis"',run('esClaseGratis(__sin)')===false&&run("esClaseGratis({precio_clp:''})")===false);
+
 console.log('\n=== Qué va bajo el título ===');
 const conDetalle={detalles:[{etiqueta:'Duración',valor:'90 minutos'}]};
 chk('sin elegir nada queda null: lo de siempre',conCampos(conDetalle).datos.linea_datos===null);

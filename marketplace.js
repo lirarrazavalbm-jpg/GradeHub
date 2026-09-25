@@ -92,8 +92,10 @@ function validarBorradorClase(entrada){
       return {ok:false,campo:'linea_datos',error:`Elige de 1 a ${MAX_LINEA_CLASE} datos para mostrar bajo el título.`};
     linea_datos=claves;
   }
-  if(!Number.isSafeInteger(entrada.precio_clp)||entrada.precio_clp<1000||entrada.precio_clp>500000)
-    return {ok:false,campo:'precio_clp',error:'Indica el precio de la clase en pesos, entre $1.000 y $500.000.'};
+  // $0 es una clase gratis (pedido de Lucas del 2026-09-25). Entre $1 y $999
+  // no hay clase que valga eso: casi siempre es un precio a medio escribir.
+  if(!Number.isSafeInteger(entrada.precio_clp)||!(entrada.precio_clp===0||(entrada.precio_clp>=1000&&entrada.precio_clp<=500000)))
+    return {ok:false,campo:'precio_clp',error:'Indica el precio de la clase entre $1.000 y $500.000, o $0 si es gratis.'};
   const contacto_tipo=String(entrada.contacto_tipo||''),contacto_valor=String(entrada.contacto_valor||'').trim();
   if(!['whatsapp','instagram','email'].includes(contacto_tipo))return {ok:false,campo:'contacto_tipo',error:'Elige cómo te contactarán.'};
   if(contacto_valor.length<3||contacto_valor.length>160)return {ok:false,campo:'contacto_valor',error:'Revisa el dato de contacto.'};
@@ -122,7 +124,7 @@ const ERROR_CONTACTO_CLASE={
 // input de texto con teclado numérico y no `type=number`, que no acepta ni el
 // signo ni los puntos.
 function textoPesosEscrito(texto){
-  const digitos=String(texto||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,9);
+  const digitos=String(texto??'').replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,9);
   return digitos?'$'+digitos.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'';
 }
 function pesosDeTexto(texto){
@@ -279,6 +281,9 @@ async function guardarBorradorClase(entrada,id){
       return consulta.select(campos).single();
     };
     const {data,error}=await consultaCamposClase(escribir,CAMPOS_BORRADOR_CLASE);
+    // Sin el SQL que acepta $0, el servidor rechaza la clase gratis por su
+    // restricción de precio: se dice eso y no "revisa tu conexión".
+    if(error&&error.code==='23514'&&valido.datos.precio_clp===0)return {ok:false,campo:'precio_clp',error:'Todavía no podemos guardar clases gratis. Pon un precio por ahora.'};
     if(error&&error.message==='sin-linea-datos')return {ok:false,campo:'linea_datos',error:'Todavía no podemos guardar qué datos van bajo el título. Deja formato, dónde y precio por ahora.'};
     if(error&&error.message==='sin-columnas-nuevas')return {ok:false,campo:'detalles',error:'Todavía no podemos guardar "Otra", un formato vacío ni detalles a medida. Usa las opciones de la lista por ahora.'};
     if(error||!data||data.estado!=='borrador'){
@@ -816,6 +821,13 @@ function detallesClase(anuncio){
   return Array.isArray(d)?d.filter(x=>x&&typeof x.etiqueta==='string'&&typeof x.valor==='string'&&x.etiqueta.trim()&&x.valor.trim())
     .slice(0,MAX_DETALLES_CLASE):[];
 }
+// El precio de la clase como lo lee el estudiante: $0 es "Gratis".
+function esClaseGratis(anuncio){
+  return !!anuncio&&anuncio.precio_clp!==null&&anuncio.precio_clp!==''&&Number(anuncio.precio_clp)===0;
+}
+function precioClase(anuncio){
+  return esClaseGratis(anuncio)?'Gratis':pesosClase(anuncio&&anuncio.precio_clp);
+}
 function pesosClase(valor){
   // Nunca un precio negativo. El formulario ya exige entre 1.000 y 500.000, así
   // que un negativo solo puede venir de una fila corrupta o manipulada del
@@ -841,7 +853,7 @@ function tarjetaCatalogoClase(a,{sigla}={}){
         <p class="catalogo-clase-ramos"><strong>${esc(siglas)}</strong>${nombres?`<span>${esc(nombres)}</span>`:''}</p>
         <p class="catalogo-clase-descripcion">${esc(a.descripcion||'')}</p>
         ${detallesClase(a).length?`<dl class="catalogo-clase-detalles">${detallesClase(a).map(d=>`<div><dt>${esc(d.etiqueta)}</dt><dd>${esc(d.valor)}</dd></div>`).join('')}</dl>`:''}
-        <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${pesosClase(a.precio_clp)} <small>por clase</small></strong></div>
+        <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${esClaseGratis(a)?'Gratis':`${pesosClase(a.precio_clp)} <small>por clase</small>`}</strong></div>
         ${contacto?`<a class="catalogo-clase-contacto" href="${esc(contacto)}" ${a.contacto_tipo==='email'?'':'target="_blank" rel="noopener noreferrer"'} data-contactar="${esc(a.id)}" data-sigla="${esc(siglaMetrica)}">${esc(textoContactoClase(a.contacto_tipo))}</a>`
           :'<p class="catalogo-clase-sin-contacto">El contacto de esta clase necesita revisión.</p>'}
       </div>
@@ -1423,7 +1435,7 @@ function tarjetaPanelClase(a,pesos,ahora){
       <strong>${esc(a.titulo||'Sin título')}</strong>
       <span class="clase-estado clase-estado-${esc(vig)}">${esc(etiqueta)}</span>
     </div>
-    <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
+    <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${esClaseGratis(a)?' · Gratis':a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
     ${dias!==null?`<div class="clase-vigencia"><span>${dias===0?'Termina hoy':dias===1?'Queda 1 día':`Quedan ${dias} días`}</span>${avance!==null?`<div class="clase-riel"><i style="transform:scaleX(${avance.toFixed(3)})"></i></div>`:''}</div>`
       :`<p class="clase-card-detalle">${esc(detalle)}</p>`}
     <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
@@ -1676,7 +1688,7 @@ function renderBorradorProfesor(raiz,anuncio){
       <h3>1. Tu clase</h3>
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
       <label class="modal-label" for="pr-descripcion">Descripción</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required placeholder="Qué van a trabajar, cómo son tus clases y tu experiencia con el ramo.">${valor('descripcion')}</textarea>
-      <label class="modal-label" for="pr-precio">Precio por clase</label><input id="pr-precio" type="text" inputmode="numeric" autocomplete="off" required placeholder="$15.000" value="${esc(textoPesosEscrito(anuncio&&anuncio.precio_clp))}">
+      <label class="modal-label" for="pr-precio">Precio por clase</label><input id="pr-precio" type="text" inputmode="numeric" autocomplete="off" required placeholder="$15.000" aria-describedby="pr-precio-ayuda" value="${esc(textoPesosEscrito(anuncio&&anuncio.precio_clp))}"><p class="profesor-info" id="pr-precio-ayuda">Si la clase es gratis, pon $0: se mostrará como "Gratis".</p>
       <label class="modal-label" for="pr-modalidad">Formato · opcional</label><select id="pr-modalidad">${elegir([['','No indicar'],...MODALIDADES_CLASE,['otra','Otra…']],anuncio&&anuncio.modalidad||'')}</select>
       <input id="pr-modalidad-otra" type="text" maxlength="40" aria-label="Escribe el formato" placeholder="Ej. grupos de hasta 3" value="${valor('modalidad_otra')}" ${anuncio&&anuncio.modalidad==='otra'?'':'hidden'}>
       <label class="modal-label" for="pr-ubicacion">Dónde · opcional</label><select id="pr-ubicacion">${elegir([['','No indicar'],...UBICACIONES_CLASE,['otra','Otra…']],anuncio&&anuncio.ubicacion||'')}</select>
@@ -1996,7 +2008,7 @@ function opcionesLineaClase(anuncio){
   if(mod)out.push({clave:'modalidad',nombre:'Formato',texto:mod});
   const ubi=textoOpcionClase(UBICACIONES_CLASE,a.ubicacion,a.ubicacion_otra);
   if(ubi)out.push({clave:'ubicacion',nombre:'Dónde',texto:ubi});
-  if(Number(a.precio_clp)>0)out.push({clave:'precio',nombre:'Precio',texto:pesosClase(a.precio_clp)});
+  if(Number(a.precio_clp)>0||esClaseGratis(a))out.push({clave:'precio',nombre:'Precio',texto:precioClase(a)});
   detallesClase(a).forEach(d=>out.push({clave:'detalle:'+d.etiqueta.trim(),nombre:d.etiqueta.trim(),texto:d.valor.trim()}));
   return out;
 }
