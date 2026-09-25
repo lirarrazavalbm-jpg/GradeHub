@@ -394,7 +394,8 @@ function estadoLogoProfesor(perfil){
 // Logos sin fondo. Un PNG o WebP transparente se muestra tal cual, sin marco.
 // El riesgo es el contraste: un logo verde oscuro sin fondo desaparece en el
 // tema oscuro. Al cargar se mira la imagen en chico y, solo si es transparente
-// y no se leería sobre el fondo que tiene detrás, se le pone una placa.
+// y no se leería sobre el fondo que tiene detrás, se le dibuja un contorno
+// claro: sigue sin fondo, como lo subió el profesor.
 // Un logo con fondo propio (un JPG) no se toca.
 function imgLogoClase(url,extra=''){
   return `<img class="logo-clase" src="${esc(url)}" alt="" crossorigin="anonymous"${extra}>`;
@@ -431,10 +432,10 @@ function revisarLogoClase(img){
     if(px[k+3]<200){transparentes++;continue;}
     suma+=luminanciaClase(px[k],px[k+1],px[k+2]);visibles++;
   }
-  caja.classList.remove('logo-placa');
+  caja.classList.remove('logo-contorno');
   if(!visibles||transparentes/(px.length/4)<.1)return;
   const logo=suma/visibles,fondo=fondoDetrasClase(caja);
-  if((Math.max(logo,fondo)+.05)/(Math.min(logo,fondo)+.05)<2)caja.classList.add('logo-placa');
+  if((Math.max(logo,fondo)+.05)/(Math.min(logo,fondo)+.05)<2)caja.classList.add('logo-contorno');
 }
 if(typeof document!=='undefined'&&typeof document.addEventListener==='function'){
   // load y error no burbujean: se escuchan en captura para todos los logos.
@@ -1631,7 +1632,7 @@ async function renderLogoProfesor(caja){
   const aviso=caja.querySelector('.profesor-estado');
   const ruta=perfil.logo_path||perfil.logo_aprobado_path;
   const avisarLogo=url=>{try{document.dispatchEvent(new CustomEvent('gradehub:logo-profesor',{detail:url||''}));}catch(e){}};
-  if(ruta)urlFlyerClase(ruta).then(url=>{const img=caja.querySelector('.profesor-logo-img');if(url&&img&&img.isConnected)img.innerHTML=`<img src="${esc(url)}" alt="">`;avisarLogo(url);});
+  if(ruta)urlFlyerClase(ruta).then(url=>{const img=caja.querySelector('.profesor-logo-img');if(url&&img&&img.isConnected)img.innerHTML=imgLogoClase(url);avisarLogo(url);});
   else avisarLogo('');
   caja.querySelector('input[type=file]').addEventListener('change',async e=>{
     const file=e.target.files&&e.target.files[0];if(!file)return;
