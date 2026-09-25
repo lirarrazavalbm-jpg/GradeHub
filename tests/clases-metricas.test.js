@@ -53,8 +53,8 @@ const pintar=async(anuncios,datos)=>{
   console.log('=== Lo que se cobraría va al frente ===');
   const campana={dias:10,inicio:null,tope_clp:10000,dias_cobrados:6,vistas:120,aperturas:15,contactos:4,costo:6550,agotada:false};
   let html=await pintar([anuncio()],{alcance:18,campana});
-  chk('las personas vienen de la campaña, que es lo que se cobra',/Personas que la vieron/.test(html)&&/>120</.test(html));
-  chk('y también cuántas la abrieron y contactaron',/La abrieron/.test(html)&&/>15</.test(html)&&/Te contactaron/.test(html)&&/>4</.test(html));
+  chk('las personas vienen de la campaña, que es lo que se cobra',/Se mostró/.test(html)&&/>120<\/b><small>personas distintas/.test(html));
+  chk('y también cuántas la abrieron y contactaron',/La abrieron/.test(html)&&/>15<\/b><small>personas distintas/.test(html)&&/Te contactaron/.test(html)&&/>4<\/b><small>personas distintas/.test(html));
   chk('lo que va costando, contra el tope',/Va costando/.test(html)&&/6\.550/.test(html)&&/de tu tope de \$10\.000/.test(html));
   chk('con cada concepto escrito',/120 personas te vieron \(\$1\.200\)/.test(html)&&/4 te contactaron \(\$4\.000\)/.test(html)&&/6 días publicada \(\$600\)/.test(html));
   chk('y se aclara que en el piloto no se cobra',/no se cobra/.test(html));
@@ -64,41 +64,46 @@ const pintar=async(anuncios,datos)=>{
 
   console.log('\n=== Sin la campaña medida no se inventa un costo ===');
   html=await pintar([anuncio()],{alcance:18});
-  chk('muestra el alcance de siempre',/Personas que la vieron/.test(html)&&/>18</.test(html));
+  chk('muestra el alcance de siempre',/Se mostró/.test(html)&&/>18<\/b><small>personas distintas/.test(html));
   chk('pero ningún costo',!/Va costando/.test(html));
 
   html=await pintar([anuncio()],{alcance:18});
   console.log('\n=== Sin datos suficientes no se inventa un cero ===');
-  chk('no dice "0 clics" cuando el servidor no devolvió cortes',
-    !/Clics/.test(html) && /aparecen cuando hay suficientes datos/.test(html));
+  chk('no dice "0 veces" cuando el servidor no devolvió cortes',
+    !/La abrieron/.test(html) && !/veces en total/.test(html) && /aparecen cuando hay suficientes datos/.test(html));
 
   console.log('\n=== Con datos suficientes sí se muestran ===');
   html=await pintar([anuncio()],{alcance:40,cortes:[
     {dia:'2026-09-20',tipo:'clic',tenant:'uc',ramo_sigla:'MAT1620',eventos:22},
     {dia:'2026-09-20',tipo:'contacto',tenant:'uc',ramo_sigla:'MAT1620',eventos:17},
     {dia:'2026-09-19',tipo:'clic',tenant:'uc',ramo_sigla:'MAT1620',eventos:15}]});
-  chk('suma los clics de todos los días',/Clics/.test(html)&&/>37</.test(html));
-  chk('y los contactos',/Contactos/.test(html)&&/>17</.test(html));
+  chk('suma los clics de todos los días',/La abrieron/.test(html)&&/>37<\/b><small>veces en total/.test(html));
+  chk('y los contactos',/Te contactaron/.test(html)&&/>17<\/b><small>veces en total/.test(html));
+  chk('sin veces medidas, la etapa muestra solo las personas',/<span>Se mostró<\/span><div class="clase-par"><div><b>40<\/b><small>personas distintas<\/small><\/div><\/div>/.test(html));
 
   console.log('\n=== Con los totales del servidor ===');
   // 40 impresiones en total, aunque ningún día por separado llegue a quince.
   html=await pintar([anuncio({publicado_at:new Date(Date.now()-3*864e5).toISOString(),vence_at:new Date(Date.now()+27*864e5).toISOString()})],
     {porCanal:[{canal:'recomendacion',cuentas:6},{canal:'lista',cuentas:2}],
      totales:[{vista:'total',clave:'',tipo:'impresion',eventos:40},{vista:'total',clave:'',tipo:'contacto',eventos:16}]});
-  chk('usa el total aunque ningún día llegue a quince',/Se mostró/.test(html)&&/>40</.test(html));
+  chk('usa el total aunque ningún día llegue a quince',/Se mostró/.test(html)&&/>40<\/b><small>veces en total/.test(html));
   chk('dibuja la dona de cómo llegaron, con números escritos',/Cómo llegaron/.test(html)&&/Recomendado en Inicio/.test(html)&&/>6</.test(html));
   chk('el anillo de la campaña dice cuántos días quedan',/días quedan/.test(html));
   chk('un día sin datos suficientes no se dibuja como cero',/menos de 15 eventos/.test(html));
   chk('los días de campaña se cuentan',/días quedan/.test(html));
+  html=await pintar([anuncio()],{campana:{dias:10,inicio:null,tope_clp:null,dias_cobrados:2,vistas:30,aperturas:5,contactos:1,costo:1750,agotada:false},
+     totales:[{vista:'total',clave:'',tipo:'impresion',eventos:90},{vista:'total',clave:'',tipo:'clic',eventos:20}]});
+  chk('personas y veces de una misma etapa van juntas',/<span>Se mostró<\/span><div class="clase-par"><div><b>30<\/b><small>personas distintas<\/small><\/div><div><b>90<\/b><small>veces en total/.test(html)
+    &&/<span>La abrieron<\/span><div class="clase-par"><div><b>5<\/b><small>personas distintas<\/small><\/div><div><b>20<\/b><small>veces en total/.test(html));
 
   console.log('\n=== Lo que nadie vio todavía no tiene números ===');
   html=await pintar([anuncio({estado:'borrador',id:'b1'})],{alcance:99});
   chk('un borrador lo dice en vez de mostrar números',
-    /Todavía no se publica/.test(html) && !/Personas que la vieron/.test(html));
+    /Todavía no se publica/.test(html) && !/personas distintas/.test(html));
   // Y uno esperando aprobación tampoco: nunca se mostró, así que no pudo costar.
   html=await pintar([anuncio({estado:'en_revision',id:'r9'})],{alcance:99});
   chk('uno en revisión tampoco, ni alcance ni costo',
-    /Cuando lo aprobemos/.test(html) && !/Personas que la vieron/.test(html) && !/Va costando/.test(html));
+    /Cuando lo aprobemos/.test(html) && !/personas distintas/.test(html) && !/Va costando/.test(html));
 
   console.log('\n=== Cada anuncio con su estado ===');
   html=await pintar([anuncio({id:'p1'}),anuncio({id:'r1',estado:'en_revision',titulo:'Clases de Álgebra'})],{alcance:5});
@@ -107,7 +112,7 @@ const pintar=async(anuncios,datos)=>{
 
   console.log('\n=== Si no se puede medir, no se rellena con cero ===');
   html=await pintar([anuncio()],{alcance:null});
-  chk('un alcance desconocido sale como raya, no como 0',/Personas que la vieron/.test(html)&&/>—</.test(html));
+  chk('un alcance desconocido sale como raya, no como 0',/Se mostró/.test(html)&&/>—<\/b><small>personas distintas/.test(html));
   chk('y sin alcance no se afirma un costo',!/Va costando/.test(html));
 
   console.log('\n=== Administrar la campaña desde la página ===');

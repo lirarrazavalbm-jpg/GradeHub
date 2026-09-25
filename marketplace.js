@@ -1287,35 +1287,38 @@ function avanceCampanaAnuncio(a,ahora=Date.now()){
   return Math.min(Math.max((ahora-desde)/(hasta-desde),0),1);
 }
 
-// Una cifra con su nombre. Solo se pinta lo que se sabe: un tipo de evento sin
-// datos suficientes no aparece como 0, porque el servidor no devuelve cortes
-// con menos de quince eventos y "0 clics" ahí sería inventarlo.
+// Cada etapa con sus dos números juntos: cuántas personas distintas (lo que
+// se cobra) y cuántas veces en total (una persona puede verla en la mañana y
+// en la tarde). Separados en tarjetas sueltas no se entendía qué medía cada
+// uno. Solo se pinta lo que se sabe: el servidor no devuelve cortes con menos
+// de quince eventos, y "0 veces" ahí sería inventarlo.
 function cifrasClase({alcance,totales,hayCortes,campana,costo},pesos){
-  const f=[];
   const miles=n=>new Intl.NumberFormat('es-CL').format(n);
+  const veces=n=>hayCortes&&n?n:null;
   // Con la campaña medida, las personas vienen de ahí: son exactas y son lo
-  // que se cobra. Sin ella, el alcance de siempre.
-  const vieron=campana?campana.vistas:alcance;
-  f.push(['Personas que la vieron',vieron===null||vieron===undefined?'—':miles(vieron),'cuentas distintas']);
-  if(campana){
-    f.push(['La abrieron',miles(campana.aperturas),'personas distintas']);
-    f.push(['Te contactaron',miles(campana.contactos),'personas distintas']);
-  }
-  if(hayCortes&&totales.impresion)f.push(['Se mostró',miles(totales.impresion),'veces']);
-  // Sin la campaña medida quedan los eventos de siempre, que no son personas.
-  if(!campana&&hayCortes&&totales.clic)f.push(['Clics',miles(totales.clic),'veces']);
-  if(!campana&&hayCortes&&totales.contacto)f.push(['Contactos',miles(totales.contacto),'tocaron tu contacto']);
+  // que se cobra. Sin ella, el alcance de siempre, y abrir o contactar solo
+  // se saben como veces.
+  const etapas=[
+    ['Se mostró',campana?campana.vistas:alcance,veces(totales.impresion),true],
+    ['La abrieron',campana?campana.aperturas:null,veces(totales.clic),false],
+    ['Te contactaron',campana?campana.contactos:null,veces(totales.contacto),false]];
+  const mitad=(v,d)=>`<div><b>${v}</b><small>${d}</small></div>`;
+  const html=etapas.filter(([,p,v,siempre])=>siempre||p!==null&&p!==undefined||v!==null).map(([t,p,v])=>
+    `<div class="clase-etapa"><span>${t}</span><div class="clase-par">${
+      p!==null&&p!==undefined?mitad(miles(p),'personas distintas'):campana||!v?mitad('—','personas distintas'):''}${
+      v!==null?mitad(miles(v),'veces en total'):''}</div></div>`).join('');
+  const f=[];
   if(costo)f.push(['Va costando',pesos(costo.total),costo.tope!==null?`de tu tope de ${pesos(costo.tope)}`:'hasta ahora']);
   if(costo&&campana&&campana.contactos)f.push(['Por contacto',pesos(Math.round(costo.total/campana.contactos)),'lo que costó cada uno']);
-  return `<div class="clase-nums">${f.map(([t,v,d])=>
-    `<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`).join('')}</div>`;
+  return `<div class="clase-etapas">${html}</div>`+(f.length?`<div class="clase-nums">${f.map(([t,v,d])=>
+    `<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`).join('')}</div>`:'');
 }
 
 // De quienes la vieron, cuántos tocaron algo. Barras relativas a las
 // impresiones y dibujadas con scaleX, no con width.
 function embudoClase(totales){
   if(!totales.impresion)return '';
-  const filas=[['Se mostró',totales.impresion],['Clics',totales.clic],['Contactos',totales.contacto]].filter(([,n])=>n>0);
+  const filas=[['Se mostró',totales.impresion],['La abrieron',totales.clic],['Te contactaron',totales.contacto]].filter(([,n])=>n>0);
   if(filas.length<2)return '';
   return `<div class="clase-embudo" aria-label="De quienes vieron tu clase, cuántos avanzaron">${filas.map(([t,n])=>
     `<div class="clase-embudo-fila"><span>${t}</span><div class="clase-barra"><i style="transform:scaleX(${(n/totales.impresion).toFixed(3)})"></i></div><b>${n}</b></div>`).join('')}</div>`;
@@ -1477,7 +1480,7 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
        <div id="clases-kpis">${g.activos.length?'<p class="clase-sin-datos">Cargando números…</p>'
          :`<p class="clase-sin-datos">${g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
            :'Arma un borrador y mándalo a revisión. Cuando se publique, acá vas a ver cómo le va.'}</p>`}</div>
-       <p class="clase-privacidad">Los números son de cuentas distintas, nunca de personas con nombre. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
+       <p class="clase-privacidad">“Personas distintas” cuenta a cada cuenta una sola vez; “veces en total” suma cada vez que pasó. Nunca ves nombres. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
      </section>
      <div class="clases-acciones"><button type="button" class="btn-confirm" id="clase-nueva">Armar un borrador</button></div>`+
     seccionPanelClases('Publicadas',g.activos,pesos,ahora)+
@@ -1551,7 +1554,7 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
       busqueda:s.busqueda+d.porCanal.busqueda,lista:s.lista+d.porCanal.lista}),{recomendacion:0,busqueda:0,lista:0}):null;
     const alcanceTotal=conAlcance.length?conAlcance.reduce((n,d)=>n+d.alcance,0):null;
     kpis.innerHTML=cifrasClase({alcance:alcanceTotal,totales,hayCortes:activas.some(d=>d.hayCortes),campana,costo},pesos)
-      .replace('class="clase-nums"','class="clase-nums clases-kpis"')+
+      .replace('class="clase-etapas"','class="clase-etapas clases-kpis-etapas"').replace('class="clase-nums"','class="clase-nums clases-kpis"')+
       `<div class="viz-fila">${donaCanalesClase(porCanal)}${costoApiladoClase(costo,pesos)}</div>`+
       embudoClase(totales);
   }
