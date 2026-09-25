@@ -239,6 +239,25 @@ generaliza los tramos en vez de reemplazarlos por otro precio:
 El techo son tres veces la base: un recargo entero por cada palanca. Un promedio
 sobre 5,5 no cobra recargo porque no estrecha a nadie.
 
+**3. Quien la encuentra en el catálogo también se cobra, más barato.** Decisión
+de Lucas del 2026-09-25. El catálogo es abierto: cualquiera que tenga el ramo
+puede encontrar la clase, cumpla o no el público elegido. Esa persona no pasó
+por la segmentación, así que vale una fracción de la base que sube con la
+intención que mostró:
+
+```
+precio catálogo = base × (0,3 + 0,2 × intención)
+  intención = 0 si la vio recorriendo la lista   → $300
+  intención = 1 si llegó buscando el ramo         → $500
+```
+
+Nunca supera el precio segmentado. Una cuenta se cobra una sola vez por
+campaña, al precio mayor del camino por el que llegó. El presupuesto se consume
+primero en el público segmentado, después en quienes buscaron y al final en
+quienes recorrieron. El texto buscado no sale del navegador: viaja solo si fue
+lista o búsqueda. Registrar ese camino en el servidor requiere SQL aditivo;
+hasta entonces el catálogo mide impresiones pero no cobra alcance.
+
 **El presupuesto limita el alcance, no el cargo fijo**, que ya se pagó al
 publicar. Descontarlo del presupuesto haría que agregar un ramo bajara a cuánta
 gente llega el aviso, que es justo al revés de lo que el anunciante pidió.

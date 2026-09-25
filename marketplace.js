@@ -384,6 +384,27 @@ const TARIFA_CLASES={
 // quien le puede servir una clase; 2,5 puntos más abajo (3,0) es el máximo.
 const NOTA_SIN_RECARGO=5.5,RANGO_NOTA_RECARGO=2.5;
 
+// Quien encuentra la clase en el CATÁLOGO no pasó por la segmentación que el
+// profesor pagó: no se sabe si le va mal en el ramo, solo que tiene el ramo y
+// llegó hasta el anuncio. Por eso vale una fracción de la base, y la fracción
+// sube con la intención que mostró esa persona:
+//
+//   precio catálogo = base × (PISO + INTENCION × intención)
+//     intención = 0 si lo vio recorriendo la lista
+//     intención = 1 si llegó buscando el ramo (por nombre o sigla)
+//
+// Con la base de $1.000 da $300 recorriendo y $500 buscando. Nunca supera el
+// precio del público segmentado: pagar más por alguien que no calzó con la
+// regla que eligió el profesor sería absurdo. La intención se decide en el
+// navegador y viaja como un solo dato (lista o búsqueda); el texto buscado
+// no sale del dispositivo.
+const CATALOGO_PISO=0.3,CATALOGO_INTENCION=0.2;
+function precioCatalogoClase(base,redondeo,precioSegmentado,intencion){
+  const i=Math.min(Math.max(Number(intencion)||0,0),1);
+  const crudo=base*(CATALOGO_PISO+CATALOGO_INTENCION*i);
+  return Math.min(Math.round(crudo/redondeo)*redondeo,precioSegmentado);
+}
+
 // Cuánto más caro es un público más exigente, entre 0 (nada) y 2 (el doble del
 // recargo máximo por cada lado). Dos palancas, porque encarecen por motivos
 // distintos:
@@ -410,9 +431,13 @@ function exigenciaCriteriosClase(criterios){
 // fijo por publicar, que se paga aunque el aviso no lo vea nadie, y un precio
 // por cuenta alcanzada. `totalEstimado` es la suma solo cuando hay una medición
 // que sumar.
-function cotizarCampanaClases(criterios,tarifa,{elegibles=null,alcanzados=null,presupuestoClp=null,ramos=1}={}){
+function cotizarCampanaClases(criterios,tarifa,{elegibles=null,alcanzados=null,presupuestoClp=null,ramos=1,catalogo=null}={}){
   if(!criteriosClaseValidos(criterios))return null;
   if([elegibles,alcanzados,presupuestoClp].some(n=>n!==null&&(!Number.isSafeInteger(n)||n<0)))return null;
+  // `catalogo` = {lista, busqueda}: cuentas distintas alcanzadas por cada vía
+  // del catálogo, sin contar a quienes ya se cobraron por la segmentada.
+  const cat=catalogo===null?null:{lista:catalogo&&catalogo.lista||0,busqueda:catalogo&&catalogo.busqueda||0};
+  if(cat&&[cat.lista,cat.busqueda].some(n=>!Number.isSafeInteger(n)||n<0))return null;
   if(!Number.isSafeInteger(ramos)||ramos<1||ramos>12)return null;
   const t={...TARIFA_CLASES,...(tarifa&&typeof tarifa==='object'&&!Array.isArray(tarifa)?tarifa:{})};
   if(!['base','cargoFijo','porRamoExtra','redondeo'].every(k=>Number.isSafeInteger(t[k])&&t[k]>=0))return null;
@@ -429,12 +454,27 @@ function cotizarCampanaClases(criterios,tarifa,{elegibles=null,alcanzados=null,p
   const cupo=presupuestoClp===null?null:Math.floor(presupuestoClp/precioPorCuenta);
   const alcanceCotizado=elegibles===null?null:Math.min(elegibles,cupo??Infinity);
   const costoEstimado=alcanceCotizado===null?null:alcanceCotizado*precioPorCuenta;
-  const costoPorAlcance=alcanzados===null?null:Math.min(alcanzados,cupo??Infinity)*precioPorCuenta;
+  const precioCatalogoLista=precioCatalogoClase(t.base,t.redondeo,precioPorCuenta,0);
+  const precioCatalogoBusqueda=precioCatalogoClase(t.base,t.redondeo,precioPorCuenta,1);
+  const segmentadosCobrados=alcanzados===null?null:Math.min(alcanzados,cupo??Infinity);
+  // El presupuesto se consume en cobros enteros: primero el público
+  // segmentado, después quienes buscaron, al final quienes recorrieron. Lo que
+  // sobra y no alcanza para una cuenta más no autoriza cobrar una fracción.
+  let costoCatalogo=null,catalogoCobrado=null;
+  if(cat){
+    let queda=presupuestoClp===null?Infinity:presupuestoClp-(segmentadosCobrados||0)*precioPorCuenta;
+    const cobrar=(n,precio)=>{const k=Math.min(n,Math.floor(queda/precio));queda-=k*precio;return k;};
+    catalogoCobrado={busqueda:cobrar(cat.busqueda,precioCatalogoBusqueda),lista:cobrar(cat.lista,precioCatalogoLista)};
+    costoCatalogo=catalogoCobrado.busqueda*precioCatalogoBusqueda+catalogoCobrado.lista*precioCatalogoLista;
+  }
+  const costoSegmentado=segmentadosCobrados===null?null:segmentadosCobrados*precioPorCuenta;
+  const costoPorAlcance=costoSegmentado===null&&costoCatalogo===null?null:(costoSegmentado||0)+(costoCatalogo||0);
   const totalEstimado=costoEstimado===null?null:cargoFijo+costoEstimado;
   const totalPorAlcance=costoPorAlcance===null?null:cargoFijo+costoPorAlcance;
   if([costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance].some(n=>n!==null&&!Number.isSafeInteger(n)))return null;
   return {precioPorCuenta,cargoFijo,ramos,elegibles,alcanzados,alcanceCotizado,
-    costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance,presupuestoClp};
+    costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance,presupuestoClp,
+    precioCatalogoLista,precioCatalogoBusqueda,costoSegmentado,costoCatalogo,catalogoCobrado};
 }
 
 // Pide solo el catálogo público de una universidad. No recibe `ramos` como
