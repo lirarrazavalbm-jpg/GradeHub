@@ -1443,6 +1443,12 @@ function obRamosVisibles(sugeridos,elegidos){
 // Ingeniería UC se separa por majors después del plan común. La app conoce
 // muchos de esos ramos por su tabla de SCT, pero no puede asumir un major por
 // semestre: sería cargarle cursos que quizá nunca toma.
+// Sin nada donde buscar: ni malla base de la universidad ni malla propia de la
+// carrera. Mirar solo `mallaFor` dejaba a la UAI sin buscador y diciendo que no
+// había malla, cuando sus 23 mallas viven aparte en `mallas-uai.js`.
+function obSinCatalogo(){
+  return Object.keys(mallaFor(selectedTenant)||{}).length===0&&!mallaDeCarrera(selectedTenant,selectedCarrera);
+}
 function obCoursePickerIntro(sugeridos){
   if(selectedTenant==='uc'&&selectedCarrera==='ING-PC'&&selectedSem>=5){
     return 'Desde 5° Ingeniería UC se separa por major. Busca cada ramo por nombre o sigla de tu horario.';
@@ -1450,7 +1456,7 @@ function obCoursePickerIntro(sugeridos){
   // Hay universidades con carreras declarables pero sin malla ni catálogo
   // verificados. Un buscador sin datos ofrece una salida que no existe: acá se
   // parte directo por el único camino honesto, los ramos del horario.
-  if(Object.keys(mallaFor(selectedTenant)||{}).length===0&&selectedCarreraNombre){
+  if(obSinCatalogo()&&selectedCarreraNombre){
     return `Aún no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Agrega los ramos de tu horario a mano.`;
   }
   if(!selectedCarrera&&selectedCarreraNombre){
@@ -1476,7 +1482,7 @@ function renderObCoursePicker(){
   const box=document.getElementById('ob-course-picker');if(!box)return;
   const sugeridos=obRamosActuales();
   const visibles=obRamosVisibles(sugeridos,obRamos);
-  const sinCatalogoVerificado=Object.keys(mallaFor(selectedTenant)||{}).length===0;
+  const sinCatalogoVerificado=obSinCatalogo();
   const rows=visibles.length?visibles.map(nombre=>{
     // Si el ramo tiene dos códigos, la fila marca uno y ofrece cambiarlo. No se
     // pintan como dos ramos distintos: es el mismo, y marcar los dos sería
