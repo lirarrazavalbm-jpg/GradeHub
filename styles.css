@@ -1621,6 +1621,10 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
   .modal-sheet{max-width:600px;}
   #home-ramos{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;}
   #home-ramos .ramo-row{margin:0;}
+  /* En la grilla el banner no puede ir pegado a su tarjeta: ocupa todo el
+     ancho bajo la fila, y el ramo conserva su tinte para decir de quién es. */
+  #home-ramos .ramo-row.tiene-clase-apoyo{border-radius:10px;margin:0;}
+  #home-ramos .clase-apoyo.en-grilla{grid-column:1/-1;margin:0;border-radius:10px;border-top:0;}
 }
 
 @media(min-width:1024px){
