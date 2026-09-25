@@ -91,7 +91,7 @@ const main=fs.readFileSync(path.join(root,'render-main.js'),'utf8');
 const agenda=fs.readFileSync(path.join(root,'render-agenda.js'),'utf8');
 assert.match(main,/ramo-nota[^\n]+fmtPromedio\(avg\)/,'la tarjeta de Inicio usa el formato coherente');
 assert.match(main,/const s=fmtPromedio\(avg\)/,'la ficha del ramo usa el formato coherente');
-assert.match(main,/Promedio oficial: \$\{fmtPromedio\(g\)\}/,'el detalle del promedio general tampoco revive el 3,98');
+assert.match(main,/Promedio redondeado: \$\{fmtPromedio\(g\)\}/,'el detalle del promedio general tampoco revive el 3,98');
 assert.doesNotMatch(main,/Exacto: \$\{exacto\}/,'el detalle no vuelve a exigir centésimas después de aprobar');
 assert.match(agenda,/fmtPromedio\(e\.avg\)/,'la Agenda usa el formato coherente');
 assert.equal(ctx.run('fmtPromedio(simProjectedAvg(exacto))'),'4.0','el simulador parte del mismo resultado oficial');

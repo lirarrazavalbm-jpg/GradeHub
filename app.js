@@ -42,12 +42,26 @@ function definicionPreset(nombre,tenant,carrera){
   const clave=claveUc(nombre);
   return clave?PRESETS_UC[clave]:null;
 }
+// Una pauta que deja la mitad o más del ramo en grupos sin decir cuántas
+// evaluaciones llevan ("Evaluaciones sumativas 60%", sin casillas) no sirve para
+// saber qué nota necesitas: no dice qué viene ni cuánto pesa cada prueba.
+// Pedido de Lucas del 2026-09-25, a partir de Cálculo III. Esas no se cargan ni
+// se anuncian; el dato queda en data.js y vuelve solo si se completa.
+const PESO_MAX_GRUPOS_SIN_CANTIDAD=0.5;
+function pautaPresetSuficiente(evals){
+  const conPeso=(evals||[]).filter(e=>Number(e[1])>0);
+  const total=conPeso.reduce((n,e)=>n+Number(e[1]),0);
+  if(!total)return false;
+  const grupos=conPeso.filter(e=>e[2]&&e[2].lista&&!e[2].slots).reduce((n,e)=>n+Number(e[1]),0);
+  return grupos/total<PESO_MAX_GRUPOS_SIN_CANTIDAD;
+}
+function evalsDePreset(def){return Array.isArray(def)?def:(def&&def.evals||[]);}
 function periodoDePreset(def){return !Array.isArray(def)&&def&&typeof def.periodo==='string'?def.periodo:null;}
 function infoPeriodoPauta(r){
   if(!r||!r.origen||!r.origen.tenant)return null;
   const def=definicionPreset(r.nombre,r.origen.tenant,r.origen.carrera);
   const evals=Array.isArray(def)?def:(def&&def.evals||[]);
-  if(!evals.length)return null;
+  if(!evals.length||!pautaPresetSuficiente(evals))return null;
   const periodo=periodoDePreset(def);
   return {periodo,estadoPeriodo:estadoPeriodoPauta(periodo)};
 }
@@ -1180,8 +1194,8 @@ function descripcionMetodoGpa(ramos){
   const primero=sinCreditos[0];
   if(!primero)return{modo,texto:'Promedio simple.'};
   const faltante=sinCreditos.length===1
-    ?`falta el crédito oficial de ${primero.nombre}`
-    :`faltan los créditos oficiales de ${primero.nombre} y ${sinCreditos.length-1} más`;
+    ?`falta el crédito de ${primero.nombre}`
+    :`faltan los créditos de ${primero.nombre} y ${sinCreditos.length-1} más`;
   return{modo,texto:`Promedio simple porque ${faltante}. Cuando estén disponibles, se calculará ponderado por créditos.`};
 }
 function semester(){
@@ -1477,7 +1491,7 @@ function obCatalogMeta(r){
   const detalles=[r.sigla?esc(r.sigla):'',lugar];
   if(typeof r.creditos==='number')detalles.push(`${r.creditos} créditos`);
   if(r.escuela)detalles.push(esc(r.escuela));
-  if(r.tienePreset)detalles.push('con ponderaciones oficiales');
+  if(r.tienePreset)detalles.push('con pauta');
   return detalles.filter(Boolean).join(' · ');
 }
 function renderObCoursePicker(){
@@ -1690,7 +1704,7 @@ function mostrarRamosCargados(cantidad,oficiales){
   }
 
   const ramosTxt=`${cantidad} ramo${cantidad!==1?'s':''} agregado${cantidad!==1?'s':''}`;
-  const oficialesTxt=`${oficiales} ramo${oficiales!==1?'s':''} con pauta oficial`;
+  const oficialesTxt=`${oficiales} ramo${oficiales!==1?'s':''} con pauta`;
   const pendientes=cantidad-oficiales;
   let titulo,principal,detalle;
   if(oficiales===cantidad){
@@ -2403,7 +2417,7 @@ function openMallaModal(){
   const rows=_mallaList.map((n,i)=>`
     <label style="display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" checked onchange="toggleMalla(${i},this.checked)" style="width:18px;height:18px;flex-shrink:0;accent-color:var(--primary);"/>
-      <span style="font-size:0.875rem;color:var(--fg);">${esc(n)}${findPresetName(n,S.tenant,S.carrera)?' <svg class=\"ic\" style=\"color:var(--yellow);width:12px;height:12px;vertical-align:-1px;\" viewBox=\"0 0 24 24\" aria-label=\"Ponderaciones oficiales precargadas\"><path d=\"M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z\" fill=\"currentColor\" stroke=\"none\"/></svg>':''}</span>
+      <span style="font-size:0.875rem;color:var(--fg);">${esc(n)}${findPresetName(n,S.tenant,S.carrera)?' <svg class=\"ic\" style=\"color:var(--yellow);width:12px;height:12px;vertical-align:-1px;\" viewBox=\"0 0 24 24\" aria-label=\"Con pauta precargada\"><path d=\"M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z\" fill=\"currentColor\" stroke=\"none\"/></svg>':''}</span>
     </label>`).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17A2.5 2.5 0 0 1 6.5 2z"/></svg> Ramos de tu ${S.careerSemestre}° semestre</div>
@@ -2512,13 +2526,13 @@ function verCambioDePauta(ramoId){
   const fila=c=>{
     if(c.tipo==='peso')return `<li><b>${esc(c.nombre)}</b>: ${r2(c.antes)}% → <b>${r2(c.despues)}%</b></li>`;
     if(c.tipo==='llega')return `<li><b>${esc(c.nombre)}</b>: nueva, ${r2(c.despues)}%</li>`;
-    return `<li><b>${esc(c.nombre)}</b>: ya no está en la pauta oficial</li>`;
+    return `<li><b>${esc(c.nombre)}</b>: ya no está en la pauta del catálogo</li>`;
   };
   const aviso=cambio.notasFueraDePauta
     ? `<p class="modal-desc" style="margin-top:10px;">Alguna de las evaluaciones que desaparecen tiene notas tuyas. <b>No se borran</b>: quedan en tu ficha con sus notas y en 0%, así no mueven tu promedio.</p>`
     : `<p class="modal-desc" style="margin-top:10px;">Tus notas se conservan: se reconocen por el nombre de la evaluación.</p>`;
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">La pauta oficial cambió</div>
+    <div class="modal-title">La pauta de este ramo cambió</div>
     <p class="modal-desc">Esto es lo que cambia respecto de lo que tienes hoy en <b>${esc(r.nombre)}</b>.</p>
     <ul style="margin:10px 0 0;padding-left:18px;font-size:0.875rem;color:var(--fg2);line-height:1.6;">${cambio.cambios.map(fila).join('')}</ul>
     ${aviso}
@@ -2621,9 +2635,10 @@ function pautaPendiente(r){
 function presetRamo(nombre,tenant,carrera,ahora){
   const def=definicionPreset(nombre,tenant,carrera);if(!def)return null;
   const evals=Array.isArray(def)?def:(def.evals||[]);
-  // Un programa puede traer reglas oficiales sin publicar ponderaciones. No se
-  // inventa una pauta vacía: sus reglas se muestran por reglasDelPreset().
-  if(!evals.length)return null;
+  // Un programa puede traer reglas sin publicar ponderaciones. No se inventa una
+  // pauta vacía: sus reglas se muestran por reglasDelPreset(). Tampoco se carga
+  // una que es casi toda grupos sin cantidad (pautaPresetSuficiente).
+  if(!evals.length||!pautaPresetSuficiente(evals))return null;
   const periodo=periodoDePreset(def);
   const estadoPeriodo=estadoPeriodoPauta(periodo,ahora);
   const incluirFechas=estadoPeriodo==='vigente';
@@ -3875,7 +3890,7 @@ async function pintarConsensoDisponible(r){
   if(!hit||currentRamoId!==r.id)return;
   const n=hit.respaldos;
   el.className='weight-setup-nudge';
-  el.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>${n} estudiantes de tu universidad reportan otra pauta.</b><br>Coincidieron entre ellos. No sale del programa oficial: mírala y decide tú.<div style="margin-top:8px;"><button type="button" class="rep-link" style="width:auto;padding:7px 12px;margin:0;" onclick="verConsensoDisponible('${esc(r.id)}')">Ver la que reportan</button></div></div>`;
+  el.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>${n} estudiantes de tu universidad reportan otra pauta.</b><br>Coincidieron entre ellos. No sale del programa del curso: mírala y decide tú.<div style="margin-top:8px;"><button type="button" class="rep-link" style="width:auto;padding:7px 12px;margin:0;" onclick="verConsensoDisponible('${esc(r.id)}')">Ver la que reportan</button></div></div>`;
   el.style.display='flex';
 }
 
@@ -3895,7 +3910,7 @@ async function verConsensoDisponible(ramoId){
     : `<p class="modal-desc" style="margin-top:10px;">Tus notas se conservan: se reconocen por el nombre de la evaluación.</p>`;
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">La pauta que reportan tus compañeros</div>
-    <p class="modal-desc">La enviaron <b>${hit.respaldos} estudiantes</b> de tu universidad por separado y coincidieron. <b>No la sacamos del programa oficial</b> — compárala con la de tu curso.</p>
+    <p class="modal-desc">La enviaron <b>${hit.respaldos} estudiantes</b> de tu universidad por separado y coincidieron. <b>No la sacamos del programa del curso</b> — compárala con la tuya.</p>
     <ul style="margin:10px 0 0;padding-left:18px;font-size:0.875rem;color:var(--fg2);line-height:1.6;">${pauta.categorias.map(fila).join('')}</ul>
     ${aviso}
     <div class="modal-btns" style="margin-top:16px;">
@@ -4092,14 +4107,17 @@ function presetUcDisponible(nombre,carrera){
   return PRESETS_UC_COM.some(n=>normName(n)===normName(clave));
 }
 function findPresetName(nombre,tenant,carrera){
-  if(tenant!=='uc')return claveCatalogo(nombre,Object.keys(PRESETS_POR_TENANT[tenant]||{}),tenant);
+  if(tenant!=='uc'){
+    const presets=PRESETS_POR_TENANT[tenant]||{};
+    return claveCatalogo(nombre,Object.keys(presets).filter(k=>pautaPresetSuficiente(evalsDePreset(presets[k]))),tenant);
+  }
   if(tenant!=='uc'||!MALLA_UC[carrera])return null;
   // La estrella y el selector prometen ponderaciones precargadas. Un programa
   // que solo trae reglas (como Cálculo II) no debe fingir que las tiene, así
   // que esos quedan fuera de la búsqueda en vez de descartarse después.
   const conPauta=Object.keys(PRESETS_UC).filter(k=>{
     const def=PRESETS_UC[k],evals=Array.isArray(def)?def:(def.evals||[]);
-    return evals.length&&presetUcDisponible(k,carrera);
+    return evals.length&&pautaPresetSuficiente(evals)&&presetUcDisponible(k,carrera);
   });
   return claveCatalogo(nombre,conPauta,'uc');
 }
@@ -4265,7 +4283,7 @@ function confirmAddRamo(){
   const cr=creditosDe(presetName||name,S.tenant,preset);
   S.ramos.push({id:uid(),nombre:presetName||name,color:nextRamoColor(presetName||name),creditos:cr,origen:presetName?origenActual(presetName):null,categorias:preset?preset.categorias:[],gates:preset?preset.gates:[],aporta:preset?preset.aporta:null,recuperativo:preset?preset.recuperativo:null,pautaHuella:preset?huellaPauta(preset.categorias):null});
   save();track('add_ramo',{total_ramos:S.ramos.length,preset:!!preset,con_creditos:!!cr});closeModal();renderHome();
-  showToast(preset?'Ponderaciones oficiales cargadas':'Ramo agregado');
+  showToast(preset?'Pauta cargada':'Ramo agregado');
 }
 
 // Fecha y hora van juntas en la interfaz porque así se piensan ("la I1 es el
@@ -5327,7 +5345,7 @@ function abrirRamosPropuestos(){
     <div class="modal-title">Ramos por agregar</div>
     <p class="modal-desc">Tu agente los leyó de ${esc(propuesta.fuente)}. <b>No están agregados.</b> Desmarca los que no lleves este semestre.</p>
     <div class="agent-ramo-list">${filas}</div>
-    <p class="agent-proposal-help">A los que estén en el catálogo se les carga su pauta oficial al agregarlos. Ninguno llega con notas.</p>
+    <p class="agent-proposal-help">A los que tengan pauta en el catálogo se les carga al agregarlos. Ninguno llega con notas.</p>
     <div class="modal-btns">
       <button type="button" class="btn-cancel" onclick="confirmarDescartarRamosPropuestos()">Descartar</button>
       <button type="button" class="btn-confirm" onclick="aplicarRamosPropuestos()">Agregar los marcados</button>

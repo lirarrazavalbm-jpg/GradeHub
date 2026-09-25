@@ -110,7 +110,7 @@ function renderHome(){
       const oficial=notaFinalOficial(g);
       const umbrales=[4.0,5.0,6.0,7.0];
       const next=umbrales.find(u=>u>oficial+0.001);
-      let msg=`Promedio oficial: ${fmtPromedio(g)}`;
+      let msg=`Promedio redondeado: ${fmtPromedio(g)}`;
       if(next!==undefined){
         msg+=`  ·  ${nf(Math.max(0,next-0.05-g),2)} para redondear a ${nf(next)}`;
       }else{
@@ -329,7 +329,7 @@ function renderRamo(){
     const info=infoPeriodoPauta(r);
     if(!info){periodoEl.style.display='none';periodoEl.innerHTML='';}
     else{
-      const etiqueta=info.periodo?`Pauta del ${esc(info.periodo)}`:'Pauta oficial · período sin confirmar';
+      const etiqueta=info.periodo?`Pauta del ${esc(info.periodo)}`:'Con pauta · período sin confirmar';
       const nota=info.estadoPeriodo==='vencido'?' · fechas no incluidas':'';
       periodoEl.className='pauta-periodo'+(info.estadoPeriodo==='vencido'?' is-vencida':'');
       periodoEl.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z"/></svg><span>${etiqueta}${nota}</span>`;
@@ -487,12 +487,12 @@ function renderRamo(){
     if(cambio){
       const cuantos=cambio.cambios.length;
       pcw.style.display='flex';pcw.className='weight-setup-nudge';
-      pcw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>La pauta oficial de este ramo cambió.</b><br>${cuantos} ${cuantos===1?'evaluación distinta':'evaluaciones distintas'} a lo que tienes hoy. Tu promedio se calcula con lo que tienes ahora.<div style="margin-top:8px;"><button type="button" class="rep-link" style="width:auto;padding:7px 12px;margin:0;" onclick="verCambioDePauta('${esc(r.id)}')">Ver qué cambia</button></div></div>`;
+      pcw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>La pauta de este ramo cambió.</b><br>${cuantos} ${cuantos===1?'evaluación distinta':'evaluaciones distintas'} a lo que tienes hoy. Tu promedio se calcula con lo que tienes ahora.<div style="margin-top:8px;"><button type="button" class="rep-link" style="width:auto;padding:7px 12px;margin:0;" onclick="verCambioDePauta('${esc(r.id)}')">Ver qué cambia</button></div></div>`;
     }else if(r.consensoRespaldos){
       // Esta pauta la reportaron estudiantes, no sale de un programa oficial.
       // Decirlo es la diferencia entre una pauta y una ponderación inventada.
       pcw.style.display='flex';pcw.className='weight-setup-nudge';
-      pcw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>Pauta reportada por estudiantes.</b><br>La enviaron ${r.consensoRespaldos} personas de tu universidad y coincidieron. No la sacamos del programa oficial: compárala con la de tu curso y corrígela si no calza.</div>`;
+      pcw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div><b>Pauta reportada por estudiantes.</b><br>La enviaron ${r.consensoRespaldos} personas de tu universidad y coincidieron. No la sacamos del programa del curso: compárala con la tuya y corrígela si no calza.</div>`;
     }else{pcw.style.display='none';pcw.innerHTML='';}
   }
 
@@ -577,7 +577,7 @@ function renderRamo(){
     const disponibles=reglas.filter(x=>!declaradas.has(x.desdeId)&&avgPond((r.categorias.find(c=>c.id===x.desdeId)||{}).notas||[])===null);
     const configurables=reglaOficial?[]:(r.categorias||[]).filter(c=>Number(c.peso)>0&&avgPond(c.notas||[])===null&&!declaradas.has(c.id));
     const bloques=[];
-    if(reglaUsuario)bloques.push('<b>Declarado por ti según el formulario de tu curso.</b><br>Esto no viene del programa oficial de GradeHub. Puedes cambiarlo si elegiste mal.');
+    if(reglaUsuario)bloques.push('<b>Declarado por ti según el formulario de tu curso.</b><br>Esto no viene de la pauta del catálogo. Puedes cambiarlo si elegiste mal.');
     const corregir=x=>reglaUsuario?` <button type="button" onclick="corregirAusenciaJustificada('${esc(x.desdeId)}')">Cambiar decisión</button>`:'';
     if(ausencias.activas.length)bloques.push(`<b>Ausencia justificada aplicada.</b><br>${ausencias.activas.map(x=>etiqueta(x)+corregir(x)).join('<br>')}`);
     if(ausencias.pendientes.length)bloques.push(`<b>La ausencia quedó anotada.</b><br>${ausencias.pendientes.map(x=>(x.motivo==='espera_rezago'?etiqueta(x):`Falta la nota de <b>${esc(porId.get(x.haciaId)||'la evaluación de reemplazo')}</b>.`)+corregir(x)).join('<br>')}`);
@@ -785,7 +785,7 @@ function renderRamo(){
     // borrar una evaluación completa por accidente. Si la persona ya la
     // corrigió, recupera ese control sobre su propia versión. Las filas que la
     // pauta dejó atrás también se pueden limpiar sin tocar lo oficial.
-    const pautaOficialIntacta=!!definicionPresetDelRamo(r)&&!!r.pautaHuella&&!pautaEditada(r);
+    const pautaOficialIntacta=!pautaCatalogoSinOficial(r)&&!!r.pautaHuella&&!pautaEditada(r);
     const puedeEliminar=!pautaOficialIntacta||!!cat.fueraDePauta;
     const notasDescartadas=new Set((descarte?.dropped||[]).map(n=>n.id));
     const explicacionDescarte=descarte?`<div class="drop-rule-note">${esc(textoDescarte(cat,descarte))}</div>`:'';
