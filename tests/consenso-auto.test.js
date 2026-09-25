@@ -112,7 +112,7 @@ console.log('\n=== La ficha no la presenta como oficial ===');
   const render = fs.readFileSync(raiz + 'render-main.js', 'utf8');
   const todo = app + render;
   chk('la ficha dice que la reportaron estudiantes', /Pauta reportada por estudiantes/.test(todo));
-  chk('y dice que no sale del programa oficial', /No la sacamos del programa oficial/.test(todo));
+  chk('y dice que no sale del programa del curso', /No la sacamos del programa del curso/.test(todo));
   chk('el umbral vive en una constante y no suelto en el código', /const CONSENSO_AUTO=3;/.test(app));
 }
 

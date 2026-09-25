@@ -267,6 +267,14 @@ Lo que las separa no es el selector sino cuánto contenido tienen detrás:
 | UAI | 23, todas con malla | 23 | 530 | 6 |
 | UAndes | 5 + "Otra" | ninguna | — | — |
 
+**Una pauta que deja la mitad o más del ramo en grupos sin cantidad** (por
+ejemplo "Evaluaciones sumativas 60%" sin decir cuántas) no se carga ni se
+anuncia desde el 2026-09-25 (`pautaPresetSuficiente` en app.js, decisión de
+Lucas a partir de Cálculo III). Al decidirlo eran 28 de la UC —Cálculo III, casi
+todo Comercial y doce teológicos— y ninguna de FEN ni la UAI. El dato sigue en
+`data.js`: si se transcribe cuántas evaluaciones lleva cada grupo, vuelve sola.
+En la interfaz ya no se dice "pauta oficial": se dice "con pauta".
+
 La UAI no publica siglas ni créditos de sus asignaturas, así que sus ramos no
 ponderan el promedio por créditos y el consenso de reportes los agrupa por
 nombre. Sus programas viven en Webcursos, detrás de sesión: la única vía a

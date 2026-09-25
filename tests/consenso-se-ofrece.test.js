@@ -96,7 +96,7 @@ console.log('\n=== Nunca se aplica sola ===');
   chk('aplicarConsensoAuto sigue saltando los ramos con pauta oficial', /if\(pautaPendiente\(r\)\)return;/.test(app));
   chk('la ficha solo pinta el aviso', /pintarConsensoDisponible\(r\)/.test(render));
   chk('adoptar cuelga de un botón, no del render', /onclick="adoptarConsenso\(/.test(app));
-  chk('el aviso dice que no sale del programa oficial', /No sale del programa oficial|No la sacamos del programa oficial/.test(app));
+  chk('el aviso dice que no sale del programa del curso', /No sale del programa del curso|No la sacamos del programa del curso/.test(app));
   chk('y dice cuántos son', /respaldos\} estudiantes/.test(app));
 }
 
