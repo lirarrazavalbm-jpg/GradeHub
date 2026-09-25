@@ -739,7 +739,23 @@ function renderRamo(){
     const descarte=descartes.find(d=>d.nodeId===cat.id);
     const calculoCategoria=(calculo.res?.breakdown||[]).find(b=>b.id===cat.id);
     const catAvg=calculoCategoria?.value??avgPond(notas);
-    const isOpen=openCats[cat.id]===undefined?!!descarte:openCats[cat.id];
+    // Una lista abierta parte desplegada, y esto es un arreglo, no un gusto.
+    //
+    // Antes solo se abría sola si había un descarte. O sea una categoría de
+    // "varias notas" creada a mano quedaba plegada SIEMPRE: vacía escondía el
+    // "+ Agregar nota", que vive adentro, así que no había forma visible de
+    // poner la primera; y con notas las escondía también, o sea el estudiante
+    // guardaba una y desaparecía de la vista.
+    //
+    // Es el reporte de tres personas distintas —"le pongo que son varias notas
+    // y no me aparece después", "si saco que son varias notas vuelven a
+    // aparecer todos"— y explica las cuentas que tienen la pauta armada y
+    // ninguna nota guardada.
+    //
+    // La rama de arriba, la de casillas fijas, ya se abría cuando tenía notas.
+    // Eran dos comportamientos distintos para lo mismo sin ninguna razón.
+    // `openCats` sigue mandando apenas la persona abre o cierra a mano.
+    const isOpen=openCats[cat.id]===undefined?true:openCats[cat.id];
     // La pauta oficial sigue siendo una referencia del programa: no se ofrece
     // borrar una evaluación completa por accidente. Si la persona ya la
     // corrigió, recupera ese control sobre su propia versión. Las filas que la
