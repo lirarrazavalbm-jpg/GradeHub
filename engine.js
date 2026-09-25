@@ -61,7 +61,7 @@ function gh_applyDrop(node,known){
 // nombre del ramo que está calculando.
 function gh_clonarArbol(node){return {...node,children:(node.children||[]).map(gh_clonarArbol)};}
 function gh_nodosPorId(node,map=new Map()){map.set(node.id,node);(node.children||[]).forEach(hijo=>gh_nodosPorId(hijo,map));return map;}
-function gh_prepararAusenciasJustificadas(structure,grades,regla,declaraciones){
+function gh_prepararAusenciasJustificadas(structure,grades,regla,declaraciones,norma){
   const declaradas=new Set(Array.isArray(declaraciones)?declaraciones:[]);
   const vacio={estructura:structure,notas:grades,activas:[],pendientes:[],inactivas:[]};
   if(!regla||!declaradas.size)return vacio;
@@ -69,23 +69,49 @@ function gh_prepararAusenciasJustificadas(structure,grades,regla,declaraciones){
   const valores=new Map(base.breakdown.map(n=>[n.id,n.value]));
   const copia=gh_clonarArbol(structure),nodos=gh_nodosPorId(copia),notas={...grades};
   const activas=[],pendientes=[],inactivas=[],vistas=new Set();
+  const topePesoDestino=Number.isFinite(norma&&norma.topePesoDestino)?norma.topePesoDestino:null;
+  const notaExceso=Number.isFinite(norma&&norma.notaExceso)?norma.notaExceso:1;
+  const agregarExceso=(hacia,peso)=>{
+    if(!(peso>0))return;
+    const id=`__gh_ausencia_exceso__${hacia.id}`;
+    let grupo=(copia.children||[]).find(n=>n.id===id);
+    if(!grupo){
+      let hojaId=`${id}__nota`;
+      while(nodos.has(hojaId))hojaId+='_';
+      grupo={id,name:`Exceso de acumulación en ${hacia.name}`,weight:0,type:'group',aggregation_rule:'weighted_average',ausenciaExceso:true,
+        children:[{id:hojaId,name:'Porcentaje sobre el tope',weight:1,type:'leaf',ausenciaExceso:true}]};
+      copia.children.push(grupo);nodos.set(id,grupo);nodos.set(hojaId,grupo.children[0]);notas[hojaId]=notaExceso;
+    }
+    grupo.weight=(Number(grupo.weight)||0)+peso;
+  };
   const revisar=(tipo,entrada)=>{
     if(!entrada||!declaradas.has(entrada.desdeId)||vistas.has(entrada.desdeId))return;
     vistas.add(entrada.desdeId);
-    const desde=nodos.get(entrada.desdeId),hacia=nodos.get(entrada.haciaId);
-    if(!desde||!hacia){inactivas.push({...entrada,tipo,motivo:'pauta_cambio'});return;}
+    const desde=nodos.get(entrada.desdeId),hacia=tipo==='rezago'?null:nodos.get(entrada.haciaId);
+    if(!desde||(tipo!=='rezago'&&!hacia)||desde===hacia){inactivas.push({...entrada,tipo,motivo:'pauta_cambio'});return;}
     if(valores.get(entrada.desdeId)!==null){inactivas.push({...entrada,tipo,motivo:'tiene_nota'});return;}
+    if(tipo==='rezago'){pendientes.push({...entrada,tipo,motivo:'espera_rezago'});return;}
     if(tipo==='reemplazo'&&valores.get(entrada.haciaId)==null){pendientes.push({...entrada,tipo,motivo:'falta_destino'});return;}
     if(tipo==='reemplazo'){
       const id=`ausencia-${entrada.desdeId}`;
       desde.children=[{id,name:'Nota reemplazada',weight:1,type:'leaf'}];
       desde.drop_lowest=null;notas[id]=valores.get(entrada.haciaId);
     }else{
-      hacia.weight=(Number(hacia.weight)||0)+(Number(desde.weight)||0);
+      const pesoDesde=Number(desde.weight)||0,pesoAntes=Number(hacia.weight)||0;
+      const pesoPropuesto=pesoAntes+pesoDesde;
+      const pesoFinal=topePesoDestino===null?pesoPropuesto:Math.min(topePesoDestino,pesoPropuesto);
+      const pesoAplicado=Math.max(0,pesoFinal-pesoAntes);
+      const pesoExcedente=Math.max(0,pesoDesde-pesoAplicado);
+      hacia.weight=pesoFinal;
       desde.weight=0;desde.children=[];desde.drop_lowest=null;
+      agregarExceso(hacia,pesoExcedente);
+      activas.push({...entrada,tipo,pesoTrasladado:pesoDesde,pesoAplicado,pesoExcedente,
+        ...(topePesoDestino===null?{}:{topePesoDestino,notaExceso})});
+      return;
     }
     activas.push({...entrada,tipo});
   };
+  (regla.rezagos||[]).forEach(entrada=>revisar('rezago',entrada));
   (regla.reemplazos||[]).forEach(entrada=>revisar('reemplazo',entrada));
   (regla.traspasos||[]).forEach(entrada=>revisar('traspaso',entrada));
   declaradas.forEach(desdeId=>{if(!vistas.has(desdeId))inactivas.push({desdeId,tipo:'desconocida',motivo:'pauta_cambio'});});
@@ -264,8 +290,17 @@ function gh_crearCalculoRamo(deps){
   function categoriaEximida(ramo,cat){const estado=estadoEximicion(ramo);return !!(estado&&estado.activa&&estado.examenId===cat.id);}
   function categoriasVigentes(ramo){return (ramo&&ramo.categorias||[]).filter(c=>!categoriaEximida(ramo,c));}
   function estadoAusenciasJustificadas(ramo){
-    if(!ramo||!ramo.reglasAusenciaJustificada)return null;
-    return gh_prepararAusenciasJustificadas(ramoToStructure(ramo),gradesOf(ramo),ramo.reglasAusenciaJustificada,ramo.ausenciasJustificadas);
+    if(!ramo)return null;
+    const oficial=ramo.reglasAusenciaJustificada;
+    const declarada=ramo.reglasAusenciaJustificadaUsuario&&ramo.reglasAusenciaJustificadaUsuario.declaradaPor==='estudiante'
+      ? ramo.reglasAusenciaJustificadaUsuario:null;
+    const regla=oficial||declarada;
+    if(!regla)return null;
+    // La elección entre rezago y acumulación viene del formulario del curso.
+    // El techo y la nota del excedente son una norma institucional distinta.
+    const normaFacultad={nivel:'facultad',topePesoDestino:75,notaExceso:1};
+    return {...gh_prepararAusenciasJustificadas(ramoToStructure(ramo),gradesOf(ramo),regla,ramo.ausenciasJustificadas,normaFacultad),
+      origenRegla:oficial?'programa':'estudiante',normaAplicada:normaFacultad};
   }
   function avgDeGrupo(r,catIds){
     const set=new Set(catIds||[]);
@@ -380,22 +415,25 @@ function gh_crearCalculoRamo(deps){
     return out;
   }
   function estadoParaNotaNecesaria(ramo){
-    const categorias=categoriasVigentes(ramo);
-    const total=categorias.reduce((s,c)=>s+(Number(c.peso)||0),0);
+    const calculo=calculoRamoConCompuertas(ramo);
+    const estructura=calculo.estructura,notas=calculo.notas;
+    const total=(estructura.children||[]).reduce((s,c)=>s+(Number(c.weight)||0),0);
     if(total<=0)return {total:0,conocido:0,pendiente:0};
-    const estructura=ramoToStructure(ramo),notas=gradesOf(ramo);
     const pesos=gh_effWeights(estructura);
-    const valores=new Map(resumenCategoriasCalculadas(ramo).map(c=>[c.id,c.valor]));
+    const valores=new Map((calculo.res.breakdown||[]).map(c=>[c.id,c.value]));
+    const categorias=new Map(categoriasVigentes(ramo).map(c=>[c.id,c]));
     let conocido=0,pesoConocido=0;
-    categorias.forEach(c=>{
-      const slots=Number.isInteger(c.slots)&&c.slots>1;
-      if(!slots){
-        const valor=valores.get(c.id),peso=Number(c.peso)||0;
-        if(typeof valor==='number'){conocido+=valor*peso;pesoConocido+=peso;}
+    (estructura.children||[]).forEach(grupo=>{
+      const c=categorias.get(grupo.id),pesoGrupo=Number(grupo.weight)||0;
+      if(!(pesoGrupo>0))return;
+      // Las categorías sintéticas (el excedente con 1,0) ya están calificadas.
+      // Una categoría directa también cuenta completa cuando tiene valor.
+      if(!c||!(Number.isInteger(c.slots)&&c.slots>1)){
+        const valor=valores.get(grupo.id);
+        if(typeof valor==='number'){conocido+=valor*pesoGrupo;pesoConocido+=pesoGrupo;}
         return;
       }
-      const grupo=estructura.children.find(h=>h.id===c.id);
-      (grupo?.children||[]).forEach(hoja=>{
+      (grupo.children||[]).forEach(hoja=>{
         const valor=notas[hoja.id],peso=(pesos[hoja.id]||0)*total;
         if(typeof valor==='number'){conocido+=valor*peso;pesoConocido+=peso;}
       });

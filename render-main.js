@@ -548,23 +548,36 @@ function renderRamo(){
   }else if(ew){ew.style.display='none';ew.innerHTML='';}
 
   const aw=document.getElementById('ausencias-justificadas-warning');
-  const ausencias=calculo.ausencias;
-  if(aw&&ausencias){
+  if(aw){
+    const reglaOficial=r.reglasAusenciaJustificada;
+    const reglaUsuario=!reglaOficial&&r.reglasAusenciaJustificadaUsuario?.declaradaPor==='estudiante'
+      ?r.reglasAusenciaJustificadaUsuario:null;
+    const regla=reglaOficial||reglaUsuario;
+    const ausencias=calculo.ausencias||{activas:[],pendientes:[],inactivas:[]};
     const porId=new Map((r.categorias||[]).map(c=>[c.id,c.nombre]));
-    const etiqueta=x=>x.tipo==='traspaso'
-      ? `<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b>: su ${r2((r.categorias.find(c=>c.id===x.desdeId)||{}).peso||0)}% pasa a <b>${esc(porId.get(x.haciaId)||'otra evaluación')}</b>.`
-      : `<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> se reemplaza por <b>${esc(porId.get(x.haciaId)||'otra evaluación')}</b>.`;
+    const etiqueta=x=>{
+      if(x.tipo==='rezago')return `<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> mantiene su porcentaje y queda pendiente hasta que rindas el rezago.`;
+      if(x.tipo==='traspaso'){
+        const base=`<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b>: su ${r2((r.categorias.find(c=>c.id===x.desdeId)||{}).peso||0)}% pasa a <b>${esc(porId.get(x.haciaId)||'otra evaluación')}</b>.`;
+        return x.pesoExcedente>0?`${base} El destino queda topado en ${r2(x.topePesoDestino)}% y el ${r2(x.pesoExcedente)}% excedente cuenta con nota ${nf(x.notaExceso)}.`:base;
+      }
+      return `<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> se reemplaza por <b>${esc(porId.get(x.haciaId)||'otra evaluación')}</b>.`;
+    };
     const declaradas=new Set(r.ausenciasJustificadas||[]);
-    const reglas=[...(r.reglasAusenciaJustificada?.reemplazos||[]).map(x=>({...x,tipo:'reemplazo'})),...(r.reglasAusenciaJustificada?.traspasos||[]).map(x=>({...x,tipo:'traspaso'}))];
-    const disponibles=reglas.filter(x=>!declaradas.has(x.desdeId)&&avgPond((r.categorias.find(c=>c.id===x.desdeId)||{}).notas)===null);
+    const reglas=[...(regla?.reemplazos||[]).map(x=>({...x,tipo:'reemplazo'})),...(regla?.traspasos||[]).map(x=>({...x,tipo:'traspaso'})),...(regla?.rezagos||[]).map(x=>({...x,tipo:'rezago'}))];
+    const disponibles=reglas.filter(x=>!declaradas.has(x.desdeId)&&avgPond((r.categorias.find(c=>c.id===x.desdeId)||{}).notas||[])===null);
+    const configurables=reglaOficial?[]:(r.categorias||[]).filter(c=>Number(c.peso)>0&&avgPond(c.notas||[])===null&&!declaradas.has(c.id));
     const bloques=[];
-    if(ausencias.activas.length)bloques.push(`<b>Ausencia justificada aplicada.</b><br>${ausencias.activas.map(etiqueta).join('<br>')}`);
-    if(ausencias.pendientes.length)bloques.push(`<b>La ausencia quedó anotada, pero todavía no se aplica.</b><br>${ausencias.pendientes.map(x=>`Falta la nota de <b>${esc(porId.get(x.haciaId)||'la evaluación de reemplazo')}</b>.`).join('<br>')}`);
-    if(ausencias.inactivas.length)bloques.push(`<b>Tu declaración se conserva, pero ya no se aplica.</b><br>${ausencias.inactivas.map(x=>x.motivo==='tiene_nota'?`<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> ahora tiene una nota. <button type="button" onclick="corregirAusenciaJustificada('${esc(x.desdeId)}')">Corregir declaración</button>`:'La pauta cambió y ya no podemos ubicar esa evaluación.').join('<br>')}`);
+    if(reglaUsuario)bloques.push('<b>Declarado por ti según el formulario de tu curso.</b><br>Esto no viene del programa oficial de GradeHub. Puedes cambiarlo si elegiste mal.');
+    const corregir=x=>reglaUsuario?` <button type="button" onclick="corregirAusenciaJustificada('${esc(x.desdeId)}')">Cambiar decisión</button>`:'';
+    if(ausencias.activas.length)bloques.push(`<b>Ausencia justificada aplicada.</b><br>${ausencias.activas.map(x=>etiqueta(x)+corregir(x)).join('<br>')}`);
+    if(ausencias.pendientes.length)bloques.push(`<b>La ausencia quedó anotada.</b><br>${ausencias.pendientes.map(x=>(x.motivo==='espera_rezago'?etiqueta(x):`Falta la nota de <b>${esc(porId.get(x.haciaId)||'la evaluación de reemplazo')}</b>.`)+corregir(x)).join('<br>')}`);
+    if(ausencias.inactivas.length)bloques.push(`<b>Tu declaración se conserva, pero ya no se aplica.</b><br>${ausencias.inactivas.map(x=>(x.motivo==='tiene_nota'?`<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> ahora tiene una nota.`:'La pauta cambió y ya no podemos ubicar esa evaluación.')+` <button type="button" onclick="corregirAusenciaJustificada('${esc(x.desdeId)}')">Corregir declaración</button>`).join('<br>')}`);
     if(disponibles.length)bloques.push(`<b>¿Faltaste con justificativo aprobado?</b><br>${disponibles.map(x=>`<button type="button" onclick="declararAusenciaJustificada('${esc(x.desdeId)}')">${esc(porId.get(x.desdeId)||'Marcar ausencia')}</button>`).join(' <span aria-hidden="true">·</span> ')}`);
+    if(configurables.length)bloques.push(`<b>¿Faltaste con justificativo aprobado?</b><br>Indica qué dispone el formulario de tu curso:${configurables.map(c=>` <button type="button" onclick="openAusenciaJustificadaModal('${esc(c.id)}')">${esc(c.nombre)}</button>`).join(' <span aria-hidden="true">·</span> ')}`);
     if(bloques.length){aw.style.display='flex';aw.className='weight-setup-nudge';aw.style.width='auto';aw.style.margin='12px 20px';aw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}</div>`;}
     else{aw.style.display='none';aw.innerHTML='';}
-  }else if(aw){aw.style.display='none';aw.innerHTML='';}
+  }
 
   const rw=document.getElementById('recuperativo-warning');
   if(rw&&recuperativo){
