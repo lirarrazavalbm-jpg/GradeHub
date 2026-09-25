@@ -11,26 +11,31 @@ const FLYER_CLASE_TIPOS = new Set(['image/jpeg','image/png','image/webp']);
 const CAMPOS_PUBLICOS_ANUNCIO = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,publicado_at,vence_at,created_at';
 const CAMPOS_BORRADOR_CLASE = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,created_at';
 
-// Columnas que llegaron después (formato y lugar "otra", detalles a medida).
-// El SQL se aplica a mano, así que la app puede salir antes que él: si el
-// servidor dice que no existen, la consulta se repite con las de siempre y el
-// catálogo, el panel y los borradores siguen andando. Se recuerda para no
-// pedirlas de nuevo en cada consulta.
-const CAMPOS_NUEVOS_CLASE=',modalidad_otra,ubicacion_otra,detalles';
-let columnasNuevasClase=true;
+// Columnas que llegaron después, en capas y en el orden en que se aplicaron:
+// formato y lugar "otra" con detalles a medida, y después qué datos van bajo
+// el título. El SQL se aplica a mano, así que la app puede salir antes que él:
+// si el servidor dice que falta una columna, la consulta se repite sin la
+// última capa y el catálogo, el panel y los borradores siguen andando. Se
+// recuerda para no pedirlas de nuevo en cada consulta.
+const CAPAS_CAMPOS_CLASE=[',modalidad_otra,ubicacion_otra,detalles',',linea_datos'];
+let capasColumnasClase=CAPAS_CAMPOS_CLASE.length;
 function faltaColumnaClase(error){
   return !!error&&(error.code==='42703'||error.code==='PGRST204'||/column|columna/i.test(String(error.message||'')));
 }
 async function consultaCamposClase(hacer,base){
-  if(columnasNuevasClase){
-    const r=await hacer(base+CAMPOS_NUEVOS_CLASE);
-    if(!faltaColumnaClase(r&&r.error))return r;
-    columnasNuevasClase=false;
+  for(;;){
+    const capas=capasColumnasClase;
+    const r=await hacer(base+CAPAS_CAMPOS_CLASE.slice(0,capas).join(''));
+    if(capas===0||!faltaColumnaClase(r&&r.error))return r;
+    // Dos consultas a la vez no bajan dos capas por la misma columna.
+    capasColumnasClase=Math.min(capasColumnasClase,capas-1);
   }
-  return hacer(base);
 }
 const MAX_RAMOS_POR_ANUNCIO=1;
 const MAX_DETALLES_CLASE=4,MAX_ETIQUETA_DETALLE=30,MAX_VALOR_DETALLE=80;
+// Bajo el título de la recomendación caben pocos datos: el profesor elige
+// hasta tres. Sin elección son los de siempre.
+const MAX_LINEA_CLASE=3,LINEA_CLASE_POR_OMISION=['modalidad','ubicacion','precio'];
 const MODALIDADES_CLASE=[['individual','Individual'],['grupal','Grupal']];
 const UBICACIONES_CLASE=[['online','Online'],['presencial','Presencial'],['hibrido','Híbrida']];
 
@@ -79,6 +84,14 @@ function validarBorradorClase(entrada){
   if(detalles.some(d=>d.etiqueta.length>MAX_ETIQUETA_DETALLE||d.valor.length>MAX_VALOR_DETALLE))
     return {ok:false,campo:'detalles',error:`Cada detalle va con un nombre de hasta ${MAX_ETIQUETA_DETALLE} caracteres y un texto de hasta ${MAX_VALOR_DETALLE}.`};
   const modalidad=mod.valor,ubicacion=ubi.valor;
+  let linea_datos=null;
+  if(entrada.linea_datos!=null){
+    const validas=new Set([...LINEA_CLASE_POR_OMISION,...detalles.map(d=>'detalle:'+d.etiqueta)]);
+    const claves=Array.isArray(entrada.linea_datos)?[...new Set(entrada.linea_datos.map(x=>String(x||'').trim()))]:[];
+    if(claves.length<1||claves.length>MAX_LINEA_CLASE||claves.some(c=>!validas.has(c)))
+      return {ok:false,campo:'linea_datos',error:`Elige de 1 a ${MAX_LINEA_CLASE} datos para mostrar bajo el título.`};
+    linea_datos=claves;
+  }
   if(!Number.isSafeInteger(entrada.precio_clp)||entrada.precio_clp<1000||entrada.precio_clp>500000)
     return {ok:false,campo:'precio_clp',error:'Indica el precio de la clase en pesos, entre $1.000 y $500.000.'};
   const contacto_tipo=String(entrada.contacto_tipo||''),contacto_valor=String(entrada.contacto_valor||'').trim();
@@ -92,7 +105,7 @@ function validarBorradorClase(entrada){
   // datos académicos del estudiante enviados junto con el formulario.
   return {ok:true,datos:{tenant,ramos_siglas:siglas,
     criterios:{promedioMenorA:entrada.criterios.promedioMenorA,avanceMinimo:entrada.criterios.avanceMinimo},
-    modalidad,ubicacion,modalidad_otra:mod.otra,ubicacion_otra:ubi.otra,detalles:detalles.length?detalles:null,
+    modalidad,ubicacion,modalidad_otra:mod.otra,ubicacion_otra:ubi.otra,detalles:detalles.length?detalles:null,linea_datos,
     precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
 }
 
@@ -245,6 +258,10 @@ async function guardarBorradorClase(entrada,id){
   try{
     const escribir=async campos=>{
       const datos={...valido.datos};
+      if(!campos.includes('linea_datos')){
+        if(datos.linea_datos)return {data:null,error:{message:'sin-linea-datos'}};
+        delete datos.linea_datos;
+      }
       if(!campos.includes('detalles')){
         // El servidor todavía no tiene estas columnas: lo clásico se guarda
         // igual, y lo nuevo se avisa en vez de perderse callado.
@@ -258,6 +275,7 @@ async function guardarBorradorClase(entrada,id){
       return consulta.select(campos).single();
     };
     const {data,error}=await consultaCamposClase(escribir,CAMPOS_BORRADOR_CLASE);
+    if(error&&error.message==='sin-linea-datos')return {ok:false,campo:'linea_datos',error:'Todavía no podemos guardar qué datos van bajo el título. Deja formato, dónde y precio por ahora.'};
     if(error&&error.message==='sin-columnas-nuevas')return {ok:false,campo:'detalles',error:'Todavía no podemos guardar "Otra", un formato vacío ni detalles a medida. Usa las opciones de la lista por ahora.'};
     if(error||!data||data.estado!=='borrador'){
       // El motivo real queda en la consola: "revisa tu conexión" también sale
@@ -720,10 +738,12 @@ function enlaceContactoClase(tipo,valor){
   return '';
 }
 
+function textoOpcionClase(lista,valor,otra){
+  return valor==='otra'?String(otra||'').trim():(new Map(lista).get(valor)||'');
+}
 function formatoClase(anuncio){
   const a=anuncio||{};
-  const texto=(lista,valor,otra)=>valor==='otra'?String(otra||'').trim():(new Map(lista).get(valor)||'');
-  return [texto(MODALIDADES_CLASE,a.modalidad,a.modalidad_otra),texto(UBICACIONES_CLASE,a.ubicacion,a.ubicacion_otra)]
+  return [textoOpcionClase(MODALIDADES_CLASE,a.modalidad,a.modalidad_otra),textoOpcionClase(UBICACIONES_CLASE,a.ubicacion,a.ubicacion_otra)]
     .filter(Boolean).join(' · ');
 }
 // Los detalles que el profesor agregó, ya validados por el servidor. Se vuelven
@@ -1604,6 +1624,11 @@ function renderBorradorProfesor(raiz,anuncio){
         <div id="pr-detalles"></div>
         <button class="btn-cancel profesor-detalle-agregar" id="pr-agregar-detalle" type="button">Agregar un detalle</button>
       </div>
+      <fieldset class="profesor-linea" id="pr-linea-caja">
+        <legend class="modal-label">Bajo el título · hasta ${MAX_LINEA_CLASE}</legend>
+        <p class="profesor-info">Es lo primero que lee el estudiante en Inicio, junto a su ramo. Elige lo que más ayuda a decidir; el resto aparece cuando abre tu clase.</p>
+        <div class="profesor-linea-opciones" id="pr-linea"></div>
+      </fieldset>
       <label class="modal-label" for="pr-contacto-tipo">Cómo te contactarán</label><select id="pr-contacto-tipo">${elegir([['whatsapp','WhatsApp'],['instagram','Instagram'],['email','Correo']],anuncio&&anuncio.contacto_tipo)}</select>
       <label class="modal-label" for="pr-contacto">Tu contacto</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
       <label class="modal-label" for="pr-flyer">Flyer · opcional</label><input id="pr-flyer" type="file" accept="image/jpeg,image/png,image/webp"><p class="profesor-info">JPG, PNG o WebP · máximo 5 MB. Primero se guarda el borrador y después se sube la imagen.</p>
@@ -1641,11 +1666,44 @@ function renderBorradorProfesor(raiz,anuncio){
   const vista=form.querySelector('#pr-vista');
   let logoVista='';
   const valorCampo=id=>{const el=campo(id);return el?String(el.value||''):'';};
+  // Qué datos van bajo el título. Se guarda como claves, en el orden en que se
+  // muestran; si coincide con lo de siempre se guarda null, como los anuncios
+  // que ya existían.
+  const lineaElegida=new Set(Array.isArray(anuncio&&anuncio.linea_datos)?anuncio.linea_datos:LINEA_CLASE_POR_OMISION);
+  const cajaLinea=campo('linea');let firmaLinea='';
+  const borradorEnVivo=()=>({titulo:valorCampo('titulo').trim(),precio_clp:pesosDeTexto(valorCampo('precio')),
+    modalidad:valorCampo('modalidad'),modalidad_otra:valorCampo('modalidad-otra').trim(),
+    ubicacion:valorCampo('ubicacion'),ubicacion_otra:valorCampo('ubicacion-otra').trim(),
+    detalles:leerDetalles(),linea_datos:[...lineaElegida]});
+  const lineaParaGuardar=b=>{
+    const claves=opcionesLineaClase(b).map(o=>o.clave);
+    const elegidas=claves.filter(c=>lineaElegida.has(c)),omision=claves.filter(c=>LINEA_CLASE_POR_OMISION.includes(c));
+    return elegidas.join()===omision.join()?null:elegidas;
+  };
+  const pintarLinea=b=>{
+    if(!cajaLinea||typeof cajaLinea.querySelectorAll!=='function')return;
+    const ops=opcionesLineaClase(b),firma=JSON.stringify(ops.map(o=>[o.clave,o.nombre,o.texto]));
+    // Solo se rehace si cambiaron las opciones: marcar una casilla no le quita
+    // el foco.
+    if(firma!==firmaLinea){
+      firmaLinea=firma;
+      cajaLinea.innerHTML=ops.map(o=>`<label class="profesor-linea-opcion"><input type="checkbox" value="${esc(o.clave)}"><span><b>${esc(o.nombre)}</b> ${esc(o.texto)}</span></label>`).join('');
+    }
+    const marcadas=ops.filter(o=>lineaElegida.has(o.clave)).length;
+    cajaLinea.querySelectorAll('input').forEach(i=>{i.checked=lineaElegida.has(i.value);i.disabled=!i.checked&&marcadas>=MAX_LINEA_CLASE;});
+  };
+  // Una casilla dispara input y después change, y el formulario repinta con
+  // los dos: la elección se anota en el primero para que el repintado no
+  // devuelva la casilla a como estaba.
+  const anotarLinea=e=>{
+    const i=e.target;if(!i||i.type!=='checkbox')return;
+    if(i.checked)lineaElegida.add(i.value);else lineaElegida.delete(i.value);
+  };
+  if(cajaLinea){cajaLinea.addEventListener('input',anotarLinea);cajaLinea.addEventListener('change',anotarLinea);}
   const actualizarVista=()=>{
+    const borrador=borradorEnVivo();
+    pintarLinea(borrador);
     if(!vista||typeof vista.querySelectorAll!=='function')return;
-    const borrador={titulo:valorCampo('titulo').trim(),precio_clp:pesosDeTexto(valorCampo('precio')),
-      modalidad:valorCampo('modalidad'),modalidad_otra:valorCampo('modalidad-otra').trim(),
-      ubicacion:valorCampo('ubicacion'),ubicacion_otra:valorCampo('ubicacion-otra').trim()};
     vista.querySelectorAll('.vista-anuncio').forEach(el=>{el.innerHTML=contenidoRecomendacionClase(borrador,{logoUrl:logoVista,vistaPrevia:true});});
     const sigla=valorCampo('siglas').split(',').map(x=>siglaAnuncio(x)).filter(Boolean)[0]||'';
     const nombre=sigla?(nombresRamosParaClases(valorCampo('tenant')||S.tenant)[sigla]||sigla):'Tu ramo';
@@ -1671,7 +1729,6 @@ function renderBorradorProfesor(raiz,anuncio){
   if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('gradehub:logo-profesor',e=>{
     if(!form.isConnected)return;logoVista=e.detail||'';actualizarVista();
   });
-  actualizarVista();
   campoPesos(campo('precio'));
   // "Otra…" abre su casilla de texto; cualquier otra opción la esconde.
   [['modalidad','modalidad-otra'],['ubicacion','ubicacion-otra']].forEach(([sel,texto])=>{
@@ -1686,14 +1743,15 @@ function renderBorradorProfesor(raiz,anuncio){
     fila.innerHTML=`<input type="text" class="detalle-etiqueta" maxlength="${MAX_ETIQUETA_DETALLE}" placeholder="Duración" aria-label="Nombre del detalle" value="${esc(d.etiqueta||'')}">
       <input type="text" class="detalle-valor" maxlength="${MAX_VALOR_DETALLE}" placeholder="90 minutos" aria-label="Qué dice el detalle" value="${esc(d.valor||'')}">
       <button type="button" class="profesor-detalle-quitar" aria-label="Quitar este detalle">Quitar</button>`;
-    fila.querySelector('.profesor-detalle-quitar').addEventListener('click',()=>{fila.remove();refrescarDetalles();});
+    fila.querySelector('.profesor-detalle-quitar').addEventListener('click',()=>{fila.remove();refrescarDetalles();actualizarVista();});
     listaDetalles.appendChild(fila);refrescarDetalles();
   };
   const refrescarDetalles=()=>{if(agregarDetalle&&listaDetalles&&listaDetalles.children)agregarDetalle.hidden=listaDetalles.children.length>=MAX_DETALLES_CLASE;};
   if(agregarDetalle)agregarDetalle.addEventListener('click',()=>{filaDetalle();const ultima=listaDetalles&&listaDetalles.lastElementChild;ultima&&ultima.querySelector('input').focus();});
-  detallesClase(anuncio).forEach(d=>filaDetalle(d));
   const leerDetalles=()=>listaDetalles&&typeof listaDetalles.querySelectorAll==='function'
     ?[...listaDetalles.querySelectorAll('.profesor-detalle')].map(f=>({etiqueta:f.querySelector('.detalle-etiqueta').value,valor:f.querySelector('.detalle-valor').value})):[];
+  detallesClase(anuncio).forEach(d=>filaDetalle(d));
+  actualizarVista();
   activarBuscadorRamosClase(form,campo);
   const cajaLogo=campo('logo');
   if(cajaLogo)renderLogoProfesor(cajaLogo);
@@ -1739,7 +1797,7 @@ function renderBorradorProfesor(raiz,anuncio){
       titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:pesosDeTexto(campo('precio').value),
       modalidad:campo('modalidad').value,ubicacion:campo('ubicacion').value,
       modalidad_otra:campo('modalidad-otra')?campo('modalidad-otra').value:'',ubicacion_otra:campo('ubicacion-otra')?campo('ubicacion-otra').value:'',
-      detalles:leerDetalles(),
+      detalles:leerDetalles(),linea_datos:lineaParaGuardar(borradorEnVivo()),
       contacto_tipo:campo('contacto-tipo').value,contacto_valor:campo('contacto').value};
     procesando=true;
     const botones=[form.querySelector('#pr-guardar'),form.querySelector('#pr-enviar')];botones.forEach(b=>b.disabled=true);
@@ -1868,8 +1926,20 @@ function observarRecomendacionClase(banner,anuncio,sigla){
 // La llama renderHome después de pintar los ramos. Si los anuncios todavía no
 // llegan, los pide y vuelve a pintar solo el banner cuando llegan.
 // La línea bajo el título: formato, lugar y precio, lo que el profesor llenó.
+// Los datos que pueden ir bajo el título, en el orden en que se muestran.
+function opcionesLineaClase(anuncio){
+  const a=anuncio||{},out=[];
+  const mod=textoOpcionClase(MODALIDADES_CLASE,a.modalidad,a.modalidad_otra);
+  if(mod)out.push({clave:'modalidad',nombre:'Formato',texto:mod});
+  const ubi=textoOpcionClase(UBICACIONES_CLASE,a.ubicacion,a.ubicacion_otra);
+  if(ubi)out.push({clave:'ubicacion',nombre:'Dónde',texto:ubi});
+  if(Number(a.precio_clp)>0)out.push({clave:'precio',nombre:'Precio',texto:pesosClase(a.precio_clp)});
+  detallesClase(a).forEach(d=>out.push({clave:'detalle:'+d.etiqueta.trim(),nombre:d.etiqueta.trim(),texto:d.valor.trim()}));
+  return out;
+}
 function lineaDatosClase(a){
-  return [formatoClase(a),a&&Number(a.precio_clp)>0?pesosClase(a.precio_clp):''].filter(Boolean).join(' · ');
+  const elegidas=Array.isArray(a&&a.linea_datos)?a.linea_datos:LINEA_CLASE_POR_OMISION;
+  return opcionesLineaClase(a).filter(o=>elegidas.includes(o.clave)).slice(0,MAX_LINEA_CLASE).map(o=>o.texto).join(' · ');
 }
 // El mismo contenido para el banner de Inicio y para la vista previa que ve el
 // profesor al armar su clase: lo que ve uno es exactamente lo que verá el otro.

@@ -197,6 +197,30 @@ $$;
 alter table public.tutor_anuncios add column if not exists detalles jsonb
   check (public.detalles_clase_validos(detalles));
 
+-- QUÉ VA BAJO EL TÍTULO en la recomendación de Inicio. Pedido de Lucas del
+-- 2026-09-25: el profesor marca de 1 a 3 datos entre formato, lugar, precio y
+-- sus detalles ('detalle:<etiqueta>'). No es texto libre: solo claves, así que
+-- no abre nada que haya que revisar. null = los de siempre (formato, lugar y
+-- precio), que es como se ven los anuncios que ya existen.
+create or replace function public.linea_datos_clase_valida(l text[])
+returns boolean
+language sql
+immutable
+as $$
+  select l is null or (
+    cardinality(l) between 1 and 3
+    and not exists (
+      select 1 from unnest(l) x
+      where x is null
+         or not (x in ('modalidad', 'ubicacion', 'precio')
+                 or (x like 'detalle:%' and char_length(x) between 9 and 38))
+    )
+  );
+$$;
+
+alter table public.tutor_anuncios add column if not exists linea_datos text[]
+  check (public.linea_datos_clase_valida(linea_datos));
+
 -- UN RAMO POR ANUNCIO desde el 2026-09-25 (decisión de Lucas). Es un trigger
 -- y no un CHECK a propósito: un CHECK revisa la fila entera en cada UPDATE, y
 -- un anuncio antiguo con dos ramos quedaría trabado —ni pausarlo se podría—.
@@ -248,6 +272,9 @@ grant update (ramos_siglas, criterios, modalidad, ubicacion, precio_clp, titulo,
 grant select (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to anon, authenticated;
 grant insert (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to authenticated;
 grant update (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to authenticated;
+grant select (linea_datos) on public.tutor_anuncios to anon, authenticated;
+grant insert (linea_datos) on public.tutor_anuncios to authenticated;
+grant update (linea_datos) on public.tutor_anuncios to authenticated;
 -- El formulario manda la universidad también al editar un borrador. Sin este
 -- grant, TODA edición de un borrador ya guardado fallaba con "permission
 -- denied": Postgres rechaza el UPDATE entero por una sola columna. Encontrado
