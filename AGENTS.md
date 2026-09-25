@@ -727,9 +727,12 @@ después cada anuncio. Suspender al profesor oculta todas sus campañas sin borr
 el historial.
 
 La recomendación usa universidad, sigla, promedio y avance, pero se decide dentro
-de GradeHub y el profesor recibe solo agregados. En el piloto se muestra como
-máximo una recomendación contextual al día, solo en Inicio. Los anuncios también
-se pueden explorar en un catálogo general.
+de GradeHub y el profesor recibe solo agregados. Se muestra solo en Inicio, una
+vez en la mañana (hasta las 14:00) y una en la tarde: en la primera entrada de
+cada franja, y no vuelve si la persona entra de nuevo en la misma franja o la
+cerró. Cerrarla la esconde hasta la próxima franja, no para siempre (decisión
+de Lucas del 2026-09-25). Los anuncios también se pueden explorar en un
+catálogo general.
 
 La tarifa cambió el 2026-09-25 (decisión de Lucas): $100 por día publicada y,
 por persona, $10 si la vio, $50 si la abrió y $1.000 si contactó. Cada persona

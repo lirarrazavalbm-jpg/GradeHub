@@ -748,12 +748,10 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .profesor-vista-previa .vista-sin-nota{color:var(--fg3);}
 .vista-grilla .clase-apoyo,.vista-celular .clase-apoyo{margin:0;animation:none;}
 .vista-celular{max-width:380px;}
+.vista-catalogo{max-width:520px;pointer-events:none;}
 .clase-apoyo-abrir[tabindex="-1"]{cursor:default;}
 
 .ramo-reordering .ramo-row.tiene-clase-apoyo{background:transparent;margin-bottom:10px;border-radius:6px;}
-.clase-apoyo-porque{margin:14px 0 0;font-size:.8125rem;color:var(--fg2);}
-.clase-apoyo-porque summary{cursor:pointer;font-weight:600;color:var(--fg);}
-.clase-apoyo-porque p{margin:8px 0 0;line-height:1.5;}
 .clase-apoyo-mas{width:100%;margin-top:14px;}
 @keyframes claseApoyoEntra{from{opacity:0;transform:translateY(-4px);}}
 @media(prefers-reduced-motion:reduce){.clase-apoyo{animation:none;}}

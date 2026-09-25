@@ -1757,6 +1757,8 @@ function renderBorradorProfesor(raiz,anuncio){
         <p class="profesor-info">En celular, bajo el ramo:</p>
         <div class="vista-celular">${filaRamoVistaPrevia('')}<aside class="clase-apoyo vista-anuncio"></aside></div>
         <p class="profesor-info">La nota del ramo es la de cada estudiante: acá va una raya porque cambia para cada uno.</p>
+        <p class="profesor-info">Al abrirla, y en el catálogo de clases, con tu flyer si subiste uno:</p>
+        <div class="vista-catalogo" aria-hidden="true"></div>
       </div>
       <div class="modal-btns"><button class="btn-cancel" id="pr-guardar" type="button">Guardar borrador</button><button class="btn-confirm" id="pr-enviar" type="button">Enviar a revisión</button></div>
       <p class="profesor-estado" role="status" aria-live="polite">${id?'Borrador recuperado. Puedes seguir editándolo.':'Completa la clase para guardar el primer borrador.'}</p>
@@ -1806,6 +1808,7 @@ function renderBorradorProfesor(raiz,anuncio){
     const borrador=borradorEnVivo();
     pintarLinea(borrador);
     if(!vista||typeof vista.querySelectorAll!=='function')return;
+    pintarVistaCatalogo(borrador);
     vista.querySelectorAll('.vista-anuncio').forEach(el=>{el.innerHTML=contenidoRecomendacionClase(borrador,{logoUrl:logoVista,vistaPrevia:true});});
     const sigla=valorCampo('siglas').split(',').map(x=>siglaAnuncio(x)).filter(Boolean)[0]||'';
     const nombre=sigla?(nombresRamosParaClases(valorCampo('tenant')||S.tenant)[sigla]||sigla):'Tu ramo';
@@ -1814,6 +1817,22 @@ function renderBorradorProfesor(raiz,anuncio){
     ajustarMiniatura();
     const grilla=vista.querySelector('.vista-grilla');
     if(grilla&&typeof requestAnimationFrame==='function')alinearRecomendacionConRamo(grilla,grilla.querySelector('.ramo-row'),grilla.querySelector('.clase-apoyo'));
+  };
+  // La tarjeta del catálogo, abierta, con el flyer que eligió (el guardado o el
+  // que acaba de escoger, antes de subirlo). El botón no lleva a ninguna parte.
+  let flyerVista='';
+  const pintarVistaCatalogo=borrador=>{
+    const caja=vista.querySelector('.vista-catalogo');
+    if(!caja)return;
+    const sigla=valorCampo('siglas').split(',').map(x=>siglaAnuncio(x)).filter(Boolean)[0]||'SIGLA';
+    const nombre=nombresRamosParaClases(valorCampo('tenant')||S.tenant)[sigla]||'';
+    caja.innerHTML=tarjetaCatalogoClase({...borrador,id:'vista-previa',titulo:borrador.titulo||'Tu clase',
+      descripcion:valorCampo('descripcion').trim()||'Acá va la descripción de tu clase.',ramos_siglas:[sigla],nombres_ramos:nombre?[nombre]:[],
+      contacto_tipo:'whatsapp',contacto_valor:valorCampo('contacto')||'+56 9 0000 0000',flyer_path:flyerVista?'vista-previa':null},{abierta:true});
+    const flyer=caja.querySelector('.catalogo-clase-flyer');
+    if(flyer){flyer.removeAttribute('data-flyer');flyer.innerHTML=`<img src="${esc(flyerVista)}" alt="">`;}
+    if(logoVista){const cabeza=caja.querySelector('.catalogo-clase-cabeza');if(cabeza)cabeza.insertAdjacentHTML('beforeend',`<div class="catalogo-clase-logo">${imgLogoClase(logoVista)}</div>`);}
+    caja.querySelectorAll('a').forEach(a=>{a.removeAttribute('href');a.setAttribute('tabindex','-1');});
   };
   // La versión de computador se dibuja a un ancho real de pantalla y se achica
   // entera para caber en el formulario: el profesor ve las proporciones que
@@ -1890,13 +1909,13 @@ function renderBorradorProfesor(raiz,anuncio){
   const contacto=campo('contacto');
   formatearAlEscribir(contacto,textoWhatsappEscrito);
   const preview=form.querySelector('.profesor-flyer-preview');
-  if(flyerActual)urlFlyerClase(flyerActual).then(url=>{if(url&&preview.isConnected){preview.querySelector('img').src=url;preview.hidden=false;}});
+  if(flyerActual)urlFlyerClase(flyerActual).then(url=>{if(url&&preview.isConnected){preview.querySelector('img').src=url;preview.hidden=false;flyerVista=url;actualizarVista();}});
   campo('flyer').addEventListener('change',()=>{
     const file=campo('flyer').files&&campo('flyer').files[0],validacion=validarFlyerClase(file);
     if(!validacion.ok){campo('flyer').value='';estado.textContent=validacion.error;return;}
     if(!file)return;
     const reader=new FileReader();
-    reader.onload=()=>{if(!preview.isConnected)return;preview.querySelector('img').src=String(reader.result||'');preview.hidden=false;estado.textContent='Flyer listo para subir cuando guardes.';};
+    reader.onload=()=>{if(!preview.isConnected)return;preview.querySelector('img').src=String(reader.result||'');preview.hidden=false;flyerVista=String(reader.result||'');actualizarVista();estado.textContent='Flyer listo para subir cuando guardes.';};
     reader.onerror=()=>{estado.textContent='No pudimos leer ese flyer. Elige otra imagen.';};
     reader.readAsDataURL(file);
   });
@@ -1906,7 +1925,7 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent='Quitando flyer…';
     const resultado=await quitarFlyerClase(id);procesando=false;
     estado.textContent=resultado.ok?resultado.aviso||'Flyer quitado del borrador.':resultado.error;
-    if(resultado.ok){flyerActual=null;campo('flyer').value='';preview.hidden=true;form.querySelector('#pr-quitar-flyer').hidden=true;}
+    if(resultado.ok){flyerActual=null;campo('flyer').value='';preview.hidden=true;form.querySelector('#pr-quitar-flyer').hidden=true;flyerVista='';actualizarVista();}
   });
   const procesar=async enviar=>{
     if(procesando)return;
@@ -1959,9 +1978,11 @@ function renderBorradorProfesor(raiz,anuncio){
 //   anuncios públicos de tu universidad y se comparan acá con tus ramos y notas.
 //   Nada de eso viaja para elegir.
 // - Solo en Inicio, nunca en la ficha del ramo, la Agenda ni el ingreso de notas.
-// - Como máximo una por día. Se elige una vez al día y se mantiene ese día; si
-//   la cierras no la reemplaza otra hasta mañana, y esa clase no vuelve a
-//   aparecer en este dispositivo.
+// - Una en la mañana y una en la tarde (decisión de Lucas del 2026-09-25). Se
+//   muestra en la primera entrada de cada franja y se mantiene mientras dure
+//   esa visita. Si cierras la app y vuelves a entrar en la misma franja, no
+//   aparece; ni tampoco si la cerraste. Cerrarla la esconde hasta la próxima
+//   franja: no la descarta para siempre.
 // - No dice "reprobando" ni diagnostica: ofrece apoyo para el ramo.
 // - El cierre y el día viven en `gradehub_marketplace_v1`, aparte de
 //   gradehub_v1: apagar esto no toca el estado académico.
@@ -1985,38 +2006,39 @@ function diaLocalClases(ahora=Date.now()){
   const d=new Date(ahora);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+// Mañana hasta las 14:00 y tarde desde ahí, en la hora del dispositivo.
+const HORA_TARDE_CLASES=14;
+function franjaClases(ahora=Date.now()){
+  return diaLocalClases(ahora)+(new Date(ahora).getHours()<HORA_TARDE_CLASES?'-manana':'-tarde');
+}
+// Una "visita" es una carga de la app: volver a entrar es otra visita.
+const VISITA_CLASES=Math.random().toString(36).slice(2)+Date.now().toString(36);
 
 // Pura: recibe anuncios, ramos y el estado guardado, y devuelve la
-// recomendación de hoy (o null) junto con el estado que hay que guardar.
-function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now()){
-  const hoy=diaLocalClases(ahora);
-  const descartados=Array.isArray(estado&&estado.descartados)?estado.descartados:[];
-  if(estado&&estado.dia===hoy){
-    // Hoy ya se cerró una: no la reemplaza otra hasta mañana.
-    if(estado.cerradaHoy)return {sel:null,estado};
-    // Ya se mostró una hoy. Se vuelve a comprobar que siga calzando: si subiste
-    // una nota y dejó de calzar, desaparece en vez de quedarse pegada.
-    if(estado.anuncioId){
-      if(descartados.includes(estado.anuncioId))return {sel:null,estado};
-      const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===estado.anuncioId),ramos,tenant,{descartados,ahora});
-      return {sel,estado};
+// recomendación de esta franja (o null) junto con el estado que hay que guardar.
+function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now(),visita=VISITA_CLASES){
+  const franja=franjaClases(ahora),e=estado||{};
+  if(e.franja===franja){
+    // En esta franja ya se mostró en otra visita, o se cerró: hasta la próxima.
+    if(e.cerrada||e.visita!==visita)return {sel:null,estado:e};
+    // Misma visita: la misma clase, si sigue calzando. Si subiste una nota y
+    // dejó de calzar, desaparece en vez de quedarse pegada.
+    if(e.anuncioId){
+      const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===e.anuncioId),ramos,tenant,{descartados:[],ahora});
+      return {sel,estado:e};
     }
-    // Día sin clase y sin cierre: lo dejó la versión del 2026-09-25, que
-    // anotaba "hoy ninguna" aunque no se hubiera mostrado nada. No bloquea.
   }
-  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados,ahora});
-  // El día queda tomado solo si se mostró una. Si hoy no calza ninguna, no se
-  // anota nada: una clase publicada a mediodía, o una nota que hace calzar un
-  // ramo, tiene que poder aparecer ese mismo día. "Una al día" es un techo.
-  if(!sel)return {sel:null,estado:estado||{}};
-  return {sel,estado:{...(estado||{}),descartados,dia:hoy,anuncioId:sel.anuncio.id,cerradaHoy:false}};
+  // Cerrar ya no descarta para siempre: la lista vieja `descartados` se ignora.
+  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados:[],ahora});
+  // La franja queda tomada solo si se mostró una. Si no calza ninguna, no se
+  // anota nada: una clase publicada más tarde tiene que poder aparecer.
+  if(!sel)return {sel:null,estado:e};
+  return {sel,estado:{...e,franja,visita,anuncioId:sel.anuncio.id,cerrada:false}};
 }
 
-function descartarRecomendacionClase(anuncioId,ahora=Date.now()){
+function descartarRecomendacionClase(anuncioId,ahora=Date.now(),visita=VISITA_CLASES){
   const estado=leerEstadoMarketplace();
-  const descartados=[...new Set([...(Array.isArray(estado.descartados)?estado.descartados:[]),anuncioId])].slice(-MAX_DESCARTADOS_CLASES);
-  // anuncioId null con el día de hoy: no se reemplaza por otra hasta mañana.
-  guardarEstadoMarketplace({...estado,descartados,dia:diaLocalClases(ahora),anuncioId:null,cerradaHoy:true});
+  guardarEstadoMarketplace({...estado,franja:franjaClases(ahora),visita,anuncioId:null,cerrada:true});
 }
 
 let anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
@@ -2109,7 +2131,6 @@ function pintarRecomendacionClase(contenedor){
     descartarRecomendacionClase(anuncio.id);
     fila.classList.remove('tiene-clase-apoyo','junto-der','junto-izq');
     banner.remove();
-    if(typeof showToast==='function')showToast('Listo, no te la volvemos a mostrar');
   });
   // El logo del profesor, si tiene uno aprobado. Llega después: el banner no
   // espera a Storage para aparecer, y sin logo simplemente no se muestra.
@@ -2168,9 +2189,6 @@ async function abrirClaseRecomendada(anuncio,ramo,sigla){
   raiz.innerHTML=`<div class="catalogo-clases">
       <div class="catalogo-clases-head"><div><div class="modal-title" id="modal-titulo">Clase particular</div></div><button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button></div>
       <div class="catalogo-clases-resultados">${tarjetaCatalogoClase(anuncio,{sigla,abierta:true})}</div>
-      <details class="clase-apoyo-porque"><summary>¿Por qué veo esto?</summary>
-        <p>Porque esta clase es para ${esc(ramo.nombre)}, que está en tu semestre. GradeHub lo decide en tu navegador con tus ramos y notas: el profesor no las recibe ni sabe quién eres. Puedes cerrar la recomendación en Inicio y no te la volvemos a mostrar.</p>
-      </details>
       <button type="button" class="btn-cancel clase-apoyo-mas" onclick="openCatalogoClases()">Ver todas las clases</button>
     </div>`;
   activarTarjetasClases(raiz);
