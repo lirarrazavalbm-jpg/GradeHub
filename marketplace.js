@@ -1700,6 +1700,7 @@ function renderBorradorProfesor(raiz,anuncio){
   raiz.innerHTML=`<div class="modal-title" id="modal-titulo">${id?'Edita tu borrador':'Prepara tu clase'}</div>
     <p class="profesor-info">Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.</p>
     <form class="profesor-form" id="profesor-borrador">
+      <div class="profesor-form-campos">
       <h3>1. Tu clase</h3>
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
       <label class="modal-label" for="pr-descripcion">Descripción</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required placeholder="Qué van a trabajar, cómo son tus clases y tu experiencia con el ramo.">${valor('descripcion')}</textarea>
@@ -1750,7 +1751,9 @@ function renderBorradorProfesor(raiz,anuncio){
         <p class="profesor-info">Cuesta ${pesosClase(TARIFA_CAMPANA.dia)} por día publicada y, por persona, ${pesosClase(TARIFA_CAMPANA.vista)} si la ve, ${pesosClase(TARIFA_CAMPANA.apertura)} si la abre y ${pesosClase(TARIFA_CAMPANA.contacto)} si te contacta. Cada persona cuenta una vez. Al llegar al tope deja de mostrarse. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
         <p class="profesor-campana-resumen" id="pr-campana-resumen" aria-live="polite"></p>
       </div>
-      <h3>4. Así la van a ver</h3>
+      </div>
+      <section class="profesor-form-vista" aria-labelledby="pr-vista-titulo">
+      <h3 id="pr-vista-titulo">4. Así la van a ver</h3>
       <div class="profesor-vista-previa" id="pr-vista">
         <p class="profesor-info">En computador, en la casilla de al lado del ramo del estudiante:</p>
         <div class="vista-marco"><div class="vista-grilla">${filaRamoVistaPrevia(' junto-der')}<aside class="clase-apoyo en-casilla a-la-derecha vista-anuncio"></aside></div></div>
@@ -1760,8 +1763,11 @@ function renderBorradorProfesor(raiz,anuncio){
         <p class="profesor-info">Al abrirla, y en el catálogo de clases, con tu flyer si subiste uno:</p>
         <div class="vista-catalogo" aria-hidden="true"></div>
       </div>
+      </section>
+      <div class="profesor-form-acciones">
       <div class="modal-btns"><button class="btn-cancel" id="pr-guardar" type="button">Guardar borrador</button><button class="btn-confirm" id="pr-enviar" type="button">Enviar a revisión</button></div>
       <p class="profesor-estado" role="status" aria-live="polite">${id?'Borrador recuperado. Puedes seguir editándolo.':'Completa la clase para guardar el primer borrador.'}</p>
+      </div>
     </form>`;
   const form=raiz.querySelector('#profesor-borrador'),campo=id=>form.querySelector('#pr-'+id),estado=form.querySelector('.profesor-estado');
   let procesando=false;

@@ -938,6 +938,18 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .modal-btns{display:flex;gap:10px;margin-top:6px;}
 .profesor-info{font-size:.8125rem;line-height:1.5;color:var(--fg2);margin:0 0 16px;}
 .profesor-form{display:grid;gap:8px;min-width:0;}
+.profesor-form-campos,.profesor-form-vista,.profesor-form-acciones{display:grid;gap:8px;min-width:0;}
+/* En la pestaña Clases de un computador el formulario deja media pantalla
+   vacía. Ahí la vista previa pasa a una columna a la derecha que se queda fija
+   mientras el profesor baja: ve cambiar su anuncio mientras lo escribe. En el
+   modal y en el celular sigue abajo, antes de los botones. */
+#profesor-body{container-type:inline-size;}
+@container (min-width:980px){
+  .profesor-form{grid-template-columns:minmax(0,620px) minmax(380px,1fr);grid-template-areas:"campos vista" "acciones vista";column-gap:40px;align-items:start;}
+  .profesor-form-campos{grid-area:campos;}
+  .profesor-form-acciones{grid-area:acciones;}
+  .profesor-form-vista{grid-area:vista;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;padding-bottom:12px;}
+}
 .profesor-form h3{font-size:.875rem;letter-spacing:-.01em;margin:18px 0 2px;color:var(--fg);}
 .profesor-form .modal-label{margin:8px 0 0;}
 .profesor-form input,.profesor-form select,.profesor-form textarea{width:100%;min-width:0;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;font-size:1rem;}
