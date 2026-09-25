@@ -33,12 +33,78 @@ function validarBorradorClase(entrada){
   const contacto_tipo=String(entrada.contacto_tipo||''),contacto_valor=String(entrada.contacto_valor||'').trim();
   if(!['whatsapp','instagram','email'].includes(contacto_tipo))return {ok:false,campo:'contacto_tipo',error:'Elige cómo te contactarán.'};
   if(contacto_valor.length<3||contacto_valor.length>160)return {ok:false,campo:'contacto_valor',error:'Revisa el dato de contacto.'};
+  // El formulario rellena "+56 9 " o "@" solo: sin esta comprobación el prefijo
+  // solo, sin número ni usuario, pasaba como contacto válido y el anuncio
+  // llegaba a revisión con un botón que no lleva a ninguna parte.
+  if(!enlaceContactoClase(contacto_tipo,contacto_valor))return {ok:false,campo:'contacto_valor',error:ERROR_CONTACTO_CLASE[contacto_tipo]};
   // Lista blanca: nunca aceptar un estado de publicación, marcas de pago ni
   // datos académicos del estudiante enviados junto con el formulario.
   return {ok:true,datos:{tenant,ramos_siglas:siglas,
     criterios:{promedioMenorA:entrada.criterios.promedioMenorA,avanceMinimo:entrada.criterios.avanceMinimo},
     modalidad,ubicacion,precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
 }
+
+const ERROR_CONTACTO_CLASE={
+  whatsapp:'Escribe tu número de WhatsApp completo, por ejemplo +56 9 1234 5678.',
+  instagram:'Escribe tu usuario de Instagram, por ejemplo @profe.calculo.',
+  email:'Revisa tu correo: tiene que ser como nombre@dominio.cl.',
+};
+
+// ─── CAMPOS QUE SE ESCRIBEN CON FORMATO ─────────────────────────────────────
+//
+// Un monto en pesos se ve como se lee: al escribir 15000 aparece $15.000. El
+// campo guarda texto y `pesosDeTexto` devuelve el número; por eso es un
+// input de texto con teclado numérico y no `type=number`, que no acepta ni el
+// signo ni los puntos.
+function textoPesosEscrito(texto){
+  const digitos=String(texto||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,9);
+  return digitos?'$'+digitos.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'';
+}
+function pesosDeTexto(texto){
+  const digitos=String(texto||'').replace(/\D/g,'');
+  return digitos?Number(digitos):NaN;
+}
+
+// WhatsApp de Chile con sus espacios: "+56 9 1234 5678". Solo se ordena un
+// celular chileno; un número de otro país se deja tal como lo escribieron.
+function textoWhatsappEscrito(texto){
+  const t=String(texto||'');
+  const digitos=t.replace(/\D/g,'');
+  if(!/^\s*\+?\s*56/.test(t)||!digitos.startsWith('569'))return t;
+  const resto=digitos.slice(3,11);
+  return '+56 9 '+(resto.length>4?resto.slice(0,4)+' '+resto.slice(4):resto);
+}
+function textoInstagramEscrito(texto){
+  const t=String(texto||'').replace(/\s+/g,'');
+  return t&&!t.startsWith('@')?'@'+t:t;
+}
+const PREFIJO_CONTACTO_CLASE={whatsapp:'+56 9 ',instagram:'@',email:''};
+const EJEMPLO_CONTACTO_CLASE={whatsapp:'+56 9 1234 5678',instagram:'@profe.calculo',email:'nombre@dominio.cl'};
+
+// Reescribe el campo con su formato sin mandar el cursor al final: cuenta
+// cuántos caracteres "de verdad" (dígitos, letras) había antes del cursor y lo
+// deja después de esa misma cantidad en el texto nuevo. Borrar no reformatea,
+// para que la persona pueda borrar un espacio o el prefijo sin que vuelva solo.
+function formatearAlEscribir(input,formatear){
+  if(!input||typeof input.addEventListener!=='function')return;
+  const util=c=>/[\p{L}\p{N}]/u.test(c);
+  input.addEventListener('input',e=>{
+    if(e&&typeof e.inputType==='string'&&e.inputType.startsWith('delete'))return;
+    const antes=String(input.value||''),nuevo=formatear(antes);
+    if(nuevo===antes)return;
+    const cursor=typeof input.selectionStart==='number'?input.selectionStart:antes.length;
+    const utilesAntes=[...antes.slice(0,cursor)].filter(util).length;
+    input.value=nuevo;
+    let pos=nuevo.length;
+    if(utilesAntes<[...nuevo].filter(util).length){
+      let vistos=0;
+      for(let i=0;i<nuevo.length;i++){if(util(nuevo[i])&&++vistos===utilesAntes){pos=i+1;break;}}
+      if(utilesAntes===0)pos=nuevo.search(/[\p{L}\p{N}]/u);
+    }
+    try{input.setSelectionRange(pos,pos);}catch(err){}
+  });
+}
+function campoPesos(input){formatearAlEscribir(input,textoPesosEscrito);}
 
 // El estado de profesor lo miran dos lugares —la sección de Ajustes y la barra
 // de pestañas— y ninguno puede esperar una consulta de red para pintarse. Se
@@ -513,6 +579,7 @@ function renderCatalogoClases(busqueda=''){
   raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',()=>{
     registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
   }));
+  observarImpresionesClases(raiz,anuncios);
   raiz.querySelectorAll('[data-flyer]').forEach(async caja=>{
     const url=await urlFlyerClase(caja.dataset.flyer);
     if(!caja.isConnected)return;
@@ -521,7 +588,40 @@ function renderCatalogoClases(busqueda=''){
   });
 }
 
+// Una impresión es una tarjeta que se VIO: al menos la mitad en pantalla
+// durante un segundo, como dice docs/marketplace-clases.md. Pintarla fuera de
+// la vista no cuenta. Se registra una vez por anuncio mientras el catálogo
+// está abierto: buscar y volver a pintar no la suma de nuevo.
+//
+// Va a `anuncio_metricas`, que cuenta eventos y no factura. El alcance por
+// catálogo —lo que sí se cobraría, a un precio menor que el segmentado— espera
+// a que el servidor distinga por qué camino llegó cada cuenta.
+const IMPRESION_VISIBLE=0.5,IMPRESION_MS=1000;
+let impresionesCatalogo=new Set(),observadorCatalogo=null;
+function observarImpresionesClases(raiz,anuncios){
+  if(observadorCatalogo){observadorCatalogo.disconnect();observadorCatalogo=null;}
+  if(typeof IntersectionObserver!=='function'||!raiz)return;
+  const sigla=new Map((anuncios||[]).map(a=>[a.id,(a.ramos_siglas||[])[0]||'']));
+  const timers=new Map();
+  observadorCatalogo=new IntersectionObserver(entradas=>{
+    for(const e of entradas){
+      const id=e.target.dataset.catalogoAnuncio;
+      if(!id||impresionesCatalogo.has(id))continue;
+      if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
+        if(!timers.has(id))timers.set(id,setTimeout(()=>{
+          timers.delete(id);
+          if(!e.target.isConnected||impresionesCatalogo.has(id))return;
+          impresionesCatalogo.add(id);
+          registrarMetricaAnuncio(id,'impresion',sigla.get(id));
+        },IMPRESION_MS));
+      }else if(timers.has(id)){clearTimeout(timers.get(id));timers.delete(id);}
+    }
+  },{threshold:[IMPRESION_VISIBLE]});
+  raiz.querySelectorAll('[data-catalogo-anuncio]').forEach(card=>observadorCatalogo.observe(card));
+}
+
 async function openCatalogoClases(){
+  impresionesCatalogo=new Set();
   const raiz=document.getElementById('modal-content');
   if(!raiz)return;
   raiz.innerHTML=`<div class="catalogo-clases">
@@ -784,93 +884,191 @@ function pausarAnuncioClase(id,alTerminar){
 }
 
 function retomarAnuncioClase(id,alTerminar){
-  showConfirm('¿Volver a editarla?',
-    'Pasa a borrador para que la cambies. Cuando la envíes, la revisamos antes de publicarla de nuevo.',
+  showConfirm('¿Volver a publicarla?',
+    'Pasa a borrador para que la revises. Cuando la envíes, la revisamos antes de publicarla de nuevo.',
     async()=>{
       const r=await cambiarEstadoAnuncio(id,'borrador');
       showToast(r.ok?'Quedó como borrador':r.error,!r.ok);
-      if(r.ok&&typeof alTerminar==='function')alTerminar();
-    },{label:'Editar',danger:false});
+      if(r.ok&&typeof alTerminar==='function')alTerminar(r.anuncio||null);
+    },{label:'Seguir',danger:false});
+}
+
+// Un publicado cuya fecha ya pasó está TERMINADO aunque la fila todavía diga
+// "publicado": nadie más lo ve —la RLS filtra por vence_at— y nada en el
+// servidor le cambia el estado al vencer. Decirle "se está mostrando" sería
+// mentirle sobre una campaña que ya cerró.
+function vigenciaAnuncio(a,ahora=Date.now()){
+  if(!a)return '';
+  if(a.estado==='publicado'){
+    const vence=Date.parse(a.vence_at||'');
+    return Number.isFinite(vence)&&vence<=ahora?'expirado':'publicado';
+  }
+  return a.estado;
+}
+// La página se ordena por lo que el profesor puede HACER con cada anuncio.
+function gruposPanelClases(anuncios,ahora=Date.now()){
+  const g={activos:[],revision:[],borradores:[],cerrados:[]};
+  for(const a of anuncios||[]){
+    const e=vigenciaAnuncio(a,ahora);
+    (e==='publicado'?g.activos:e==='en_revision'?g.revision:e==='borrador'?g.borradores:g.cerrados).push(a);
+  }
+  return g;
+}
+function diasRestantesAnuncio(a,ahora=Date.now()){
+  const vence=Date.parse(a&&a.vence_at||'');
+  return Number.isFinite(vence)?Math.max(0,Math.ceil((vence-ahora)/864e5)):null;
+}
+// Cuánto de la campaña ya pasó, entre 0 y 1, para el riel de vigencia.
+function avanceCampanaAnuncio(a,ahora=Date.now()){
+  const desde=Date.parse(a&&a.publicado_at||''),hasta=Date.parse(a&&a.vence_at||'');
+  if(!Number.isFinite(desde)||!Number.isFinite(hasta)||hasta<=desde)return null;
+  return Math.min(Math.max((ahora-desde)/(hasta-desde),0),1);
+}
+
+// Una cifra con su nombre. Solo se pinta lo que se sabe: un tipo de evento sin
+// datos suficientes no aparece como 0, porque el servidor no devuelve cortes
+// con menos de quince eventos y "0 clics" ahí sería inventarlo.
+function cifrasClase({alcance,totales,hayCortes,costo},pesos){
+  const f=[];
+  const miles=n=>new Intl.NumberFormat('es-CL').format(n);
+  f.push(['Personas alcanzadas',alcance===null?'—':miles(alcance),'cuentas distintas']);
+  if(hayCortes&&totales.impresion)f.push(['Se mostró',miles(totales.impresion),'veces']);
+  if(hayCortes&&totales.clic)f.push(['Clics',miles(totales.clic),'veces']);
+  if(hayCortes&&totales.contacto)f.push(['Contactos',miles(totales.contacto),'tocaron tu contacto']);
+  if(hayCortes&&totales.impresion&&totales.contacto)
+    f.push(['Tasa de contacto',new Intl.NumberFormat('es-CL',{style:'percent',maximumFractionDigits:1}).format(totales.contacto/totales.impresion),'de quienes la vieron']);
+  if(costo)f.push(['Va costando',pesos(costo.totalPorAlcance),'hasta ahora']);
+  return `<div class="clase-nums">${f.map(([t,v,d])=>
+    `<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`).join('')}</div>`;
+}
+
+// De quienes la vieron, cuántos tocaron algo. Barras relativas a las
+// impresiones y dibujadas con scaleX, no con width.
+function embudoClase(totales){
+  if(!totales.impresion)return '';
+  const filas=[['Se mostró',totales.impresion],['Clics',totales.clic],['Contactos',totales.contacto]].filter(([,n])=>n>0);
+  if(filas.length<2)return '';
+  return `<div class="clase-embudo" aria-label="De quienes vieron tu clase, cuántos avanzaron">${filas.map(([t,n])=>
+    `<div class="clase-embudo-fila"><span>${t}</span><div class="clase-barra"><i style="transform:scaleX(${(n/totales.impresion).toFixed(3)})"></i></div><b>${n}</b></div>`).join('')}</div>`;
+}
+
+function tarjetaPanelClase(a,pesos,ahora){
+  const vig=vigenciaAnuncio(a,ahora);
+  const [etiqueta,detalle]=ESTADOS_ANUNCIO[vig]||[vig,''];
+  const dias=vig==='publicado'?diasRestantesAnuncio(a,ahora):null,avance=vig==='publicado'?avanceCampanaAnuncio(a,ahora):null;
+  const accion={
+    publicado:`<button type="button" class="clase-accion" data-pausar="${esc(a.id)}">Pausar</button>`,
+    borrador:`<button type="button" class="clase-accion" data-editar="${esc(a.id)}">Seguir editando</button>`,
+    pausado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
+    expirado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
+  }[vig]||'';
+  return `<article class="clase-card" data-anuncio="${esc(a.id)}">
+    <div class="clase-card-top">
+      <strong>${esc(a.titulo||'Sin título')}</strong>
+      <span class="clase-estado clase-estado-${esc(vig)}">${esc(etiqueta)}</span>
+    </div>
+    <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
+    ${dias!==null?`<div class="clase-vigencia"><span>${dias===0?'Termina hoy':dias===1?'Queda 1 día':`Quedan ${dias} días`}</span>${avance!==null?`<div class="clase-riel"><i style="transform:scaleX(${avance.toFixed(3)})"></i></div>`:''}</div>`
+      :`<p class="clase-card-detalle">${esc(detalle)}</p>`}
+    <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
+    ${accion}
+  </article>`;
+}
+
+function seccionPanelClases(titulo,lista,pesos,ahora,vacio){
+  if(!lista.length&&!vacio)return '';
+  return `<section class="clases-seccion"><h3>${titulo}${lista.length?` <span>${lista.length}</span>`:''}</h3>
+    ${lista.length?`<div class="clase-lista">${lista.map(a=>tarjetaPanelClase(a,pesos,ahora)).join('')}</div>`:`<p class="clase-sin-datos">${vacio}</p>`}</section>`;
 }
 
 async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
-  const borrador=anuncios.find(a=>a.estado==='borrador');
+  const ahora=Date.now(),g=gruposPanelClases(anuncios,ahora);
+  const conNumeros=[...g.activos,...g.cerrados];
   raiz.innerHTML=cabecera('Espacio de profesor')+
-    `<p class="profesor-info">Tus clases y cómo les va. Los números son de cuentas distintas, nunca de personas con nombre.</p>
-     <div class="clase-lista">${anuncios.map(a=>{
-        const [etiqueta,detalle]=ESTADOS_ANUNCIO[a.estado]||[a.estado,''];
-        return `<article class="clase-card" data-anuncio="${esc(a.id)}">
-          <div class="clase-card-top">
-            <strong>${esc(a.titulo||'Sin título')}</strong>
-            <span class="clase-estado clase-estado-${esc(a.estado)}">${esc(etiqueta)}</span>
-          </div>
-          <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
-          <p class="clase-card-detalle">${esc(detalle)}</p>
-          <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
-          ${a.estado==='publicado'?`<button type="button" class="clase-accion" data-pausar="${esc(a.id)}">Pausar</button>`:''}
-          ${a.estado==='pausado'?`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Editar y volver a enviar</button>`:''}
-        </article>`;
-      }).join('')}</div>
-     <div class="modal-btns">
-       <button type="button" class="btn-confirm" id="clase-nueva">${borrador?'Seguir con mi borrador':'Preparar otra clase'}</button>
-     </div>`+salida();
-  const nueva=raiz.querySelector('#clase-nueva');
-  if(nueva)nueva.addEventListener('click',()=>renderBorradorProfesor(raiz,borrador||null));
+    `<section class="clases-resumen" aria-labelledby="clases-resumen-titulo">
+       <h3 id="clases-resumen-titulo">${g.activos.length?`Tus clases activas`:'Todavía no tienes clases activas'}</h3>
+       <div id="clases-kpis">${g.activos.length?'<p class="clase-sin-datos">Cargando números…</p>'
+         :`<p class="clase-sin-datos">${g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
+           :'Arma un borrador y mándalo a revisión. Cuando se publique, acá vas a ver cómo le va.'}</p>`}</div>
+       <p class="clase-privacidad">Los números son de cuentas distintas, nunca de personas con nombre.</p>
+     </section>
+     <div class="clases-acciones"><button type="button" class="btn-confirm" id="clase-nueva">Armar un borrador</button></div>`+
+    seccionPanelClases('Publicadas',g.activos,pesos,ahora)+
+    seccionPanelClases('En revisión',g.revision,pesos,ahora)+
+    seccionPanelClases('Borradores',g.borradores,pesos,ahora)+
+    seccionPanelClases('Pausadas y terminadas',g.cerrados,pesos,ahora)+
+    salida();
   // Al cambiar el estado se vuelve a pedir la lista: el estado, los números y
   // los botones de cada tarjeta dependen de él, y repintar a mano lo que uno
   // cree que cambió es la forma de que una tarjeta quede mintiendo.
   const repintar=()=>renderEspacioProfesor(raiz,{titulo:!!cabecera('x')});
+  const nueva=raiz.querySelector('#clase-nueva');
+  if(nueva)nueva.addEventListener('click',()=>renderBorradorProfesor(raiz,null));
+  raiz.querySelectorAll('[data-editar]').forEach(b=>
+    b.addEventListener('click',()=>renderBorradorProfesor(raiz,anuncios.find(a=>a.id===b.dataset.editar)||null)));
   raiz.querySelectorAll('[data-pausar]').forEach(b=>
     b.addEventListener('click',()=>pausarAnuncioClase(b.dataset.pausar,repintar)));
+  // Volver a publicar = volver a borrador y abrirlo: el anuncio pasa por
+  // revisión otra vez, y lo natural es revisarlo antes de reenviarlo.
   raiz.querySelectorAll('[data-retomar]').forEach(b=>
-    b.addEventListener('click',()=>retomarAnuncioClase(b.dataset.retomar,repintar)));
+    b.addEventListener('click',()=>retomarAnuncioClase(b.dataset.retomar,an=>an?renderBorradorProfesor(raiz,an):repintar())));
 
-  // Las métricas se piden después de pintar: son una consulta por anuncio y la
-  // lista ya está en pantalla. Si alguna falla, esa tarjeta lo dice y las otras
-  // siguen andando.
-  for(const a of anuncios){
+  for(const a of [...g.revision,...g.borradores]){
     const caja=raiz.querySelector(`[data-metricas="${a.id}"]`);
-    if(!caja)continue;
-    if(!ANUNCIO_YA_SE_MOSTRO.has(a.estado)){
-      caja.innerHTML=`<p class="clase-sin-datos">${a.estado==='en_revision'
-        ?'Cuando lo aprobemos y empiece a mostrarse, sus números aparecen acá.'
-        :'Todavía no se publica, así que no hay nada que medir.'}</p>`;
-      continue;
-    }
-    caja.innerHTML='<p class="clase-sin-datos">Cargando…</p>';
+    if(caja)caja.innerHTML=`<p class="clase-sin-datos">${a.estado==='en_revision'
+      ?'Cuando lo aprobemos y empiece a mostrarse, sus números aparecen acá.'
+      :'Todavía no se publica, así que no hay nada que medir.'}</p>`;
+  }
+  conNumeros.forEach(a=>{const caja=raiz.querySelector(`[data-metricas="${a.id}"]`);if(caja)caja.innerHTML='<p class="clase-sin-datos">Cargando…</p>';});
+
+  // Las métricas se piden después de pintar y en paralelo: son dos consultas
+  // por anuncio y la lista ya está en pantalla. Si alguna falla, esa tarjeta lo
+  // dice y las otras siguen andando.
+  const medidas=await Promise.all(conNumeros.map(async a=>{
     const m=await metricasDeAnuncio(a);
-    if(!caja.isConnected)return;
-    const t=totalesDeCortes(m.cortes);
-    const costo=costoDeAnuncio(a,m.alcance);
-    const filas=[];
-    filas.push(`<div class="clase-num"><span>Personas alcanzadas</span><b>${m.alcance===null?'—':m.alcance}</b></div>`);
-    if(m.cortes.length){
-      filas.push(`<div class="clase-num"><span>Clics</span><b>${t.clic}</b></div>`);
-      filas.push(`<div class="clase-num"><span>Contactos</span><b>${t.contacto}</b></div>`);
-    }
-    if(costo)filas.push(`<div class="clase-num"><span>Va costando</span><b>${pesos(costo.totalPorAlcance)}</b></div>`);
-    caja.innerHTML=`<div class="clase-nums">${filas.join('')}</div>`+
-      (m.cortes.length?'':'<p class="clase-sin-datos">Los cortes por día y por ramo aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
-      (costo?`<p class="clase-sin-datos">${pesos(costo.cargoFijo)} de publicación${costo.alcanzados?` + ${pesos(costo.precioPorCuenta)} por cada una de las ${costo.alcanzados} personas`:''}.</p>`:'');
+    return {a,alcance:m.alcance,totales:totalesDeCortes(m.cortes),hayCortes:m.cortes.length>0,costo:costoDeAnuncio(a,m.alcance)};
+  }));
+  for(const d of medidas){
+    const caja=raiz.querySelector(`[data-metricas="${d.a.id}"]`);
+    if(!caja||!caja.isConnected)continue;
+    caja.innerHTML=cifrasClase(d,pesos)+embudoClase(d.totales)+
+      (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró, los clics y los contactos aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
+      (d.costo?`<p class="clase-sin-datos">${pesos(d.costo.cargoFijo)} de publicación${d.costo.alcanzados?` + ${pesos(d.costo.precioPorCuenta)} por cada una de las ${d.costo.alcanzados} personas`:''}.</p>`:'');
+  }
+
+  // El resumen suma solo las clases activas: es "cómo me va ahora". Suma lo que
+  // se sabe; si ningún anuncio pudo medir su alcance, sale raya y no cero.
+  const kpis=raiz.querySelector('#clases-kpis');
+  const activas=medidas.filter(d=>vigenciaAnuncio(d.a,ahora)==='publicado');
+  if(kpis&&kpis.isConnected&&activas.length){
+    const conAlcance=activas.filter(d=>d.alcance!==null);
+    const totales={impresion:0,clic:0,contacto:0};
+    activas.forEach(d=>Object.keys(totales).forEach(k=>totales[k]+=d.totales[k]));
+    const costos=activas.filter(d=>d.costo);
+    const costo=costos.length?{totalPorAlcance:costos.reduce((n,d)=>n+d.costo.totalPorAlcance,0)}:null;
+    kpis.innerHTML=cifrasClase({alcance:conAlcance.length?conAlcance.reduce((n,d)=>n+d.alcance,0):null,
+      totales,hayCortes:activas.some(d=>d.hayCortes),costo},pesos).replace('class="clase-nums"','class="clase-nums clases-kpis"')+
+      embudoClase(totales);
   }
 }
 
 function renderBorradorProfesor(raiz,anuncio){
   let id=anuncio&&anuncio.id||null,flyerActual=anuncio&&anuncio.flyer_path||null;
   const valor=(campo,defecto='')=>esc(anuncio&&anuncio[campo]!=null?anuncio[campo]:defecto);
+  const tipoContactoInicial=anuncio&&PREFIJO_CONTACTO_CLASE[anuncio.contacto_tipo]!==undefined?anuncio.contacto_tipo:'whatsapp';
   const elegir=(opciones,actual)=>opciones.map(([clave,texto])=>`<option value="${clave}"${actual===clave?' selected':''}>${texto}</option>`).join('');
   raiz.innerHTML=`<div class="modal-title" id="modal-titulo">${id?'Edita tu borrador':'Prepara tu clase'}</div>
     <p class="profesor-info">Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.</p>
     <form class="profesor-form" id="profesor-borrador">
       <h3>1. Tu clase</h3>
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
-      <label class="modal-label" for="pr-descripcion">Qué van a trabajar</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required>${valor('descripcion')}</textarea>
-      <label class="modal-label" for="pr-precio">Precio por clase · CLP</label><input id="pr-precio" type="number" min="1000" max="500000" step="1" required value="${valor('precio_clp')}">
+      <label class="modal-label" for="pr-descripcion">Descripción</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required placeholder="Qué van a trabajar, cómo son tus clases y tu experiencia con el ramo.">${valor('descripcion')}</textarea>
+      <label class="modal-label" for="pr-precio">Precio por clase</label><input id="pr-precio" type="text" inputmode="numeric" autocomplete="off" required placeholder="$15.000" value="${esc(textoPesosEscrito(anuncio&&anuncio.precio_clp))}">
       <label class="modal-label" for="pr-modalidad">Formato</label><select id="pr-modalidad">${elegir([['individual','Individual'],['grupal','Grupal']],anuncio&&anuncio.modalidad)}</select>
       <label class="modal-label" for="pr-ubicacion">Dónde</label><select id="pr-ubicacion">${elegir([['online','Online'],['presencial','Presencial'],['hibrido','Híbrido']],anuncio&&anuncio.ubicacion)}</select>
       <label class="modal-label" for="pr-contacto-tipo">Cómo te contactarán</label><select id="pr-contacto-tipo">${elegir([['whatsapp','WhatsApp'],['instagram','Instagram'],['email','Correo']],anuncio&&anuncio.contacto_tipo)}</select>
-      <label class="modal-label" for="pr-contacto">Tu contacto</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required value="${valor('contacto_valor')}">
+      <label class="modal-label" for="pr-contacto">Tu contacto</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
       <label class="modal-label" for="pr-flyer">Flyer · opcional</label><input id="pr-flyer" type="file" accept="image/jpeg,image/png,image/webp"><p class="profesor-info">JPG, PNG o WebP · máximo 5 MB. Primero se guarda el borrador y después se sube la imagen.</p>
       <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
       <button class="btn-cancel" id="pr-quitar-flyer" type="button" ${flyerActual?'':'hidden'}>Quitar flyer guardado</button>
@@ -889,6 +1087,20 @@ function renderBorradorProfesor(raiz,anuncio){
   const vista=form.querySelector('.profesor-vista');
   const actualizarVista=()=>{vista.querySelector('strong').textContent=campo('titulo').value.trim()||'Tu clase';vista.querySelector('p').textContent=campo('descripcion').value.trim()||'Aquí aparecerá lo que ofreces.';};
   form.addEventListener('input',actualizarVista);actualizarVista();
+  campoPesos(campo('precio'));
+  // WhatsApp e Instagram parten con su prefijo escrito. Al cambiar de canal se
+  // cambia el prefijo solo si el campo no tiene nada más que un prefijo: lo que
+  // la persona ya escribió no se borra por tocar el selector.
+  const contacto=campo('contacto');
+  formatearAlEscribir(contacto,texto=>{
+    const tipo=campo('contacto-tipo').value;
+    return tipo==='whatsapp'?textoWhatsappEscrito(texto):tipo==='instagram'?textoInstagramEscrito(texto):texto;
+  });
+  campo('contacto-tipo').addEventListener('change',()=>{
+    const tipo=campo('contacto-tipo').value,actual=String(contacto.value||'').trim();
+    if(!actual||Object.values(PREFIJO_CONTACTO_CLASE).some(p=>p&&p.trim()===actual))contacto.value=PREFIJO_CONTACTO_CLASE[tipo]||'';
+    contacto.placeholder=EJEMPLO_CONTACTO_CLASE[tipo]||'';
+  });
   const preview=form.querySelector('.profesor-flyer-preview');
   if(flyerActual)urlFlyerClase(flyerActual).then(url=>{if(url&&preview.isConnected){preview.querySelector('img').src=url;preview.hidden=false;}});
   campo('flyer').addEventListener('change',()=>{
@@ -915,7 +1127,7 @@ function renderBorradorProfesor(raiz,anuncio){
     if(!validacion.ok){estado.textContent=validacion.error;campo('flyer').focus();return;}
     const datos={tenant:campo('tenant').value,ramos_siglas:campo('siglas').value.split(',').map(s=>s.trim()),
       criterios:{promedioMenorA:Number(campo('promedio').value),avanceMinimo:Number(campo('avance').value)},
-      titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:Number(campo('precio').value),
+      titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:pesosDeTexto(campo('precio').value),
       modalidad:campo('modalidad').value,ubicacion:campo('ubicacion').value,
       contacto_tipo:campo('contacto-tipo').value,contacto_valor:campo('contacto').value};
     procesando=true;
