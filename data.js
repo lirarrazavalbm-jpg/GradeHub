@@ -692,6 +692,7 @@ const PRESETS_UC={
       min:5,
       ignoraDescartes:true,
       requiereConfirmacion:true,
+      confirmar:'cumples la asistencia de Taller exigida por tu sección',
       ocultaEvaluacion:true,
       minimos:[
         {evaluacion:'Interrogaciones',min:4,cadaNota:true},
@@ -2454,7 +2455,12 @@ const PRESETS_UAI={
   'Matemáticas Avanzadas II':{
     periodo:'2026-2',
     recuperativo:{min:3.5,max:3.9,nota:4.0},
-    eximicion:{evaluacion:'Examen',segun:['Pruebas','Controles'],min:5,requiereConfirmacion:true},
+    // `ignoraDescartes:true` es lo que hace que el motor la aplique: sin él
+    // `estadoEximicion` devuelve null y el examen seguía pesando 30% aunque la
+    // presentación pasara el 5,0 (reporte de un estudiante, 2026-09-25). Esta
+    // pauta no tiene descartes, así que no cambia el cálculo de la presentación.
+    eximicion:{evaluacion:'Examen',segun:['Pruebas','Controles'],min:5,ignoraDescartes:true,requiereConfirmacion:true,
+      confirmar:'rendiste todas las pruebas y controles'},
     // El programa nombra a qué evaluación pasa la ausencia justificada, así que
     // se puede declarar: "la nota del control sea reemplazada por la del examen".
     ausenciasJustificadas:{

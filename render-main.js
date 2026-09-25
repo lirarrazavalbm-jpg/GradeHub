@@ -525,13 +525,16 @@ function renderRamo(){
     </div>`;
   }else{ncw.style.display='none';ncw.innerHTML='';}
 
-  // Biocel exige asistencia de Taller, un dato que la app no tiene. Llegar al
-  // promedio solo habilita esta confirmación: nunca afirma la eximición sola.
+  // Cada pauta pide algo que la app no puede comprobar —Biocel, asistencia de
+  // Taller; Matemáticas Avanzadas II UAI, haber rendido todo— y lo declara en
+  // `confirmar`. Antes el texto de Biocel estaba fijo acá y se le mostraba a
+  // cualquier ramo. Llegar al promedio solo habilita la confirmación: nunca
+  // afirma la eximición sola.
   const ew=document.getElementById('eximicion-warning');
   if(ew&&eximicion&&eximicion.regla.requiereConfirmacion===true){
     let texto='',accion='';
     if(eximicion.puedeConfirmar){
-      texto=`<b>Por tus notas, puedes eximirte del ${esc(eximicion.regla.evaluacion)}.</b><br>Confirma que ingresaste todas tus notas previas al examen y que cumples la asistencia de Taller exigida por tu sección.`;
+      texto=`<b>Por tus notas, puedes eximirte del ${esc(eximicion.regla.evaluacion)}.</b><br>Confirma que ingresaste todas tus notas previas al examen${eximicion.regla.confirmar?` y que ${esc(eximicion.regla.confirmar)}`:''}.`;
       accion='<button type="button" onclick="confirmarEximicionActual()">Confirmar eximición</button>';
     }else if(eximicion.activa){
       texto=`<b>Te eximiste del ${esc(eximicion.regla.evaluacion)}.</b><br>Ya no aparece entre tus evaluaciones pendientes y tu nota de presentación queda como nota final.`;
