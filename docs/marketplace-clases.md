@@ -53,7 +53,11 @@ a revisión. Si se suspende al profesor, todos sus anuncios dejan de ser públic
 de inmediato; no se borran, para conservar el historial y permitir una revisión.
 
 En el primer lanzamiento la aprobación se hace manualmente en Supabase con un
-rol privilegiado. El cliente no recibe permisos para cambiar `estado` ni las
+rol privilegiado, con las funciones de `supabase/admin_clases.sql`:
+`admin.pendientes()`, `admin.revisar_profesor()`, `admin.publicar_anuncio()` y
+`admin.devolver_anuncio()`. Viven en el esquema `admin`, fuera de la API, y
+publicar exige escribir el cargo —0 incluido— y deja registro de cada campaña.
+El cliente no recibe permisos para cambiar `estado` ni las
 marcas de revisión. Un panel interno para Lucas puede reemplazar ese paso más
 adelante sin cambiar el modelo ni abrir la aprobación a los estudiantes.
 
