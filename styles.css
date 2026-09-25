@@ -757,16 +757,14 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .vista-switch button:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
 .vista-solo-pc,.vista-solo-cel{display:grid;gap:8px;min-width:0;}
 .profesor-vista-previa.modo-pc .vista-solo-cel,.profesor-vista-previa.modo-celular .vista-solo-pc{display:none;}
-/* La tarjeta abierta como en cada aparato, aunque el profesor esté en otro:
-   en computador el flyer va al lado; en celular, arriba y a lo ancho. */
-.modo-pc .vista-catalogo{max-width:460px;}
-.modo-pc .vista-catalogo .catalogo-clase-card{flex-direction:row;}
-.modo-pc .vista-catalogo .catalogo-clase-flyer{width:34%;max-width:170px;min-height:0;max-height:none;}
-.modo-pc .vista-catalogo .catalogo-clase-flyer img{min-height:210px;max-height:none;}
+/* La tarjeta abierta con el ancho de cada aparato, aunque el profesor esté en
+   el otro: en computador, con flyer, anuncio y flyer lado a lado; en celular,
+   el flyer abajo. */
+.modo-pc .vista-catalogo{max-width:440px;}
+.modo-pc .vista-catalogo:has(.catalogo-clase-flyer:not([hidden])){max-width:900px;}
+.modo-pc .vista-catalogo .catalogo-clase-bloque:has(>.catalogo-clase-flyer:not([hidden])){grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
 .modo-celular .vista-catalogo{max-width:380px;}
-.modo-celular .vista-catalogo .catalogo-clase-card{flex-direction:column;}
-.modo-celular .vista-catalogo .catalogo-clase-flyer{width:100%;max-width:none;min-height:160px;max-height:210px;}
-.modo-celular .vista-catalogo .catalogo-clase-flyer img{min-height:160px;max-height:210px;}
+.modo-celular .vista-catalogo .catalogo-clase-bloque:has(>.catalogo-clase-flyer){grid-template-columns:minmax(0,1fr);}
 .clase-apoyo-abrir[tabindex="-1"]{cursor:default;}
 
 .ramo-reordering .ramo-row.tiene-clase-apoyo{background:transparent;margin-bottom:10px;border-radius:6px;}
@@ -965,17 +963,6 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .profesor-seccion:not([open])>summary::after{transform:rotate(-45deg);}
 .profesor-seccion>summary:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .profesor-seccion-cuerpo{display:grid;gap:8px;min-width:0;}
-/* En la pestaña Clases de un computador el formulario deja media pantalla
-   vacía. Ahí la vista previa pasa a una columna a la derecha que se queda fija
-   mientras el profesor baja: ve cambiar su anuncio mientras lo escribe. En el
-   modal y en el celular sigue abajo, antes de los botones. */
-#profesor-body{container-type:inline-size;}
-@container (min-width:980px){
-  .profesor-form{grid-template-columns:minmax(0,620px) minmax(380px,1fr);grid-template-areas:"campos vista" "acciones vista";column-gap:40px;align-items:start;}
-  .profesor-form-campos{grid-area:campos;}
-  .profesor-form-acciones{grid-area:acciones;}
-  .profesor-form-vista{grid-area:vista;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;padding-bottom:12px;}
-}
 .profesor-form h3{font-size:.875rem;letter-spacing:-.01em;margin:18px 0 2px;color:var(--fg);}
 .profesor-form .modal-label{margin:8px 0 0;}
 .profesor-form input,.profesor-form select,.profesor-form textarea{width:100%;min-width:0;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--fg);font:inherit;font-size:1rem;}
@@ -1092,8 +1079,11 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .catalogo-clases-estado{min-height:18px;margin:0 0 12px;color:var(--fg3);font-size:.75rem;line-height:1.45;}
 .catalogo-clases-resultados{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;}
 .catalogo-clase-card{display:flex;min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:14px;background:var(--card);}
-.catalogo-clase-flyer{width:34%;min-width:116px;max-width:170px;background:var(--muted);color:var(--fg3);font-size:.6875rem;display:flex;align-items:center;justify-content:center;text-align:center;}
-.catalogo-clase-flyer img{display:block;width:100%;height:100%;min-height:210px;object-fit:cover;}
+.catalogo-clase-bloque{display:grid;gap:8px;align-content:start;min-width:0;}
+/* El flyer, entero y en su propia tarjeta bajo el anuncio. */
+.catalogo-clase-flyer{margin:0;min-height:80px;overflow:hidden;border:1px solid var(--border);border-radius:14px;background:var(--muted);color:var(--fg3);font-size:.6875rem;display:flex;align-items:center;justify-content:center;}
+.catalogo-clase-flyer[hidden]{display:none;}
+.catalogo-clase-flyer img{display:block;width:100%;height:auto;max-height:80vh;object-fit:contain;}
 .catalogo-clase-contenido{display:flex;flex:1;min-width:0;flex-direction:column;padding:15px;}
 .catalogo-clase-contenido>small{margin-bottom:5px;color:var(--primary);font-size:.65625rem;font-weight:700;letter-spacing:.045em;text-transform:uppercase;}
 .catalogo-clase-contenido h3{margin:0;color:var(--fg);font-size:1rem;line-height:1.25;letter-spacing:-.015em;overflow-wrap:anywhere;}
@@ -1126,11 +1116,10 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 @media(min-width:768px){
   .modal-sheet:has(.catalogo-clases){max-width:min(920px,92vw);}
   .catalogo-clases-resultados{grid-template-columns:repeat(2,minmax(0,1fr));}
-}
-@media(max-width:430px){
-  .catalogo-clase-card{flex-direction:column;}
-  .catalogo-clase-flyer{width:100%;max-width:none;min-height:160px;max-height:210px;}
-  .catalogo-clase-flyer img{min-height:160px;max-height:210px;}
+  /* En computador, la clase abierta con flyer toma la fila entera: el anuncio
+     a un lado y el flyer entero al otro, en vez de dejar media fila vacía. */
+  .catalogo-clases-resultados>.catalogo-clase-bloque:has(>.catalogo-clase-flyer:not([hidden])){grid-column:1/-1;}
+  .catalogo-clase-bloque:has(>.catalogo-clase-flyer:not([hidden])){grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
 }
 @media(prefers-reduced-motion:reduce){.home-clases-card::before{transition:none;}.home-clases-card:active,.catalogo-clase-contacto:active{transform:none;}}
 /* Detalles a medida: nombre corto y texto, en una fila que se puede quitar. */
