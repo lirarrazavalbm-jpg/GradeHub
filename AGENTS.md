@@ -737,8 +737,9 @@ una sola vez por persona realmente alcanzada y nunca sobre el presupuesto prepag
 La campaña dura 30 días. Estos precios son administrables por GradeHub, no por el
 profesor.
 
-Nada de esto está activo todavía. Falta implementar el flujo de profesor, la
-tarjeta y la medición única. Esta última necesita una tabla privada con FK a
+Desde el 2026-09-25 están el flujo de profesor, el catálogo, la tarjeta junto
+al ramo en Inicio y el alcance por camino (recomendación, búsqueda, lista).
+El SQL de `clases_particulares.sql` y `admin_clases.sql` se aplica a mano. Esta última necesita una tabla privada con FK a
 `auth.users`, `ON DELETE CASCADE`, retención de 90 días y SQL aplicado a mano;
 por eso su PR será borrador. `anuncio_metricas` cuenta eventos y no se usa para
 facturar personas.

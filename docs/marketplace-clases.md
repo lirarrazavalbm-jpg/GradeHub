@@ -27,9 +27,13 @@ salida, no diagnosticar ni presionar: “Puede servirte apoyo para Cálculo II�
 La primera puerta ya está implementada desde una tarjeta permanente en Inicio.
 Abre el catálogo general, permite buscar por nombre o sigla y ordena los avisos
 por ramo y vigencia. El filtro recibe únicamente los anuncios públicos ya
-descargados y el catálogo académico local; no lee `S.ramos` ni notas. La segunda
-puerta sigue apagada: este cambio no activa recomendaciones contextuales, cobro
-ni publicación automática.
+descargados y el catálogo académico local; no lee `S.ramos` ni notas.
+
+La segunda puerta se encendió el 2026-09-25 (`pintarRecomendacionClase` en
+`marketplace.js`, llamada al final de `renderHome`). `RECOMENDACIONES_CLASES_ACTIVAS`
+la apaga sin tocar el catálogo. Al tocar el banner se abre la clase con un
+"¿Por qué veo esto?"; la impresión y el alcance se registran como
+`recomendacion` cuando la mitad del banner estuvo un segundo en pantalla.
 
 ## Una identidad, dos espacios separados
 

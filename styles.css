@@ -692,6 +692,26 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 @media(hover:hover) and (pointer:fine){.section-hd-add:hover{transform:translateY(-1px);box-shadow:0 8px 18px -8px color-mix(in srgb,var(--primary),transparent 18%);}}
 .ramo-row{position:relative;isolation:isolate;display:flex;align-items:flex-start;gap:14px;margin:0 20px 10px;padding:16px 12px 24px;background:transparent;border:0;border-radius:6px;cursor:pointer;overflow:visible;box-shadow:none;transition:background-color var(--motion-fast) var(--ease-standard);}
 .ramo-row:active{transform:none;background:color-mix(in srgb,var(--fg) 7%,var(--bg2));}
+/* Recomendación de clase junto al ramo que calza. El ramo se "ilumina" con el
+   acento de la app, nunca con el semáforo: que haya una clase para ese ramo no
+   dice nada de si vas aprobando. Mientras se arrastra un ramo, se esconde. */
+.ramo-row.tiene-clase-apoyo{background:color-mix(in srgb,var(--primary) 6%,var(--bg2));margin-bottom:0;border-radius:10px 10px 0 0;}
+.clase-apoyo{display:flex;align-items:stretch;margin:0 20px 12px;border-radius:0 0 10px 10px;background:color-mix(in srgb,var(--primary) 6%,var(--bg2));border-top:1px solid color-mix(in srgb,var(--primary) 18%,transparent);animation:claseApoyoEntra var(--motion-base) var(--ease-out);}
+.clase-apoyo-abrir{display:flex;flex:1;min-width:0;flex-direction:column;gap:2px;padding:11px 4px 12px 14px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.clase-apoyo-abrir small{font-size:.625rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--primary);}
+.clase-apoyo-abrir strong{font-size:.875rem;line-height:1.3;color:var(--fg);letter-spacing:-.01em;}
+.clase-apoyo-abrir span{font-size:.75rem;color:var(--fg2);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.clase-apoyo-abrir:focus-visible,.clase-apoyo-cerrar:focus-visible{outline:2px solid var(--primary);outline-offset:-2px;border-radius:8px;}
+.clase-apoyo-cerrar{flex:none;display:flex;align-items:center;justify-content:center;width:44px;border:0;background:none;color:var(--fg3);cursor:pointer;}
+.clase-apoyo-cerrar .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;}
+.ramo-reordering .clase-apoyo{display:none;}
+.ramo-reordering .ramo-row.tiene-clase-apoyo{background:transparent;margin-bottom:10px;border-radius:6px;}
+.clase-apoyo-porque{margin:14px 0 0;font-size:.8125rem;color:var(--fg2);}
+.clase-apoyo-porque summary{cursor:pointer;font-weight:600;color:var(--fg);}
+.clase-apoyo-porque p{margin:8px 0 0;line-height:1.5;}
+.clase-apoyo-mas{width:100%;margin-top:14px;}
+@keyframes claseApoyoEntra{from{opacity:0;transform:translateY(-4px);}}
+@media(prefers-reduced-motion:reduce){.clase-apoyo{animation:none;}}
 /* Editorial: el riel mide avance; la línea de color solo identifica el ramo. */
 .ramo-row.has-progress.is-complete{background:transparent;box-shadow:none;}
 .ramo-row.just-completed .ramo-progress-fill{animation:ramo-row-close var(--motion-base) var(--ease-out);}

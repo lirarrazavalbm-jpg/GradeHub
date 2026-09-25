@@ -730,17 +730,12 @@ function pesosClase(valor){
 function textoContactoClase(tipo){return {whatsapp:'Hablar por WhatsApp',instagram:'Ver Instagram',email:'Enviar correo'}[tipo]||'Contactar';}
 
 let catalogoClasesActual=[],nombresCatalogoClasesActual={};
-function renderCatalogoClases(busqueda=''){
-  const raiz=document.getElementById('catalogo-clases-resultados');
-  if(!raiz)return;
-  const anuncios=prepararCatalogoClases(catalogoClasesActual,busqueda,nombresCatalogoClasesActual);
-  const estado=document.getElementById('catalogo-clases-estado');
-  if(estado)estado.textContent=anuncios.length
-    ?`${anuncios.length} ${anuncios.length===1?'clase encontrada':'clases encontradas'}`
-    :(busqueda?'No encontramos clases para esa búsqueda.':'Todavía no hay clases publicadas en tu universidad.');
-  raiz.innerHTML=anuncios.map(a=>{
+// Una clase como la ve el estudiante. `sigla` es el ramo por el que se la
+// mostramos, para que un contacto se mida en ese ramo.
+function tarjetaCatalogoClase(a,{sigla}={}){
+  const siglaMetrica=sigla||a.ramos_siglas[0]||'';
     const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor);
-    const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos)].join(' · ');
+    const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos||[])].join(' · ');
     return `<article class="catalogo-clase-card" data-catalogo-anuncio="${esc(a.id)}">
       ${a.flyer_path?`<div class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"><span>Cargando flyer…</span></div>`:''}
       <div class="catalogo-clase-contenido">
@@ -750,15 +745,31 @@ function renderCatalogoClases(busqueda=''){
         <p class="catalogo-clase-descripcion">${esc(a.descripcion||'')}</p>
         ${detallesClase(a).length?`<dl class="catalogo-clase-detalles">${detallesClase(a).map(d=>`<div><dt>${esc(d.etiqueta)}</dt><dd>${esc(d.valor)}</dd></div>`).join('')}</dl>`:''}
         <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${pesosClase(a.precio_clp)} <small>por clase</small></strong></div>
-        ${contacto?`<a class="catalogo-clase-contacto" href="${esc(contacto)}" ${a.contacto_tipo==='email'?'':'target="_blank" rel="noopener noreferrer"'} data-contactar="${esc(a.id)}" data-sigla="${esc(a.ramos_siglas[0]||'')}">${esc(textoContactoClase(a.contacto_tipo))}</a>`
+        ${contacto?`<a class="catalogo-clase-contacto" href="${esc(contacto)}" ${a.contacto_tipo==='email'?'':'target="_blank" rel="noopener noreferrer"'} data-contactar="${esc(a.id)}" data-sigla="${esc(siglaMetrica)}">${esc(textoContactoClase(a.contacto_tipo))}</a>`
           :'<p class="catalogo-clase-sin-contacto">El contacto de esta clase necesita revisión.</p>'}
       </div>
     </article>`;
-  }).join('');
+}
+
+function renderCatalogoClases(busqueda=''){
+  const raiz=document.getElementById('catalogo-clases-resultados');
+  if(!raiz)return;
+  const anuncios=prepararCatalogoClases(catalogoClasesActual,busqueda,nombresCatalogoClasesActual);
+  const estado=document.getElementById('catalogo-clases-estado');
+  if(estado)estado.textContent=anuncios.length
+    ?`${anuncios.length} ${anuncios.length===1?'clase encontrada':'clases encontradas'}`
+    :(busqueda?'No encontramos clases para esa búsqueda.':'Todavía no hay clases publicadas en tu universidad.');
+  raiz.innerHTML=anuncios.map(a=>tarjetaCatalogoClase(a)).join('');
+  activarTarjetasClases(raiz);
+  observarImpresionesClases(raiz,anuncios,busqueda);
+}
+
+// Contacto medido e imágenes firmadas de las tarjetas dentro de `raiz`. La
+// usan el catálogo y la clase abierta desde la recomendación de Inicio.
+function activarTarjetasClases(raiz){
   raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',()=>{
     registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
   }));
-  observarImpresionesClases(raiz,anuncios,busqueda);
   raiz.querySelectorAll('[data-logo]').forEach(async caja=>{
     const url=await urlFlyerClase(caja.dataset.logo);
     if(!caja.isConnected)return;
@@ -1449,6 +1460,154 @@ function renderBorradorProfesor(raiz,anuncio){
   form.addEventListener('submit',e=>{e.preventDefault();procesar(false);});
   form.querySelector('#pr-guardar').addEventListener('click',()=>procesar(false));
   form.querySelector('#pr-enviar').addEventListener('click',()=>procesar(true));
+}
+
+// ─── RECOMENDACIÓN EN INICIO ────────────────────────────────────────────────
+//
+// La segunda puerta de docs/marketplace-clases.md. Una clase cuyo público
+// calza con uno de tus ramos aparece junto a ese ramo en Inicio, con su
+// etiqueta de publicidad. Reglas que no se negocian:
+//
+// - Se decide en el navegador con `seleccionarClaseApoyo`: se descargan los
+//   anuncios públicos de tu universidad y se comparan acá con tus ramos y notas.
+//   Nada de eso viaja para elegir.
+// - Solo en Inicio, nunca en la ficha del ramo, la Agenda ni el ingreso de notas.
+// - Como máximo una por día. Se elige una vez al día y se mantiene ese día; si
+//   la cierras no la reemplaza otra hasta mañana, y esa clase no vuelve a
+//   aparecer en este dispositivo.
+// - No dice "reprobando" ni diagnostica: ofrece apoyo para el ramo.
+// - El cierre y el día viven en `gradehub_marketplace_v1`, aparte de
+//   gradehub_v1: apagar esto no toca el estado académico.
+//
+// RECOMENDACIONES_CLASES_ACTIVAS es el interruptor. Apagarlo esconde el banner
+// sin tocar el catálogo, que es la puerta abierta a todos.
+const RECOMENDACIONES_CLASES_ACTIVAS=true;
+const CLAVE_MARKETPLACE='gradehub_marketplace_v1';
+const MAX_DESCARTADOS_CLASES=200;
+
+function leerEstadoMarketplace(){
+  try{
+    const v=JSON.parse(localStorage.getItem(CLAVE_MARKETPLACE)||'{}');
+    return v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+  }catch(e){return {};}
+}
+function guardarEstadoMarketplace(estado){
+  try{localStorage.setItem(CLAVE_MARKETPLACE,JSON.stringify(estado));}catch(e){}
+}
+function diaLocalClases(ahora=Date.now()){
+  const d=new Date(ahora);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Pura: recibe anuncios, ramos y el estado guardado, y devuelve la
+// recomendación de hoy (o null) junto con el estado que hay que guardar.
+function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now()){
+  const hoy=diaLocalClases(ahora);
+  const descartados=Array.isArray(estado&&estado.descartados)?estado.descartados:[];
+  if(estado&&estado.dia===hoy){
+    // Ya se decidió hoy. Se vuelve a comprobar que siga calzando: si subiste
+    // una nota y dejó de calzar, desaparece en vez de quedarse pegada.
+    if(!estado.anuncioId||descartados.includes(estado.anuncioId))return {sel:null,estado};
+    const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===estado.anuncioId),ramos,tenant,{descartados,ahora});
+    return {sel,estado};
+  }
+  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados,ahora});
+  return {sel,estado:{...(estado||{}),descartados,dia:hoy,anuncioId:sel?sel.anuncio.id:null}};
+}
+
+function descartarRecomendacionClase(anuncioId,ahora=Date.now()){
+  const estado=leerEstadoMarketplace();
+  const descartados=[...new Set([...(Array.isArray(estado.descartados)?estado.descartados:[]),anuncioId])].slice(-MAX_DESCARTADOS_CLASES);
+  // anuncioId null con el día de hoy: no se reemplaza por otra hasta mañana.
+  guardarEstadoMarketplace({...estado,descartados,dia:diaLocalClases(ahora),anuncioId:null});
+}
+
+let anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
+function cargarAnunciosRecomendacion(tenant,alTerminar){
+  if(anunciosRecomendacion.pidiendo)return;
+  anunciosRecomendacion={tenant,lista:null,pidiendo:true};
+  cargarAnunciosClases(tenant).then(lista=>{
+    if(anunciosRecomendacion.tenant!==tenant)return;
+    anunciosRecomendacion={tenant,lista:Array.isArray(lista)?lista:[],pidiendo:false};
+    alTerminar();
+  }).catch(()=>{anunciosRecomendacion={tenant,lista:[],pidiendo:false};});
+}
+
+const RECOMENDACIONES_VISTAS=new Set();
+function observarRecomendacionClase(banner,anuncio,sigla){
+  if(typeof IntersectionObserver!=='function'||RECOMENDACIONES_VISTAS.has(anuncio.id))return;
+  let timer=null;
+  const obs=new IntersectionObserver(entradas=>{
+    const e=entradas[entradas.length-1];
+    if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
+      if(!timer)timer=setTimeout(()=>{
+        timer=null;
+        if(!banner.isConnected||RECOMENDACIONES_VISTAS.has(anuncio.id))return;
+        RECOMENDACIONES_VISTAS.add(anuncio.id);obs.disconnect();
+        registrarMetricaAnuncio(anuncio.id,'impresion',sigla);
+        registrarAlcanceAnuncio(anuncio.id,'recomendacion');
+      },IMPRESION_MS);
+    }else if(timer){clearTimeout(timer);timer=null;}
+  },{threshold:[IMPRESION_VISIBLE]});
+  obs.observe(banner);
+}
+
+// La llama renderHome después de pintar los ramos. Si los anuncios todavía no
+// llegan, los pide y vuelve a pintar solo el banner cuando llegan.
+function pintarRecomendacionClase(contenedor){
+  if(!RECOMENDACIONES_CLASES_ACTIVAS||!contenedor||!currentUser||!supabaseClient||!S||!S.tenant)return;
+  contenedor.querySelectorAll('.clase-apoyo').forEach(b=>b.remove());
+  contenedor.querySelectorAll('.tiene-clase-apoyo').forEach(f=>f.classList.remove('tiene-clase-apoyo'));
+  if(anunciosRecomendacion.tenant!==S.tenant||anunciosRecomendacion.lista===null){
+    cargarAnunciosRecomendacion(S.tenant,()=>{if(contenedor.isConnected)pintarRecomendacionClase(contenedor);});
+    return;
+  }
+  const {sel,estado}=recomendacionDelDia(anunciosRecomendacion.lista,S.ramos,S.tenant,leerEstadoMarketplace());
+  guardarEstadoMarketplace(estado);
+  if(!sel)return;
+  const fila=[...contenedor.querySelectorAll('.ramo-row')].find(f=>f.dataset.ramoId===String(sel.ramo.id));
+  if(!fila)return;
+  const {anuncio,ramo}=sel,sigla=siglaRamoParaClases(ramo);
+  const banner=document.createElement('aside');
+  banner.className='clase-apoyo';
+  banner.setAttribute('aria-label','Publicidad: clase particular');
+  banner.innerHTML=`<button type="button" class="clase-apoyo-abrir">
+      <small>Publicidad · Clase particular</small>
+      <strong>Puede servirte apoyo para ${esc(ramo.nombre)}</strong>
+      <span>${esc(anuncio.titulo||'Clase particular')} · ${pesosClase(anuncio.precio_clp)} por clase</span>
+    </button>
+    <button type="button" class="clase-apoyo-cerrar" aria-label="No mostrar esta clase">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>`;
+  banner.querySelector('.clase-apoyo-abrir').addEventListener('click',()=>{
+    registrarMetricaAnuncio(anuncio.id,'clic',sigla);
+    abrirClaseRecomendada(anuncio,ramo,sigla);
+  });
+  banner.querySelector('.clase-apoyo-cerrar').addEventListener('click',()=>{
+    descartarRecomendacionClase(anuncio.id);
+    fila.classList.remove('tiene-clase-apoyo');
+    banner.remove();
+    if(typeof showToast==='function')showToast('Listo, no te la volvemos a mostrar');
+  });
+  fila.classList.add('tiene-clase-apoyo');
+  fila.after(banner);
+  observarRecomendacionClase(banner,anuncio,sigla);
+}
+
+async function abrirClaseRecomendada(anuncio,ramo,sigla){
+  const raiz=document.getElementById('modal-content');
+  if(!raiz)return;
+  logosCatalogoClases=await logosDeAnuncios([anuncio.id]);
+  raiz.innerHTML=`<div class="catalogo-clases">
+      <div class="catalogo-clases-head"><div><div class="modal-title" id="modal-titulo">Clase particular</div></div><button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button></div>
+      <div class="catalogo-clases-resultados">${tarjetaCatalogoClase(anuncio,{sigla})}</div>
+      <details class="clase-apoyo-porque"><summary>¿Por qué veo esto?</summary>
+        <p>Porque esta clase es para ${esc(ramo.nombre)}, que está en tu semestre. GradeHub lo decide en tu navegador con tus ramos y notas: el profesor no las recibe ni sabe quién eres. Puedes cerrar la recomendación en Inicio y no te la volvemos a mostrar.</p>
+      </details>
+      <button type="button" class="btn-cancel clase-apoyo-mas" onclick="openCatalogoClases()">Ver todas las clases</button>
+    </div>`;
+  activarTarjetasClases(raiz);
+  openModal();
 }
 
 if(typeof document!=='undefined'){
