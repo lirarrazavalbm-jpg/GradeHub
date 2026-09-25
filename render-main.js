@@ -288,6 +288,9 @@ function renderHome(){
     c.appendChild(div);
   });
   if(S.sortMode==='manual')activarReordenRamos(c);
+  // Publicidad de clases junto al ramo que calza. Vive en marketplace.js y
+  // decide en el navegador; si no hay nada que mostrar, no pinta nada.
+  if(typeof pintarRecomendacionClase==='function')pintarRecomendacionClase(c);
 }
 // Si las reglas del programa están desplegadas es una preferencia de lectura de
 // esta sesión, igual que el orden de la Agenda: no entra a S ni a gradehub_v1.

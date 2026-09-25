@@ -27,9 +27,13 @@ salida, no diagnosticar ni presionar: “Puede servirte apoyo para Cálculo II�
 La primera puerta ya está implementada desde una tarjeta permanente en Inicio.
 Abre el catálogo general, permite buscar por nombre o sigla y ordena los avisos
 por ramo y vigencia. El filtro recibe únicamente los anuncios públicos ya
-descargados y el catálogo académico local; no lee `S.ramos` ni notas. La segunda
-puerta sigue apagada: este cambio no activa recomendaciones contextuales, cobro
-ni publicación automática.
+descargados y el catálogo académico local; no lee `S.ramos` ni notas.
+
+La segunda puerta se encendió el 2026-09-25 (`pintarRecomendacionClase` en
+`marketplace.js`, llamada al final de `renderHome`). `RECOMENDACIONES_CLASES_ACTIVAS`
+la apaga sin tocar el catálogo. Al tocar el banner se abre la clase con un
+"¿Por qué veo esto?"; la impresión y el alcance se registran como
+`recomendacion` cuando la mitad del banner estuvo un segundo en pantalla.
 
 ## Una identidad, dos espacios separados
 
@@ -53,7 +57,11 @@ a revisión. Si se suspende al profesor, todos sus anuncios dejan de ser públic
 de inmediato; no se borran, para conservar el historial y permitir una revisión.
 
 En el primer lanzamiento la aprobación se hace manualmente en Supabase con un
-rol privilegiado. El cliente no recibe permisos para cambiar `estado` ni las
+rol privilegiado, con las funciones de `supabase/admin_clases.sql`:
+`admin.pendientes()`, `admin.revisar_profesor()`, `admin.publicar_anuncio()` y
+`admin.devolver_anuncio()`. Viven en el esquema `admin`, fuera de la API, y
+publicar exige escribir el cargo —0 incluido— y deja registro de cada campaña.
+El cliente no recibe permisos para cambiar `estado` ni las
 marcas de revisión. Un panel interno para Lucas puede reemplazar ese paso más
 adelante sin cambiar el modelo ni abrir la aprobación a los estudiantes.
 
@@ -234,6 +242,25 @@ generaliza los tramos en vez de reemplazarlos por otro precio:
 
 El techo son tres veces la base: un recargo entero por cada palanca. Un promedio
 sobre 5,5 no cobra recargo porque no estrecha a nadie.
+
+**3. Quien la encuentra en el catálogo también se cobra, más barato.** Decisión
+de Lucas del 2026-09-25. El catálogo es abierto: cualquiera que tenga el ramo
+puede encontrar la clase, cumpla o no el público elegido. Esa persona no pasó
+por la segmentación, así que vale una fracción de la base que sube con la
+intención que mostró:
+
+```
+precio catálogo = base × (0,3 + 0,2 × intención)
+  intención = 0 si la vio recorriendo la lista   → $300
+  intención = 1 si llegó buscando el ramo         → $500
+```
+
+Nunca supera el precio segmentado. Una cuenta se cobra una sola vez por
+campaña, al precio mayor del camino por el que llegó. El presupuesto se consume
+primero en el público segmentado, después en quienes buscaron y al final en
+quienes recorrieron. El texto buscado no sale del navegador: viaja solo si fue
+lista o búsqueda. Registrar ese camino en el servidor requiere SQL aditivo;
+hasta entonces el catálogo mide impresiones pero no cobra alcance.
 
 **El presupuesto limita el alcance, no el cargo fijo**, que ya se pagó al
 publicar. Descontarlo del presupuesto haría que agregar un ramo bajara a cuánta

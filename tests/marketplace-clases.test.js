@@ -276,7 +276,9 @@ vm.runInContext(`
   chk('el profesor no puede aprobar ni suspender su propia ficha',
     /grant insert \(user_id, nombre_publico, presentacion\)[\s\S]*?to authenticated/i.test(sql)&&
     /grant update \(nombre_publico, presentacion\)[\s\S]*?to authenticated/i.test(sql)&&
-    !/grant (?:insert|update) \([^)]*estado[^)]*\)[\s\S]*?public\.tutor_perfiles to authenticated/i.test(sql));
+    // Dentro de UNA sentencia: [^;] no cruza a la siguiente.
+    !/grant (?:insert|update) \([^)]*estado[^)]*\)[^;]*public\.tutor_perfiles to authenticated/i.test(sql)&&
+    !/grant (?:insert|update) \([^)]*logo_aprobado_path[^)]*\)[^;]*public\.tutor_perfiles to authenticated/i.test(sql));
   chk('solo una ficha aprobada puede crear anuncios',
     /tutor_anuncios_insert_borrador_propio[\s\S]*?estado = 'borrador'[\s\S]*?tutor_aprobado\(\(select auth\.uid\(\)\)\)/.test(sql));
   chk('suspender al profesor oculta también sus anuncios publicados',
@@ -323,7 +325,8 @@ vm.runInContext(`
   const tablaAlcance=(sql.match(/create table if not exists public\.anuncio_alcance \(([\s\S]*?)\n\);/)||[])[1]||'';
   chk('se cobra por cuenta distinta y no por visita: la llave es (aviso, cuenta)',
     /primary key \(anuncio_id, user_id\)/.test(tablaAlcance)&&
-    /on conflict \(anuncio_id, user_id\) do nothing/.test(alcanceSql));
+    // Una segunda vista no suma otra fila: a lo más sube el camino, y solo hacia uno más caro.
+    /on conflict \(anuncio_id, user_id\) do update\s+set canal = excluded\.canal\s+where public\.rango_canal_alcance\(excluded\.canal\) > public\.rango_canal_alcance\(public\.anuncio_alcance\.canal\)/.test(alcanceSql));
   chk('la fila no guarda el criterio del aviso, ni ramo, ni nota, ni promedio',
     !!tablaAlcance&&!/criterio|promedio|nota|sigla|avance/i.test(tablaAlcance.replace(/--[^\n]*/g,'')));
   chk('nadie lee la tabla: ni select para authenticated',
@@ -338,11 +341,11 @@ vm.runInContext(`
     /revoke all on function public\.limpiar_alcance_anuncios\(integer\) from public, anon, authenticated;/.test(sql)&&
     !/grant execute on function public\.limpiar_alcance_anuncios/.test(sql)&&
     /p_dias < 30[\s\S]*?raise exception/.test(sql));
-  chk('el cliente manda solo el id del aviso: la cuenta la pone el servidor',
-    /rpc\('registrar_alcance_anuncio',\{p_anuncio_id:anuncioId\}\)/.test(src)&&
+  chk('el cliente manda solo el aviso y el camino: la cuenta la pone el servidor',
+    /rpc\('registrar_alcance_anuncio',\{p_anuncio_id:anuncioId,p_canal:canal\}\)/.test(src)&&
     /rpc\('alcance_anuncio',\{p_anuncio_id:anuncioId\}\)/.test(src));
   chk('si la llamada falla se puede reintentar, y un alcance desconocido no es cero',
-    /ALCANCE_REGISTRADO\.delete\(anuncioId\)/.test(src)&&
+    /ALCANCE_REGISTRADO\.delete\(clave\)/.test(src)&&
     /async function alcanceAnuncio\([\s\S]*?return null;[\s\S]*?Number\.isInteger\(data\)\?data:null/.test(src));
 
   console.log(fail?`\nFAIL: ${fail}`:`\nMarketplace OK: ${ok}`);

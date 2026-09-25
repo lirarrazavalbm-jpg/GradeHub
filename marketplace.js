@@ -11,6 +11,28 @@ const FLYER_CLASE_TIPOS = new Set(['image/jpeg','image/png','image/webp']);
 const CAMPOS_PUBLICOS_ANUNCIO = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,publicado_at,vence_at,created_at';
 const CAMPOS_BORRADOR_CLASE = 'id,tenant,ramos_siglas,criterios,modalidad,ubicacion,precio_clp,titulo,descripcion,contacto_tipo,contacto_valor,flyer_path,estado,created_at';
 
+// Columnas que llegaron después (formato y lugar "otra", detalles a medida).
+// El SQL se aplica a mano, así que la app puede salir antes que él: si el
+// servidor dice que no existen, la consulta se repite con las de siempre y el
+// catálogo, el panel y los borradores siguen andando. Se recuerda para no
+// pedirlas de nuevo en cada consulta.
+const CAMPOS_NUEVOS_CLASE=',modalidad_otra,ubicacion_otra,detalles';
+let columnasNuevasClase=true;
+function faltaColumnaClase(error){
+  return !!error&&(error.code==='42703'||error.code==='PGRST204'||/column|columna/i.test(String(error.message||'')));
+}
+async function consultaCamposClase(hacer,base){
+  if(columnasNuevasClase){
+    const r=await hacer(base+CAMPOS_NUEVOS_CLASE);
+    if(!faltaColumnaClase(r&&r.error))return r;
+    columnasNuevasClase=false;
+  }
+  return hacer(base);
+}
+const MAX_DETALLES_CLASE=4,MAX_ETIQUETA_DETALLE=30,MAX_VALOR_DETALLE=80;
+const MODALIDADES_CLASE=[['individual','Individual'],['grupal','Grupal']];
+const UBICACIONES_CLASE=[['online','Online'],['presencial','Presencial'],['hibrido','Híbrida']];
+
 // Un borrador en Supabase es una clase COMPLETA, todavía no un formulario a
 // medio escribir: la tabla exige estos campos. No se añade nada a gradehub_v1.
 function validarBorradorClase(entrada){
@@ -25,20 +47,110 @@ function validarBorradorClase(entrada){
   if(siglas.length<1||siglas.length>12||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s))||new Set(siglas).size!==siglas.length)
     return {ok:false,campo:'ramos_siglas',error:'Elige entre 1 y 12 ramos, sin repetir siglas.'};
   if(!criteriosClaseValidos(entrada.criterios))return {ok:false,campo:'criterios',error:'Revisa el promedio y el avance elegidos para tu público.'};
-  const modalidad=String(entrada.modalidad||''),ubicacion=String(entrada.ubicacion||'');
-  if(!['individual','grupal'].includes(modalidad))return {ok:false,campo:'modalidad',error:'Elige si la clase es individual o grupal.'};
-  if(!['online','presencial','hibrido'].includes(ubicacion))return {ok:false,campo:'ubicacion',error:'Indica dónde haces la clase.'};
+  // Formato y lugar son opcionales. "Otra" exige escribirla: una opción
+  // elegida sin texto se mostraría como nada.
+  const opcion=(valor,validas,texto,campo,nombre)=>{
+    const v=String(valor||'');
+    if(!v)return {ok:true,valor:null,otra:null};
+    if(v==='otra'){
+      const t=String(texto||'').trim();
+      if(t.length<2||t.length>40)return {ok:false,campo:campo+'_otra',error:`Escribe ${nombre} en 2 a 40 caracteres.`};
+      return {ok:true,valor:'otra',otra:t};
+    }
+    return validas.includes(v)?{ok:true,valor:v,otra:null}:{ok:false,campo,error:`Revisa ${nombre}.`};
+  };
+  const mod=opcion(entrada.modalidad,MODALIDADES_CLASE.map(o=>o[0]),entrada.modalidad_otra,'modalidad','el formato');
+  if(!mod.ok)return mod;
+  const ubi=opcion(entrada.ubicacion,UBICACIONES_CLASE.map(o=>o[0]),entrada.ubicacion_otra,'ubicacion','dónde es la clase');
+  if(!ubi.ok)return ubi;
+  const detallesCrudos=entrada.detalles==null?[]:entrada.detalles;
+  if(!Array.isArray(detallesCrudos))return {ok:false,campo:'detalles',error:'Revisa los detalles de tu clase.'};
+  // Una fila sin nada escrito no es un detalle: es una casilla que quedó vacía.
+  const detalles=detallesCrudos.map(d=>({etiqueta:String(d&&d.etiqueta||'').trim(),valor:String(d&&d.valor||'').trim()}))
+    .filter(d=>d.etiqueta||d.valor);
+  if(detalles.length>MAX_DETALLES_CLASE)return {ok:false,campo:'detalles',error:`Puedes agregar hasta ${MAX_DETALLES_CLASE} detalles.`};
+  if(detalles.some(d=>!d.etiqueta||!d.valor))return {ok:false,campo:'detalles',error:'Cada detalle necesita un nombre y lo que dice, por ejemplo "Duración: 90 minutos".'};
+  if(detalles.some(d=>d.etiqueta.length>MAX_ETIQUETA_DETALLE||d.valor.length>MAX_VALOR_DETALLE))
+    return {ok:false,campo:'detalles',error:`Cada detalle va con un nombre de hasta ${MAX_ETIQUETA_DETALLE} caracteres y un texto de hasta ${MAX_VALOR_DETALLE}.`};
+  const modalidad=mod.valor,ubicacion=ubi.valor;
   if(!Number.isSafeInteger(entrada.precio_clp)||entrada.precio_clp<1000||entrada.precio_clp>500000)
     return {ok:false,campo:'precio_clp',error:'Indica el precio de la clase en pesos, entre $1.000 y $500.000.'};
   const contacto_tipo=String(entrada.contacto_tipo||''),contacto_valor=String(entrada.contacto_valor||'').trim();
   if(!['whatsapp','instagram','email'].includes(contacto_tipo))return {ok:false,campo:'contacto_tipo',error:'Elige cómo te contactarán.'};
   if(contacto_valor.length<3||contacto_valor.length>160)return {ok:false,campo:'contacto_valor',error:'Revisa el dato de contacto.'};
+  // El formulario rellena "+56 9 " o "@" solo: sin esta comprobación el prefijo
+  // solo, sin número ni usuario, pasaba como contacto válido y el anuncio
+  // llegaba a revisión con un botón que no lleva a ninguna parte.
+  if(!enlaceContactoClase(contacto_tipo,contacto_valor))return {ok:false,campo:'contacto_valor',error:ERROR_CONTACTO_CLASE[contacto_tipo]};
   // Lista blanca: nunca aceptar un estado de publicación, marcas de pago ni
   // datos académicos del estudiante enviados junto con el formulario.
   return {ok:true,datos:{tenant,ramos_siglas:siglas,
     criterios:{promedioMenorA:entrada.criterios.promedioMenorA,avanceMinimo:entrada.criterios.avanceMinimo},
-    modalidad,ubicacion,precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
+    modalidad,ubicacion,modalidad_otra:mod.otra,ubicacion_otra:ubi.otra,detalles:detalles.length?detalles:null,
+    precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
 }
+
+const ERROR_CONTACTO_CLASE={
+  whatsapp:'Escribe tu número de WhatsApp completo, por ejemplo +56 9 1234 5678.',
+  instagram:'Escribe tu usuario de Instagram, por ejemplo @profe.calculo.',
+  email:'Revisa tu correo: tiene que ser como nombre@dominio.cl.',
+};
+
+// ─── CAMPOS QUE SE ESCRIBEN CON FORMATO ─────────────────────────────────────
+//
+// Un monto en pesos se ve como se lee: al escribir 15000 aparece $15.000. El
+// campo guarda texto y `pesosDeTexto` devuelve el número; por eso es un
+// input de texto con teclado numérico y no `type=number`, que no acepta ni el
+// signo ni los puntos.
+function textoPesosEscrito(texto){
+  const digitos=String(texto||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,9);
+  return digitos?'$'+digitos.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'';
+}
+function pesosDeTexto(texto){
+  const digitos=String(texto||'').replace(/\D/g,'');
+  return digitos?Number(digitos):NaN;
+}
+
+// WhatsApp de Chile con sus espacios: "+56 9 1234 5678". Solo se ordena un
+// celular chileno; un número de otro país se deja tal como lo escribieron.
+function textoWhatsappEscrito(texto){
+  const t=String(texto||'');
+  const digitos=t.replace(/\D/g,'');
+  if(!/^\s*\+?\s*56/.test(t)||!digitos.startsWith('569'))return t;
+  const resto=digitos.slice(3,11);
+  return '+56 9 '+(resto.length>4?resto.slice(0,4)+' '+resto.slice(4):resto);
+}
+function textoInstagramEscrito(texto){
+  const t=String(texto||'').replace(/\s+/g,'');
+  return t&&!t.startsWith('@')?'@'+t:t;
+}
+const PREFIJO_CONTACTO_CLASE={whatsapp:'+56 9 ',instagram:'@',email:''};
+const EJEMPLO_CONTACTO_CLASE={whatsapp:'+56 9 1234 5678',instagram:'@profe.calculo',email:'nombre@dominio.cl'};
+
+// Reescribe el campo con su formato sin mandar el cursor al final: cuenta
+// cuántos caracteres "de verdad" (dígitos, letras) había antes del cursor y lo
+// deja después de esa misma cantidad en el texto nuevo. Borrar no reformatea,
+// para que la persona pueda borrar un espacio o el prefijo sin que vuelva solo.
+function formatearAlEscribir(input,formatear){
+  if(!input||typeof input.addEventListener!=='function')return;
+  const util=c=>/[\p{L}\p{N}]/u.test(c);
+  input.addEventListener('input',e=>{
+    if(e&&typeof e.inputType==='string'&&e.inputType.startsWith('delete'))return;
+    const antes=String(input.value||''),nuevo=formatear(antes);
+    if(nuevo===antes)return;
+    const cursor=typeof input.selectionStart==='number'?input.selectionStart:antes.length;
+    const utilesAntes=[...antes.slice(0,cursor)].filter(util).length;
+    input.value=nuevo;
+    let pos=nuevo.length;
+    if(utilesAntes<[...nuevo].filter(util).length){
+      let vistos=0;
+      for(let i=0;i<nuevo.length;i++){if(util(nuevo[i])&&++vistos===utilesAntes){pos=i+1;break;}}
+      if(utilesAntes===0)pos=nuevo.search(/[\p{L}\p{N}]/u);
+    }
+    try{input.setSelectionRange(pos,pos);}catch(err){}
+  });
+}
+function campoPesos(input){formatearAlEscribir(input,textoPesosEscrito);}
 
 // El estado de profesor lo miran dos lugares —la sección de Ajustes y la barra
 // de pestañas— y ninguno puede esperar una consulta de red para pintarse. Se
@@ -77,9 +189,10 @@ async function perfilProfesorActual(){
   const uid=sesionProfesorClase();
   if(!uid)return {ok:false,error:'Inicia sesión para entrar al espacio de profesor.'};
   try{
-    const {data,error}=await supabaseClient.from('tutor_perfiles')
-      .select('nombre_publico,presentacion,estado,solicitado_at,revisado_at')
-      .eq('user_id',uid).maybeSingle();
+    // El logo llegó después: sin su SQL aplicado se pide la ficha de siempre.
+    const pedir=campos=>supabaseClient.from('tutor_perfiles').select(campos).eq('user_id',uid).maybeSingle();
+    let {data,error}=await pedir('nombre_publico,presentacion,estado,solicitado_at,revisado_at,logo_id,logo_path,logo_aprobado_path');
+    if(faltaColumnaClase(error))({data,error}=await pedir('nombre_publico,presentacion,estado,solicitado_at,revisado_at'));
     if(error)return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};
     return {ok:true,perfil:data||null};
   }catch(e){return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};}
@@ -107,10 +220,11 @@ async function abrirBorradorClase(id){
   try{
     // RLS delimita al dueño. autor_id no tiene SELECT público: filtrarlo aquí
     // provocaría un error de permisos o expondría identidades si se concediera.
-    let consulta=supabaseClient.from('tutor_anuncios').select(CAMPOS_BORRADOR_CLASE)
-      .eq('estado','borrador');
-    consulta=id?consulta.eq('id',id):consulta.order('created_at',{ascending:false}).limit(1);
-    const {data,error}=await consulta.maybeSingle();
+    const {data,error}=await consultaCamposClase(campos=>{
+      let consulta=supabaseClient.from('tutor_anuncios').select(campos).eq('estado','borrador');
+      consulta=id?consulta.eq('id',id):consulta.order('created_at',{ascending:false}).limit(1);
+      return consulta.maybeSingle();
+    },CAMPOS_BORRADOR_CLASE);
     if(error)return {ok:false,error:'No pudimos abrir tu borrador. Intenta de nuevo.'};
     return {ok:true,anuncio:data||null};
   }catch(e){return {ok:false,error:'No pudimos abrir tu borrador. Intenta de nuevo.'};}
@@ -123,10 +237,22 @@ async function guardarBorradorClase(entrada,id){
   if(!uid)return {ok:false,error:'Inicia sesión para guardar el borrador.'};
   if(id&&!/^[0-9a-f-]{36}$/i.test(String(id)))return {ok:false,error:'No encontramos ese borrador.'};
   try{
-    let consulta=id
-      ?supabaseClient.from('tutor_anuncios').update(valido.datos).eq('id',id).eq('estado','borrador')
-      :supabaseClient.from('tutor_anuncios').insert({...valido.datos,autor_id:uid});
-    const {data,error}=await consulta.select(CAMPOS_BORRADOR_CLASE).single();
+    const escribir=async campos=>{
+      const datos={...valido.datos};
+      if(!campos.includes('detalles')){
+        // El servidor todavía no tiene estas columnas: lo clásico se guarda
+        // igual, y lo nuevo se avisa en vez de perderse callado.
+        if(datos.modalidad==='otra'||datos.ubicacion==='otra'||datos.detalles||datos.modalidad===null||datos.ubicacion===null)
+          return {data:null,error:{message:'sin-columnas-nuevas'}};
+        delete datos.modalidad_otra;delete datos.ubicacion_otra;delete datos.detalles;
+      }
+      const consulta=id
+        ?supabaseClient.from('tutor_anuncios').update(datos).eq('id',id).eq('estado','borrador')
+        :supabaseClient.from('tutor_anuncios').insert({...datos,autor_id:uid});
+      return consulta.select(campos).single();
+    };
+    const {data,error}=await consultaCamposClase(escribir,CAMPOS_BORRADOR_CLASE);
+    if(error&&error.message==='sin-columnas-nuevas')return {ok:false,campo:'detalles',error:'Todavía no podemos guardar "Otra", un formato vacío ni detalles a medida. Usa las opciones de la lista por ahora.'};
     if(error||!data||data.estado!=='borrador')return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};
     return {ok:true,anuncio:data};
   }catch(e){return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};}
@@ -220,6 +346,76 @@ async function quitarFlyerClase(anuncioId){
       return borradoError?{ok:true,aviso:'Flyer quitado del anuncio; quedó una copia privada por limpiar.'}:{ok:true};
     }catch(e){return {ok:true,aviso:'Flyer quitado del anuncio; quedó una copia privada por limpiar.'};}
   }catch(e){return {ok:false,error:'No pudimos quitar el flyer. Intenta de nuevo.'};}
+}
+
+// ─── LOGO DEL PROFESOR ──────────────────────────────────────────────────────
+//
+// Uno por profesor, en todos sus anuncios. El que sube queda PROPUESTO y no se
+// muestra hasta que GradeHub lo revisa: aparece en anuncios ya aprobados, y
+// cambiarlo sin revisión dejaría poner cualquier imagen en ellos. Quitarlo sí
+// es inmediato. Mismas reglas de archivo que el flyer: JPG, PNG o WebP ≤ 5 MB.
+function estadoLogoProfesor(perfil){
+  if(!perfil||!('logo_id' in perfil))return 'no-disponible';
+  if(perfil.logo_path&&perfil.logo_path!==perfil.logo_aprobado_path)return 'en-revision';
+  return perfil.logo_aprobado_path?'aprobado':'sin-logo';
+}
+
+async function subirLogoProfesor(file){
+  const valido=validarFlyerClase(file);
+  if(!valido.ok)return {ok:false,error:valido.error.replace(/flyer/gi,'logo')};
+  if(valido.opcional)return {ok:false,error:'Elige una imagen para tu logo.'};
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para subir tu logo.'};
+  const ficha=await perfilProfesorActual();
+  if(!ficha.ok||!ficha.perfil)return {ok:false,error:'No pudimos leer tu ficha de profesor.'};
+  const logoId=String(ficha.perfil.logo_id||'');
+  if(!/^[0-9a-f-]{36}$/i.test(logoId))return {ok:false,error:'Los logos todavía no están disponibles.'};
+  const aleatorio=typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'';
+  if(!aleatorio)return {ok:false,error:'Tu navegador no pudo preparar un nombre seguro para el logo.'};
+  const path=`logos/${logoId}/${aleatorio}.${extensionFlyerClase(file.type)}`;
+  try{
+    const {error:subidaError}=await supabaseClient.storage.from('tutor-flyers').upload(path,file,{contentType:file.type,upsert:false});
+    if(subidaError)return {ok:false,error:'No pudimos subir el logo. Intenta de nuevo.'};
+    const {data,error}=await supabaseClient.from('tutor_perfiles').update({logo_path:path})
+      .eq('user_id',uid).select('logo_path,logo_aprobado_path').single();
+    if(error||!data||data.logo_path!==path){
+      await supabaseClient.storage.from('tutor-flyers').remove([path]);
+      return {ok:false,error:'El logo subió, pero no pudimos guardarlo en tu ficha. Intenta de nuevo.'};
+    }
+    // El propuesto anterior ya no sirve. El aprobado se queda: se sigue viendo
+    // hasta que se apruebe el nuevo.
+    const anterior=String(ficha.perfil.logo_path||'');
+    if(anterior&&anterior!==path&&anterior!==ficha.perfil.logo_aprobado_path)
+      await supabaseClient.storage.from('tutor-flyers').remove([anterior]);
+    return {ok:true,perfil:{...ficha.perfil,...data}};
+  }catch(e){return {ok:false,error:'No pudimos subir el logo. Intenta de nuevo.'};}
+}
+
+async function quitarLogoProfesor(){
+  const uid=sesionProfesorClase();
+  if(!uid)return {ok:false,error:'Inicia sesión para quitar tu logo.'};
+  const ficha=await perfilProfesorActual();
+  if(!ficha.ok||!ficha.perfil)return {ok:false,error:'No pudimos leer tu ficha de profesor.'};
+  try{
+    const {error}=await supabaseClient.rpc('quitar_mi_logo');
+    if(error)return {ok:false,error:'No pudimos quitar el logo. Intenta de nuevo.'};
+    // Ya no se muestra en ninguna parte aunque falle la limpieza de Storage.
+    const rutas=[ficha.perfil.logo_path,ficha.perfil.logo_aprobado_path].filter(Boolean);
+    if(rutas.length)try{await supabaseClient.storage.from('tutor-flyers').remove([...new Set(rutas)]);}catch(e){}
+    return {ok:true};
+  }catch(e){return {ok:false,error:'No pudimos quitar el logo. Intenta de nuevo.'};}
+}
+
+// Logos aprobados de los anuncios del catálogo, por id de anuncio. El
+// catálogo no conoce al autor de cada anuncio y no tiene por qué conocerlo.
+async function logosDeAnuncios(ids){
+  const lista=[...new Set((ids||[]).filter(id=>/^[0-9a-f-]{36}$/i.test(String(id))))].slice(0,100);
+  if(!supabaseClient||!lista.length)return new Map();
+  try{
+    const {data,error}=await supabaseClient.rpc('logos_de_anuncios',{p_ids:lista});
+    if(error||!Array.isArray(data))return new Map();
+    return new Map(data.filter(f=>f&&f.anuncio_id&&f.logo_path).map(f=>[f.anuncio_id,f.logo_path]));
+  }catch(e){return new Map();}
 }
 
 function siglaAnuncio(sigla){
@@ -318,6 +514,27 @@ const TARIFA_CLASES={
 // quien le puede servir una clase; 2,5 puntos más abajo (3,0) es el máximo.
 const NOTA_SIN_RECARGO=5.5,RANGO_NOTA_RECARGO=2.5;
 
+// Quien encuentra la clase en el CATÁLOGO no pasó por la segmentación que el
+// profesor pagó: no se sabe si le va mal en el ramo, solo que tiene el ramo y
+// llegó hasta el anuncio. Por eso vale una fracción de la base, y la fracción
+// sube con la intención que mostró esa persona:
+//
+//   precio catálogo = base × (PISO + INTENCION × intención)
+//     intención = 0 si lo vio recorriendo la lista
+//     intención = 1 si llegó buscando el ramo (por nombre o sigla)
+//
+// Con la base de $1.000 da $300 recorriendo y $500 buscando. Nunca supera el
+// precio del público segmentado: pagar más por alguien que no calzó con la
+// regla que eligió el profesor sería absurdo. La intención se decide en el
+// navegador y viaja como un solo dato (lista o búsqueda); el texto buscado
+// no sale del dispositivo.
+const CATALOGO_PISO=0.3,CATALOGO_INTENCION=0.2;
+function precioCatalogoClase(base,redondeo,precioSegmentado,intencion){
+  const i=Math.min(Math.max(Number(intencion)||0,0),1);
+  const crudo=base*(CATALOGO_PISO+CATALOGO_INTENCION*i);
+  return Math.min(Math.round(crudo/redondeo)*redondeo,precioSegmentado);
+}
+
 // Cuánto más caro es un público más exigente, entre 0 (nada) y 2 (el doble del
 // recargo máximo por cada lado). Dos palancas, porque encarecen por motivos
 // distintos:
@@ -344,9 +561,13 @@ function exigenciaCriteriosClase(criterios){
 // fijo por publicar, que se paga aunque el aviso no lo vea nadie, y un precio
 // por cuenta alcanzada. `totalEstimado` es la suma solo cuando hay una medición
 // que sumar.
-function cotizarCampanaClases(criterios,tarifa,{elegibles=null,alcanzados=null,presupuestoClp=null,ramos=1}={}){
+function cotizarCampanaClases(criterios,tarifa,{elegibles=null,alcanzados=null,presupuestoClp=null,ramos=1,catalogo=null}={}){
   if(!criteriosClaseValidos(criterios))return null;
   if([elegibles,alcanzados,presupuestoClp].some(n=>n!==null&&(!Number.isSafeInteger(n)||n<0)))return null;
+  // `catalogo` = {lista, busqueda}: cuentas distintas alcanzadas por cada vía
+  // del catálogo, sin contar a quienes ya se cobraron por la segmentada.
+  const cat=catalogo===null?null:{lista:catalogo&&catalogo.lista||0,busqueda:catalogo&&catalogo.busqueda||0};
+  if(cat&&[cat.lista,cat.busqueda].some(n=>!Number.isSafeInteger(n)||n<0))return null;
   if(!Number.isSafeInteger(ramos)||ramos<1||ramos>12)return null;
   const t={...TARIFA_CLASES,...(tarifa&&typeof tarifa==='object'&&!Array.isArray(tarifa)?tarifa:{})};
   if(!['base','cargoFijo','porRamoExtra','redondeo'].every(k=>Number.isSafeInteger(t[k])&&t[k]>=0))return null;
@@ -363,12 +584,27 @@ function cotizarCampanaClases(criterios,tarifa,{elegibles=null,alcanzados=null,p
   const cupo=presupuestoClp===null?null:Math.floor(presupuestoClp/precioPorCuenta);
   const alcanceCotizado=elegibles===null?null:Math.min(elegibles,cupo??Infinity);
   const costoEstimado=alcanceCotizado===null?null:alcanceCotizado*precioPorCuenta;
-  const costoPorAlcance=alcanzados===null?null:Math.min(alcanzados,cupo??Infinity)*precioPorCuenta;
+  const precioCatalogoLista=precioCatalogoClase(t.base,t.redondeo,precioPorCuenta,0);
+  const precioCatalogoBusqueda=precioCatalogoClase(t.base,t.redondeo,precioPorCuenta,1);
+  const segmentadosCobrados=alcanzados===null?null:Math.min(alcanzados,cupo??Infinity);
+  // El presupuesto se consume en cobros enteros: primero el público
+  // segmentado, después quienes buscaron, al final quienes recorrieron. Lo que
+  // sobra y no alcanza para una cuenta más no autoriza cobrar una fracción.
+  let costoCatalogo=null,catalogoCobrado=null;
+  if(cat){
+    let queda=presupuestoClp===null?Infinity:presupuestoClp-(segmentadosCobrados||0)*precioPorCuenta;
+    const cobrar=(n,precio)=>{const k=Math.min(n,Math.floor(queda/precio));queda-=k*precio;return k;};
+    catalogoCobrado={busqueda:cobrar(cat.busqueda,precioCatalogoBusqueda),lista:cobrar(cat.lista,precioCatalogoLista)};
+    costoCatalogo=catalogoCobrado.busqueda*precioCatalogoBusqueda+catalogoCobrado.lista*precioCatalogoLista;
+  }
+  const costoSegmentado=segmentadosCobrados===null?null:segmentadosCobrados*precioPorCuenta;
+  const costoPorAlcance=costoSegmentado===null&&costoCatalogo===null?null:(costoSegmentado||0)+(costoCatalogo||0);
   const totalEstimado=costoEstimado===null?null:cargoFijo+costoEstimado;
   const totalPorAlcance=costoPorAlcance===null?null:cargoFijo+costoPorAlcance;
   if([costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance].some(n=>n!==null&&!Number.isSafeInteger(n)))return null;
   return {precioPorCuenta,cargoFijo,ramos,elegibles,alcanzados,alcanceCotizado,
-    costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance,presupuestoClp};
+    costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance,presupuestoClp,
+    precioCatalogoLista,precioCatalogoBusqueda,costoSegmentado,costoCatalogo,catalogoCobrado};
 }
 
 // Pide solo el catálogo público de una universidad. No recibe `ramos` como
@@ -380,11 +616,11 @@ async function cargarAnunciosClases(tenant){
   try{
     const anuncios=[],vistos=new Set(),tamano=60;
     for(let desde=0;;desde+=tamano){
-      const {data,error}=await supabaseClient.from('tutor_anuncios')
-        .select(CAMPOS_PUBLICOS_ANUNCIO).eq('tenant',universidad).eq('estado','publicado')
+      const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
+        .select(campos).eq('tenant',universidad).eq('estado','publicado')
         .or(`vence_at.is.null,vence_at.gt.${ahora}`)
         .order('publicado_at',{ascending:false}).order('id',{ascending:true})
-        .range(desde,desde+tamano-1);
+        .range(desde,desde+tamano-1),CAMPOS_PUBLICOS_ANUNCIO);
       if(error)throw error;
       const pagina=Array.isArray(data)?data:[];
       pagina.forEach(a=>{if(!vistos.has(a.id)){vistos.add(a.id);anuncios.push(a);}});
@@ -471,9 +707,17 @@ function enlaceContactoClase(tipo,valor){
 }
 
 function formatoClase(anuncio){
-  const modalidad={individual:'Individual',grupal:'Grupal'}[anuncio&&anuncio.modalidad]||'';
-  const ubicacion={online:'Online',presencial:'Presencial',hibrido:'Híbrida'}[anuncio&&anuncio.ubicacion]||'';
-  return [modalidad,ubicacion].filter(Boolean).join(' · ');
+  const a=anuncio||{};
+  const texto=(lista,valor,otra)=>valor==='otra'?String(otra||'').trim():(new Map(lista).get(valor)||'');
+  return [texto(MODALIDADES_CLASE,a.modalidad,a.modalidad_otra),texto(UBICACIONES_CLASE,a.ubicacion,a.ubicacion_otra)]
+    .filter(Boolean).join(' · ');
+}
+// Los detalles que el profesor agregó, ya validados por el servidor. Se vuelven
+// a filtrar al mostrarlos: una fila rara no rompe la tarjeta.
+function detallesClase(anuncio){
+  const d=anuncio&&anuncio.detalles;
+  return Array.isArray(d)?d.filter(x=>x&&typeof x.etiqueta==='string'&&typeof x.valor==='string'&&x.etiqueta.trim()&&x.valor.trim())
+    .slice(0,MAX_DETALLES_CLASE):[];
 }
 function pesosClase(valor){
   // Nunca un precio negativo. El formulario ya exige entre 1.000 y 500.000, así
@@ -486,6 +730,27 @@ function pesosClase(valor){
 function textoContactoClase(tipo){return {whatsapp:'Hablar por WhatsApp',instagram:'Ver Instagram',email:'Enviar correo'}[tipo]||'Contactar';}
 
 let catalogoClasesActual=[],nombresCatalogoClasesActual={};
+// Una clase como la ve el estudiante. `sigla` es el ramo por el que se la
+// mostramos, para que un contacto se mida en ese ramo.
+function tarjetaCatalogoClase(a,{sigla}={}){
+  const siglaMetrica=sigla||a.ramos_siglas[0]||'';
+    const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor);
+    const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos||[])].join(' · ');
+    return `<article class="catalogo-clase-card" data-catalogo-anuncio="${esc(a.id)}">
+      ${a.flyer_path?`<div class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"><span>Cargando flyer…</span></div>`:''}
+      <div class="catalogo-clase-contenido">
+        <div class="catalogo-clase-cabeza"><div><small>Publicidad · Clase particular</small>
+        <h3>${esc(a.titulo||'Clase particular')}</h3></div>${logosCatalogoClases.get(a.id)?`<div class="catalogo-clase-logo" data-logo="${esc(logosCatalogoClases.get(a.id))}"></div>`:''}</div>
+        <p class="catalogo-clase-ramos"><strong>${esc(siglas)}</strong>${nombres?`<span>${esc(nombres)}</span>`:''}</p>
+        <p class="catalogo-clase-descripcion">${esc(a.descripcion||'')}</p>
+        ${detallesClase(a).length?`<dl class="catalogo-clase-detalles">${detallesClase(a).map(d=>`<div><dt>${esc(d.etiqueta)}</dt><dd>${esc(d.valor)}</dd></div>`).join('')}</dl>`:''}
+        <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${pesosClase(a.precio_clp)} <small>por clase</small></strong></div>
+        ${contacto?`<a class="catalogo-clase-contacto" href="${esc(contacto)}" ${a.contacto_tipo==='email'?'':'target="_blank" rel="noopener noreferrer"'} data-contactar="${esc(a.id)}" data-sigla="${esc(siglaMetrica)}">${esc(textoContactoClase(a.contacto_tipo))}</a>`
+          :'<p class="catalogo-clase-sin-contacto">El contacto de esta clase necesita revisión.</p>'}
+      </div>
+    </article>`;
+}
+
 function renderCatalogoClases(busqueda=''){
   const raiz=document.getElementById('catalogo-clases-resultados');
   if(!raiz)return;
@@ -494,25 +759,22 @@ function renderCatalogoClases(busqueda=''){
   if(estado)estado.textContent=anuncios.length
     ?`${anuncios.length} ${anuncios.length===1?'clase encontrada':'clases encontradas'}`
     :(busqueda?'No encontramos clases para esa búsqueda.':'Todavía no hay clases publicadas en tu universidad.');
-  raiz.innerHTML=anuncios.map(a=>{
-    const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor);
-    const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos)].join(' · ');
-    return `<article class="catalogo-clase-card" data-catalogo-anuncio="${esc(a.id)}">
-      ${a.flyer_path?`<div class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"><span>Cargando flyer…</span></div>`:''}
-      <div class="catalogo-clase-contenido">
-        <small>Publicidad · Clase particular</small>
-        <h3>${esc(a.titulo||'Clase particular')}</h3>
-        <p class="catalogo-clase-ramos"><strong>${esc(siglas)}</strong>${nombres?`<span>${esc(nombres)}</span>`:''}</p>
-        <p class="catalogo-clase-descripcion">${esc(a.descripcion||'')}</p>
-        <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${pesosClase(a.precio_clp)} <small>por clase</small></strong></div>
-        ${contacto?`<a class="catalogo-clase-contacto" href="${esc(contacto)}" ${a.contacto_tipo==='email'?'':'target="_blank" rel="noopener noreferrer"'} data-contactar="${esc(a.id)}" data-sigla="${esc(a.ramos_siglas[0]||'')}">${esc(textoContactoClase(a.contacto_tipo))}</a>`
-          :'<p class="catalogo-clase-sin-contacto">El contacto de esta clase necesita revisión.</p>'}
-      </div>
-    </article>`;
-  }).join('');
+  raiz.innerHTML=anuncios.map(a=>tarjetaCatalogoClase(a)).join('');
+  activarTarjetasClases(raiz);
+  observarImpresionesClases(raiz,anuncios,busqueda);
+}
+
+// Contacto medido e imágenes firmadas de las tarjetas dentro de `raiz`. La
+// usan el catálogo y la clase abierta desde la recomendación de Inicio.
+function activarTarjetasClases(raiz){
   raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',()=>{
     registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
   }));
+  raiz.querySelectorAll('[data-logo]').forEach(async caja=>{
+    const url=await urlFlyerClase(caja.dataset.logo);
+    if(!caja.isConnected)return;
+    if(url)caja.innerHTML=`<img src="${esc(url)}" alt="" loading="lazy">`;else caja.remove();
+  });
   raiz.querySelectorAll('[data-flyer]').forEach(async caja=>{
     const url=await urlFlyerClase(caja.dataset.flyer);
     if(!caja.isConnected)return;
@@ -521,7 +783,43 @@ function renderCatalogoClases(busqueda=''){
   });
 }
 
+// Una impresión es una tarjeta que se VIO: al menos la mitad en pantalla
+// durante un segundo, como dice docs/marketplace-clases.md. Pintarla fuera de
+// la vista no cuenta. Se registra una vez por anuncio mientras el catálogo
+// está abierto: buscar y volver a pintar no la suma de nuevo.
+//
+// Va a `anuncio_metricas`, que cuenta eventos y no factura. El alcance por
+// catálogo —lo que sí se cobraría, a un precio menor que el segmentado— espera
+// a que el servidor distinga por qué camino llegó cada cuenta.
+const IMPRESION_VISIBLE=0.5,IMPRESION_MS=1000;
+let impresionesCatalogo=new Set(),observadorCatalogo=null,logosCatalogoClases=new Map();
+function observarImpresionesClases(raiz,anuncios,busqueda=''){
+  // Si la persona escribió algo, las tarjetas que ve son resultado de buscar.
+  const canal=String(busqueda||'').trim()?'busqueda':'lista';
+  if(observadorCatalogo){observadorCatalogo.disconnect();observadorCatalogo=null;}
+  if(typeof IntersectionObserver!=='function'||!raiz)return;
+  const sigla=new Map((anuncios||[]).map(a=>[a.id,(a.ramos_siglas||[])[0]||'']));
+  const timers=new Map();
+  observadorCatalogo=new IntersectionObserver(entradas=>{
+    for(const e of entradas){
+      const id=e.target.dataset.catalogoAnuncio;
+      if(!id||impresionesCatalogo.has(id+':'+canal))continue;
+      if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
+        if(!timers.has(id))timers.set(id,setTimeout(()=>{
+          timers.delete(id);
+          if(!e.target.isConnected||impresionesCatalogo.has(id+':'+canal))return;
+          impresionesCatalogo.add(id+':'+canal);
+          registrarMetricaAnuncio(id,'impresion',sigla.get(id));
+          registrarAlcanceAnuncio(id,canal);
+        },IMPRESION_MS));
+      }else if(timers.has(id)){clearTimeout(timers.get(id));timers.delete(id);}
+    }
+  },{threshold:[IMPRESION_VISIBLE]});
+  raiz.querySelectorAll('[data-catalogo-anuncio]').forEach(card=>observadorCatalogo.observe(card));
+}
+
 async function openCatalogoClases(){
+  impresionesCatalogo=new Set();
   const raiz=document.getElementById('modal-content');
   if(!raiz)return;
   raiz.innerHTML=`<div class="catalogo-clases">
@@ -543,6 +841,8 @@ async function openCatalogoClases(){
   if(tenant==='uc'&&typeof cargarCursosUC==='function'&&typeof cursosUcExtra==='function'&&!cursosUcExtra())
     cargarCursosUC().then(ok=>{if(ok&&sigueAbierto()){nombresCatalogoClasesActual=nombresRamosParaClases(tenant);renderCatalogoClases(input.value);}}).catch(()=>{});
   catalogoClasesActual=await cargarAnunciosClases(tenant);
+  if(!sigueAbierto())return;
+  logosCatalogoClases=await logosDeAnuncios(catalogoClasesActual.map(a=>a.id));
   if(!sigueAbierto())return;
   nombresCatalogoClasesActual=nombresRamosParaClases(tenant);
   const resultados=raiz.querySelector('#catalogo-clases-resultados');if(resultados)resultados.setAttribute('aria-busy','false');
@@ -587,14 +887,20 @@ async function resumenMetricasAnuncio(anuncioId){
 // El Set evita repetir la llamada dentro de la misma visita. No es la
 // deduplicación: esa la hace la llave primaria en el servidor, que es la que
 // cuenta para facturar. Acá solo se ahorra red.
+// El canal dice por qué camino llegó la cuenta —recomendación, búsqueda o
+// lista— porque cada uno se cobra distinto. Es una palabra: lo que la persona
+// escribió en el buscador no viaja. El servidor guarda el camino más caro y
+// nunca lo baja, así que mandar uno más barato después no descuenta nada.
+const CANALES_ALCANCE=new Set(['recomendacion','busqueda','lista']);
 const ALCANCE_REGISTRADO=new Set();
-async function registrarAlcanceAnuncio(anuncioId){
-  if(!supabaseClient||!currentUser||!anuncioId||ALCANCE_REGISTRADO.has(anuncioId))return false;
-  ALCANCE_REGISTRADO.add(anuncioId);
-  const {data,error}=await supabaseClient.rpc('registrar_alcance_anuncio',{p_anuncio_id:anuncioId});
+async function registrarAlcanceAnuncio(anuncioId,canal='recomendacion'){
+  const clave=anuncioId+':'+canal;
+  if(!supabaseClient||!currentUser||!anuncioId||!CANALES_ALCANCE.has(canal)||ALCANCE_REGISTRADO.has(clave))return false;
+  ALCANCE_REGISTRADO.add(clave);
+  const {data,error}=await supabaseClient.rpc('registrar_alcance_anuncio',{p_anuncio_id:anuncioId,p_canal:canal});
   if(error){
     // Si falló, no quedó registrado: se puede reintentar en la próxima vista.
-    ALCANCE_REGISTRADO.delete(anuncioId);
+    ALCANCE_REGISTRADO.delete(clave);
     console.warn('No se pudo registrar el alcance del anuncio:',error.message||error);
     return false;
   }
@@ -701,9 +1007,8 @@ async function misAnunciosClase(){
   const uid=sesionProfesorClase();
   if(!uid)return {ok:false,error:'Inicia sesión para ver tus clases.'};
   try{
-    const {data,error}=await supabaseClient.from('tutor_anuncios')
-      .select(CAMPOS_PUBLICOS_ANUNCIO)
-      .order('created_at',{ascending:false});
+    const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
+      .select(campos).order('created_at',{ascending:false}),CAMPOS_PUBLICOS_ANUNCIO);
     if(error)throw error;
     // Los publicados de otros tutores también pasan la RLS: se descartan por
     // los que uno puede editar, que son los únicos con métricas propias.
@@ -728,10 +1033,21 @@ const ESTADOS_ANUNCIO={
 // costando $49.000" a quien todavía espera el visto bueno es inventarle un
 // gasto que no existe.
 const ANUNCIO_YA_SE_MOSTRO=new Set(['publicado','pausado','expirado']);
+// `porCanal` es null si el servidor todavía no separa caminos (SQL sin
+// aplicar): ahí se usa el total de siempre y todo se cobra como segmentado,
+// que es como se cotizaba antes. Nunca se inventa un reparto.
 async function metricasDeAnuncio(anuncio){
-  const salida={alcance:null,cortes:[]};
+  const salida={alcance:null,porCanal:null,cortes:[]};
   if(!anuncio||!ANUNCIO_YA_SE_MOSTRO.has(anuncio.estado))return salida;
   try{
+    const {data,error}=await supabaseClient.rpc('alcance_anuncio_por_canal',{p_anuncio_id:anuncio.id});
+    if(!error&&Array.isArray(data)){
+      const por={recomendacion:0,busqueda:0,lista:0};
+      data.forEach(f=>{if(por[f.canal]!==undefined&&Number.isInteger(f.cuentas))por[f.canal]=f.cuentas;});
+      salida.porCanal=por;salida.alcance=por.recomendacion+por.busqueda+por.lista;
+    }
+  }catch(e){}
+  if(salida.alcance===null)try{
     const {data,error}=await supabaseClient.rpc('alcance_anuncio',{p_anuncio_id:anuncio.id});
     if(!error&&Number.isInteger(data))salida.alcance=data;
   }catch(e){}
@@ -751,9 +1067,11 @@ function totalesDeCortes(cortes){
 // Lo que lleva gastado esta campaña, con la misma tarifa que cotiza al armarla.
 // Solo se muestra cuando hay alcance medido: inventar un costo sobre un número
 // que no existe es peor que no mostrarlo.
-function costoDeAnuncio(anuncio,alcance){
+function costoDeAnuncio(anuncio,alcance,porCanal=null){
   if(alcance===null||!criteriosClaseValidos(anuncio&&anuncio.criterios))return null;
   const ramos=Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.length:1;
+  if(porCanal)return cotizarCampanaClases(anuncio.criterios,null,{alcanzados:porCanal.recomendacion,ramos,
+    catalogo:{lista:porCanal.lista,busqueda:porCanal.busqueda}});
   return cotizarCampanaClases(anuncio.criterios,null,{alcanzados:alcance,ramos});
 }
 
@@ -766,8 +1084,8 @@ async function cambiarEstadoAnuncio(id,estado){
   if(!uid)return {ok:false,error:'Inicia sesión para administrar tus clases.'};
   if(!['borrador','en_revision','pausado'].includes(estado))return {ok:false,error:'Ese cambio no te corresponde a ti.'};
   try{
-    const {data,error}=await supabaseClient.from('tutor_anuncios')
-      .update({estado}).eq('id',id).select(CAMPOS_PUBLICOS_ANUNCIO).single();
+    const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
+      .update({estado}).eq('id',id).select(campos).single(),CAMPOS_PUBLICOS_ANUNCIO);
     if(error||!data)return {ok:false,error:'No pudimos cambiar el estado. Intenta de nuevo.'};
     return {ok:true,anuncio:data};
   }catch(e){return {ok:false,error:'No pudimos cambiar el estado. Intenta de nuevo.'};}
@@ -784,96 +1102,259 @@ function pausarAnuncioClase(id,alTerminar){
 }
 
 function retomarAnuncioClase(id,alTerminar){
-  showConfirm('¿Volver a editarla?',
-    'Pasa a borrador para que la cambies. Cuando la envíes, la revisamos antes de publicarla de nuevo.',
+  showConfirm('¿Volver a publicarla?',
+    'Pasa a borrador para que la revises. Cuando la envíes, la revisamos antes de publicarla de nuevo.',
     async()=>{
       const r=await cambiarEstadoAnuncio(id,'borrador');
       showToast(r.ok?'Quedó como borrador':r.error,!r.ok);
-      if(r.ok&&typeof alTerminar==='function')alTerminar();
-    },{label:'Editar',danger:false});
+      if(r.ok&&typeof alTerminar==='function')alTerminar(r.anuncio||null);
+    },{label:'Seguir',danger:false});
+}
+
+// Un publicado cuya fecha ya pasó está TERMINADO aunque la fila todavía diga
+// "publicado": nadie más lo ve —la RLS filtra por vence_at— y nada en el
+// servidor le cambia el estado al vencer. Decirle "se está mostrando" sería
+// mentirle sobre una campaña que ya cerró.
+function vigenciaAnuncio(a,ahora=Date.now()){
+  if(!a)return '';
+  if(a.estado==='publicado'){
+    const vence=Date.parse(a.vence_at||'');
+    return Number.isFinite(vence)&&vence<=ahora?'expirado':'publicado';
+  }
+  return a.estado;
+}
+// La página se ordena por lo que el profesor puede HACER con cada anuncio.
+function gruposPanelClases(anuncios,ahora=Date.now()){
+  const g={activos:[],revision:[],borradores:[],cerrados:[]};
+  for(const a of anuncios||[]){
+    const e=vigenciaAnuncio(a,ahora);
+    (e==='publicado'?g.activos:e==='en_revision'?g.revision:e==='borrador'?g.borradores:g.cerrados).push(a);
+  }
+  return g;
+}
+function diasRestantesAnuncio(a,ahora=Date.now()){
+  const vence=Date.parse(a&&a.vence_at||'');
+  return Number.isFinite(vence)?Math.max(0,Math.ceil((vence-ahora)/864e5)):null;
+}
+// Cuánto de la campaña ya pasó, entre 0 y 1, para el riel de vigencia.
+function avanceCampanaAnuncio(a,ahora=Date.now()){
+  const desde=Date.parse(a&&a.publicado_at||''),hasta=Date.parse(a&&a.vence_at||'');
+  if(!Number.isFinite(desde)||!Number.isFinite(hasta)||hasta<=desde)return null;
+  return Math.min(Math.max((ahora-desde)/(hasta-desde),0),1);
+}
+
+// Una cifra con su nombre. Solo se pinta lo que se sabe: un tipo de evento sin
+// datos suficientes no aparece como 0, porque el servidor no devuelve cortes
+// con menos de quince eventos y "0 clics" ahí sería inventarlo.
+function cifrasClase({alcance,totales,hayCortes,costo},pesos){
+  const f=[];
+  const miles=n=>new Intl.NumberFormat('es-CL').format(n);
+  f.push(['Personas alcanzadas',alcance===null?'—':miles(alcance),'cuentas distintas']);
+  if(hayCortes&&totales.impresion)f.push(['Se mostró',miles(totales.impresion),'veces']);
+  if(hayCortes&&totales.clic)f.push(['Clics',miles(totales.clic),'veces']);
+  if(hayCortes&&totales.contacto)f.push(['Contactos',miles(totales.contacto),'tocaron tu contacto']);
+  if(hayCortes&&totales.impresion&&totales.contacto)
+    f.push(['Tasa de contacto',new Intl.NumberFormat('es-CL',{style:'percent',maximumFractionDigits:1}).format(totales.contacto/totales.impresion),'de quienes la vieron']);
+  if(costo)f.push(['Va costando',pesos(costo.totalPorAlcance),'hasta ahora']);
+  return `<div class="clase-nums">${f.map(([t,v,d])=>
+    `<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`).join('')}</div>`;
+}
+
+// De quienes la vieron, cuántos tocaron algo. Barras relativas a las
+// impresiones y dibujadas con scaleX, no con width.
+function embudoClase(totales){
+  if(!totales.impresion)return '';
+  const filas=[['Se mostró',totales.impresion],['Clics',totales.clic],['Contactos',totales.contacto]].filter(([,n])=>n>0);
+  if(filas.length<2)return '';
+  return `<div class="clase-embudo" aria-label="De quienes vieron tu clase, cuántos avanzaron">${filas.map(([t,n])=>
+    `<div class="clase-embudo-fila"><span>${t}</span><div class="clase-barra"><i style="transform:scaleX(${(n/totales.impresion).toFixed(3)})"></i></div><b>${n}</b></div>`).join('')}</div>`;
+}
+
+function tarjetaPanelClase(a,pesos,ahora){
+  const vig=vigenciaAnuncio(a,ahora);
+  const [etiqueta,detalle]=ESTADOS_ANUNCIO[vig]||[vig,''];
+  const dias=vig==='publicado'?diasRestantesAnuncio(a,ahora):null,avance=vig==='publicado'?avanceCampanaAnuncio(a,ahora):null;
+  const accion={
+    publicado:`<button type="button" class="clase-accion" data-pausar="${esc(a.id)}">Pausar</button>`,
+    borrador:`<button type="button" class="clase-accion" data-editar="${esc(a.id)}">Seguir editando</button>`,
+    pausado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
+    expirado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
+  }[vig]||'';
+  return `<article class="clase-card" data-anuncio="${esc(a.id)}">
+    <div class="clase-card-top">
+      <strong>${esc(a.titulo||'Sin título')}</strong>
+      <span class="clase-estado clase-estado-${esc(vig)}">${esc(etiqueta)}</span>
+    </div>
+    <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
+    ${dias!==null?`<div class="clase-vigencia"><span>${dias===0?'Termina hoy':dias===1?'Queda 1 día':`Quedan ${dias} días`}</span>${avance!==null?`<div class="clase-riel"><i style="transform:scaleX(${avance.toFixed(3)})"></i></div>`:''}</div>`
+      :`<p class="clase-card-detalle">${esc(detalle)}</p>`}
+    <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
+    ${accion}
+  </article>`;
+}
+
+// De dónde sale "Va costando", camino por camino, con el precio de cada uno.
+function desgloseCostoClase(c,pesos){
+  const partes=[`${pesos(c.cargoFijo)} de publicación`];
+  const n=x=>x===1?'1 persona':`${x} personas`;
+  if(c.alcanzados)partes.push(`${n(c.alcanzados)} de tu público × ${pesos(c.precioPorCuenta)}`);
+  if(c.catalogoCobrado&&c.catalogoCobrado.busqueda)partes.push(`${n(c.catalogoCobrado.busqueda)} que buscaron el ramo × ${pesos(c.precioCatalogoBusqueda)}`);
+  if(c.catalogoCobrado&&c.catalogoCobrado.lista)partes.push(`${n(c.catalogoCobrado.lista)} que la vieron en el catálogo × ${pesos(c.precioCatalogoLista)}`);
+  return partes.join(' + ')+'.';
+}
+
+function seccionPanelClases(titulo,lista,pesos,ahora,vacio){
+  if(!lista.length&&!vacio)return '';
+  return `<section class="clases-seccion"><h3>${titulo}${lista.length?` <span>${lista.length}</span>`:''}</h3>
+    ${lista.length?`<div class="clase-lista">${lista.map(a=>tarjetaPanelClase(a,pesos,ahora)).join('')}</div>`:`<p class="clase-sin-datos">${vacio}</p>`}</section>`;
 }
 
 async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
-  const borrador=anuncios.find(a=>a.estado==='borrador');
+  const ahora=Date.now(),g=gruposPanelClases(anuncios,ahora);
+  const conNumeros=[...g.activos,...g.cerrados];
   raiz.innerHTML=cabecera('Espacio de profesor')+
-    `<p class="profesor-info">Tus clases y cómo les va. Los números son de cuentas distintas, nunca de personas con nombre.</p>
-     <div class="clase-lista">${anuncios.map(a=>{
-        const [etiqueta,detalle]=ESTADOS_ANUNCIO[a.estado]||[a.estado,''];
-        return `<article class="clase-card" data-anuncio="${esc(a.id)}">
-          <div class="clase-card-top">
-            <strong>${esc(a.titulo||'Sin título')}</strong>
-            <span class="clase-estado clase-estado-${esc(a.estado)}">${esc(etiqueta)}</span>
-          </div>
-          <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
-          <p class="clase-card-detalle">${esc(detalle)}</p>
-          <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
-          ${a.estado==='publicado'?`<button type="button" class="clase-accion" data-pausar="${esc(a.id)}">Pausar</button>`:''}
-          ${a.estado==='pausado'?`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Editar y volver a enviar</button>`:''}
-        </article>`;
-      }).join('')}</div>
-     <div class="modal-btns">
-       <button type="button" class="btn-confirm" id="clase-nueva">${borrador?'Seguir con mi borrador':'Preparar otra clase'}</button>
-     </div>`+salida();
-  const nueva=raiz.querySelector('#clase-nueva');
-  if(nueva)nueva.addEventListener('click',()=>renderBorradorProfesor(raiz,borrador||null));
+    `<section class="clases-resumen" aria-labelledby="clases-resumen-titulo">
+       <h3 id="clases-resumen-titulo">${g.activos.length?`Tus clases activas`:'Todavía no tienes clases activas'}</h3>
+       <div id="clases-kpis">${g.activos.length?'<p class="clase-sin-datos">Cargando números…</p>'
+         :`<p class="clase-sin-datos">${g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
+           :'Arma un borrador y mándalo a revisión. Cuando se publique, acá vas a ver cómo le va.'}</p>`}</div>
+       <p class="clase-privacidad">Los números son de cuentas distintas, nunca de personas con nombre.</p>
+     </section>
+     <div class="clases-acciones"><button type="button" class="btn-confirm" id="clase-nueva">Armar un borrador</button></div>`+
+    seccionPanelClases('Publicadas',g.activos,pesos,ahora)+
+    seccionPanelClases('En revisión',g.revision,pesos,ahora)+
+    seccionPanelClases('Borradores',g.borradores,pesos,ahora)+
+    seccionPanelClases('Pausadas y terminadas',g.cerrados,pesos,ahora)+
+    '<section class="clases-seccion"><h3>Tu perfil</h3><div id="clases-logo"></div></section>'+
+    salida();
   // Al cambiar el estado se vuelve a pedir la lista: el estado, los números y
   // los botones de cada tarjeta dependen de él, y repintar a mano lo que uno
   // cree que cambió es la forma de que una tarjeta quede mintiendo.
   const repintar=()=>renderEspacioProfesor(raiz,{titulo:!!cabecera('x')});
+  const nueva=raiz.querySelector('#clase-nueva');
+  if(nueva)nueva.addEventListener('click',()=>renderBorradorProfesor(raiz,null));
+  const cajaLogo=raiz.querySelector('#clases-logo');
+  if(cajaLogo&&cajaLogo.isConnected&&typeof cajaLogo.addEventListener==='function')renderLogoProfesor(cajaLogo);
+  raiz.querySelectorAll('[data-editar]').forEach(b=>
+    b.addEventListener('click',()=>renderBorradorProfesor(raiz,anuncios.find(a=>a.id===b.dataset.editar)||null)));
   raiz.querySelectorAll('[data-pausar]').forEach(b=>
     b.addEventListener('click',()=>pausarAnuncioClase(b.dataset.pausar,repintar)));
+  // Volver a publicar = volver a borrador y abrirlo: el anuncio pasa por
+  // revisión otra vez, y lo natural es revisarlo antes de reenviarlo.
   raiz.querySelectorAll('[data-retomar]').forEach(b=>
-    b.addEventListener('click',()=>retomarAnuncioClase(b.dataset.retomar,repintar)));
+    b.addEventListener('click',()=>retomarAnuncioClase(b.dataset.retomar,an=>an?renderBorradorProfesor(raiz,an):repintar())));
 
-  // Las métricas se piden después de pintar: son una consulta por anuncio y la
-  // lista ya está en pantalla. Si alguna falla, esa tarjeta lo dice y las otras
-  // siguen andando.
-  for(const a of anuncios){
+  for(const a of [...g.revision,...g.borradores]){
     const caja=raiz.querySelector(`[data-metricas="${a.id}"]`);
-    if(!caja)continue;
-    if(!ANUNCIO_YA_SE_MOSTRO.has(a.estado)){
-      caja.innerHTML=`<p class="clase-sin-datos">${a.estado==='en_revision'
-        ?'Cuando lo aprobemos y empiece a mostrarse, sus números aparecen acá.'
-        :'Todavía no se publica, así que no hay nada que medir.'}</p>`;
-      continue;
-    }
-    caja.innerHTML='<p class="clase-sin-datos">Cargando…</p>';
-    const m=await metricasDeAnuncio(a);
-    if(!caja.isConnected)return;
-    const t=totalesDeCortes(m.cortes);
-    const costo=costoDeAnuncio(a,m.alcance);
-    const filas=[];
-    filas.push(`<div class="clase-num"><span>Personas alcanzadas</span><b>${m.alcance===null?'—':m.alcance}</b></div>`);
-    if(m.cortes.length){
-      filas.push(`<div class="clase-num"><span>Clics</span><b>${t.clic}</b></div>`);
-      filas.push(`<div class="clase-num"><span>Contactos</span><b>${t.contacto}</b></div>`);
-    }
-    if(costo)filas.push(`<div class="clase-num"><span>Va costando</span><b>${pesos(costo.totalPorAlcance)}</b></div>`);
-    caja.innerHTML=`<div class="clase-nums">${filas.join('')}</div>`+
-      (m.cortes.length?'':'<p class="clase-sin-datos">Los cortes por día y por ramo aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
-      (costo?`<p class="clase-sin-datos">${pesos(costo.cargoFijo)} de publicación${costo.alcanzados?` + ${pesos(costo.precioPorCuenta)} por cada una de las ${costo.alcanzados} personas`:''}.</p>`:'');
+    if(caja)caja.innerHTML=`<p class="clase-sin-datos">${a.estado==='en_revision'
+      ?'Cuando lo aprobemos y empiece a mostrarse, sus números aparecen acá.'
+      :'Todavía no se publica, así que no hay nada que medir.'}</p>`;
   }
+  conNumeros.forEach(a=>{const caja=raiz.querySelector(`[data-metricas="${a.id}"]`);if(caja)caja.innerHTML='<p class="clase-sin-datos">Cargando…</p>';});
+
+  // Las métricas se piden después de pintar y en paralelo: son dos consultas
+  // por anuncio y la lista ya está en pantalla. Si alguna falla, esa tarjeta lo
+  // dice y las otras siguen andando.
+  const medidas=await Promise.all(conNumeros.map(async a=>{
+    const m=await metricasDeAnuncio(a);
+    return {a,alcance:m.alcance,porCanal:m.porCanal,totales:totalesDeCortes(m.cortes),hayCortes:m.cortes.length>0,costo:costoDeAnuncio(a,m.alcance,m.porCanal)};
+  }));
+  for(const d of medidas){
+    const caja=raiz.querySelector(`[data-metricas="${d.a.id}"]`);
+    if(!caja||!caja.isConnected)continue;
+    caja.innerHTML=cifrasClase(d,pesos)+embudoClase(d.totales)+
+      (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró, los clics y los contactos aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
+      (d.costo?`<p class="clase-sin-datos">${desgloseCostoClase(d.costo,pesos)}</p>`:'');
+  }
+
+  // El resumen suma solo las clases activas: es "cómo me va ahora". Suma lo que
+  // se sabe; si ningún anuncio pudo medir su alcance, sale raya y no cero.
+  const kpis=raiz.querySelector('#clases-kpis');
+  const activas=medidas.filter(d=>vigenciaAnuncio(d.a,ahora)==='publicado');
+  if(kpis&&kpis.isConnected&&activas.length){
+    const conAlcance=activas.filter(d=>d.alcance!==null);
+    const totales={impresion:0,clic:0,contacto:0};
+    activas.forEach(d=>Object.keys(totales).forEach(k=>totales[k]+=d.totales[k]));
+    const costos=activas.filter(d=>d.costo);
+    const costo=costos.length?{totalPorAlcance:costos.reduce((n,d)=>n+d.costo.totalPorAlcance,0)}:null;
+    kpis.innerHTML=cifrasClase({alcance:conAlcance.length?conAlcance.reduce((n,d)=>n+d.alcance,0):null,
+      totales,hayCortes:activas.some(d=>d.hayCortes),costo},pesos).replace('class="clase-nums"','class="clase-nums clases-kpis"')+
+      embudoClase(totales);
+  }
+}
+
+// El logo es de la ficha, no del anuncio: el mismo bloque aparece en el
+// formulario y en la página de Clases, y cambiarlo en uno cambia el otro.
+async function renderLogoProfesor(caja){
+  if(!caja)return;
+  const ficha=await perfilProfesorActual();
+  if(!caja.isConnected)return;
+  const perfil=ficha.ok?ficha.perfil:null,estado=estadoLogoProfesor(perfil);
+  if(estado==='no-disponible'){caja.innerHTML='';return;}
+  const textos={
+    'sin-logo':'Sale a la derecha en todos tus anuncios. Lo revisamos antes de mostrarlo.',
+    'en-revision':perfil.logo_aprobado_path?'Tu logo nuevo está en revisión. Mientras tanto se sigue mostrando el anterior.':'Tu logo está en revisión. Aparecerá en tus anuncios cuando lo aprobemos.',
+    'aprobado':'Se muestra en todos tus anuncios publicados.',
+  };
+  caja.innerHTML=`<div class="profesor-logo">
+      <div class="profesor-logo-img" aria-hidden="true"></div>
+      <div class="profesor-logo-texto"><strong>Tu logo${estado==='en-revision'?' · en revisión':''}</strong><span>${textos[estado]}</span></div>
+    </div>
+    <div class="profesor-logo-acciones">
+      <label class="btn-cancel profesor-logo-subir">${estado==='sin-logo'?'Subir logo':'Cambiar logo'}<input type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+      ${estado==='sin-logo'?'':'<button type="button" class="btn-cancel profesor-logo-quitar">Quitar</button>'}
+    </div>
+    <p class="profesor-estado" role="status" aria-live="polite"></p>`;
+  const aviso=caja.querySelector('.profesor-estado');
+  const ruta=perfil.logo_path||perfil.logo_aprobado_path;
+  if(ruta)urlFlyerClase(ruta).then(url=>{const img=caja.querySelector('.profesor-logo-img');if(url&&img&&img.isConnected)img.innerHTML=`<img src="${esc(url)}" alt="">`;});
+  caja.querySelector('input[type=file]').addEventListener('change',async e=>{
+    const file=e.target.files&&e.target.files[0];if(!file)return;
+    aviso.textContent='Subiendo logo…';
+    const r=await subirLogoProfesor(file);
+    if(!caja.isConnected)return;
+    if(!r.ok){aviso.textContent=r.error;e.target.value='';return;}
+    renderLogoProfesor(caja);
+  });
+  const quitar=caja.querySelector('.profesor-logo-quitar');
+  if(quitar)quitar.addEventListener('click',async()=>{
+    aviso.textContent='Quitando logo…';
+    const r=await quitarLogoProfesor();
+    if(!caja.isConnected)return;
+    if(!r.ok){aviso.textContent=r.error;return;}
+    renderLogoProfesor(caja);
+  });
 }
 
 function renderBorradorProfesor(raiz,anuncio){
   let id=anuncio&&anuncio.id||null,flyerActual=anuncio&&anuncio.flyer_path||null;
   const valor=(campo,defecto='')=>esc(anuncio&&anuncio[campo]!=null?anuncio[campo]:defecto);
+  const tipoContactoInicial=anuncio&&PREFIJO_CONTACTO_CLASE[anuncio.contacto_tipo]!==undefined?anuncio.contacto_tipo:'whatsapp';
   const elegir=(opciones,actual)=>opciones.map(([clave,texto])=>`<option value="${clave}"${actual===clave?' selected':''}>${texto}</option>`).join('');
   raiz.innerHTML=`<div class="modal-title" id="modal-titulo">${id?'Edita tu borrador':'Prepara tu clase'}</div>
     <p class="profesor-info">Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.</p>
     <form class="profesor-form" id="profesor-borrador">
       <h3>1. Tu clase</h3>
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
-      <label class="modal-label" for="pr-descripcion">Qué van a trabajar</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required>${valor('descripcion')}</textarea>
-      <label class="modal-label" for="pr-precio">Precio por clase · CLP</label><input id="pr-precio" type="number" min="1000" max="500000" step="1" required value="${valor('precio_clp')}">
-      <label class="modal-label" for="pr-modalidad">Formato</label><select id="pr-modalidad">${elegir([['individual','Individual'],['grupal','Grupal']],anuncio&&anuncio.modalidad)}</select>
-      <label class="modal-label" for="pr-ubicacion">Dónde</label><select id="pr-ubicacion">${elegir([['online','Online'],['presencial','Presencial'],['hibrido','Híbrido']],anuncio&&anuncio.ubicacion)}</select>
+      <label class="modal-label" for="pr-descripcion">Descripción</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required placeholder="Qué van a trabajar, cómo son tus clases y tu experiencia con el ramo.">${valor('descripcion')}</textarea>
+      <label class="modal-label" for="pr-precio">Precio por clase</label><input id="pr-precio" type="text" inputmode="numeric" autocomplete="off" required placeholder="$15.000" value="${esc(textoPesosEscrito(anuncio&&anuncio.precio_clp))}">
+      <label class="modal-label" for="pr-modalidad">Formato · opcional</label><select id="pr-modalidad">${elegir([['','No indicar'],...MODALIDADES_CLASE,['otra','Otra…']],anuncio&&anuncio.modalidad||'')}</select>
+      <input id="pr-modalidad-otra" type="text" maxlength="40" aria-label="Escribe el formato" placeholder="Ej. grupos de hasta 3" value="${valor('modalidad_otra')}" ${anuncio&&anuncio.modalidad==='otra'?'':'hidden'}>
+      <label class="modal-label" for="pr-ubicacion">Dónde · opcional</label><select id="pr-ubicacion">${elegir([['','No indicar'],...UBICACIONES_CLASE,['otra','Otra…']],anuncio&&anuncio.ubicacion||'')}</select>
+      <input id="pr-ubicacion-otra" type="text" maxlength="40" aria-label="Escribe dónde es la clase" placeholder="Ej. en tu casa o en la biblioteca" value="${valor('ubicacion_otra')}" ${anuncio&&anuncio.ubicacion==='otra'?'':'hidden'}>
+      <div class="profesor-detalles" id="pr-detalles-caja">
+        <span class="modal-label">Detalles · opcional</span>
+        <p class="profesor-info">Lo que quieras destacar, como "Duración: 90 minutos" o "Incluye: guía de ejercicios". Hasta ${MAX_DETALLES_CLASE}.</p>
+        <div id="pr-detalles"></div>
+        <button class="btn-cancel profesor-detalle-agregar" id="pr-agregar-detalle" type="button">Agregar un detalle</button>
+      </div>
       <label class="modal-label" for="pr-contacto-tipo">Cómo te contactarán</label><select id="pr-contacto-tipo">${elegir([['whatsapp','WhatsApp'],['instagram','Instagram'],['email','Correo']],anuncio&&anuncio.contacto_tipo)}</select>
-      <label class="modal-label" for="pr-contacto">Tu contacto</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required value="${valor('contacto_valor')}">
+      <label class="modal-label" for="pr-contacto">Tu contacto</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
       <label class="modal-label" for="pr-flyer">Flyer · opcional</label><input id="pr-flyer" type="file" accept="image/jpeg,image/png,image/webp"><p class="profesor-info">JPG, PNG o WebP · máximo 5 MB. Primero se guarda el borrador y después se sube la imagen.</p>
       <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
       <button class="btn-cancel" id="pr-quitar-flyer" type="button" ${flyerActual?'':'hidden'}>Quitar flyer guardado</button>
+      <div id="pr-logo"></div>
       <h3>2. Público</h3>
       <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
       <label class="modal-label" for="pr-siglas">Siglas de los ramos · separadas por coma</label><input id="pr-siglas" type="text" required placeholder="MAT1610, FIS1514" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
@@ -889,6 +1370,43 @@ function renderBorradorProfesor(raiz,anuncio){
   const vista=form.querySelector('.profesor-vista');
   const actualizarVista=()=>{vista.querySelector('strong').textContent=campo('titulo').value.trim()||'Tu clase';vista.querySelector('p').textContent=campo('descripcion').value.trim()||'Aquí aparecerá lo que ofreces.';};
   form.addEventListener('input',actualizarVista);actualizarVista();
+  campoPesos(campo('precio'));
+  // "Otra…" abre su casilla de texto; cualquier otra opción la esconde.
+  [['modalidad','modalidad-otra'],['ubicacion','ubicacion-otra']].forEach(([sel,texto])=>{
+    const selector=campo(sel),caja=campo(texto);
+    if(!selector||!caja)return;
+    selector.addEventListener('change',()=>{caja.hidden=selector.value!=='otra';if(!caja.hidden&&typeof caja.focus==='function')caja.focus();});
+  });
+  const listaDetalles=campo('detalles'),agregarDetalle=campo('agregar-detalle');
+  const filaDetalle=(d={})=>{
+    if(!listaDetalles||typeof document==='undefined'||!document.createElement)return;
+    const fila=document.createElement('div');fila.className='profesor-detalle';
+    fila.innerHTML=`<input type="text" class="detalle-etiqueta" maxlength="${MAX_ETIQUETA_DETALLE}" placeholder="Duración" aria-label="Nombre del detalle" value="${esc(d.etiqueta||'')}">
+      <input type="text" class="detalle-valor" maxlength="${MAX_VALOR_DETALLE}" placeholder="90 minutos" aria-label="Qué dice el detalle" value="${esc(d.valor||'')}">
+      <button type="button" class="profesor-detalle-quitar" aria-label="Quitar este detalle">Quitar</button>`;
+    fila.querySelector('.profesor-detalle-quitar').addEventListener('click',()=>{fila.remove();refrescarDetalles();});
+    listaDetalles.appendChild(fila);refrescarDetalles();
+  };
+  const refrescarDetalles=()=>{if(agregarDetalle&&listaDetalles&&listaDetalles.children)agregarDetalle.hidden=listaDetalles.children.length>=MAX_DETALLES_CLASE;};
+  if(agregarDetalle)agregarDetalle.addEventListener('click',()=>{filaDetalle();const ultima=listaDetalles&&listaDetalles.lastElementChild;ultima&&ultima.querySelector('input').focus();});
+  detallesClase(anuncio).forEach(d=>filaDetalle(d));
+  const leerDetalles=()=>listaDetalles&&typeof listaDetalles.querySelectorAll==='function'
+    ?[...listaDetalles.querySelectorAll('.profesor-detalle')].map(f=>({etiqueta:f.querySelector('.detalle-etiqueta').value,valor:f.querySelector('.detalle-valor').value})):[];
+  const cajaLogo=campo('logo');
+  if(cajaLogo)renderLogoProfesor(cajaLogo);
+  // WhatsApp e Instagram parten con su prefijo escrito. Al cambiar de canal se
+  // cambia el prefijo solo si el campo no tiene nada más que un prefijo: lo que
+  // la persona ya escribió no se borra por tocar el selector.
+  const contacto=campo('contacto');
+  formatearAlEscribir(contacto,texto=>{
+    const tipo=campo('contacto-tipo').value;
+    return tipo==='whatsapp'?textoWhatsappEscrito(texto):tipo==='instagram'?textoInstagramEscrito(texto):texto;
+  });
+  campo('contacto-tipo').addEventListener('change',()=>{
+    const tipo=campo('contacto-tipo').value,actual=String(contacto.value||'').trim();
+    if(!actual||Object.values(PREFIJO_CONTACTO_CLASE).some(p=>p&&p.trim()===actual))contacto.value=PREFIJO_CONTACTO_CLASE[tipo]||'';
+    contacto.placeholder=EJEMPLO_CONTACTO_CLASE[tipo]||'';
+  });
   const preview=form.querySelector('.profesor-flyer-preview');
   if(flyerActual)urlFlyerClase(flyerActual).then(url=>{if(url&&preview.isConnected){preview.querySelector('img').src=url;preview.hidden=false;}});
   campo('flyer').addEventListener('change',()=>{
@@ -915,15 +1433,17 @@ function renderBorradorProfesor(raiz,anuncio){
     if(!validacion.ok){estado.textContent=validacion.error;campo('flyer').focus();return;}
     const datos={tenant:campo('tenant').value,ramos_siglas:campo('siglas').value.split(',').map(s=>s.trim()),
       criterios:{promedioMenorA:Number(campo('promedio').value),avanceMinimo:Number(campo('avance').value)},
-      titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:Number(campo('precio').value),
+      titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:pesosDeTexto(campo('precio').value),
       modalidad:campo('modalidad').value,ubicacion:campo('ubicacion').value,
+      modalidad_otra:campo('modalidad-otra')?campo('modalidad-otra').value:'',ubicacion_otra:campo('ubicacion-otra')?campo('ubicacion-otra').value:'',
+      detalles:leerDetalles(),
       contacto_tipo:campo('contacto-tipo').value,contacto_valor:campo('contacto').value};
     procesando=true;
     const botones=[form.querySelector('#pr-guardar'),form.querySelector('#pr-enviar')];botones.forEach(b=>b.disabled=true);
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
       id=guardado.anuncio.id;
       if(file){estado.textContent='Borrador guardado. Subiendo flyer…';const subida=await subirFlyerClase(id,file);
         if(!subida.ok){estado.textContent='Borrador guardado, pero '+subida.error;return;}
@@ -940,6 +1460,154 @@ function renderBorradorProfesor(raiz,anuncio){
   form.addEventListener('submit',e=>{e.preventDefault();procesar(false);});
   form.querySelector('#pr-guardar').addEventListener('click',()=>procesar(false));
   form.querySelector('#pr-enviar').addEventListener('click',()=>procesar(true));
+}
+
+// ─── RECOMENDACIÓN EN INICIO ────────────────────────────────────────────────
+//
+// La segunda puerta de docs/marketplace-clases.md. Una clase cuyo público
+// calza con uno de tus ramos aparece junto a ese ramo en Inicio, con su
+// etiqueta de publicidad. Reglas que no se negocian:
+//
+// - Se decide en el navegador con `seleccionarClaseApoyo`: se descargan los
+//   anuncios públicos de tu universidad y se comparan acá con tus ramos y notas.
+//   Nada de eso viaja para elegir.
+// - Solo en Inicio, nunca en la ficha del ramo, la Agenda ni el ingreso de notas.
+// - Como máximo una por día. Se elige una vez al día y se mantiene ese día; si
+//   la cierras no la reemplaza otra hasta mañana, y esa clase no vuelve a
+//   aparecer en este dispositivo.
+// - No dice "reprobando" ni diagnostica: ofrece apoyo para el ramo.
+// - El cierre y el día viven en `gradehub_marketplace_v1`, aparte de
+//   gradehub_v1: apagar esto no toca el estado académico.
+//
+// RECOMENDACIONES_CLASES_ACTIVAS es el interruptor. Apagarlo esconde el banner
+// sin tocar el catálogo, que es la puerta abierta a todos.
+const RECOMENDACIONES_CLASES_ACTIVAS=true;
+const CLAVE_MARKETPLACE='gradehub_marketplace_v1';
+const MAX_DESCARTADOS_CLASES=200;
+
+function leerEstadoMarketplace(){
+  try{
+    const v=JSON.parse(localStorage.getItem(CLAVE_MARKETPLACE)||'{}');
+    return v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+  }catch(e){return {};}
+}
+function guardarEstadoMarketplace(estado){
+  try{localStorage.setItem(CLAVE_MARKETPLACE,JSON.stringify(estado));}catch(e){}
+}
+function diaLocalClases(ahora=Date.now()){
+  const d=new Date(ahora);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Pura: recibe anuncios, ramos y el estado guardado, y devuelve la
+// recomendación de hoy (o null) junto con el estado que hay que guardar.
+function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now()){
+  const hoy=diaLocalClases(ahora);
+  const descartados=Array.isArray(estado&&estado.descartados)?estado.descartados:[];
+  if(estado&&estado.dia===hoy){
+    // Ya se decidió hoy. Se vuelve a comprobar que siga calzando: si subiste
+    // una nota y dejó de calzar, desaparece en vez de quedarse pegada.
+    if(!estado.anuncioId||descartados.includes(estado.anuncioId))return {sel:null,estado};
+    const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===estado.anuncioId),ramos,tenant,{descartados,ahora});
+    return {sel,estado};
+  }
+  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados,ahora});
+  return {sel,estado:{...(estado||{}),descartados,dia:hoy,anuncioId:sel?sel.anuncio.id:null}};
+}
+
+function descartarRecomendacionClase(anuncioId,ahora=Date.now()){
+  const estado=leerEstadoMarketplace();
+  const descartados=[...new Set([...(Array.isArray(estado.descartados)?estado.descartados:[]),anuncioId])].slice(-MAX_DESCARTADOS_CLASES);
+  // anuncioId null con el día de hoy: no se reemplaza por otra hasta mañana.
+  guardarEstadoMarketplace({...estado,descartados,dia:diaLocalClases(ahora),anuncioId:null});
+}
+
+let anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
+function cargarAnunciosRecomendacion(tenant,alTerminar){
+  if(anunciosRecomendacion.pidiendo)return;
+  anunciosRecomendacion={tenant,lista:null,pidiendo:true};
+  cargarAnunciosClases(tenant).then(lista=>{
+    if(anunciosRecomendacion.tenant!==tenant)return;
+    anunciosRecomendacion={tenant,lista:Array.isArray(lista)?lista:[],pidiendo:false};
+    alTerminar();
+  }).catch(()=>{anunciosRecomendacion={tenant,lista:[],pidiendo:false};});
+}
+
+const RECOMENDACIONES_VISTAS=new Set();
+function observarRecomendacionClase(banner,anuncio,sigla){
+  if(typeof IntersectionObserver!=='function'||RECOMENDACIONES_VISTAS.has(anuncio.id))return;
+  let timer=null;
+  const obs=new IntersectionObserver(entradas=>{
+    const e=entradas[entradas.length-1];
+    if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
+      if(!timer)timer=setTimeout(()=>{
+        timer=null;
+        if(!banner.isConnected||RECOMENDACIONES_VISTAS.has(anuncio.id))return;
+        RECOMENDACIONES_VISTAS.add(anuncio.id);obs.disconnect();
+        registrarMetricaAnuncio(anuncio.id,'impresion',sigla);
+        registrarAlcanceAnuncio(anuncio.id,'recomendacion');
+      },IMPRESION_MS);
+    }else if(timer){clearTimeout(timer);timer=null;}
+  },{threshold:[IMPRESION_VISIBLE]});
+  obs.observe(banner);
+}
+
+// La llama renderHome después de pintar los ramos. Si los anuncios todavía no
+// llegan, los pide y vuelve a pintar solo el banner cuando llegan.
+function pintarRecomendacionClase(contenedor){
+  if(!RECOMENDACIONES_CLASES_ACTIVAS||!contenedor||!currentUser||!supabaseClient||!S||!S.tenant)return;
+  contenedor.querySelectorAll('.clase-apoyo').forEach(b=>b.remove());
+  contenedor.querySelectorAll('.tiene-clase-apoyo').forEach(f=>f.classList.remove('tiene-clase-apoyo'));
+  if(anunciosRecomendacion.tenant!==S.tenant||anunciosRecomendacion.lista===null){
+    cargarAnunciosRecomendacion(S.tenant,()=>{if(contenedor.isConnected)pintarRecomendacionClase(contenedor);});
+    return;
+  }
+  const {sel,estado}=recomendacionDelDia(anunciosRecomendacion.lista,S.ramos,S.tenant,leerEstadoMarketplace());
+  guardarEstadoMarketplace(estado);
+  if(!sel)return;
+  const fila=[...contenedor.querySelectorAll('.ramo-row')].find(f=>f.dataset.ramoId===String(sel.ramo.id));
+  if(!fila)return;
+  const {anuncio,ramo}=sel,sigla=siglaRamoParaClases(ramo);
+  const banner=document.createElement('aside');
+  banner.className='clase-apoyo';
+  banner.setAttribute('aria-label','Publicidad: clase particular');
+  banner.innerHTML=`<button type="button" class="clase-apoyo-abrir">
+      <small>Publicidad · Clase particular</small>
+      <strong>Puede servirte apoyo para ${esc(ramo.nombre)}</strong>
+      <span>${esc(anuncio.titulo||'Clase particular')} · ${pesosClase(anuncio.precio_clp)} por clase</span>
+    </button>
+    <button type="button" class="clase-apoyo-cerrar" aria-label="No mostrar esta clase">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>`;
+  banner.querySelector('.clase-apoyo-abrir').addEventListener('click',()=>{
+    registrarMetricaAnuncio(anuncio.id,'clic',sigla);
+    abrirClaseRecomendada(anuncio,ramo,sigla);
+  });
+  banner.querySelector('.clase-apoyo-cerrar').addEventListener('click',()=>{
+    descartarRecomendacionClase(anuncio.id);
+    fila.classList.remove('tiene-clase-apoyo');
+    banner.remove();
+    if(typeof showToast==='function')showToast('Listo, no te la volvemos a mostrar');
+  });
+  fila.classList.add('tiene-clase-apoyo');
+  fila.after(banner);
+  observarRecomendacionClase(banner,anuncio,sigla);
+}
+
+async function abrirClaseRecomendada(anuncio,ramo,sigla){
+  const raiz=document.getElementById('modal-content');
+  if(!raiz)return;
+  logosCatalogoClases=await logosDeAnuncios([anuncio.id]);
+  raiz.innerHTML=`<div class="catalogo-clases">
+      <div class="catalogo-clases-head"><div><div class="modal-title" id="modal-titulo">Clase particular</div></div><button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button></div>
+      <div class="catalogo-clases-resultados">${tarjetaCatalogoClase(anuncio,{sigla})}</div>
+      <details class="clase-apoyo-porque"><summary>¿Por qué veo esto?</summary>
+        <p>Porque esta clase es para ${esc(ramo.nombre)}, que está en tu semestre. GradeHub lo decide en tu navegador con tus ramos y notas: el profesor no las recibe ni sabe quién eres. Puedes cerrar la recomendación en Inicio y no te la volvemos a mostrar.</p>
+      </details>
+      <button type="button" class="btn-cancel clase-apoyo-mas" onclick="openCatalogoClases()">Ver todas las clases</button>
+    </div>`;
+  activarTarjetasClases(raiz);
+  openModal();
 }
 
 if(typeof document!=='undefined'){

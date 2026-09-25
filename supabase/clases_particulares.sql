@@ -143,6 +143,60 @@ alter table public.tutor_anuncios add column if not exists flyer_path text
     )
   );
 
+-- FORMATO, LUGAR Y DETALLES A MEDIDA. Pedido de Lucas del 2026-09-25: las
+-- alternativas fijas no calzan con todas las clases. Formato y lugar pasan a
+-- ser opcionales, y cada uno acepta 'otra' con un texto propio. Además cada
+-- anuncio puede llevar hasta cuatro detalles "etiqueta: valor" (texto, nunca
+-- enlaces: el contacto sigue siendo solo WhatsApp, Instagram o correo).
+--
+-- Aditivo y compatible: relaja restricciones, no reinterpreta nada. Una fila
+-- existente sigue siendo válida tal como está. Si en producción la restricción
+-- tiene otro nombre, el drop no la encuentra y 'otra' falla al guardar: se
+-- nota al tiro y no corrompe nada.
+alter table public.tutor_anuncios alter column modalidad drop not null;
+alter table public.tutor_anuncios alter column ubicacion drop not null;
+alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_modalidad_check;
+alter table public.tutor_anuncios add constraint tutor_anuncios_modalidad_check
+  check (modalidad is null or modalidad in ('individual', 'grupal', 'otra'));
+alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_ubicacion_check;
+alter table public.tutor_anuncios add constraint tutor_anuncios_ubicacion_check
+  check (ubicacion is null or ubicacion in ('online', 'presencial', 'hibrido', 'otra'));
+
+alter table public.tutor_anuncios add column if not exists modalidad_otra text
+  check (modalidad_otra is null or char_length(btrim(modalidad_otra)) between 2 and 40);
+alter table public.tutor_anuncios add column if not exists ubicacion_otra text
+  check (ubicacion_otra is null or char_length(btrim(ubicacion_otra)) between 2 and 40);
+-- El texto propio existe si y solo si se eligió 'otra'.
+alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_otra_coherente;
+alter table public.tutor_anuncios add constraint tutor_anuncios_otra_coherente check (
+  (coalesce(modalidad, '') = 'otra') = (modalidad_otra is not null)
+  and (coalesce(ubicacion, '') = 'otra') = (ubicacion_otra is not null)
+);
+
+create or replace function public.detalles_clase_validos(d jsonb)
+returns boolean
+language sql
+immutable
+as $$
+  select case
+    when d is null then true
+    when jsonb_typeof(d) <> 'array' then false
+    when jsonb_array_length(d) > 4 then false
+    else not exists (
+      select 1 from jsonb_array_elements(d) e
+      where jsonb_typeof(e) <> 'object'
+         or (e - 'etiqueta' - 'valor') <> '{}'::jsonb
+         or coalesce(jsonb_typeof(e->'etiqueta'), '') <> 'string'
+         or coalesce(jsonb_typeof(e->'valor'), '') <> 'string'
+         or char_length(btrim(e->>'etiqueta')) not between 1 and 30
+         or char_length(btrim(e->>'valor')) not between 1 and 80
+    )
+  end;
+$$;
+
+alter table public.tutor_anuncios add column if not exists detalles jsonb
+  check (public.detalles_clase_validos(detalles));
+
 create index if not exists tutor_anuncios_publicados_por_tenant
   on public.tutor_anuncios (tenant, publicado_at desc)
   where estado = 'publicado';
@@ -165,6 +219,9 @@ grant insert (autor_id, tenant, ramos_siglas, criterios, modalidad, ubicacion, p
 grant update (ramos_siglas, criterios, modalidad, ubicacion, precio_clp, titulo, descripcion, flyer_path,
               contacto_tipo, contacto_valor, estado)
   on public.tutor_anuncios to authenticated;
+grant select (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to anon, authenticated;
+grant insert (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to authenticated;
+grant update (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to authenticated;
 
 drop policy if exists tutor_anuncios_select_publicados_o_propios on public.tutor_anuncios;
 create policy tutor_anuncios_select_publicados_o_propios
@@ -282,6 +339,164 @@ on storage.objects for delete to authenticated
 using (
   bucket_id = 'tutor-flyers'
   and public.flyer_clase_editable(name, (select auth.uid()))
+);
+
+-- ─── LOGO DEL PROFESOR ──────────────────────────────────────────────────────
+--
+-- Uno por profesor, y sale en todos sus anuncios publicados. Como aparece en
+-- anuncios que ya se aprobaron, un logo nuevo NO se muestra hasta revisarlo:
+-- `logo_path` es el que subió, `logo_aprobado_path` el que se ve. Solo el
+-- equipo copia uno al otro (admin.aprobar_logo).
+--
+-- La ruta es logos/<logo_id>/<uuid>.<ext>. `logo_id` es un identificador
+-- propio y no el user_id: el catálogo es público y no tiene por qué saber qué
+-- cuenta está detrás de un anuncio.
+alter table public.tutor_perfiles add column if not exists logo_id uuid not null default gen_random_uuid();
+alter table public.tutor_perfiles add column if not exists logo_path text
+  check (logo_path is null or (
+    logo_path ~ '^logos/[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}\.(jpg|png|webp)$'
+    and split_part(logo_path, '/', 2) = logo_id::text));
+alter table public.tutor_perfiles add column if not exists logo_aprobado_path text
+  check (logo_aprobado_path is null or (
+    logo_aprobado_path ~ '^logos/[0-9a-fA-F-]{36}/[0-9a-fA-F-]{36}\.(jpg|png|webp)$'
+    and split_part(logo_aprobado_path, '/', 2) = logo_id::text));
+
+grant select (logo_id, logo_path, logo_aprobado_path) on public.tutor_perfiles to authenticated;
+-- Puede proponer uno (la política de update ya lo ata a su propia fila y el
+-- check, a su propio logo_id). No puede aprobarlo ni cambiar su logo_id.
+grant update (logo_path) on public.tutor_perfiles to authenticated;
+
+-- Quitar sí es inmediato: sacar una imagen nunca necesita revisión.
+create or replace function public.quitar_mi_logo()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+  update public.tutor_perfiles
+     set logo_path = null, logo_aprobado_path = null
+   where user_id = auth.uid();
+end;
+$$;
+
+-- Propio: está en la carpeta del logo de quien pregunta, y su ficha está
+-- aprobada. Sirve para ver su propio logo, aprobado o no.
+create or replace function public.logo_profesor_propio(p_path text, p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, storage
+as $$
+  select p_user_id is not null
+    and p_user_id = auth.uid()
+    and (storage.foldername(p_path))[1] = 'logos'
+    and exists (
+      select 1 from public.tutor_perfiles p
+      where p.user_id = p_user_id
+        and p.estado = 'aprobado'
+        and p.logo_id::text = (storage.foldername(p_path))[2]
+    );
+$$;
+
+-- Editable: propio y que no sea el que se está mostrando. Borrar el aprobado
+-- dejaría anuncios publicados con un logo roto; para sacarlo está
+-- quitar_mi_logo(), que primero lo desasigna.
+create or replace function public.logo_profesor_editable(p_path text, p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.logo_profesor_propio(p_path, p_user_id)
+    and not exists (
+      select 1 from public.tutor_perfiles p
+      where p.user_id = p_user_id and p.logo_aprobado_path = p_path
+    );
+$$;
+
+-- Se ve el logo APROBADO de un profesor aprobado con al menos un anuncio
+-- publicado y vigente. Un logo propuesto solo lo ve su dueño (arriba).
+create or replace function public.logo_profesor_visible(p_path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.tutor_perfiles p
+    where p.logo_aprobado_path = p_path
+      and p.estado = 'aprobado'
+      and exists (
+        select 1 from public.tutor_anuncios a
+        where a.autor_id = p.user_id
+          and a.estado = 'publicado'
+          and (a.vence_at is null or a.vence_at > now())
+      )
+  );
+$$;
+
+-- El catálogo no conoce al autor de cada anuncio, así que pide los logos por
+-- anuncio. Devuelve solo rutas de logos aprobados de anuncios visibles.
+create or replace function public.logos_de_anuncios(p_ids uuid[])
+returns table (anuncio_id uuid, logo_path text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select a.id, p.logo_aprobado_path
+  from public.tutor_anuncios a
+  join public.tutor_perfiles p on p.user_id = a.autor_id
+  where a.id = any(p_ids[1:100])
+    and a.estado = 'publicado'
+    and (a.vence_at is null or a.vence_at > now())
+    and p.estado = 'aprobado'
+    and p.logo_aprobado_path is not null;
+$$;
+
+revoke all on function public.quitar_mi_logo() from public, anon;
+revoke all on function public.logo_profesor_propio(text, uuid) from public;
+revoke all on function public.logo_profesor_editable(text, uuid) from public;
+revoke all on function public.logo_profesor_visible(text) from public;
+revoke all on function public.logos_de_anuncios(uuid[]) from public;
+grant execute on function public.quitar_mi_logo() to authenticated;
+grant execute on function public.logo_profesor_propio(text, uuid) to anon, authenticated;
+grant execute on function public.logo_profesor_editable(text, uuid) to anon, authenticated;
+grant execute on function public.logo_profesor_visible(text) to anon, authenticated;
+grant execute on function public.logos_de_anuncios(uuid[]) to anon, authenticated;
+
+drop policy if exists tutor_logos_insert_propio on storage.objects;
+create policy tutor_logos_insert_propio
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'tutor-flyers'
+  and public.logo_profesor_editable(name, (select auth.uid()))
+);
+
+drop policy if exists tutor_logos_select_visible_o_propio on storage.objects;
+create policy tutor_logos_select_visible_o_propio
+on storage.objects for select to anon, authenticated
+using (
+  bucket_id = 'tutor-flyers'
+  and (
+    public.logo_profesor_visible(name)
+    or public.logo_profesor_propio(name, (select auth.uid()))
+  )
+);
+
+drop policy if exists tutor_logos_delete_propio on storage.objects;
+create policy tutor_logos_delete_propio
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'tutor-flyers'
+  and public.logo_profesor_editable(name, (select auth.uid()))
 );
 
 -- Cada fila suma eventos, no personas. La dimensión es deliberadamente gruesa:
@@ -464,9 +679,32 @@ create table if not exists public.anuncio_alcance (
 alter table public.anuncio_alcance enable row level security;
 revoke all on public.anuncio_alcance from public, anon, authenticated;
 
--- Devuelve true solo la PRIMERA vez que esta cuenta ve el aviso. El cliente no
--- decide si cuenta o no: el servidor lo resuelve con la llave primaria.
-create or replace function public.registrar_alcance_anuncio(p_anuncio_id uuid)
+-- POR QUÉ CAMINO LLEGÓ. Cada camino se cobra distinto (docs/marketplace-clases.md):
+-- la recomendación al precio del público segmentado, el catálogo a una fracción
+-- de la base que sube si la persona buscó el ramo. Una cuenta sigue siendo UNA
+-- fila por campaña; si llega por un camino más caro, la fila sube y nunca baja.
+-- Aditivo: una fila anterior queda como 'recomendacion', que era el único
+-- camino que existía cuando se diseñó la tabla. No guarda qué se buscó.
+alter table public.anuncio_alcance add column if not exists canal text not null default 'recomendacion'
+  check (canal in ('recomendacion', 'busqueda', 'lista'));
+
+create or replace function public.rango_canal_alcance(p_canal text)
+returns integer
+language sql
+immutable
+as $$
+  select case p_canal when 'recomendacion' then 3 when 'busqueda' then 2 when 'lista' then 1 else 0 end;
+$$;
+
+-- Devuelve true la PRIMERA vez que esta cuenta ve el aviso, o cuando llega por
+-- un camino más caro que el registrado. El cliente no decide si cuenta: el
+-- servidor lo resuelve con la llave primaria y el rango del canal.
+--
+-- La firma cambió de (uuid) a (uuid, text). La vieja se borra antes: con las
+-- dos, una llamada de un solo argumento sería ambigua. El default mantiene a
+-- los clientes que todavía llaman sin canal.
+drop function if exists public.registrar_alcance_anuncio(uuid);
+create or replace function public.registrar_alcance_anuncio(p_anuncio_id uuid, p_canal text default 'recomendacion')
 returns boolean
 language plpgsql
 security definer
@@ -478,6 +716,9 @@ begin
   if auth.uid() is null then
     raise exception 'hay que haber iniciado sesión';
   end if;
+  if public.rango_canal_alcance(p_canal) = 0 then
+    raise exception 'canal inválido';
+  end if;
 
   if not exists (
     select 1 from public.tutor_anuncios
@@ -488,9 +729,11 @@ begin
     raise exception 'anuncio no disponible';
   end if;
 
-  insert into public.anuncio_alcance (anuncio_id, user_id)
-  values (p_anuncio_id, auth.uid())
-  on conflict (anuncio_id, user_id) do nothing;
+  insert into public.anuncio_alcance (anuncio_id, user_id, canal)
+  values (p_anuncio_id, auth.uid(), p_canal)
+  on conflict (anuncio_id, user_id) do update
+    set canal = excluded.canal
+    where public.rango_canal_alcance(excluded.canal) > public.rango_canal_alcance(public.anuncio_alcance.canal);
 
   get diagnostics filas = row_count;
   return filas = 1;
@@ -520,6 +763,33 @@ begin
 end;
 $$;
 
+-- Lo mismo, separado por camino: es lo que el panel necesita para aplicar el
+-- precio de cada uno. Siguen siendo solo totales de la propia campaña.
+create or replace function public.alcance_anuncio_por_canal(p_anuncio_id uuid)
+returns table (canal text, cuentas integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'hay que haber iniciado sesión';
+  end if;
+  if not exists (
+    select 1 from public.tutor_anuncios
+    where id = p_anuncio_id and autor_id = auth.uid()
+  ) then
+    raise exception 'no puedes ver el alcance de este anuncio';
+  end if;
+
+  return query
+  select a.canal, count(*)::integer
+  from public.anuncio_alcance a
+  where a.anuncio_id = p_anuncio_id
+  group by a.canal;
+end;
+$$;
+
 -- El registro existe para poder cobrar, así que se borra cuando ya no hay nada
 -- que cobrar: 90 días después de que la campaña venció, como dice
 -- docs/marketplace-clases.md. La ejecuta el equipo (o pg_cron) y devuelve
@@ -546,8 +816,11 @@ begin
 end;
 $$;
 
-revoke all on function public.registrar_alcance_anuncio(uuid) from public, anon;
+revoke all on function public.registrar_alcance_anuncio(uuid, text) from public, anon;
 revoke all on function public.alcance_anuncio(uuid) from public, anon;
+revoke all on function public.alcance_anuncio_por_canal(uuid) from public, anon;
+revoke all on function public.rango_canal_alcance(text) from public, anon;
 revoke all on function public.limpiar_alcance_anuncios(integer) from public, anon, authenticated;
-grant execute on function public.registrar_alcance_anuncio(uuid) to authenticated;
+grant execute on function public.registrar_alcance_anuncio(uuid, text) to authenticated;
 grant execute on function public.alcance_anuncio(uuid) to authenticated;
+grant execute on function public.alcance_anuncio_por_canal(uuid) to authenticated;

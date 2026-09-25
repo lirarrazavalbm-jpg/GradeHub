@@ -28,9 +28,13 @@ const anuncio=(extra)=>Object.assign({id:'a1',titulo:'Clases de Cálculo II',est
   ramos_siglas:['MAT1620'],precio_clp:15000,criterios:{promedioMenorA:5,avanceMinimo:20}},extra||{});
 
 // Supabase de mentira: se le dice qué contesta cada RPC.
-function montar({alcance=null,cortes=[]}={}){
-  ctx.__alcance=alcance;ctx.__cortes=cortes;
-  run(`supabaseClient={rpc:(n)=>Promise.resolve(n==='alcance_anuncio'?{data:__alcance,error:null}:{data:__cortes,error:null})};`);
+// Sin `porCanal`, la función por camino no existe: es un servidor sin el SQL
+// nuevo, y el panel tiene que caer al total de siempre.
+function montar({alcance=null,cortes=[],porCanal=null}={}){
+  ctx.__alcance=alcance;ctx.__cortes=cortes;ctx.__porCanal=porCanal;
+  run(`supabaseClient={rpc:(n)=>Promise.resolve(
+    n==='alcance_anuncio_por_canal'?(__porCanal?{data:__porCanal,error:null}:{data:null,error:{message:'no existe'}})
+    :n==='alcance_anuncio'?{data:__alcance,error:null}:{data:__cortes,error:null})};`);
 }
 const pintar=async(anuncios,datos)=>{
   montar(datos);
@@ -48,6 +52,14 @@ const pintar=async(anuncios,datos)=>{
   // 18 personas · bajo 5,0 y 20% evaluado = $1.400 c/u + $3.000 de publicación.
   chk('el costo usa la misma cotización que al armar el anuncio',/28\.200|\$28/.test(html));
 
+  console.log('\n=== Cada camino se cobra a su precio ===');
+  // 10 de su público × $1.400 + 4 que buscaron × $500 + 6 de la lista × $300 + $3.000.
+  html=await pintar([anuncio()],{porCanal:[{canal:'recomendacion',cuentas:10},{canal:'busqueda',cuentas:4},{canal:'lista',cuentas:6}]});
+  chk('las personas alcanzadas suman los tres caminos',/Personas alcanzadas/.test(html)&&/>20</.test(html));
+  chk('y el costo aplica el precio de cada camino',/20\.800/.test(html));
+  chk('con el desglose a la vista',/que buscaron el ramo/.test(html)&&/\$500/.test(html)&&/\$300/.test(html));
+
+  html=await pintar([anuncio()],{alcance:18});
   console.log('\n=== Sin datos suficientes no se inventa un cero ===');
   chk('no dice "0 clics" cuando el servidor no devolvió cortes',
     !/Clics/.test(html) && /aparecen cuando hay suficientes datos/.test(html));
