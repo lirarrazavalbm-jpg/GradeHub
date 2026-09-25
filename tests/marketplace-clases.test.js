@@ -195,81 +195,27 @@ vm.runInContext(`
     // debe funcionar con Supabase fuera de servicio y notas solo locales.
   }
 
-  console.log('\n=== La cotización distingue público disponible de alcance ===');
-  const cotiza=val("typeof cotizarCampanaClases==='function'");
-  chk('existe una cotización configurable, sin convertir eventos en personas',cotiza);
-  if(cotiza){
-    const cotizar=(c,datos)=>{ctx.criterios=c;ctx.datos=datos;return val('cotizarCampanaClases(criterios,null,datos)');};
-    const general={promedioMenorA:5,avanceMinimo:20},especifico={promedioMenorA:4,avanceMinimo:40};
-
-    // Las dos anclas que el piloto ya tenía acordadas. La fórmula continua las
-    // reproduce exactas: si alguien la cambia y estas dos se mueven, cambió el
-    // precio del piloto, no un detalle de implementación.
-    chk('sin filtrar nada se cobra la tarifa base de $1.000',
-      cotizar({promedioMenorA:7,avanceMinimo:0},{elegibles:1}).precioPorCuenta===1000);
-    chk('bajo 4,0 con 40% evaluado se cobra $2.000, como decía el piloto',
-      cotizar(especifico,{elegibles:1}).precioPorCuenta===2000);
-
-    // Lo que cambió: entre medio ya no hay un escalón. Pedir un público más
-    // exigente cuesta más, y cada palanca sube por su lado.
-    chk('un público intermedio cuesta entre medio, no lo mismo que el más amplio',
-      cotizar(general,{elegibles:1}).precioPorCuenta===1400);
-    chk('exigir más avance encarece aunque la nota no cambie',
-      cotizar({promedioMenorA:5,avanceMinimo:40},{elegibles:1}).precioPorCuenta===1600);
-    chk('exigir menos nota encarece aunque el avance no cambie',
-      cotizar({promedioMenorA:4,avanceMinimo:20},{elegibles:1}).precioPorCuenta===1800);
-    chk('pedir una nota sobre 5,5 no cobra recargo: no estrecha a nadie',
-      cotizar({promedioMenorA:6.5,avanceMinimo:0},{elegibles:1}).precioPorCuenta===1000);
-    // El techo son tres veces la base: un recargo entero por cada palanca.
-    chk('el recargo tiene techo: el público más exigente no se dispara',
-      cotizar({promedioMenorA:1.5,avanceMinimo:99},{elegibles:1}).precioPorCuenta===3000);
-    chk('el precio por persona sale redondo, sin decimales ni pesos sueltos',
-      [7,6,5,4.4,4,3.2].every(n=>cotizar({promedioMenorA:n,avanceMinimo:35},{elegibles:1}).precioPorCuenta%50===0));
-
-    // Publicar cuesta aunque no lo vea nadie: paga la revisión humana del aviso.
-    const solo=cotizar(general,{elegibles:0,ramos:1});
-    chk('el cargo fijo por publicar existe y no depende de cuántos lo vean',
-      solo.cargoFijo===3000&&solo.costoEstimado===0&&solo.totalEstimado===3000);
-    chk('cada ramo extra sube el cargo fijo, porque abre otro público',
-      cotizar(general,{elegibles:0,ramos:1}).cargoFijo===3000&&
-      cotizar(general,{elegibles:0,ramos:6}).cargoFijo===8000&&
-      cotizar(general,{elegibles:0,ramos:12}).cargoFijo===14000);
-    chk('un número de ramos imposible no cotiza',
-      cotizar(general,{elegibles:1,ramos:0})===null&&cotizar(general,{elegibles:1,ramos:13})===null);
-
-    const a=cotizar(general,{elegibles:30,alcanzados:12});
-    chk('30 elegibles a $1.400 cotizan $42.000, y 12 alcanzados representan $16.800',
-      a.costoEstimado===42000&&a.costoPorAlcance===16800);
-    chk('el total suma el cargo fijo una sola vez',
-      a.totalEstimado===a.cargoFijo+a.costoEstimado&&a.totalPorAlcance===a.cargoFijo+a.costoPorAlcance);
-
-    // El presupuesto limita el alcance, no el cargo fijo: ese ya se pagó. Si lo
-    // descontara acá, agregar un ramo bajaría a cuánta gente llega el aviso.
-    const limitado=cotizar(especifico,{elegibles:30,alcanzados:20,presupuestoClp:15000});
-    chk('un tope de $15.000 a $2.000 por persona permite siete alcances, no ocho',
-      limitado.alcanceCotizado===7&&limitado.costoEstimado===14000&&limitado.costoPorAlcance===14000);
-    chk('el cargo fijo no se descuenta del presupuesto de alcance',
-      cotizar(especifico,{elegibles:30,presupuestoClp:15000,ramos:9}).alcanceCotizado===7);
-
-    chk('sin medición no inventa cero cuentas ni un cobro',
-      cotizar(general,{}).costoEstimado===null&&cotizar(general,{}).costoPorAlcance===null&&
-      cotizar(general,{}).totalEstimado===null);
-    chk('cero elegibles sí significa cotización cero de alcance',cotizar(general,{elegibles:0}).costoEstimado===0);
-    chk('conteos negativos o fraccionarios se rechazan',
-      cotizar(general,{elegibles:-1})===null&&cotizar(general,{alcanzados:1.5})===null);
-    chk('una tarifa cambiada se respeta sin editar la fórmula',
-      val("cotizarCampanaClases({promedioMenorA:7,avanceMinimo:0},{base:500,cargoFijo:0},{elegibles:10}).totalEstimado")===5000);
-    chk('una tarifa con números imposibles no cotiza en vez de cobrar cualquier cosa',
-      val("cotizarCampanaClases({promedioMenorA:5,avanceMinimo:20},{base:0},{elegibles:1})")===null&&
-      val("cotizarCampanaClases({promedioMenorA:5,avanceMinimo:20},{cargoFijo:-1},{elegibles:1})")===null);
-  }
+  console.log('\n=== La campaña se cobra por persona, con tope ===');
+  // La tarifa y sus casos viven en tests/tarifa-campana.test.js. Acá solo que
+  // filtrar por nota no cambia el precio: la segmentación ya no tiene recargo.
+  chk('filtrar por nota no encarece la campaña',
+    val("typeof costoCampanaClase==='function'")&&val("typeof exigenciaCriteriosClase==='undefined'"));
 
   console.log('\n=== RLS, borrado y métricas agregadas ===');
-  ['tutor_perfiles','tutor_anuncios','anuncio_metricas','anuncio_inscritos','anuncio_alcance'].forEach(tabla=>{
+  ['tutor_perfiles','tutor_anuncios','anuncio_metricas','anuncio_inscritos','anuncio_alcance','anuncio_campanas','anuncio_interacciones'].forEach(tabla=>{
     chk(`${tabla} tiene RLS activa`,new RegExp(`alter table public\\.${tabla} enable row level security`,'i').test(sql));
   });
   chk('las tablas con identidad borran sus filas junto con la cuenta',
-    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===4);
+    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===5);
+  chk('las aperturas y contactos por persona no se pueden leer desde el cliente',
+    /revoke all on public\.anuncio_interacciones from public, anon, authenticated/i.test(sql)&&
+    !/grant [^;]*on public\.anuncio_interacciones/i.test(sql));
+  chk('el tope y los días del profesor no los lee nadie más',
+    !/grant select[^;]*on public\.anuncio_campanas to[^;]*anon/i.test(sql)&&
+    /anuncio_campanas_select_propia[\s\S]*?anuncio_propio\(anuncio_id, false\)/.test(sql));
+  chk('un anuncio programado o topeado no se muestra',
+    /tutor_anuncios_select_publicados_o_propios[\s\S]*?campana_visible\(id\)/.test(sql)&&
+    /publicado_at > now\(\) then return false/.test(sql)&&/k\.costo_bruto < k\.tope_clp/.test(sql));
   chk('una postulación nueva siempre parte pendiente',
     /create table if not exists public\.tutor_perfiles[\s\S]*?estado\s+text not null default 'pendiente'/.test(sql)&&
     /tutor_perfiles_insert_pendiente_propio[\s\S]*?estado = 'pendiente'[\s\S]*?revisado_at is null/.test(sql));

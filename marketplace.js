@@ -591,117 +591,75 @@ function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.
   return null;
 }
 
-// Cotización pura: recibe CONTEOS agregados, nunca cuentas ni notas. El equipo
-// define tramos de tarifas; se toma el más caro que cumple la segmentación.
-// El piloto parte con $1.000/$2.000, pero los recibe como dato para que GradeHub
-// pueda administrarlos sin duplicar la regla dentro de esta función.
-// Esto no factura: los eventos actuales no miden alcance único. Sin medición
-// real, null significa desconocido y nunca se transforma en cero usuarios.
-// La tarifa del piloto. Es una decisión comercial de GradeHub, no un precio que
-// el profesor pueda editar, y vive acá para poder cambiarla sin tocar la
-// fórmula. Decidida por Lucas el 2026-09-20.
-const TARIFA_CLASES={
-  base:1000,          // $ por cuenta alcanzada con el público más amplio posible
-  cargoFijo:3000,     // $ por publicar, cubre la revisión humana de cada aviso
-  porRamoExtra:1000,  // $ por cada ramo además del primero
-  redondeo:50,        // el precio por persona sale redondo, no con decimales
-};
-// De qué nota para abajo empieza a cobrarse el recargo, y cuánto rango cubre.
-// 5,5 es donde un promedio deja de ser "cualquiera" y empieza a ser alguien a
-// quien le puede servir una clase; 2,5 puntos más abajo (3,0) es el máximo.
-const NOTA_SIN_RECARGO=5.5,RANGO_NOTA_RECARGO=2.5;
+// ─── CAMPAÑAS: CUÁNTO CUESTA ────────────────────────────────────────────────
+//
+// Decidido por Lucas el 2026-09-25. Una campaña cuesta $100 por día visible,
+// y por PERSONA: $10 si la vio, $50 si la abrió y $1.000 si contactó. Cada
+// persona cuenta una vez por anuncio en cada cosa. El profesor pone un tope: es
+// lo máximo que pagaría, y al llegar la clase deja de mostrarse. Filtrar por
+// nota no cuesta más. En el piloto nada se cobra: se muestra lo que costaría.
+//
+// El servidor tiene la misma tarifa (tarifa_campana_clp) y es el que cuenta;
+// esto solo arma la cuenta para mostrarla. Un test exige que coincidan.
+const TARIFA_CAMPANA={dia:100,vista:10,apertura:50,contacto:1000};
+const DIAS_CAMPANA_POR_OMISION=10,MAX_DIAS_CAMPANA=60,MIN_TOPE_CAMPANA=1000,MAX_TOPE_CAMPANA=5000000;
+const TOPE_CAMPANA_POR_OMISION=10000;
 
-// Quien encuentra la clase en el CATÁLOGO no pasó por la segmentación que el
-// profesor pagó: no se sabe si le va mal en el ramo, solo que tiene el ramo y
-// llegó hasta el anuncio. Por eso vale una fracción de la base, y la fracción
-// sube con la intención que mostró esa persona:
-//
-//   precio catálogo = base × (PISO + INTENCION × intención)
-//     intención = 0 si lo vio recorriendo la lista
-//     intención = 1 si llegó buscando el ramo (por nombre o sigla)
-//
-// Con la base de $1.000 da $300 recorriendo y $500 buscando. Nunca supera el
-// precio del público segmentado: pagar más por alguien que no calzó con la
-// regla que eligió el profesor sería absurdo. La intención se decide en el
-// navegador y viaja como un solo dato (lista o búsqueda); el texto buscado
-// no sale del dispositivo.
-const CATALOGO_PISO=0.3,CATALOGO_INTENCION=0.2;
-function precioCatalogoClase(base,redondeo,precioSegmentado,intencion){
-  const i=Math.min(Math.max(Number(intencion)||0,0),1);
-  const crudo=base*(CATALOGO_PISO+CATALOGO_INTENCION*i);
-  return Math.min(Math.round(crudo/redondeo)*redondeo,precioSegmentado);
+// La fecha de hoy en Chile como AAAA-MM-DD: las campañas empiezan a medianoche
+// de Chile, no de Londres.
+function hoyChileClase(ahora=Date.now()){
+  return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Santiago'}).format(new Date(ahora));
+}
+function sumarDiasFechaClase(fecha,dias){
+  const t=Date.parse(fecha+'T12:00:00Z');
+  return Number.isFinite(t)?new Date(t+dias*864e5).toISOString().slice(0,10):'';
+}
+function diasEntreFechasClase(desde,hasta){
+  const a=Date.parse(desde+'T12:00:00Z'),b=Date.parse(hasta+'T12:00:00Z');
+  return Number.isFinite(a)&&Number.isFinite(b)?Math.round((b-a)/864e5):NaN;
 }
 
-// Cuánto más caro es un público más exigente, entre 0 (nada) y 2 (el doble del
-// recargo máximo por cada lado). Dos palancas, porque encarecen por motivos
-// distintos:
-//
-// - Pedir un promedio MÁS BAJO estrecha el público a quien de verdad está
-//   complicado en ese ramo. Es el aviso que más sirve y el que menos gente ve.
-// - Pedir MÁS % evaluado no estrecha tanto, pero compra certeza: con medio
-//   semestre corregido el promedio ya significa algo, y el anunciante no le
-//   está pagando a GradeHub por alcanzar a alguien con dos notas.
-//
-// La fórmula reproduce los dos precios que ya estaban acordados para el piloto:
-// sin filtro (7,0 y 0%) da 1x = $1.000, y bajo 4,0 con 40% evaluado da 2x =
-// $2.000. O sea generaliza los dos tramos en vez de reemplazarlos por otra cosa.
-function exigenciaCriteriosClase(criterios){
-  const porNota=Math.min(Math.max((NOTA_SIN_RECARGO-criterios.promedioMenorA)/RANGO_NOTA_RECARGO,0),1);
-  const porAvance=Math.min(Math.max(criterios.avanceMinimo/100,0),1);
-  return porNota+porAvance;
+// Días, inicio (vacío = apenas se apruebe) y tope, como los guarda la base.
+function validarCampanaClase(entrada,ahora=Date.now()){
+  const e=entrada||{};
+  const dias=Number(e.dias),tope=Number(e.tope_clp),inicio=String(e.inicio||'').trim();
+  if(!Number.isSafeInteger(dias)||dias<1||dias>MAX_DIAS_CAMPANA)
+    return {ok:false,campo:'dias',error:`La campaña dura entre 1 y ${MAX_DIAS_CAMPANA} días.`};
+  if(inicio&&(!/^\d{4}-\d{2}-\d{2}$/.test(inicio)||!Number.isFinite(Date.parse(inicio+'T12:00:00Z'))))
+    return {ok:false,campo:'inicio',error:'Revisa la fecha de inicio.'};
+  if(inicio&&inicio<hoyChileClase(ahora))
+    return {ok:false,campo:'inicio',error:'La fecha de inicio ya pasó. Déjala vacía para partir apenas la aprobemos.'};
+  if(!Number.isSafeInteger(tope)||tope<MIN_TOPE_CAMPANA||tope>MAX_TOPE_CAMPANA)
+    return {ok:false,campo:'tope',error:`Pon un tope entre ${pesosClase(MIN_TOPE_CAMPANA)} y ${pesosClase(MAX_TOPE_CAMPANA)}.`};
+  return {ok:true,datos:{dias,inicio:inicio||null,tope_clp:tope}};
 }
 
-// Esto no factura: los eventos actuales no miden alcance único. Sin medición
-// real, null significa desconocido y nunca se transforma en cero usuarios.
-//
-// Devuelve dos cobros que son cosas distintas y no se suman a ciegas: un cargo
-// fijo por publicar, que se paga aunque el aviso no lo vea nadie, y un precio
-// por cuenta alcanzada. `totalEstimado` es la suma solo cuando hay una medición
-// que sumar.
-function cotizarCampanaClases(criterios,tarifa,{elegibles=null,alcanzados=null,presupuestoClp=null,ramos=1,catalogo=null}={}){
-  if(!criteriosClaseValidos(criterios))return null;
-  if([elegibles,alcanzados,presupuestoClp].some(n=>n!==null&&(!Number.isSafeInteger(n)||n<0)))return null;
-  // `catalogo` = {lista, busqueda}: cuentas distintas alcanzadas por cada vía
-  // del catálogo, sin contar a quienes ya se cobraron por la segmentada.
-  const cat=catalogo===null?null:{lista:catalogo&&catalogo.lista||0,busqueda:catalogo&&catalogo.busqueda||0};
-  if(cat&&[cat.lista,cat.busqueda].some(n=>!Number.isSafeInteger(n)||n<0))return null;
-  if(!Number.isSafeInteger(ramos)||ramos<1||ramos>12)return null;
-  const t={...TARIFA_CLASES,...(tarifa&&typeof tarifa==='object'&&!Array.isArray(tarifa)?tarifa:{})};
-  if(!['base','cargoFijo','porRamoExtra','redondeo'].every(k=>Number.isSafeInteger(t[k])&&t[k]>=0))return null;
-  if(t.base<=0||t.redondeo<=0)return null;
-
-  const precioCrudo=t.base*(1+exigenciaCriteriosClase(criterios));
-  const precioPorCuenta=Math.round(precioCrudo/t.redondeo)*t.redondeo;
-  // Publicar cuesta lo mismo aunque no lo vea nadie: paga la revisión humana.
-  // Cada ramo extra abre otro público y otra revisión, así que sube parejo.
-  const cargoFijo=t.cargoFijo+t.porRamoExtra*(ramos-1);
-
-  // El presupuesto cubre el alcance, no el cargo fijo: ese ya se pagó al
-  // publicar. Descontarlo acá haría que subir un ramo bajara el alcance.
-  const cupo=presupuestoClp===null?null:Math.floor(presupuestoClp/precioPorCuenta);
-  const alcanceCotizado=elegibles===null?null:Math.min(elegibles,cupo??Infinity);
-  const costoEstimado=alcanceCotizado===null?null:alcanceCotizado*precioPorCuenta;
-  const precioCatalogoLista=precioCatalogoClase(t.base,t.redondeo,precioPorCuenta,0);
-  const precioCatalogoBusqueda=precioCatalogoClase(t.base,t.redondeo,precioPorCuenta,1);
-  const segmentadosCobrados=alcanzados===null?null:Math.min(alcanzados,cupo??Infinity);
-  // El presupuesto se consume en cobros enteros: primero el público
-  // segmentado, después quienes buscaron, al final quienes recorrieron. Lo que
-  // sobra y no alcanza para una cuenta más no autoriza cobrar una fracción.
-  let costoCatalogo=null,catalogoCobrado=null;
-  if(cat){
-    let queda=presupuestoClp===null?Infinity:presupuestoClp-(segmentadosCobrados||0)*precioPorCuenta;
-    const cobrar=(n,precio)=>{const k=Math.min(n,Math.floor(queda/precio));queda-=k*precio;return k;};
-    catalogoCobrado={busqueda:cobrar(cat.busqueda,precioCatalogoBusqueda),lista:cobrar(cat.lista,precioCatalogoLista)};
-    costoCatalogo=catalogoCobrado.busqueda*precioCatalogoBusqueda+catalogoCobrado.lista*precioCatalogoLista;
-  }
-  const costoSegmentado=segmentadosCobrados===null?null:segmentadosCobrados*precioPorCuenta;
-  const costoPorAlcance=costoSegmentado===null&&costoCatalogo===null?null:(costoSegmentado||0)+(costoCatalogo||0);
-  const totalEstimado=costoEstimado===null?null:cargoFijo+costoEstimado;
-  const totalPorAlcance=costoPorAlcance===null?null:cargoFijo+costoPorAlcance;
-  if([costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance].some(n=>n!==null&&!Number.isSafeInteger(n)))return null;
-  return {precioPorCuenta,cargoFijo,ramos,elegibles,alcanzados,alcanceCotizado,
-    costoEstimado,costoPorAlcance,totalEstimado,totalPorAlcance,presupuestoClp,
-    precioCatalogoLista,precioCatalogoBusqueda,costoSegmentado,costoCatalogo,catalogoCobrado};
+// La cuenta de una campaña, con cada concepto a la vista. `total` nunca pasa
+// del tope: eso es lo que el profesor pagaría.
+function costoCampanaClase(c){
+  if(!c)return null;
+  const n=k=>Number.isSafeInteger(c[k])&&c[k]>0?c[k]:0;
+  const partes=[
+    {clave:'vista',cantidad:n('vistas'),precio:TARIFA_CAMPANA.vista},
+    {clave:'apertura',cantidad:n('aperturas'),precio:TARIFA_CAMPANA.apertura},
+    {clave:'contacto',cantidad:n('contactos'),precio:TARIFA_CAMPANA.contacto},
+    {clave:'dia',cantidad:n('dias_cobrados'),precio:TARIFA_CAMPANA.dia},
+  ].map(p=>({...p,subtotal:p.cantidad*p.precio}));
+  const bruto=partes.reduce((s,p)=>s+p.subtotal,0);
+  const tope=Number.isSafeInteger(c.tope_clp)?c.tope_clp:null;
+  return {partes,bruto,tope,total:tope===null?bruto:Math.min(bruto,tope),agotada:tope!==null&&bruto>=tope};
+}
+// "120 personas te vieron ($1.200) · 15 la abrieron ($750) · …"
+function lineaCostoCampanaClase(costo){
+  if(!costo)return '';
+  const miles=x=>new Intl.NumberFormat('es-CL').format(x);
+  const texto={
+    vista:x=>`${miles(x)} ${x===1?'persona te vio':'personas te vieron'}`,
+    apertura:x=>`${miles(x)} ${x===1?'la abrió':'la abrieron'}`,
+    contacto:x=>`${miles(x)} ${x===1?'te contactó':'te contactaron'}`,
+    dia:x=>`${miles(x)} ${x===1?'día':'días'} publicada`,
+  };
+  return costo.partes.map(p=>`${texto[p.clave](p.cantidad)} (${pesosClase(p.subtotal)})`).join(' · ');
 }
 
 // Pide solo el catálogo público de una universidad. No recibe `ramos` como
@@ -846,7 +804,9 @@ function textoContactoClase(tipo){return {whatsapp:'Hablar por WhatsApp',instagr
 let catalogoClasesActual=[],nombresCatalogoClasesActual={};
 // Una clase como la ve el estudiante. `sigla` es el ramo por el que se la
 // mostramos, para que un contacto se mida en ese ramo.
-function tarjetaCatalogoClase(a,{sigla}={}){
+// Cerrada muestra lo justo para decidir; "Ver clase" la abre (eso es una
+// apertura) y recién ahí aparece el botón de WhatsApp (eso es un contacto).
+function tarjetaCatalogoClase(a,{sigla,abierta=false}={}){
   const siglaMetrica=sigla||a.ramos_siglas[0]||'';
     const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor,mensajeContactoClase(a));
     const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos||[])].join(' · ');
@@ -857,10 +817,13 @@ function tarjetaCatalogoClase(a,{sigla}={}){
         <h3>${esc(a.titulo||'Clase particular')}</h3></div>${logosCatalogoClases.get(a.id)?`<div class="catalogo-clase-logo" data-logo="${esc(logosCatalogoClases.get(a.id))}"></div>`:''}</div>
         <p class="catalogo-clase-ramos"><strong>${esc(siglas)}</strong>${nombres?`<span>${esc(nombres)}</span>`:''}</p>
         <p class="catalogo-clase-descripcion">${esc(a.descripcion||'')}</p>
-        ${detallesClase(a).length?`<dl class="catalogo-clase-detalles">${detallesClase(a).map(d=>`<div><dt>${esc(d.etiqueta)}</dt><dd>${esc(d.valor)}</dd></div>`).join('')}</dl>`:''}
         <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${esClaseGratis(a)?'Gratis':`${pesosClase(a.precio_clp)} <small>por clase</small>`}</strong></div>
+        ${abierta?'':`<button type="button" class="catalogo-clase-ver" data-abrir="${esc(a.id)}" data-sigla="${esc(siglaMetrica)}" aria-expanded="false">Ver clase</button>`}
+        <div class="catalogo-clase-mas"${abierta?'':' hidden'}>
+        ${detallesClase(a).length?`<dl class="catalogo-clase-detalles">${detallesClase(a).map(d=>`<div><dt>${esc(d.etiqueta)}</dt><dd>${esc(d.valor)}</dd></div>`).join('')}</dl>`:''}
         ${contacto?`<a class="catalogo-clase-contacto" href="${esc(contacto)}" ${a.contacto_tipo==='email'?'':'target="_blank" rel="noopener noreferrer"'} data-contactar="${esc(a.id)}" data-sigla="${esc(siglaMetrica)}">${esc(textoContactoClase(a.contacto_tipo))}</a>`
           :'<p class="catalogo-clase-sin-contacto">El contacto de esta clase necesita revisión.</p>'}
+        </div>
       </div>
     </article>`;
 }
@@ -883,6 +846,15 @@ function renderCatalogoClases(busqueda=''){
 function activarTarjetasClases(raiz){
   raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',()=>{
     registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
+    registrarInteraccionAnuncio(link.dataset.contactar,'contacto');
+  }));
+  raiz.querySelectorAll('[data-abrir]').forEach(boton=>boton.addEventListener('click',()=>{
+    const tarjeta=boton.closest('.catalogo-clase-card'),mas=tarjeta&&tarjeta.querySelector('.catalogo-clase-mas');
+    if(!mas)return;
+    mas.hidden=false;boton.remove();
+    registrarMetricaAnuncio(boton.dataset.abrir,'clic',boton.dataset.sigla);
+    registrarInteraccionAnuncio(boton.dataset.abrir,'apertura');
+    const contacto=mas.querySelector('.catalogo-clase-contacto');if(contacto)contacto.focus();
   }));
   raiz.querySelectorAll('[data-logo]').forEach(async caja=>{
     const url=await urlFlyerClase(caja.dataset.logo);
@@ -973,6 +945,17 @@ function payloadMetricaAnuncio(anuncioId,tipo,ramoSigla){
   return {p_anuncio_id:anuncioId,p_tipo:evento,p_ramo_sigla:sigla};
 }
 
+// Abrió la clase o tocó contactar: una vez por persona y anuncio, lo cuenta el
+// servidor con la cuenta de la sesión. El Set solo ahorra llamadas repetidas.
+const INTERACCION_REGISTRADA=new Set();
+async function registrarInteraccionAnuncio(anuncioId,tipo){
+  const clave=anuncioId+':'+tipo;
+  if(!supabaseClient||!currentUser||!anuncioId||!['apertura','contacto'].includes(tipo)||INTERACCION_REGISTRADA.has(clave))return false;
+  INTERACCION_REGISTRADA.add(clave);
+  const {data,error}=await supabaseClient.rpc('registrar_interaccion_anuncio',{p_anuncio_id:anuncioId,p_tipo:tipo});
+  if(error){INTERACCION_REGISTRADA.delete(clave);console.warn('No se pudo registrar la interacción:',error.message||error);return false;}
+  return data===true;
+}
 async function registrarMetricaAnuncio(anuncioId,tipo,ramoSigla){
   const payload=payloadMetricaAnuncio(anuncioId,tipo,ramoSigla);
   if(!supabaseClient||!currentUser||!payload)return false;
@@ -1134,6 +1117,7 @@ const ESTADOS_ANUNCIO={
   borrador:['Borrador','Nadie lo ve todavía.'],
   en_revision:['En revisión','No se publica hasta que lo aprobemos.'],
   publicado:['Publicado','Se está mostrando a tu público.'],
+  programado:['Programado','Empieza el día que elegiste.'],
   pausado:['Pausado','Dejó de mostrarse.'],
   expirado:['Terminado','La campaña llegó a su fin.'],
 };
@@ -1151,8 +1135,15 @@ const ANUNCIO_YA_SE_MOSTRO=new Set(['publicado','pausado','expirado']);
 // aplicar): ahí se usa el total de siempre y todo se cobra como segmentado,
 // que es como se cotizaba antes. Nunca se inventa un reparto.
 async function metricasDeAnuncio(anuncio){
-  const salida={alcance:null,porCanal:null,cortes:[],agregados:null};
+  const salida={alcance:null,porCanal:null,cortes:[],agregados:null,campana:null};
   if(!anuncio||!ANUNCIO_YA_SE_MOSTRO.has(anuncio.estado))return salida;
+  // La campaña: personas que vieron, abrieron y contactaron, y días cobrados.
+  // Sin el SQL de campañas no hay costo que mostrar, y no se inventa.
+  try{
+    const {data,error}=await supabaseClient.rpc('campana_anuncio',{p_anuncio_id:anuncio.id});
+    const fila=!error&&Array.isArray(data)?data[0]:null;
+    if(fila&&['vistas','aperturas','contactos','dias_cobrados'].every(k=>Number.isInteger(fila[k])))salida.campana=fila;
+  }catch(e){}
   try{
     const {data,error}=await supabaseClient.rpc('alcance_anuncio_por_canal',{p_anuncio_id:anuncio.id});
     if(!error&&Array.isArray(data)){
@@ -1202,17 +1193,6 @@ function totalesDeCortes(cortes){
   return por;
 }
 
-// Lo que lleva gastado esta campaña, con la misma tarifa que cotiza al armarla.
-// Solo se muestra cuando hay alcance medido: inventar un costo sobre un número
-// que no existe es peor que no mostrarlo.
-function costoDeAnuncio(anuncio,alcance,porCanal=null){
-  if(alcance===null||!criteriosClaseValidos(anuncio&&anuncio.criterios))return null;
-  const ramos=Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.length:1;
-  if(porCanal)return cotizarCampanaClases(anuncio.criterios,null,{alcanzados:porCanal.recomendacion,ramos,
-    catalogo:{lista:porCanal.lista,busqueda:porCanal.busqueda}});
-  return cotizarCampanaClases(anuncio.criterios,null,{alcanzados:alcance,ramos});
-}
-
 // La RLS deja que el profesor lleve su aviso a borrador, a revisión o a pausa.
 // NO lo deja publicar ni expirar: eso lo marca el equipo. O sea pausar es una
 // puerta de una sola dirección para él, y hay que decírselo ANTES de que la
@@ -1256,17 +1236,18 @@ function retomarAnuncioClase(id,alTerminar){
 function vigenciaAnuncio(a,ahora=Date.now()){
   if(!a)return '';
   if(a.estado==='publicado'){
-    const vence=Date.parse(a.vence_at||'');
-    return Number.isFinite(vence)&&vence<=ahora?'expirado':'publicado';
+    const vence=Date.parse(a.vence_at||''),desde=Date.parse(a.publicado_at||'');
+    if(Number.isFinite(vence)&&vence<=ahora)return 'expirado';
+    return Number.isFinite(desde)&&desde>ahora?'programado':'publicado';
   }
   return a.estado;
 }
 // La página se ordena por lo que el profesor puede HACER con cada anuncio.
 function gruposPanelClases(anuncios,ahora=Date.now()){
-  const g={activos:[],revision:[],borradores:[],cerrados:[]};
+  const g={activos:[],programados:[],revision:[],borradores:[],cerrados:[]};
   for(const a of anuncios||[]){
     const e=vigenciaAnuncio(a,ahora);
-    (e==='publicado'?g.activos:e==='en_revision'?g.revision:e==='borrador'?g.borradores:g.cerrados).push(a);
+    (e==='publicado'?g.activos:e==='programado'?g.programados:e==='en_revision'?g.revision:e==='borrador'?g.borradores:g.cerrados).push(a);
   }
   return g;
 }
@@ -1284,18 +1265,23 @@ function avanceCampanaAnuncio(a,ahora=Date.now()){
 // Una cifra con su nombre. Solo se pinta lo que se sabe: un tipo de evento sin
 // datos suficientes no aparece como 0, porque el servidor no devuelve cortes
 // con menos de quince eventos y "0 clics" ahí sería inventarlo.
-function cifrasClase({alcance,totales,hayCortes,costo},pesos){
+function cifrasClase({alcance,totales,hayCortes,campana,costo},pesos){
   const f=[];
   const miles=n=>new Intl.NumberFormat('es-CL').format(n);
-  f.push(['Personas alcanzadas',alcance===null?'—':miles(alcance),'cuentas distintas']);
+  // Con la campaña medida, las personas vienen de ahí: son exactas y son lo
+  // que se cobra. Sin ella, el alcance de siempre.
+  const vieron=campana?campana.vistas:alcance;
+  f.push(['Personas que la vieron',vieron===null||vieron===undefined?'—':miles(vieron),'cuentas distintas']);
+  if(campana){
+    f.push(['La abrieron',miles(campana.aperturas),'personas distintas']);
+    f.push(['Te contactaron',miles(campana.contactos),'personas distintas']);
+  }
   if(hayCortes&&totales.impresion)f.push(['Se mostró',miles(totales.impresion),'veces']);
-  if(hayCortes&&totales.clic)f.push(['Clics',miles(totales.clic),'veces']);
-  if(hayCortes&&totales.contacto)f.push(['Contactos',miles(totales.contacto),'tocaron tu contacto']);
-  if(hayCortes&&totales.impresion&&totales.contacto)
-    f.push(['Tasa de contacto',new Intl.NumberFormat('es-CL',{style:'percent',maximumFractionDigits:1}).format(totales.contacto/totales.impresion),'de quienes la vieron']);
-  if(costo)f.push(['Va costando',pesos(costo.totalPorAlcance),'hasta ahora']);
-  if(costo&&alcance)f.push(['Por persona',pesos(Math.round(costo.totalPorAlcance/alcance)),'contando la publicación']);
-  if(costo&&hayCortes&&totales.contacto)f.push(['Por contacto',pesos(Math.round(costo.totalPorAlcance/totales.contacto)),'lo que costó cada uno']);
+  // Sin la campaña medida quedan los eventos de siempre, que no son personas.
+  if(!campana&&hayCortes&&totales.clic)f.push(['Clics',miles(totales.clic),'veces']);
+  if(!campana&&hayCortes&&totales.contacto)f.push(['Contactos',miles(totales.contacto),'tocaron tu contacto']);
+  if(costo)f.push(['Va costando',pesos(costo.total),costo.tope!==null?`de tu tope de ${pesos(costo.tope)}`:'hasta ahora']);
+  if(costo&&campana&&campana.contactos)f.push(['Por contacto',pesos(Math.round(costo.total/campana.contactos)),'lo que costó cada uno']);
   return `<div class="clase-nums">${f.map(([t,v,d])=>
     `<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`).join('')}</div>`;
 }
@@ -1313,7 +1299,7 @@ function embudoClase(totales){
 // ─── GRÁFICOS DEL PANEL ─────────────────────────────────────────────────────
 //
 // SVG a mano, sin librerías. Los tres caminos van en tonos de un mismo turquesa,
-// del más oscuro al más claro, porque están ordenados por precio. Nada usa el
+// del más oscuro al más claro, del más dirigido al más casual. Nada usa el
 // semáforo: esto no es una nota. Cada marca lleva su número escrito o en su
 // <title>, así el color nunca es lo único que dice algo.
 const CANALES_VIZ=[['recomendacion','Recomendado en Inicio','viz-c1'],['busqueda','Buscaron el ramo','viz-c2'],['lista','Vieron el catálogo','viz-c3']];
@@ -1338,24 +1324,24 @@ function donaCanalesClase(porCanal){
     </div></figure>`;
 }
 
-function sumarCostos(costos){
+// Varias campañas en una sola cuenta, para el resumen de arriba.
+function sumarCostosCampana(costos){
   const c=costos.filter(Boolean);
   if(!c.length)return null;
-  const s=(f)=>c.reduce((n,x)=>n+(Number(f(x))||0),0);
-  return {cargoFijo:s(x=>x.cargoFijo),costoSegmentado:s(x=>x.costoSegmentado??x.costoPorAlcance),
-    busqueda:s(x=>x.catalogoCobrado?x.catalogoCobrado.busqueda*x.precioCatalogoBusqueda:0),
-    lista:s(x=>x.catalogoCobrado?x.catalogoCobrado.lista*x.precioCatalogoLista:0),totalPorAlcance:s(x=>x.totalPorAlcance)};
+  const partes=c[0].partes.map(p=>({...p,cantidad:0,subtotal:0}));
+  c.forEach(x=>x.partes.forEach((p,i)=>{partes[i].cantidad+=p.cantidad;partes[i].subtotal+=p.subtotal;}));
+  return {partes,bruto:c.reduce((n,x)=>n+x.bruto,0),total:c.reduce((n,x)=>n+x.total,0),
+    tope:c.every(x=>x.tope!==null)?c.reduce((n,x)=>n+x.tope,0):null,agotada:false};
 }
-// En qué se va la plata: una barra apilada con la publicación y cada camino.
+// En qué se va la plata: una barra apilada con cada concepto.
+const PARTES_COSTO_VIZ={contacto:['Contactos','viz-c1'],apertura:['Aperturas','viz-c2'],vista:['Vistas','viz-c3'],dia:['Días publicada','viz-fijo']};
 function costoApiladoClase(costo,pesos){
   if(!costo)return '';
-  const c=costo.costoSegmentado!==undefined&&costo.busqueda!==undefined?costo:sumarCostos([costo]);
-  const partes=[['Publicación',c.cargoFijo,'viz-fijo'],['Recomendado en Inicio',c.costoSegmentado,'viz-c1'],
-    ['Buscaron el ramo',c.busqueda,'viz-c2'],['Vieron el catálogo',c.lista,'viz-c3']].filter(([,v])=>v>0);
+  const partes=['contacto','apertura','vista','dia'].map(k=>{const p=costo.partes.find(x=>x.clave===k);return [PARTES_COSTO_VIZ[k][0],p?p.subtotal:0,PARTES_COSTO_VIZ[k][1]];}).filter(([,v])=>v>0);
   const total=partes.reduce((n,[,v])=>n+v,0);
   if(!total)return '';
   return `<figure class="viz viz-costo" aria-label="En qué se va el costo">
-    <figcaption>En qué se va · ${pesos(total)}</figcaption>
+    <figcaption>En qué se va · ${pesos(costo.total)}${costo.tope!==null?` de ${pesos(costo.tope)}`:''}</figcaption>
     <div class="viz-apilada">${partes.map(([t,v,cls])=>`<span class="${cls}" style="flex-grow:${v}" title="${t}: ${pesos(v)}"></span>`).join('')}</div>
     <ul class="viz-leyenda">${partes.map(([t,v,cls])=>`<li><i class="${cls}"></i><span>${t}</span><b>${pesos(v)}</b><small>${pctViz(v,total)}</small></li>`).join('')}</ul>
   </figure>`;
@@ -1429,8 +1415,10 @@ function tarjetaPanelClase(a,pesos,ahora){
   const vig=vigenciaAnuncio(a,ahora);
   const [etiqueta,detalle]=ESTADOS_ANUNCIO[vig]||[vig,''];
   const dias=vig==='publicado'?diasRestantesAnuncio(a,ahora):null,avance=vig==='publicado'?avanceCampanaAnuncio(a,ahora):null;
+  const empieza=vig==='programado'?new Date(a.publicado_at).toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'}):'';
   const accion={
     publicado:`<button type="button" class="clase-accion" data-pausar="${esc(a.id)}">Pausar</button>`,
+    programado:`<button type="button" class="clase-accion" data-pausar="${esc(a.id)}">Pausar</button>`,
     borrador:`<button type="button" class="clase-accion" data-editar="${esc(a.id)}">Seguir editando</button>`,
     pausado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
     expirado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
@@ -1442,20 +1430,10 @@ function tarjetaPanelClase(a,pesos,ahora){
     </div>
     <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${esClaseGratis(a)?' · Gratis':a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
     ${dias!==null?`<div class="clase-vigencia"><span>${dias===0?'Termina hoy':dias===1?'Queda 1 día':`Quedan ${dias} días`}</span>${avance!==null?`<div class="clase-riel"><i style="transform:scaleX(${avance.toFixed(3)})"></i></div>`:''}</div>`
-      :`<p class="clase-card-detalle">${esc(detalle)}</p>`}
+      :`<p class="clase-card-detalle">${esc(empieza?`Empieza el ${empieza}.`:detalle)}</p>`}
     <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
     ${accion}
   </article>`;
-}
-
-// De dónde sale "Va costando", camino por camino, con el precio de cada uno.
-function desgloseCostoClase(c,pesos){
-  const partes=[`${pesos(c.cargoFijo)} de publicación`];
-  const n=x=>x===1?'1 persona':`${x} personas`;
-  if(c.alcanzados)partes.push(`${n(c.alcanzados)} de tu público × ${pesos(c.precioPorCuenta)}`);
-  if(c.catalogoCobrado&&c.catalogoCobrado.busqueda)partes.push(`${n(c.catalogoCobrado.busqueda)} que buscaron el ramo × ${pesos(c.precioCatalogoBusqueda)}`);
-  if(c.catalogoCobrado&&c.catalogoCobrado.lista)partes.push(`${n(c.catalogoCobrado.lista)} que la vieron en el catálogo × ${pesos(c.precioCatalogoLista)}`);
-  return partes.join(' + ')+'.';
 }
 
 function seccionPanelClases(titulo,lista,pesos,ahora,vacio){
@@ -1474,10 +1452,11 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
        <div id="clases-kpis">${g.activos.length?'<p class="clase-sin-datos">Cargando números…</p>'
          :`<p class="clase-sin-datos">${g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
            :'Arma un borrador y mándalo a revisión. Cuando se publique, acá vas a ver cómo le va.'}</p>`}</div>
-       <p class="clase-privacidad">Los números son de cuentas distintas, nunca de personas con nombre.</p>
+       <p class="clase-privacidad">Los números son de cuentas distintas, nunca de personas con nombre. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
      </section>
      <div class="clases-acciones"><button type="button" class="btn-confirm" id="clase-nueva">Armar un borrador</button></div>`+
     seccionPanelClases('Publicadas',g.activos,pesos,ahora)+
+    seccionPanelClases('Programadas',g.programados,pesos,ahora)+
     seccionPanelClases('En revisión',g.revision,pesos,ahora)+
     seccionPanelClases('Borradores',g.borradores,pesos,ahora)+
     seccionPanelClases('Pausadas y terminadas',g.cerrados,pesos,ahora)+
@@ -1500,6 +1479,10 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   raiz.querySelectorAll('[data-retomar]').forEach(b=>
     b.addEventListener('click',()=>retomarAnuncioClase(b.dataset.retomar,an=>an?renderBorradorProfesor(raiz,an):repintar())));
 
+  for(const a of g.programados){
+    const caja=raiz.querySelector(`[data-metricas="${a.id}"]`);
+    if(caja)caja.innerHTML='<p class="clase-sin-datos">Todavía no empieza, así que no hay nada que medir ni que cobrar.</p>';
+  }
   for(const a of [...g.revision,...g.borradores]){
     const caja=raiz.querySelector(`[data-metricas="${a.id}"]`);
     if(caja)caja.innerHTML=`<p class="clase-sin-datos">${a.estado==='en_revision'
@@ -1514,15 +1497,16 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   const medidas=await Promise.all(conNumeros.map(async a=>{
     const m=await metricasDeAnuncio(a);
     const totales=m.agregados?m.agregados.total:totalesDeCortes(m.cortes);
-    return {a,alcance:m.alcance,porCanal:m.porCanal,totales,agregados:m.agregados,
-      hayCortes:Object.values(totales).some(n=>n>0),costo:costoDeAnuncio(a,m.alcance,m.porCanal)};
+    return {a,alcance:m.alcance,porCanal:m.porCanal,totales,agregados:m.agregados,campana:m.campana,
+      hayCortes:Object.values(totales).some(n=>n>0),costo:costoCampanaClase(m.campana)};
   }));
   for(const d of medidas){
     const caja=raiz.querySelector(`[data-metricas="${d.a.id}"]`);
     if(!caja||!caja.isConnected)continue;
-    caja.innerHTML=cifrasClase(d,pesos)+graficosClase(d,pesos,ahora)+
-      (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró, los clics y los contactos aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
-      (d.costo?`<p class="clase-sin-datos">${desgloseCostoClase(d.costo,pesos)}</p>`:'');
+    caja.innerHTML=(d.costo&&d.costo.agotada?'<p class="clase-aviso-tope">Llegó a tu tope: dejó de mostrarse y no suma más costo.</p>':'')+
+      cifrasClase(d,pesos)+graficosClase(d,pesos,ahora)+
+      (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró por día aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
+      (d.costo?`<p class="clase-sin-datos">${esc(lineaCostoCampanaClase(d.costo))}.</p>`:'');
   }
 
   // El resumen suma solo las clases activas: es "cómo me va ahora". Suma lo que
@@ -1533,15 +1517,17 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
     const conAlcance=activas.filter(d=>d.alcance!==null);
     const totales={impresion:0,clic:0,contacto:0};
     activas.forEach(d=>Object.keys(totales).forEach(k=>totales[k]+=d.totales[k]));
-    const costos=activas.filter(d=>d.costo);
-    const costo=costos.length?{totalPorAlcance:costos.reduce((n,d)=>n+d.costo.totalPorAlcance,0)}:null;
+    const costo=sumarCostosCampana(activas.map(d=>d.costo));
+    const conCampana=activas.filter(d=>d.campana);
+    const campana=conCampana.length===activas.length?conCampana.reduce((s,d)=>({vistas:s.vistas+d.campana.vistas,
+      aperturas:s.aperturas+d.campana.aperturas,contactos:s.contactos+d.campana.contactos}),{vistas:0,aperturas:0,contactos:0}):null;
     const conCanal=activas.filter(d=>d.porCanal);
     const porCanal=conCanal.length?conCanal.reduce((s,d)=>({recomendacion:s.recomendacion+d.porCanal.recomendacion,
       busqueda:s.busqueda+d.porCanal.busqueda,lista:s.lista+d.porCanal.lista}),{recomendacion:0,busqueda:0,lista:0}):null;
     const alcanceTotal=conAlcance.length?conAlcance.reduce((n,d)=>n+d.alcance,0):null;
-    kpis.innerHTML=cifrasClase({alcance:alcanceTotal,totales,hayCortes:activas.some(d=>d.hayCortes),costo},pesos)
+    kpis.innerHTML=cifrasClase({alcance:alcanceTotal,totales,hayCortes:activas.some(d=>d.hayCortes),campana,costo},pesos)
       .replace('class="clase-nums"','class="clase-nums clases-kpis"')+
-      `<div class="viz-fila">${donaCanalesClase(porCanal)}${costoApiladoClase(sumarCostos(costos.map(d=>d.costo)),pesos)}</div>`+
+      `<div class="viz-fila">${donaCanalesClase(porCanal)}${costoApiladoClase(costo,pesos)}</div>`+
       embudoClase(totales);
   }
 }
@@ -1682,6 +1668,31 @@ function filaRamoVistaPrevia(extra){
       <div class="ramo-grade-action"><div class="ramo-nota vista-sin-nota">—</div><span class="chevron-r">›</span></div>
       <span class="ramo-progress-track"><span class="ramo-progress-fill"></span></span></div>`;
 }
+// La campaña vive aparte del anuncio (anuncio_campanas): el tope es del
+// profesor y el anuncio lo lee cualquiera. Sin el SQL de campañas, `falta`
+// avisa que no se pudo guardar sin tratarlo como un error de la persona.
+function faltaTablaCampana(error){
+  return !!error&&(error.code==='42P01'||error.code==='PGRST205'||/anuncio_campanas/.test(String(error.message||'')));
+}
+async function leerCampanaClase(anuncioId){
+  if(!supabaseClient||!anuncioId)return null;
+  try{
+    const {data,error}=await supabaseClient.from('anuncio_campanas').select('dias,inicio,tope_clp').eq('anuncio_id',anuncioId).maybeSingle();
+    if(error){if(!faltaTablaCampana(error))console.warn('No se pudo leer la campaña:',error.code||'',error.message||error);return null;}
+    return data||null;
+  }catch(e){return null;}
+}
+async function guardarCampanaClase(anuncioId,datos){
+  if(!supabaseClient||!anuncioId)return {ok:false,error:'no pudimos guardar la campaña.'};
+  try{
+    const {error}=await supabaseClient.from('anuncio_campanas').upsert({anuncio_id:anuncioId,...datos},{onConflict:'anuncio_id'});
+    if(!error)return {ok:true};
+    if(faltaTablaCampana(error))return {ok:false,falta:true};
+    console.warn('No se guardó la campaña:',error.code||'',error.message||error);
+    return {ok:false,error:'no pudimos guardar los días y el tope. Intenta de nuevo.'};
+  }catch(e){return {ok:false,error:'no pudimos guardar los días y el tope. Intenta de nuevo.'};}
+}
+
 function renderBorradorProfesor(raiz,anuncio){
   let id=anuncio&&anuncio.id||null,flyerActual=anuncio&&anuncio.flyer_path||null;
   const valor=(campo,defecto='')=>esc(anuncio&&anuncio[campo]!=null?anuncio[campo]:defecto);
@@ -1726,8 +1737,20 @@ function renderBorradorProfesor(raiz,anuncio){
       <input id="pr-siglas" type="hidden" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
       <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
       <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">
-      <p class="profesor-info">GradeHub calcula el público sin mostrarte notas ni identidades. Esta pantalla aún no cotiza ni cobra campañas.</p>
-      <h3>3. Así la van a ver</h3>
+      <p class="profesor-info">GradeHub calcula el público sin mostrarte notas ni identidades.</p>
+      <h3>3. Tu campaña</h3>
+      <div class="profesor-campana">
+        <div class="profesor-campana-fechas">
+          <div><label class="modal-label" for="pr-inicio">Empieza · opcional</label><input id="pr-inicio" type="date" min="${hoyChileClase()}"></div>
+          <div><label class="modal-label" for="pr-dias">Días</label><input id="pr-dias" type="number" inputmode="numeric" min="1" max="${MAX_DIAS_CAMPANA}" step="1" required value="${DIAS_CAMPANA_POR_OMISION}"></div>
+          <div><label class="modal-label" for="pr-fin">Termina</label><input id="pr-fin" type="date" min="${hoyChileClase()}"></div>
+        </div>
+        <p class="profesor-info">Sin fecha de inicio, parte apenas la aprobemos. Puedes elegir los días o la fecha de término: el otro se ajusta solo.</p>
+        <label class="modal-label" for="pr-tope">Tope · lo máximo que pagarías</label><input id="pr-tope" type="text" inputmode="numeric" autocomplete="off" required placeholder="${esc(textoPesosEscrito(TOPE_CAMPANA_POR_OMISION))}" value="${esc(textoPesosEscrito(TOPE_CAMPANA_POR_OMISION))}">
+        <p class="profesor-info">Cuesta ${pesosClase(TARIFA_CAMPANA.dia)} por día publicada y, por persona, ${pesosClase(TARIFA_CAMPANA.vista)} si la ve, ${pesosClase(TARIFA_CAMPANA.apertura)} si la abre y ${pesosClase(TARIFA_CAMPANA.contacto)} si te contacta. Cada persona cuenta una vez. Al llegar al tope deja de mostrarse. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
+        <p class="profesor-campana-resumen" id="pr-campana-resumen" aria-live="polite"></p>
+      </div>
+      <h3>4. Así la van a ver</h3>
       <div class="profesor-vista-previa" id="pr-vista">
         <p class="profesor-info">En computador, en la casilla de al lado del ramo del estudiante:</p>
         <div class="vista-marco"><div class="vista-grilla">${filaRamoVistaPrevia(' junto-der')}<aside class="clase-apoyo en-casilla a-la-derecha vista-anuncio"></aside></div></div>
@@ -1809,6 +1832,35 @@ function renderBorradorProfesor(raiz,anuncio){
     if(!form.isConnected)return;logoVista=e.detail||'';actualizarVista();
   });
   campoPesos(campo('precio'));
+  // La campaña: días y fecha de término se ajustan entre sí, y el resumen
+  // traduce el tope a algo concreto.
+  const inicioC=campo('inicio'),diasC=campo('dias'),finC=campo('fin'),topeC=campo('tope'),resumenC=campo('campana-resumen');
+  campoPesos(topeC);
+  const baseCampana=()=>valorCampo('inicio')||hoyChileClase();
+  const ajustarFin=()=>{const d=Number(valorCampo('dias'));if(finC&&Number.isSafeInteger(d)&&d>0)finC.value=sumarDiasFechaClase(baseCampana(),d-1);};
+  const ajustarDias=()=>{const n=diasEntreFechasClase(baseCampana(),valorCampo('fin'));if(diasC&&Number.isFinite(n)&&n>=0)diasC.value=String(n+1);};
+  const resumirCampana=()=>{
+    if(!resumenC)return;
+    const d=Number(valorCampo('dias')),tope=pesosDeTexto(valorCampo('tope'));
+    if(!Number.isSafeInteger(d)||d<1||!Number.isSafeInteger(tope)){resumenC.textContent='';return;}
+    const porDias=d*TARIFA_CAMPANA.dia,queda=tope-porDias;
+    resumenC.textContent=queda<=0
+      ?`Tu tope alcanza para ${Math.floor(tope/TARIFA_CAMPANA.dia)} días: la clase dejará de mostrarse antes de terminar.`
+      :`${d} ${d===1?'día':'días'} suman ${pesosClase(porDias)}. Te quedan ${pesosClase(queda)} para personas: por ejemplo ${Math.floor(queda/TARIFA_CAMPANA.contacto)} contactos, o ${new Intl.NumberFormat('es-CL').format(Math.floor(queda/TARIFA_CAMPANA.vista))} personas que la ven.`;
+  };
+  if(inicioC)inicioC.addEventListener('input',()=>{ajustarFin();resumirCampana();});
+  if(diasC)diasC.addEventListener('input',()=>{ajustarFin();resumirCampana();});
+  if(finC)finC.addEventListener('input',()=>{ajustarDias();resumirCampana();});
+  if(topeC)topeC.addEventListener('input',resumirCampana);
+  ajustarFin();resumirCampana();
+  // Una campaña guardada se trae para seguir editándola.
+  if(id)leerCampanaClase(id).then(c=>{
+    if(!c||!form.isConnected)return;
+    if(diasC)diasC.value=String(c.dias);
+    if(inicioC)inicioC.value=c.inicio&&c.inicio>=hoyChileClase()?c.inicio:'';
+    if(topeC)topeC.value=textoPesosEscrito(c.tope_clp);
+    ajustarFin();resumirCampana();
+  });
   // "Otra…" abre su casilla de texto; cualquier otra opción la esconde.
   [['modalidad','modalidad-otra'],['ubicacion','ubicacion-otra']].forEach(([sel,texto])=>{
     const selector=campo(sel),caja=campo(texto);
@@ -1861,6 +1913,8 @@ function renderBorradorProfesor(raiz,anuncio){
     if(!form.reportValidity())return;
     const file=campo('flyer').files&&campo('flyer').files[0],validacion=validarFlyerClase(file);
     if(!validacion.ok){estado.textContent=validacion.error;campo('flyer').focus();return;}
+    const campana=validarCampanaClase({dias:Number(valorCampo('dias')),inicio:valorCampo('inicio'),tope_clp:pesosDeTexto(valorCampo('tope'))});
+    if(!campana.ok){estado.textContent=campana.error;campo(campana.campo)?.focus();return;}
     const datos={tenant:campo('tenant').value,ramos_siglas:campo('siglas').value.split(',').map(s=>s.trim()),
       criterios:{promedioMenorA:Number(campo('promedio').value),avanceMinimo:Number(campo('avance').value)},
       titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:pesosDeTexto(campo('precio').value),
@@ -1875,6 +1929,8 @@ function renderBorradorProfesor(raiz,anuncio){
       const guardado=await guardarBorradorClase(datos,id);
       if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
       id=guardado.anuncio.id;
+      const guardadaCampana=await guardarCampanaClase(id,campana.datos);
+      if(!guardadaCampana.ok&&!guardadaCampana.falta){estado.textContent='Tu clase se guardó, pero '+guardadaCampana.error;return;}
       if(file){estado.textContent='Borrador guardado. Subiendo flyer…';const subida=await subirFlyerClase(id,file);
         if(!subida.ok){estado.textContent='Borrador guardado, pero '+subida.error;return;}
         flyerActual=subida.path;campo('flyer').value='';form.querySelector('#pr-quitar-flyer').hidden=false;
@@ -1883,7 +1939,8 @@ function renderBorradorProfesor(raiz,anuncio){
         if(!respuesta.ok){estado.textContent=respuesta.error;return;}
         raiz.innerHTML='<div class="modal-title" id="modal-titulo">En revisión</div><p class="profesor-info" role="status">Recibimos tu anuncio. Nadie lo verá hasta que GradeHub lo revise y apruebe.</p>';return;
       }
-      estado.textContent='Borrador guardado. Puedes volver después o enviarlo a revisión.';
+      estado.textContent=guardadaCampana.ok?'Borrador guardado. Puedes volver después o enviarlo a revisión.'
+        :'Borrador guardado. Los días y el tope todavía no se pueden guardar: se usan 10 días sin tope.';
     }catch(e){estado.textContent='No pudimos completar la acción. Revisa si tu borrador quedó guardado e intenta de nuevo.';
     }finally{procesando=false;botones.forEach(b=>{if(b.isConnected)b.disabled=false;});}
   };
@@ -2110,13 +2167,14 @@ async function abrirClaseRecomendada(anuncio,ramo,sigla){
   logosCatalogoClases=await logosDeAnuncios([anuncio.id]);
   raiz.innerHTML=`<div class="catalogo-clases">
       <div class="catalogo-clases-head"><div><div class="modal-title" id="modal-titulo">Clase particular</div></div><button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button></div>
-      <div class="catalogo-clases-resultados">${tarjetaCatalogoClase(anuncio,{sigla})}</div>
+      <div class="catalogo-clases-resultados">${tarjetaCatalogoClase(anuncio,{sigla,abierta:true})}</div>
       <details class="clase-apoyo-porque"><summary>¿Por qué veo esto?</summary>
         <p>Porque esta clase es para ${esc(ramo.nombre)}, que está en tu semestre. GradeHub lo decide en tu navegador con tus ramos y notas: el profesor no las recibe ni sabe quién eres. Puedes cerrar la recomendación en Inicio y no te la volvemos a mostrar.</p>
       </details>
       <button type="button" class="btn-cancel clase-apoyo-mas" onclick="openCatalogoClases()">Ver todas las clases</button>
     </div>`;
   activarTarjetasClases(raiz);
+  registrarInteraccionAnuncio(anuncio.id,'apertura');
   openModal();
 }
 

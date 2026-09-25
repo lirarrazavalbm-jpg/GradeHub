@@ -1080,6 +1080,10 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .catalogo-clase-datos strong small{color:var(--fg3);font-size:.625rem;font-weight:600;}
 .catalogo-clase-contacto{display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:12px;padding:9px 12px;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-size:.8125rem;font-weight:750;text-decoration:none;transition:filter var(--motion-fast),transform var(--motion-press);}
 .catalogo-clase-contacto:active{transform:scale(.99);}
+.catalogo-clase-ver{display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:12px;padding:9px 12px;border:1px solid var(--primary);border-radius:10px;background:none;color:var(--primary);font:inherit;font-size:.8125rem;font-weight:750;cursor:pointer;}
+.catalogo-clase-ver:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.catalogo-clase-mas[hidden]{display:none;}
+.clase-aviso-tope{margin:0 0 10px;padding:9px 12px;border-radius:10px;background:var(--muted);color:var(--fg);font-size:.8125rem;font-weight:600;}
 .catalogo-clase-contacto:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .catalogo-clase-sin-contacto{margin:12px 0 0;color:var(--fg3);font-size:.75rem;line-height:1.4;}
 @media(hover:hover) and (pointer:fine){.catalogo-clase-contacto:hover{filter:brightness(1.06);}}
@@ -1114,6 +1118,10 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .profesor-detalle-quitar:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .profesor-detalle-agregar{margin-top:8px;width:100%;}
 .profesor-linea{margin:0;padding:0;border:0;min-width:0;}
+.profesor-campana-fechas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.profesor-campana-resumen{margin:8px 0 0;font-size:.8125rem;font-weight:600;color:var(--fg);}
+.profesor-campana-resumen:empty{display:none;}
+@media(max-width:420px){.profesor-campana-fechas{grid-template-columns:1fr 1fr;}.profesor-campana-fechas>div:first-child{grid-column:1/-1;}}
 .profesor-linea legend{padding:0;}
 .profesor-linea-opciones{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .profesor-linea-opcion{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;border:1px solid var(--border2);border-radius:10px;font-size:.8125rem;color:var(--fg2);cursor:pointer;max-width:100%;}

@@ -139,7 +139,13 @@ $$;
 -- Publica un anuncio en revisión. El cargo es obligatorio y explícito —0 es
 -- una decisión, "piloto sin cargo", no un valor por omisión— porque la tarifa
 -- todavía no está decidida y no puede quedar decidida por un default.
-create or replace function admin.publicar_anuncio(p_anuncio_id uuid, p_cargo_clp integer, p_dias integer default 30)
+-- Desde CAMPAÑAS (2026-09-25) los días y el inicio los elige el profesor: si
+-- el anuncio tiene campaña, se usan esos y `p_dias` queda de respaldo para los
+-- anuncios de antes. Con inicio futuro queda PROGRAMADO: publicado, pero no se
+-- muestra hasta ese día (medianoche de Chile). La firma cambió su default, y
+-- Postgres no deja cambiarlo con create or replace: por eso el drop.
+drop function if exists admin.publicar_anuncio(uuid, integer, integer);
+create or replace function admin.publicar_anuncio(p_anuncio_id uuid, p_cargo_clp integer, p_dias integer default null)
 returns text
 language plpgsql
 set search_path = public, admin
@@ -147,13 +153,13 @@ as $$
 declare
   a public.tutor_anuncios%rowtype;
   ahora timestamptz := now();
+  desde timestamptz;
   vence timestamptz;
+  c public.anuncio_campanas%rowtype;
+  dias integer;
 begin
   if p_cargo_clp is null or p_cargo_clp < 0 then
     raise exception 'el cargo va en pesos y no puede ser negativo (0 si es sin cargo)';
-  end if;
-  if p_dias is null or p_dias not between 1 and 90 then
-    raise exception 'la campaña dura entre 1 y 90 días';
   end if;
 
   select * into a from public.tutor_anuncios where id = p_anuncio_id for update;
@@ -170,20 +176,27 @@ begin
     raise exception 'el anuncio no tiene título';
   end if;
 
-  vence := ahora + make_interval(days => p_dias);
+  select * into c from public.anuncio_campanas where anuncio_id = p_anuncio_id;
+  dias := coalesce(c.dias, p_dias, 30);
+  if dias not between 1 and 90 then
+    raise exception 'la campaña dura entre 1 y 90 días';
+  end if;
+  desde := greatest(ahora, coalesce((c.inicio::timestamp at time zone 'America/Santiago'), ahora));
+  vence := desde + make_interval(days => dias);
 
   update public.tutor_anuncios
      set estado = 'publicado',
          revisado_at = ahora,
          pagado_at = ahora,
-         publicado_at = ahora,
+         publicado_at = desde,
          vence_at = vence
    where id = p_anuncio_id;
 
   insert into admin.anuncio_publicaciones (anuncio_id, cargo_clp, dias, publicado_at, vence_at)
-  values (p_anuncio_id, p_cargo_clp, p_dias, ahora, vence);
+  values (p_anuncio_id, p_cargo_clp, dias, desde, vence);
 
-  return 'publicado hasta ' || to_char(vence at time zone 'America/Santiago', 'YYYY-MM-DD HH24:MI');
+  return case when desde > ahora then 'programado desde ' || to_char(desde at time zone 'America/Santiago', 'YYYY-MM-DD HH24:MI') || ' ' else 'publicado ' end
+    || 'hasta ' || to_char(vence at time zone 'America/Santiago', 'YYYY-MM-DD HH24:MI');
 end;
 $$;
 

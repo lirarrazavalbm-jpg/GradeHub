@@ -731,11 +731,15 @@ de GradeHub y el profesor recibe solo agregados. En el piloto se muestra como
 máximo una recomendación contextual al día, solo en Inicio. Los anuncios también
 se pueden explorar en un catálogo general.
 
-La tarifa inicial es $1.000 por cuenta alcanzada; sube a $2.000 cuando la campaña
-exige promedio bajo 4,0 y al menos 40% evaluado. Se cotiza con elegibles, se cobra
-una sola vez por persona realmente alcanzada y nunca sobre el presupuesto prepago.
-La campaña dura 30 días. Estos precios son administrables por GradeHub, no por el
-profesor.
+La tarifa cambió el 2026-09-25 (decisión de Lucas): $100 por día publicada y,
+por persona, $10 si la vio, $50 si la abrió y $1.000 si contactó. Cada persona
+cuenta una vez por anuncio. El profesor elige los días (o las fechas: puede dejar
+el anuncio programado) y un tope, que es lo máximo que pagaría; al llegar, la
+clase deja de mostrarse. Filtrar por nota no cuesta más. No cuentan el propio
+profesor ni cuentas sin ramos. En el piloto no se cobra: se muestra lo que
+costaría. La tarifa vive en `tarifa_campana_clp` (SQL) y `TARIFA_CAMPANA`
+(marketplace.js), y `tests/tarifa-campana.test.js` exige que coincidan. El
+contacto es solo por WhatsApp, con el número oculto tras un botón.
 
 Desde el 2026-09-25 están el flujo de profesor, el catálogo, la tarjeta junto
 al ramo en Inicio y el alcance por camino (recomendación, búsqueda, lista).

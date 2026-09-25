@@ -31,10 +31,13 @@ const anuncio=(extra)=>Object.assign({id:'a1',titulo:'Clases de Cálculo II',est
 // Sin `porCanal`, la función por camino no existe: es un servidor sin el SQL
 // nuevo, y el panel tiene que caer al total de siempre.
 // Lo mismo con `totales`: sin ella, los totales se arman desde los cortes.
-function montar({alcance=null,cortes=[],porCanal=null,totales=null}={}){
-  ctx.__alcance=alcance;ctx.__cortes=cortes;ctx.__porCanal=porCanal;ctx.__totales=totales;
+// `campana` es la fila de campana_anuncio; sin ella, el SQL de campañas no está
+// aplicado y no hay costo que mostrar.
+function montar({alcance=null,cortes=[],porCanal=null,totales=null,campana=null}={}){
+  ctx.__alcance=alcance;ctx.__cortes=cortes;ctx.__porCanal=porCanal;ctx.__totales=totales;ctx.__campana=campana;
   run(`supabaseClient={rpc:(n)=>Promise.resolve(
-    n==='alcance_anuncio_por_canal'?(__porCanal?{data:__porCanal,error:null}:{data:null,error:{message:'no existe'}})
+    n==='campana_anuncio'?(__campana?{data:[__campana],error:null}:{data:null,error:{message:'no existe'}})
+    :n==='alcance_anuncio_por_canal'?(__porCanal?{data:__porCanal,error:null}:{data:null,error:{message:'no existe'}})
     :n==='totales_metricas_anuncio'?(__totales?{data:__totales,error:null}:{data:null,error:{message:'no existe'}})
     :n==='alcance_anuncio'?{data:__alcance,error:null}:{data:__cortes,error:null})};`);
 }
@@ -47,19 +50,22 @@ const pintar=async(anuncios,datos)=>{
 };
 
 (async()=>{
-  console.log('=== Lo que se cobra va al frente ===');
-  let html=await pintar([anuncio()],{alcance:18});
-  chk('muestra las personas distintas alcanzadas',/Personas alcanzadas/.test(html)&&/>18</.test(html));
-  chk('y lo que lleva gastado con la tarifa real',/Va costando/.test(html));
-  // 18 personas · bajo 5,0 y 20% evaluado = $1.400 c/u + $3.000 de publicación.
-  chk('el costo usa la misma cotización que al armar el anuncio',/28\.200|\$28/.test(html));
+  console.log('=== Lo que se cobraría va al frente ===');
+  const campana={dias:10,inicio:null,tope_clp:10000,dias_cobrados:6,vistas:120,aperturas:15,contactos:4,costo:6550,agotada:false};
+  let html=await pintar([anuncio()],{alcance:18,campana});
+  chk('las personas vienen de la campaña, que es lo que se cobra',/Personas que la vieron/.test(html)&&/>120</.test(html));
+  chk('y también cuántas la abrieron y contactaron',/La abrieron/.test(html)&&/>15</.test(html)&&/Te contactaron/.test(html)&&/>4</.test(html));
+  chk('lo que va costando, contra el tope',/Va costando/.test(html)&&/6\.550/.test(html)&&/de tu tope de \$10\.000/.test(html));
+  chk('con cada concepto escrito',/120 personas te vieron \(\$1\.200\)/.test(html)&&/4 te contactaron \(\$4\.000\)/.test(html)&&/6 días publicada \(\$600\)/.test(html));
+  chk('y se aclara que en el piloto no se cobra',/no se cobra/.test(html));
 
-  console.log('\n=== Cada camino se cobra a su precio ===');
-  // 10 de su público × $1.400 + 4 que buscaron × $500 + 6 de la lista × $300 + $3.000.
-  html=await pintar([anuncio()],{porCanal:[{canal:'recomendacion',cuentas:10},{canal:'busqueda',cuentas:4},{canal:'lista',cuentas:6}]});
-  chk('las personas alcanzadas suman los tres caminos',/Personas alcanzadas/.test(html)&&/>20</.test(html));
-  chk('y el costo aplica el precio de cada camino',/20\.800/.test(html));
-  chk('con el desglose a la vista',/que buscaron el ramo/.test(html)&&/\$500/.test(html)&&/\$300/.test(html));
+  html=await pintar([anuncio()],{alcance:18,campana:{...campana,vistas:900,dias_cobrados:10,contactos:9}});
+  chk('al llegar al tope lo dice y no pasa del tope',/Llegó a tu tope/.test(html)&&/\$10\.000/.test(html)&&!/Va costando<\/span><b>\$15/.test(html));
+
+  console.log('\n=== Sin la campaña medida no se inventa un costo ===');
+  html=await pintar([anuncio()],{alcance:18});
+  chk('muestra el alcance de siempre',/Personas que la vieron/.test(html)&&/>18</.test(html));
+  chk('pero ningún costo',!/Va costando/.test(html));
 
   html=await pintar([anuncio()],{alcance:18});
   console.log('\n=== Sin datos suficientes no se inventa un cero ===');
@@ -83,16 +89,16 @@ const pintar=async(anuncios,datos)=>{
   chk('dibuja la dona de cómo llegaron, con números escritos',/Cómo llegaron/.test(html)&&/Recomendado en Inicio/.test(html)&&/>6</.test(html));
   chk('el anillo de la campaña dice cuántos días quedan',/días quedan/.test(html));
   chk('un día sin datos suficientes no se dibuja como cero',/menos de 15 eventos/.test(html));
-  chk('y el costo por contacto sale del total',/Por contacto/.test(html));
+  chk('los días de campaña se cuentan',/días quedan/.test(html));
 
   console.log('\n=== Lo que nadie vio todavía no tiene números ===');
   html=await pintar([anuncio({estado:'borrador',id:'b1'})],{alcance:99});
   chk('un borrador lo dice en vez de mostrar números',
-    /Todavía no se publica/.test(html) && !/Personas alcanzadas/.test(html));
+    /Todavía no se publica/.test(html) && !/Personas que la vieron/.test(html));
   // Y uno esperando aprobación tampoco: nunca se mostró, así que no pudo costar.
   html=await pintar([anuncio({estado:'en_revision',id:'r9'})],{alcance:99});
   chk('uno en revisión tampoco, ni alcance ni costo',
-    /Cuando lo aprobemos/.test(html) && !/Personas alcanzadas/.test(html) && !/Va costando/.test(html));
+    /Cuando lo aprobemos/.test(html) && !/Personas que la vieron/.test(html) && !/Va costando/.test(html));
 
   console.log('\n=== Cada anuncio con su estado ===');
   html=await pintar([anuncio({id:'p1'}),anuncio({id:'r1',estado:'en_revision',titulo:'Clases de Álgebra'})],{alcance:5});
@@ -101,7 +107,7 @@ const pintar=async(anuncios,datos)=>{
 
   console.log('\n=== Si no se puede medir, no se rellena con cero ===');
   html=await pintar([anuncio()],{alcance:null});
-  chk('un alcance desconocido sale como raya, no como 0',/Personas alcanzadas/.test(html)&&/>—</.test(html));
+  chk('un alcance desconocido sale como raya, no como 0',/Personas que la vieron/.test(html)&&/>—</.test(html));
   chk('y sin alcance no se afirma un costo',!/Va costando/.test(html));
 
   console.log('\n=== Administrar la campaña desde la página ===');
