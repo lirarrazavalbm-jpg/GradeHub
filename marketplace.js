@@ -253,7 +253,14 @@ async function guardarBorradorClase(entrada,id){
     };
     const {data,error}=await consultaCamposClase(escribir,CAMPOS_BORRADOR_CLASE);
     if(error&&error.message==='sin-columnas-nuevas')return {ok:false,campo:'detalles',error:'Todavía no podemos guardar "Otra", un formato vacío ni detalles a medida. Usa las opciones de la lista por ahora.'};
-    if(error||!data||data.estado!=='borrador')return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};
+    if(error||!data||data.estado!=='borrador'){
+      // El motivo real queda en la consola: "revisa tu conexión" también sale
+      // cuando el servidor rechaza, y sin esto hay que ir a buscarlo a mano.
+      if(error)console.warn('No se guardó el borrador:',error.code||'',error.message||error);
+      return {ok:false,error:error&&error.code==='42501'
+        ?'No pudimos guardar: falta un permiso en el servidor. Tu borrador anterior sigue ahí.'
+        :'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};
+    }
     return {ok:true,anuncio:data};
   }catch(e){return {ok:false,error:'No se guardó el borrador. Revisa tu conexión e intenta de nuevo.'};}
 }
@@ -350,10 +357,10 @@ async function quitarFlyerClase(anuncioId){
 
 // ─── LOGO DEL PROFESOR ──────────────────────────────────────────────────────
 //
-// Uno por profesor, en todos sus anuncios. El que sube queda PROPUESTO y no se
-// muestra hasta que GradeHub lo revisa: aparece en anuncios ya aprobados, y
-// cambiarlo sin revisión dejaría poner cualquier imagen en ellos. Quitarlo sí
-// es inmediato. Mismas reglas de archivo que el flyer: JPG, PNG o WebP ≤ 5 MB.
+// Uno por profesor, en todos sus anuncios. Desde el 2026-09-25 se muestra al
+// tiro, sin revisión (lo resuelve un trigger en el servidor). El estado "en
+// revisión" se mantiene por si se vuelve a revisar, o si el SQL no está al día.
+// Mismas reglas de archivo que el flyer: JPG, PNG o WebP ≤ 5 MB.
 function estadoLogoProfesor(perfil){
   if(!perfil||!('logo_id' in perfil))return 'no-disponible';
   if(perfil.logo_path&&perfil.logo_path!==perfil.logo_aprobado_path)return 'en-revision';
@@ -382,11 +389,12 @@ async function subirLogoProfesor(file){
       await supabaseClient.storage.from('tutor-flyers').remove([path]);
       return {ok:false,error:'El logo subió, pero no pudimos guardarlo en tu ficha. Intenta de nuevo.'};
     }
-    // El propuesto anterior ya no sirve. El aprobado se queda: se sigue viendo
-    // hasta que se apruebe el nuevo.
-    const anterior=String(ficha.perfil.logo_path||'');
-    if(anterior&&anterior!==path&&anterior!==ficha.perfil.logo_aprobado_path)
-      await supabaseClient.storage.from('tutor-flyers').remove([anterior]);
+    // Lo que ya no se muestra sobra. Sin revisión el servidor iguala las dos
+    // columnas al tiro, así que el logo anterior también se va. Si algún día
+    // se vuelve a revisar, el que se sigue mostrando se conserva.
+    const enUso=new Set([path,data.logo_aprobado_path].filter(Boolean));
+    const sobran=[...new Set([ficha.perfil.logo_path,ficha.perfil.logo_aprobado_path].filter(r=>r&&!enUso.has(r)))];
+    if(sobran.length)try{await supabaseClient.storage.from('tutor-flyers').remove(sobran);}catch(e){}
     return {ok:true,perfil:{...ficha.perfil,...data}};
   }catch(e){return {ok:false,error:'No pudimos subir el logo. Intenta de nuevo.'};}
 }
@@ -1293,7 +1301,7 @@ async function renderLogoProfesor(caja){
   const perfil=ficha.ok?ficha.perfil:null,estado=estadoLogoProfesor(perfil);
   if(estado==='no-disponible'){caja.innerHTML='';return;}
   const textos={
-    'sin-logo':'Sale a la derecha en todos tus anuncios. Lo revisamos antes de mostrarlo.',
+    'sin-logo':'Sale a la derecha en todos tus anuncios publicados.',
     'en-revision':perfil.logo_aprobado_path?'Tu logo nuevo está en revisión. Mientras tanto se sigue mostrando el anterior.':'Tu logo está en revisión. Aparecerá en tus anuncios cuando lo aprobemos.',
     'aprobado':'Se muestra en todos tus anuncios publicados.',
   };
@@ -1505,21 +1513,31 @@ function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now()){
   const hoy=diaLocalClases(ahora);
   const descartados=Array.isArray(estado&&estado.descartados)?estado.descartados:[];
   if(estado&&estado.dia===hoy){
-    // Ya se decidió hoy. Se vuelve a comprobar que siga calzando: si subiste
+    // Hoy ya se cerró una: no la reemplaza otra hasta mañana.
+    if(estado.cerradaHoy)return {sel:null,estado};
+    // Ya se mostró una hoy. Se vuelve a comprobar que siga calzando: si subiste
     // una nota y dejó de calzar, desaparece en vez de quedarse pegada.
-    if(!estado.anuncioId||descartados.includes(estado.anuncioId))return {sel:null,estado};
-    const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===estado.anuncioId),ramos,tenant,{descartados,ahora});
-    return {sel,estado};
+    if(estado.anuncioId){
+      if(descartados.includes(estado.anuncioId))return {sel:null,estado};
+      const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===estado.anuncioId),ramos,tenant,{descartados,ahora});
+      return {sel,estado};
+    }
+    // Día sin clase y sin cierre: lo dejó la versión del 2026-09-25, que
+    // anotaba "hoy ninguna" aunque no se hubiera mostrado nada. No bloquea.
   }
   const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados,ahora});
-  return {sel,estado:{...(estado||{}),descartados,dia:hoy,anuncioId:sel?sel.anuncio.id:null}};
+  // El día queda tomado solo si se mostró una. Si hoy no calza ninguna, no se
+  // anota nada: una clase publicada a mediodía, o una nota que hace calzar un
+  // ramo, tiene que poder aparecer ese mismo día. "Una al día" es un techo.
+  if(!sel)return {sel:null,estado:estado||{}};
+  return {sel,estado:{...(estado||{}),descartados,dia:hoy,anuncioId:sel.anuncio.id,cerradaHoy:false}};
 }
 
 function descartarRecomendacionClase(anuncioId,ahora=Date.now()){
   const estado=leerEstadoMarketplace();
   const descartados=[...new Set([...(Array.isArray(estado.descartados)?estado.descartados:[]),anuncioId])].slice(-MAX_DESCARTADOS_CLASES);
   // anuncioId null con el día de hoy: no se reemplaza por otra hasta mañana.
-  guardarEstadoMarketplace({...estado,descartados,dia:diaLocalClases(ahora),anuncioId:null});
+  guardarEstadoMarketplace({...estado,descartados,dia:diaLocalClases(ahora),anuncioId:null,cerradaHoy:true});
 }
 
 let anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
@@ -1590,7 +1608,15 @@ function pintarRecomendacionClase(contenedor){
     if(typeof showToast==='function')showToast('Listo, no te la volvemos a mostrar');
   });
   fila.classList.add('tiene-clase-apoyo');
-  fila.after(banner);
+  // En celular la lista es una columna y el banner va pegado bajo su ramo. En
+  // la grilla de escritorio iría a la casilla de al lado como si fuera otro
+  // ramo, así que ocupa todo el ancho bajo la fila visual donde está el ramo.
+  const filas=[...contenedor.querySelectorAll('.ramo-row')];
+  let columnas=1;
+  try{const cs=getComputedStyle(contenedor);if(cs.display==='grid')columnas=cs.gridTemplateColumns.split(' ').filter(Boolean).length||1;}catch(e){}
+  const i=filas.indexOf(fila),fin=Math.min(filas.length-1,i-i%columnas+columnas-1);
+  if(columnas>1)banner.classList.add('en-grilla');
+  filas[fin].after(banner);
   observarRecomendacionClase(banner,anuncio,sigla);
 }
 

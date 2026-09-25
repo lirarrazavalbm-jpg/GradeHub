@@ -222,6 +222,12 @@ grant update (ramos_siglas, criterios, modalidad, ubicacion, precio_clp, titulo,
 grant select (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to anon, authenticated;
 grant insert (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to authenticated;
 grant update (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios to authenticated;
+-- El formulario manda la universidad también al editar un borrador. Sin este
+-- grant, TODA edición de un borrador ya guardado fallaba con "permission
+-- denied": Postgres rechaza el UPDATE entero por una sola columna. Encontrado
+-- el 2026-09-25 en producción. Cambiarla es seguro por lo mismo que las otras
+-- columnas: la política solo deja editar en borrador, revisión o pausa.
+grant update (tenant) on public.tutor_anuncios to authenticated;
 
 drop policy if exists tutor_anuncios_select_publicados_o_propios on public.tutor_anuncios;
 create policy tutor_anuncios_select_publicados_o_propios
@@ -343,10 +349,10 @@ using (
 
 -- ─── LOGO DEL PROFESOR ──────────────────────────────────────────────────────
 --
--- Uno por profesor, y sale en todos sus anuncios publicados. Como aparece en
--- anuncios que ya se aprobaron, un logo nuevo NO se muestra hasta revisarlo:
--- `logo_path` es el que subió, `logo_aprobado_path` el que se ve. Solo el
--- equipo copia uno al otro (admin.aprobar_logo).
+-- Uno por profesor, y sale en todos sus anuncios publicados. `logo_path` es
+-- el que subió y `logo_aprobado_path` el que se ve. Nacieron separados para
+-- revisarlos antes de mostrarlos; desde el 2026-09-25 un trigger (más abajo)
+-- los iguala al tiro, y el cliente no puede escribir la segunda columna.
 --
 -- La ruta es logos/<logo_id>/<uuid>.<ext>. `logo_id` es un identificador
 -- propio y no el user_id: el catálogo es público y no tiene por qué saber qué
@@ -365,6 +371,41 @@ grant select (logo_id, logo_path, logo_aprobado_path) on public.tutor_perfiles t
 -- Puede proponer uno (la política de update ya lo ata a su propia fila y el
 -- check, a su propio logo_id). No puede aprobarlo ni cambiar su logo_id.
 grant update (logo_path) on public.tutor_perfiles to authenticated;
+
+-- SIN REVISIÓN DESDE EL 2026-09-25. Decisión de Lucas: el logo que sube el
+-- profesor se muestra al tiro. Se conservan las dos columnas —la propuesta y
+-- la que se ve— para poder volver a revisarlos sin migrar nada: basta con
+-- borrar este trigger. Si un logo resulta inapropiado, suspender al profesor
+-- oculta todos sus anuncios y admin.rechazar_logo() no aplica: se quita con
+-- un update directo desde el SQL Editor.
+--
+-- El trigger corre con los permisos de quien actualiza, pero los permisos de
+-- columna solo miran lo que el UPDATE escribe (logo_path), no lo que el
+-- trigger completa. La política de update ya lo ata a su propia fila.
+create or replace function public.logo_sin_revision()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.logo_aprobado_path := new.logo_path;
+  return new;
+end;
+$$;
+revoke all on function public.logo_sin_revision() from public, anon, authenticated;
+
+drop trigger if exists tutor_perfiles_logo_sin_revision on public.tutor_perfiles;
+create trigger tutor_perfiles_logo_sin_revision
+before update of logo_path on public.tutor_perfiles
+for each row
+when (new.logo_path is distinct from old.logo_path)
+execute function public.logo_sin_revision();
+
+-- Los que quedaron esperando revisión antes del trigger pasan a mostrarse.
+update public.tutor_perfiles
+   set logo_aprobado_path = logo_path
+ where logo_path is not null
+   and logo_path is distinct from logo_aprobado_path;
 
 -- Quitar sí es inmediato: sacar una imagen nunca necesita revisión.
 create or replace function public.quitar_mi_logo()
