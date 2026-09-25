@@ -1520,7 +1520,11 @@ function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now()){
     return {sel,estado};
   }
   const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados,ahora});
-  return {sel,estado:{...(estado||{}),descartados,dia:hoy,anuncioId:sel?sel.anuncio.id:null}};
+  // El día queda tomado solo si se mostró una. Si hoy no calza ninguna, no se
+  // anota nada: una clase publicada a mediodía, o una nota que hace calzar un
+  // ramo, tiene que poder aparecer ese mismo día. "Una al día" es un techo.
+  if(!sel)return {sel:null,estado:estado||{}};
+  return {sel,estado:{...(estado||{}),descartados,dia:hoy,anuncioId:sel.anuncio.id}};
 }
 
 function descartarRecomendacionClase(anuncioId,ahora=Date.now()){

@@ -37,6 +37,11 @@ chk('si ese día no hubo ninguna, no aparece otra hasta mañana',
   dia(complicado,{dia:'2026-09-28',anuncioId:null},lunes).sel===null&&dia(complicado,{dia:'2026-09-28',anuncioId:null},martes).sel!==null);
 chk('si sube la nota el mismo día, desaparece en vez de quedar pegada',dia(bien,lunesEstado,lunes).sel===null);
 chk('sin un ramo que calce, no hay nada',dia(bien,{},lunes).sel===null);
+// Pasó en la prueba del 2026-09-25: Inicio se abrió antes de publicar la clase,
+// quedó anotado "hoy ninguna" y la clase no apareció hasta el día siguiente.
+chk('un día sin nada que mostrar no bloquea el resto del día',(r=>r.sel===null&&!r.estado.dia)(dia(bien,{},lunes)));
+ctx.__avisos=[];const vacio=dia(complicado,{},lunes).estado;ctx.__avisos=[aviso('a1'),aviso('a2')];
+chk('si la clase se publica más tarde ese día, aparece',dia(complicado,vacio,lunes+3600e3).sel?.anuncio.id==='a1');
 
 console.log('\n=== Cerrarla ===');
 run(`descartarRecomendacionClase('a1',${lunes})`);
