@@ -14,7 +14,7 @@ vm.createContext(ctx);
 // promesa que este test cuida —que ninguna carrera diga tener malla sin
 // tenerla— vale igual esté el dato donde esté, y de paso comprueba que ese
 // archivo es JS válido.
-vm.runInContext(['data.js', 'mallas-uc.js', 'engine.js', 'app.js', 'render-agenda.js'].map(f => fs.readFileSync(__dirname + '/../' + f, 'utf8')).join('\n'), ctx);
+vm.runInContext(['data.js', 'mallas-uc.js', 'mallas-uai.js', 'engine.js', 'app.js', 'render-agenda.js'].map(f => fs.readFileSync(__dirname + '/../' + f, 'utf8')).join('\n'), ctx);
 const run = e => vm.runInContext(e, ctx);
 const buscar = (q, car) => run('searchCatalog(' + JSON.stringify(q) + ',"fen",' + JSON.stringify(car) + ',2)');
 
@@ -115,8 +115,25 @@ console.log('\n=== Una pauta que nadie puede encontrar no existe ===');
 const buscarUC = (q, car) => run('searchCatalog(' + JSON.stringify(q) + ',"uc",' + JSON.stringify(car) + ',2)');
 ['Ecolog', 'Revelaci'].forEach(q => {
   const r = buscarUC(q, 'ING-PC');
-  chk('Ingeniería UC encuentra "' + q + '" aunque no esté en la malla', r.length > 0 && r[0].tienePreset);
+  // Entre los seis que se muestran: desde que se busca en toda la UC, la
+  // "Ecología" de otras carreras calza mejor por prefijo y va antes.
+  chk('Ingeniería UC encuentra "' + q + '" aunque no esté en la malla', r.slice(0, 6).some(x => x.tienePreset));
 });
+
+// Cualquier carrera busca ramos de TODA su universidad, no solo de su malla:
+// electivos, minors y ramos de otra carrera también se cursan. Antes las mallas
+// diferidas aportaban solo la de la carrera del alumno.
+const buscarEn = (q, t, car) => run('searchCatalog(' + JSON.stringify(q) + ',' + JSON.stringify(t) + ',' + JSON.stringify(car) + ',2)');
+const mallaUc = run('MALLAS_UC_EXTRA["UC-DERECHO"]["1"][0]');
+chk('Ingeniería UC encuentra un ramo de Derecho UC', buscarEn(mallaUc, 'uc', 'ING-PC').some(r => r.nombre === mallaUc));
+const uaiCom = run('CARRERAS_DECLARABLES.uai.find(c=>c.n==="Ingeniería Comercial").malla');
+const ajenoUai = run(`(()=>{const M=MALLAS_UAI_EXTRA,propios=new Set(Object.values(M[${JSON.stringify(uaiCom)}]).flat());
+  for(const [car,porSem] of Object.entries(M))if(car!==${JSON.stringify(uaiCom)})for(const l of Object.values(porSem))for(const n of l)if(!propios.has(n))return n;})()`);
+const hallado = buscarEn(ajenoUai, 'uai', uaiCom).find(r => r.nombre === ajenoUai);
+chk('Comercial UAI encuentra un ramo de otra carrera UAI', !!hallado);
+chk('y no lo presenta con el semestre de esa otra carrera', hallado && hallado.semestre === 0);
+chk('los ramos de su propia malla siguen con su semestre',
+  buscarEn('', 'uai', uaiCom).some(r => r.propio && r.semestre > 0));
 // Y no al revés: los presets UC son del plan común de Ingeniería. Ofrecérselos
 // a Comercial pondría una estrella de "pauta oficial" sobre un ramo que después
 // se agrega vacío, porque findPresetName los descarta para esa carrera.

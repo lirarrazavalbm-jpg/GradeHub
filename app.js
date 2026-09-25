@@ -745,8 +745,10 @@ function repintarAlCargarCursosUC(tenant,repintar){
   if(tenant!=='uc'||cursosUcExtra())return;
   cargarCursosUC().then(ok=>{if(ok)repintar();});
 }
-function repintarAlCargarMallaPropia(tenant,carrera,repintar){
-  if(!carrera||!ARCHIVO_MALLAS[tenant]||(mallaFor(tenant)||{})[carrera]||mallasExtraDe(tenant))return;
+// El buscador cubre toda la universidad, no solo tu carrera: se piden las
+// mallas diferidas aunque la tuya venga en el archivo base (Ingeniería UC).
+function repintarAlCargarMallas(tenant,repintar){
+  if(!ARCHIVO_MALLAS[tenant]||mallasExtraDe(tenant))return;
   cargarMallasUC(tenant).then(ok=>{if(ok)repintar();});
 }
 function selectTenant(t){
@@ -1443,6 +1445,12 @@ function obRamosVisibles(sugeridos,elegidos){
 // Ingeniería UC se separa por majors después del plan común. La app conoce
 // muchos de esos ramos por su tabla de SCT, pero no puede asumir un major por
 // semestre: sería cargarle cursos que quizá nunca toma.
+// Sin nada donde buscar: ni malla base de la universidad ni malla propia de la
+// carrera. Mirar solo `mallaFor` dejaba a la UAI sin buscador y diciendo que no
+// había malla, cuando sus 23 mallas viven aparte en `mallas-uai.js`.
+function obSinCatalogo(){
+  return Object.keys(mallaFor(selectedTenant)||{}).length===0&&!mallaDeCarrera(selectedTenant,selectedCarrera);
+}
 function obCoursePickerIntro(sugeridos){
   if(selectedTenant==='uc'&&selectedCarrera==='ING-PC'&&selectedSem>=5){
     return 'Desde 5° Ingeniería UC se separa por major. Busca cada ramo por nombre o sigla de tu horario.';
@@ -1450,7 +1458,7 @@ function obCoursePickerIntro(sugeridos){
   // Hay universidades con carreras declarables pero sin malla ni catálogo
   // verificados. Un buscador sin datos ofrece una salida que no existe: acá se
   // parte directo por el único camino honesto, los ramos del horario.
-  if(Object.keys(mallaFor(selectedTenant)||{}).length===0&&selectedCarreraNombre){
+  if(obSinCatalogo()&&selectedCarreraNombre){
     return `Aún no tenemos una malla verificada para ${esc(selectedCarreraNombre)}. Agrega los ramos de tu horario a mano.`;
   }
   if(!selectedCarrera&&selectedCarreraNombre){
@@ -1476,7 +1484,7 @@ function renderObCoursePicker(){
   const box=document.getElementById('ob-course-picker');if(!box)return;
   const sugeridos=obRamosActuales();
   const visibles=obRamosVisibles(sugeridos,obRamos);
-  const sinCatalogoVerificado=Object.keys(mallaFor(selectedTenant)||{}).length===0;
+  const sinCatalogoVerificado=obSinCatalogo();
   const rows=visibles.length?visibles.map(nombre=>{
     // Si el ramo tiene dos códigos, la fila marca uno y ofrece cambiarlo. No se
     // pintan como dos ramos distintos: es el mismo, y marcar los dos sería
@@ -1540,7 +1548,7 @@ function renderObCourseResults(q){
     const input=document.getElementById('ob-course-search');
     if(input&&input.value===q)renderObCourseResults(q);
   };
-  repintarAlCargarMallaPropia(selectedTenant,selectedCarrera,repintar);
+  repintarAlCargarMallas(selectedTenant,repintar);
   repintarAlCargarCursosUC(selectedTenant,repintar);
   const res=searchCatalog(term,selectedTenant,selectedCarrera,selectedSem).slice(0,6);
   if(!res.length){
@@ -2716,7 +2724,7 @@ function renderCatalogResults(q){
     const input=document.getElementById('m-ramo-search');
     if(input&&input.value===q)renderCatalogResults(q);
   };
-  repintarAlCargarMallaPropia(S.tenant,S.carrera,repintar);
+  repintarAlCargarMallas(S.tenant,repintar);
   repintarAlCargarCursosUC(S.tenant,repintar);
   const yaTengo=new Set(S.ramos.map(r=>normName(r.nombre)));
   const res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre).slice(0,6);
@@ -3156,16 +3164,22 @@ function catalogRamosUniversidad(tenant,carreraPropia){
   const propios=new Set(catalogRamos(tenant,carreraPropia).map(r=>normName(r.nombre)));
   const out=[];
   const mallasBuscables=Object.entries(mallas);
-  const propia=mallaDeCarrera(tenant,carreraPropia);
-  // Las mallas diferidas viven juntas en un archivo, pero eso no las convierte
-  // en un catálogo de toda la universidad: solo sumamos la carrera del alumno.
-  if(propia&&!Object.prototype.hasOwnProperty.call(mallas,carreraPropia))mallasBuscables.push([carreraPropia,propia]);
+  // Cualquier carrera busca ramos de TODA su universidad, no solo de su malla:
+  // un electivo, un minor o un ramo de otra carrera también se cursan. Así que
+  // entran todas las mallas diferidas, no solo la del alumno. Las ajenas van
+  // con semestre 0: su "3° semestre" es el de otra carrera y no le dice nada.
+  const ajenas=new Set();
+  Object.entries(mallasExtraDe(tenant)||{}).forEach(([car,porSem])=>{
+    if(Object.prototype.hasOwnProperty.call(mallas,car))return;
+    mallasBuscables.push([car,porSem]);
+    if(car!==carreraPropia)ajenas.add(car);
+  });
   mallasBuscables.forEach(([car,porSem])=>{
     Object.keys(porSem).sort((a,b)=>Number(a)-Number(b)).forEach(sem=>{
       (porSem[sem]||[]).forEach(nombre=>{
         const k=normName(nombre);
         const sigla=tenant==='uc'?siglaCatalogoUC(nombre):null;
-        out.push({nombre,semestre:Number(sem),propio:propios.has(k),sigla,
+        out.push({nombre,semestre:ajenas.has(car)?0:Number(sem),propio:propios.has(k),sigla,
                   tienePreset:!!findPresetName(nombre,tenant,carreraPropia)||!!findPresetName(nombre,tenant,car)});
       });
     });
@@ -6203,7 +6217,7 @@ function renderBusquedaSemestreAnterior(q){
     const input=document.getElementById('m-hist-buscar');
     if(input&&input.value===q)renderBusquedaSemestreAnterior(q);
   };
-  repintarAlCargarMallaPropia(S.tenant,S.carrera,repintar);
+  repintarAlCargarMallas(S.tenant,repintar);
   repintarAlCargarCursosUC(S.tenant,repintar);
   const res=searchCatalog(texto,S.tenant,S.carrera,8)
     .filter(c=>!histManual.ramos.some(r=>normName(r.nombre)===normName(c.nombre)));

@@ -37,6 +37,13 @@ chk('el paso 5 pide el archivo del tenant que corresponda', /cargarMallasUC\(sel
 // encima de ocho ramos marcados (UAI Comercial 2°, 2026-09-24).
 chk('al llegar la malla se repinta también el botón',
   /cargarMallasUC\(selectedTenant\)\.then\(ok=>\{if\(ok\)\{obRamosKey=null;if\(obStep===5\)obRender\(\);\}\}\)/.test(app));
+// El paso 5 decidía si mostrar el buscador mirando solo `mallaFor`, que para
+// la UAI está vacío: sus mallas viven en mallas-uai.js. Quedaba sin buscador y
+// diciendo "Aún no tenemos una malla verificada" (2026-09-24).
+chk('el buscador del paso 5 también mira la malla propia de la carrera',
+  /function obSinCatalogo\(\)\{[\s\S]*?!mallaDeCarrera\(selectedTenant,selectedCarrera\)/.test(app));
+chk('el buscador y el aviso de "sin malla" usan esa misma decisión',
+  /sinCatalogoVerificado=obSinCatalogo\(\)/.test(app)&&/if\(obSinCatalogo\(\)&&selectedCarreraNombre\)/.test(app));
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
 process.exit(fail?1:0);
