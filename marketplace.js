@@ -29,6 +29,7 @@ async function consultaCamposClase(hacer,base){
   }
   return hacer(base);
 }
+const MAX_RAMOS_POR_ANUNCIO=1;
 const MAX_DETALLES_CLASE=4,MAX_ETIQUETA_DETALLE=30,MAX_VALOR_DETALLE=80;
 const MODALIDADES_CLASE=[['individual','Individual'],['grupal','Grupal']];
 const UBICACIONES_CLASE=[['online','Online'],['presencial','Presencial'],['hibrido','Híbrida']];
@@ -44,8 +45,13 @@ function validarBorradorClase(entrada){
   const descripcion=String(entrada.descripcion||'').trim();
   if(descripcion.length<20||descripcion.length>1500)return {ok:false,campo:'descripcion',error:'Cuenta qué harás en la clase (20 a 1500 caracteres).'};
   const siglas=Array.isArray(entrada.ramos_siglas)?entrada.ramos_siglas.map(s=>String(s||'').trim().toUpperCase()):[];
-  if(siglas.length<1||siglas.length>12||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s))||new Set(siglas).size!==siglas.length)
-    return {ok:false,campo:'ramos_siglas',error:'Elige entre 1 y 12 ramos, sin repetir siglas.'};
+  // Un ramo por anuncio (decisión de Lucas del 2026-09-25): cada clase se
+  // muestra y se mide en su ramo. Quien enseña varios arma un anuncio por
+  // cada uno. La base lo exige también, con un trigger.
+  if(siglas.length<1||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s)))
+    return {ok:false,campo:'ramos_siglas',error:'Elige el ramo de tu clase.'};
+  if(siglas.length>MAX_RAMOS_POR_ANUNCIO||new Set(siglas).size!==siglas.length)
+    return {ok:false,campo:'ramos_siglas',error:'Cada anuncio es para un solo ramo. Si enseñas otro, arma otro anuncio.'};
   if(!criteriosClaseValidos(entrada.criterios))return {ok:false,campo:'criterios',error:'Revisa el promedio y el avance elegidos para tu público.'};
   // Formato y lugar son opcionales. "Otra" exige escribirla: una opción
   // elegida sin texto se mostraría como nada.
@@ -1484,8 +1490,7 @@ function activarBuscadorRamosClase(form,campo){
     const siglas=leer();
     elegidasCaja.innerHTML=siglas.map(sg=>`<span class="profesor-ramo-chip"><b>${esc(sg)}</b>${nombreDe(sg)?`<span>${esc(nombreDe(sg))}</span>`:''}<button type="button" data-quitar-sigla="${esc(sg)}" aria-label="Quitar ${esc(sg)}">×</button></span>`).join('');
     elegidasCaja.querySelectorAll('[data-quitar-sigla]').forEach(b=>b.addEventListener('click',()=>escribir(leer().filter(x=>x!==b.dataset.quitarSigla))));
-    buscar.disabled=siglas.length>=12;
-    buscar.placeholder=siglas.length>=12?'Llegaste a 12 ramos':'Busca por nombre o sigla, ej. Cálculo II';
+    buscar.placeholder=siglas.length?'Cambiar de ramo':'Busca por nombre o sigla, ej. Cálculo II';
   };
   const cerrar=()=>{lista.hidden=true;lista.innerHTML='';buscar.setAttribute('aria-expanded','false');};
   const mostrar=()=>{
@@ -1496,8 +1501,8 @@ function activarBuscadorRamosClase(form,campo){
     lista.querySelectorAll('[data-sigla]').forEach(li=>li.addEventListener('mousedown',e=>{e.preventDefault();elegir(li.dataset.sigla);}));
   };
   const elegir=sg=>{
-    const siglas=leer();
-    if(sg&&!siglas.includes(sg)&&siglas.length<12)escribir([...siglas,sg]);
+    // Elegir otro reemplaza al anterior: un anuncio lleva un solo ramo.
+    if(sg)escribir([...leer().filter(x=>x!==sg),sg].slice(-MAX_RAMOS_POR_ANUNCIO));
     buscar.value='';cerrar();buscar.focus();
   };
   const reindexar=()=>{indice=nombresRamosParaClases(tenantSel?tenantSel.value:S.tenant);pintarElegidas();if(buscar.value)mostrar();};
@@ -1591,13 +1596,13 @@ function renderBorradorProfesor(raiz,anuncio){
       <div id="pr-logo"></div>
       <h3>2. Público</h3>
       <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
-      <label class="modal-label" for="pr-siglas-buscar">Ramos de tu clase</label>
+      <label class="modal-label" for="pr-siglas-buscar">Ramo de tu clase</label>
       <div class="profesor-ramos" id="pr-ramos-elegidos" aria-live="polite"></div>
       <div class="profesor-ramos-buscar">
         <input id="pr-siglas-buscar" type="search" autocomplete="off" placeholder="Busca por nombre o sigla, ej. Cálculo II" aria-describedby="pr-siglas-ayuda" aria-controls="pr-ramos-resultados">
         <ul class="profesor-ramos-resultados" id="pr-ramos-resultados" role="listbox" hidden></ul>
       </div>
-      <p class="profesor-info" id="pr-siglas-ayuda">Hasta 12 ramos. Si no aparece, escribe su sigla completa.</p>
+      <p class="profesor-info" id="pr-siglas-ayuda">Un ramo por anuncio: si enseñas varios, arma uno para cada uno. Si no aparece, escribe su sigla completa.</p>
       <input id="pr-siglas" type="hidden" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
       <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
       <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">

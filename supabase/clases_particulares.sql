@@ -197,6 +197,32 @@ $$;
 alter table public.tutor_anuncios add column if not exists detalles jsonb
   check (public.detalles_clase_validos(detalles));
 
+-- UN RAMO POR ANUNCIO desde el 2026-09-25 (decisión de Lucas). Es un trigger
+-- y no un CHECK a propósito: un CHECK revisa la fila entera en cada UPDATE, y
+-- un anuncio antiguo con dos ramos quedaría trabado —ni pausarlo se podría—.
+-- El trigger mira solo cuando se ESCRIBEN los ramos: crear o editarlos exige
+-- uno, y cambiar el estado de un anuncio viejo sigue funcionando.
+create or replace function public.anuncio_un_ramo()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if cardinality(new.ramos_siglas) <> 1 then
+    raise exception 'cada anuncio es para un solo ramo'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.anuncio_un_ramo() from public, anon, authenticated;
+
+drop trigger if exists tutor_anuncios_un_ramo on public.tutor_anuncios;
+create trigger tutor_anuncios_un_ramo
+before insert or update of ramos_siglas on public.tutor_anuncios
+for each row
+execute function public.anuncio_un_ramo();
+
 create index if not exists tutor_anuncios_publicados_por_tenant
   on public.tutor_anuncios (tenant, publicado_at desc)
   where estado = 'publicado';

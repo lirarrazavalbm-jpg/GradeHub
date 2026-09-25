@@ -20,5 +20,11 @@ chk('no repite lo ya elegido',!buscar('calculo',['MAT1620']).some(x=>x.sigla==='
 chk('una sigla que no está en el índice se puede usar igual',buscar('QIM100E').some(x=>x.sigla==='QIM100E'&&/Usar/.test(x.nombre)));
 chk('pero una palabra suelta no se ofrece como sigla',!buscar('hola').some(x=>/Usar/.test(x.nombre)));
 chk('vacío no muestra nada',buscar('  ').length===0);
+
+const valida=siglas=>vm.runInContext(`validarBorradorClase({tenant:'uc',ramos_siglas:${JSON.stringify(siglas)},criterios:{promedioMenorA:5,avanceMinimo:20},
+  precio_clp:15000,titulo:'Clases de Cálculo',descripcion:'Repasamos ejercicios y preparamos evaluaciones.',contacto_tipo:'email',contacto_valor:'a@b.cl'})`,ctx);
+chk('un ramo por anuncio: uno pasa',valida(['MAT1620']).ok);
+chk('dos no pasan, y el mensaje dice qué hacer',(r=>!r.ok&&/otro anuncio/.test(r.error))(valida(['MAT1610','MAT1620'])));
+chk('ninguno tampoco',!valida([]).ok);
 console.log('\nPASS: '+ok+'   FAIL: '+fail);
 process.exit(fail?1:0);
