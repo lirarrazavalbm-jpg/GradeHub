@@ -22,7 +22,7 @@ const concedidas=tipo=>{
 const r=vm.runInContext(`validarBorradorClase({tenant:'uc',ramos_siglas:['MAT1610'],criterios:{promedioMenorA:5,avanceMinimo:20},
   modalidad:'otra',modalidad_otra:'Grupos de 3',ubicacion:'online',detalles:[{etiqueta:'Duración',valor:'90 minutos'}],
   precio_clp:15000,titulo:'Clases de Cálculo I',descripcion:'Repasamos ejercicios y preparamos evaluaciones.',
-  contacto_tipo:'email',contacto_valor:'profe@ejemplo.cl'})`,ctx);
+  contacto_tipo:'whatsapp',contacto_valor:'+56 9 1234 5678'})`,ctx);
 chk('el borrador de ejemplo es válido',r.ok);
 const campos=Object.keys(r.datos);
 const insert=concedidas('insert'),update=concedidas('update');

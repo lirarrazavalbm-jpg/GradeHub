@@ -25,20 +25,18 @@ chk('+56 9 se completa con sus espacios',run("textoWhatsappEscrito('+56912345678
 chk('a medio escribir también',run("textoWhatsappEscrito('+56 9 123')")==='+56 9 123'&&run("textoWhatsappEscrito('+56 9 12345')")==='+56 9 1234 5');
 chk('no pasa de 8 dígitos después del 9',run("textoWhatsappEscrito('+56 9 1234 56789')")==='+56 9 1234 5678');
 chk('un número de otro país se deja como está',run("textoWhatsappEscrito('+54 11 5555 1234')")==='+54 11 5555 1234');
-chk('Instagram lleva @',run("textoInstagramEscrito('profe.calculo')")==='@profe.calculo'&&run("textoInstagramEscrito('@profe')")==='@profe');
-chk('los prefijos son exactamente "+56 9 " y "@"',run("PREFIJO_CONTACTO_CLASE.whatsapp")==='+56 9 '&&run("PREFIJO_CONTACTO_CLASE.instagram")==='@');
+chk('el prefijo es exactamente "+56 9 "',run("PREFIJO_CONTACTO_CLASE.whatsapp")==='+56 9 ');
 
 console.log('\n=== Un prefijo solo no es un contacto ===');
 const base="({tenant:'uc',ramos_siglas:['MAT1610'],criterios:{promedioMenorA:5,avanceMinimo:20},modalidad:'individual',ubicacion:'online',precio_clp:15000,titulo:'Clases de Cálculo I',descripcion:'Repasamos ejercicios y preparamos evaluaciones.'})";
 const valida=(tipo,valor)=>run(`validarBorradorClase({...${base},contacto_tipo:${JSON.stringify(tipo)},contacto_valor:${JSON.stringify(valor)}})`);
 chk('"+56 9 " sin número no pasa',!valida('whatsapp','+56 9 ').ok&&/WhatsApp/.test(valida('whatsapp','+56 9 ').error));
-chk('"@" sin usuario no pasa',!valida('instagram','@').ok);
 chk('un número completo sí pasa',valida('whatsapp','+56 9 1234 5678').ok);
-chk('un usuario con @ sí pasa',valida('instagram','@profe.calculo').ok);
-chk('un correo mal escrito no pasa',!valida('email','profe@').ok);
+chk('Instagram ya no se acepta',!valida('instagram','@profe.calculo').ok);
+chk('correo tampoco',!valida('email','profe@ejemplo.cl').ok);
 
 console.log('\n=== Formato, lugar y detalles a medida ===');
-const conCampos=extra=>run(`validarBorradorClase({...${base},contacto_tipo:'email',contacto_valor:'profe@ejemplo.cl',...${JSON.stringify(extra)}})`);
+const conCampos=extra=>run(`validarBorradorClase({...${base},contacto_tipo:'whatsapp',contacto_valor:'+56 9 1234 5678',...${JSON.stringify(extra)}})`);
 chk('formato y lugar se pueden dejar sin indicar',(r=>r.ok&&r.datos.modalidad===null&&r.datos.ubicacion===null)(conCampos({modalidad:'',ubicacion:''})));
 chk('"Otra" guarda su texto',(r=>r.ok&&r.datos.ubicacion==='otra'&&r.datos.ubicacion_otra==='En la biblioteca')(conCampos({ubicacion:'otra',ubicacion_otra:' En la biblioteca '})));
 chk('"Otra" sin texto no pasa',!conCampos({modalidad:'otra',modalidad_otra:''}).ok);
@@ -52,6 +50,14 @@ chk('ni textos largos',!conCampos({detalles:[{etiqueta:'x'.repeat(31),valor:'b'}
 chk('un detalle no puede traer campos extra al servidor',Object.keys(conCampos({detalles:[{etiqueta:'a',valor:'b',href:'http://x'}]}).datos.detalles[0]).join()==='etiqueta,valor');
 chk('el catálogo muestra el texto de "Otra"',run("formatoClase({modalidad:'otra',modalidad_otra:'Grupos de 3',ubicacion:'online'})")==='Grupos de 3 · Online');
 chk('y nada si no se indicó',run("formatoClase({modalidad:null,ubicacion:null})")==='');
+
+console.log('\n=== El chat parte escrito ===');
+ctx.__a={titulo:'Cálculo II para la I2',contacto_tipo:'whatsapp',contacto_valor:'+56 9 1234 5678'};
+const wa=run('enlaceContactoClase(__a.contacto_tipo,__a.contacto_valor,mensajeContactoClase(__a))');
+chk('abre WhatsApp con el mensaje',wa.startsWith('https://wa.me/56912345678?text=')&&decodeURIComponent(wa.split('text=')[1])==='Hola, vi tu clase «Cálculo II para la I2» en GradeHub.');
+ctx.__b={titulo:'A & B ?x=1#y'};
+chk('un título raro no rompe el enlace',!/[&#?]/.test(run("enlaceContactoClase('whatsapp','+56912345678',mensajeContactoClase(__b))").split('?text=')[1]));
+chk('la tarjeta no muestra el número',!/1234/.test(run("tarjetaCatalogoClase({id:'x',titulo:'T',ramos_siglas:['MAT1610'],precio_clp:15000,contacto_tipo:'whatsapp',contacto_valor:'+56 9 1234 5678'}).replace(/href=\"[^\"]*\"/g,'')")));
 
 console.log('\n=== Clase gratis ===');
 chk('un borrador guardado con $0 se reabre con $0, no vacío',run("textoPesosEscrito(0)")==='$0'&&run("textoPesosEscrito(null)")==='');

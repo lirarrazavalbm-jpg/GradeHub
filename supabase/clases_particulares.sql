@@ -229,6 +229,14 @@ alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_preci
 alter table public.tutor_anuncios add constraint tutor_anuncios_precio_clp_check
   check (precio_clp = 0 or precio_clp between 1000 and 500000);
 
+-- SOLO WHATSAPP desde el 2026-09-25 (decisión de Lucas): es el canal común, el
+-- número no se muestra y el chat parte con un mensaje escrito. Al decidirlo no
+-- había anuncios con Instagram ni correo; si apareciera uno, este ADD falla y
+-- no se aplica a medias.
+alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_contacto_tipo_check;
+alter table public.tutor_anuncios add constraint tutor_anuncios_contacto_tipo_check
+  check (contacto_tipo = 'whatsapp');
+
 -- UN RAMO POR ANUNCIO desde el 2026-09-25 (decisión de Lucas). Es un trigger
 -- y no un CHECK a propósito: un CHECK revisa la fila entera en cada UPDATE, y
 -- un anuncio antiguo con dos ramos quedaría trabado —ni pausarlo se podría—.

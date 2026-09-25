@@ -97,7 +97,10 @@ function validarBorradorClase(entrada){
   if(!Number.isSafeInteger(entrada.precio_clp)||!(entrada.precio_clp===0||(entrada.precio_clp>=1000&&entrada.precio_clp<=500000)))
     return {ok:false,campo:'precio_clp',error:'Indica el precio de la clase entre $1.000 y $500.000, o $0 si es gratis.'};
   const contacto_tipo=String(entrada.contacto_tipo||''),contacto_valor=String(entrada.contacto_valor||'').trim();
-  if(!['whatsapp','instagram','email'].includes(contacto_tipo))return {ok:false,campo:'contacto_tipo',error:'Elige cómo te contactarán.'};
+  // Solo WhatsApp desde el 2026-09-25 (decisión de Lucas): es el canal que
+  // usan todos y el único que abre con el mensaje escrito. El número no se
+  // muestra; el estudiante llega por el botón y así el contacto se mide.
+  if(contacto_tipo!=='whatsapp')return {ok:false,campo:'contacto_valor',error:'Las clases se contactan por WhatsApp. Escribe tu número.'};
   if(contacto_valor.length<3||contacto_valor.length>160)return {ok:false,campo:'contacto_valor',error:'Revisa el dato de contacto.'};
   // El formulario rellena "+56 9 " o "@" solo: sin esta comprobación el prefijo
   // solo, sin número ni usuario, pasaba como contacto válido y el anuncio
@@ -113,8 +116,6 @@ function validarBorradorClase(entrada){
 
 const ERROR_CONTACTO_CLASE={
   whatsapp:'Escribe tu número de WhatsApp completo, por ejemplo +56 9 1234 5678.',
-  instagram:'Escribe tu usuario de Instagram, por ejemplo @profe.calculo.',
-  email:'Revisa tu correo: tiene que ser como nombre@dominio.cl.',
 };
 
 // ─── CAMPOS QUE SE ESCRIBEN CON FORMATO ─────────────────────────────────────
@@ -141,12 +142,8 @@ function textoWhatsappEscrito(texto){
   const resto=digitos.slice(3,11);
   return '+56 9 '+(resto.length>4?resto.slice(0,4)+' '+resto.slice(4):resto);
 }
-function textoInstagramEscrito(texto){
-  const t=String(texto||'').replace(/\s+/g,'');
-  return t&&!t.startsWith('@')?'@'+t:t;
-}
-const PREFIJO_CONTACTO_CLASE={whatsapp:'+56 9 ',instagram:'@',email:''};
-const EJEMPLO_CONTACTO_CLASE={whatsapp:'+56 9 1234 5678',instagram:'@profe.calculo',email:'nombre@dominio.cl'};
+const PREFIJO_CONTACTO_CLASE={whatsapp:'+56 9 '};
+const EJEMPLO_CONTACTO_CLASE={whatsapp:'+56 9 1234 5678'};
 
 // Reescribe el campo con su formato sin mandar el cursor al final: cuenta
 // cuántos caracteres "de verdad" (dígitos, letras) había antes del cursor y lo
@@ -780,11 +777,13 @@ function prepararCatalogoClases(anuncios,busqueda,nombresPorSigla={}, {ahora=Dat
 
 // Los datos de contacto vienen de contenido revisado, pero igual se construyen
 // con lista blanca. Nunca se copia una URL arbitraria a href.
-function enlaceContactoClase(tipo,valor){
+function enlaceContactoClase(tipo,valor,mensaje=''){
   const canal=String(tipo||''),dato=String(valor||'').trim();
   if(canal==='whatsapp'){
     const telefono=dato.replace(/\D/g,'');
-    return telefono.length>=8&&telefono.length<=15?`https://wa.me/${telefono}`:'';
+    if(telefono.length<8||telefono.length>15)return '';
+    const texto=String(mensaje||'').trim();
+    return `https://wa.me/${telefono}`+(texto?`?text=${encodeURIComponent(texto)}`:'');
   }
   if(canal==='instagram'){
     const usuario=dato.replace(/^@/,'');
@@ -836,6 +835,12 @@ function pesosClase(valor){
   return new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0})
     .format(Number.isFinite(n)&&n>0?n:0);
 }
+// El chat parte escrito, para que el profesor sepa de qué anuncio viene. Nunca
+// dice nada de las notas de quien escribe.
+function mensajeContactoClase(anuncio){
+  const titulo=String(anuncio&&anuncio.titulo||'').trim();
+  return titulo?`Hola, vi tu clase «${titulo}» en GradeHub.`:'Hola, vi tu clase en GradeHub.';
+}
 function textoContactoClase(tipo){return {whatsapp:'Hablar por WhatsApp',instagram:'Ver Instagram',email:'Enviar correo'}[tipo]||'Contactar';}
 
 let catalogoClasesActual=[],nombresCatalogoClasesActual={};
@@ -843,7 +848,7 @@ let catalogoClasesActual=[],nombresCatalogoClasesActual={};
 // mostramos, para que un contacto se mida en ese ramo.
 function tarjetaCatalogoClase(a,{sigla}={}){
   const siglaMetrica=sigla||a.ramos_siglas[0]||'';
-    const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor);
+    const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor,mensajeContactoClase(a));
     const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos||[])].join(' · ');
     return `<article class="catalogo-clase-card" data-catalogo-anuncio="${esc(a.id)}">
       ${a.flyer_path?`<div class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"><span>Cargando flyer…</span></div>`:''}
@@ -1680,7 +1685,6 @@ function filaRamoVistaPrevia(extra){
 function renderBorradorProfesor(raiz,anuncio){
   let id=anuncio&&anuncio.id||null,flyerActual=anuncio&&anuncio.flyer_path||null;
   const valor=(campo,defecto='')=>esc(anuncio&&anuncio[campo]!=null?anuncio[campo]:defecto);
-  const tipoContactoInicial=anuncio&&PREFIJO_CONTACTO_CLASE[anuncio.contacto_tipo]!==undefined?anuncio.contacto_tipo:'whatsapp';
   const elegir=(opciones,actual)=>opciones.map(([clave,texto])=>`<option value="${clave}"${actual===clave?' selected':''}>${texto}</option>`).join('');
   raiz.innerHTML=`<div class="modal-title" id="modal-titulo">${id?'Edita tu borrador':'Prepara tu clase'}</div>
     <p class="profesor-info">Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.</p>
@@ -1704,8 +1708,8 @@ function renderBorradorProfesor(raiz,anuncio){
         <p class="profesor-info">Es lo primero que lee el estudiante en Inicio, junto a su ramo. Elige lo que más ayuda a decidir; el resto aparece cuando abre tu clase.</p>
         <div class="profesor-linea-opciones" id="pr-linea"></div>
       </fieldset>
-      <label class="modal-label" for="pr-contacto-tipo">Cómo te contactarán</label><select id="pr-contacto-tipo">${elegir([['whatsapp','WhatsApp'],['instagram','Instagram'],['email','Correo']],anuncio&&anuncio.contacto_tipo)}</select>
-      <label class="modal-label" for="pr-contacto">Tu contacto</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
+      <label class="modal-label" for="pr-contacto">Tu WhatsApp</label><input id="pr-contacto" type="tel" inputmode="tel" minlength="3" maxlength="160" required autocomplete="off" aria-describedby="pr-contacto-ayuda" placeholder="${esc(EJEMPLO_CONTACTO_CLASE.whatsapp)}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE.whatsapp)}">
+      <p class="profesor-info" id="pr-contacto-ayuda">Tu número no aparece en el anuncio. El estudiante te escribe con un botón y el chat parte con «Hola, vi tu clase … en GradeHub».</p>
       <label class="modal-label" for="pr-flyer">Flyer · opcional</label><input id="pr-flyer" type="file" accept="image/jpeg,image/png,image/webp"><p class="profesor-info">JPG, PNG o WebP · máximo 5 MB. Primero se guarda el borrador y después se sube la imagen.</p>
       <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
       <button class="btn-cancel" id="pr-quitar-flyer" type="button" ${flyerActual?'':'hidden'}>Quitar flyer guardado</button>
@@ -1830,19 +1834,9 @@ function renderBorradorProfesor(raiz,anuncio){
   activarBuscadorRamosClase(form,campo);
   const cajaLogo=campo('logo');
   if(cajaLogo)renderLogoProfesor(cajaLogo);
-  // WhatsApp e Instagram parten con su prefijo escrito. Al cambiar de canal se
-  // cambia el prefijo solo si el campo no tiene nada más que un prefijo: lo que
-  // la persona ya escribió no se borra por tocar el selector.
+  // El WhatsApp parte con "+56 9 " escrito y se ordena con sus espacios.
   const contacto=campo('contacto');
-  formatearAlEscribir(contacto,texto=>{
-    const tipo=campo('contacto-tipo').value;
-    return tipo==='whatsapp'?textoWhatsappEscrito(texto):tipo==='instagram'?textoInstagramEscrito(texto):texto;
-  });
-  campo('contacto-tipo').addEventListener('change',()=>{
-    const tipo=campo('contacto-tipo').value,actual=String(contacto.value||'').trim();
-    if(!actual||Object.values(PREFIJO_CONTACTO_CLASE).some(p=>p&&p.trim()===actual))contacto.value=PREFIJO_CONTACTO_CLASE[tipo]||'';
-    contacto.placeholder=EJEMPLO_CONTACTO_CLASE[tipo]||'';
-  });
+  formatearAlEscribir(contacto,textoWhatsappEscrito);
   const preview=form.querySelector('.profesor-flyer-preview');
   if(flyerActual)urlFlyerClase(flyerActual).then(url=>{if(url&&preview.isConnected){preview.querySelector('img').src=url;preview.hidden=false;}});
   campo('flyer').addEventListener('change',()=>{
@@ -1873,13 +1867,13 @@ function renderBorradorProfesor(raiz,anuncio){
       modalidad:campo('modalidad').value,ubicacion:campo('ubicacion').value,
       modalidad_otra:campo('modalidad-otra')?campo('modalidad-otra').value:'',ubicacion_otra:campo('ubicacion-otra')?campo('ubicacion-otra').value:'',
       detalles:leerDetalles(),linea_datos:lineaParaGuardar(borradorEnVivo()),
-      contacto_tipo:campo('contacto-tipo').value,contacto_valor:campo('contacto').value};
+      contacto_tipo:'whatsapp',contacto_valor:campo('contacto').value};
     procesando=true;
     const botones=[form.querySelector('#pr-guardar'),form.querySelector('#pr-enviar')];botones.forEach(b=>b.disabled=true);
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};campo(mapa[guardado.campo]||guardado.campo)?.focus();}return;}
       id=guardado.anuncio.id;
       if(file){estado.textContent='Borrador guardado. Subiendo flyer…';const subida=await subirFlyerClase(id,file);
         if(!subida.ok){estado.textContent='Borrador guardado, pero '+subida.error;return;}
