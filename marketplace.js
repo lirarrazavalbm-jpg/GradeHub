@@ -212,9 +212,13 @@ async function perfilProfesorActual(){
     const pedir=campos=>supabaseClient.from('tutor_perfiles').select(campos).eq('user_id',uid).maybeSingle();
     let {data,error}=await pedir('nombre_publico,presentacion,estado,solicitado_at,revisado_at,logo_id,logo_path,logo_aprobado_path');
     if(faltaColumnaClase(error))({data,error}=await pedir('nombre_publico,presentacion,estado,solicitado_at,revisado_at'));
-    if(error)return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};
+    // El motivo real queda en la consola. El 2026-09-25 un SQL pegado a medias
+    // dejó sin permiso de lectura la ficha, y la pantalla solo decía "todavía
+    // no está disponible": un "permission denied" acá lo habría dicho al tiro.
+    if(error){console.warn('No se pudo leer la ficha de profesor:',error.code||'',error.message||error);
+      return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};}
     return {ok:true,perfil:data||null};
-  }catch(e){return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};}
+  }catch(e){console.warn('No se pudo leer la ficha de profesor:',e);return {ok:false,error:'El espacio de profesor todavía no está disponible. Tus notas no se han tocado.'};}
 }
 
 async function postularProfesor(nombre,presentacion){
