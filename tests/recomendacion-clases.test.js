@@ -60,8 +60,10 @@ guardado.gradehub_marketplace_v1='{roto';
 chk('un valor dañado no rompe Inicio',JSON.stringify(run('leerEstadoMarketplace()'))==='{}');
 const mk=fs.readFileSync(path.join(raiz,'marketplace.js'),'utf8'),rm=fs.readFileSync(path.join(raiz,'render-main.js'),'utf8');
 const bloque=mk.slice(mk.indexOf('function pintarRecomendacionClase'),mk.indexOf('async function abrirClaseRecomendada'));
-chk('el banner dice publicidad',/Publicidad · Clase particular/.test(bloque));
-chk('y no diagnostica',!/reprob|riesgo|mal en|te va mal/i.test(bloque));
+const contenido=mk.slice(mk.indexOf('function contenidoRecomendacionClase'),mk.indexOf('function pintarRecomendacionClase'));
+chk('el banner dice publicidad, igual que la vista previa del profesor',
+  /Publicidad · Clase particular/.test(contenido)&&/contenidoRecomendacionClase\(anuncio\)/.test(bloque));
+chk('y no diagnostica',!/reprob|riesgo|mal en|te va mal/i.test(bloque+contenido));
 chk('solo Inicio lo pinta',/pintarRecomendacionClase\(c\)/.test(rm.slice(rm.indexOf('function renderHome'),rm.indexOf('function renderRamo')))&&
   !/pintarRecomendacionClase/.test(rm.slice(rm.indexOf('function renderRamo'))));
 chk('el alcance se registra como recomendación',/registrarAlcanceAnuncio\(anuncio\.id,'recomendacion'\)/.test(mk));
