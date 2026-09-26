@@ -654,7 +654,8 @@ function cursosUcDisponibles(){
   // La versión completa va primero para que, al reemplazar la muestra, sus
   // créditos y escuela enriquezcan las filas que también existen en el
   // respaldo chico. Las siglas repetidas se filtran al armar el catálogo.
-  return extra?extra.concat(base):base;
+  // Sin el archivo, entran los cursos que ya trajo el servidor.
+  return extra?extra.concat(base):_cursosUcRemotos.concat(base);
 }
 let _cursosUcPendiente=null;
 function cargarCursosUC(){
@@ -683,8 +684,10 @@ function escuelaCursoUc(indice){
   return Number.isInteger(indice)&&typeof ESCUELAS_UC[indice]==='string'?ESCUELAS_UC[indice]:null;
 }
 function cursoUcCompleto(nombre,sigla){
-  const extra=cursosUcExtra();
-  if(!extra)return null;
+  // Sin el archivo completo, un curso que llegó del servidor igual aporta su
+  // sigla y sus créditos al agregarlo.
+  const extra=cursosUcExtra()||_cursosUcRemotos;
+  if(!extra.length)return null;
   const ns=normName(sigla||''),nn=normName(nombre||'');
   return extra.find(f=>{
     if(!Array.isArray(f))return false;
@@ -754,10 +757,97 @@ function completarCreditosUCTrasCarga(){
 // a alguien "no está, lo agregamos como ramo tuyo" en ese momento le hace crear
 // a mano un ramo que SÍ tenemos, perdiendo su sigla, sus créditos y su pauta.
 // Con 11 mil pautas en camino ese es justo el error que más cuesta.
-function catalogoUcEnCamino(tenant){return tenant==='uc'&&!cursosUcExtra();}
-function repintarAlCargarCursosUC(tenant,repintar){
+// ─── Catálogo UC en el servidor ────────────────────────────────────────────
+// Buscar un ramo ya no descarga los ~618 KB de cursos-uc.js (en iPhone se
+// sentía pegado, 2026-09-26). Se muestran al tiro la malla y los cursos que
+// más toma la gente de tu carrera (`cursos_frecuentes_uc`), y lo demás se
+// busca en `public.catalogo_uc` mientras escribes (supabase/catalogo_uc.sql).
+// Lo que llega se suma a `_cursosUcRemotos` y entra al mismo índice y al mismo
+// orden de siempre. Si la tabla no existe todavía o falla la red, se vuelve a
+// descargar el archivo como antes: nadie se queda sin buscador.
+let _cursosUcRemotos=[];
+let _catalogoUcServidor='?';   // '?' sin probar · 'ok' responde · 'no' → archivo
+let _busquedaUcPendiente=false,_busquedaUcTimer=null,_busquedaUcUltima='';
+const _frecuentesUcPedidos=new Set();
+let _frecuentesUc=[];
+function agregarCursosUcRemotos(filas){
+  const vistas=new Set(_cursosUcRemotos.map(f=>f[0]));
+  const nuevas=(Array.isArray(filas)?filas:[]).filter(f=>f&&typeof f.sigla==='string'&&typeof f.nombre==='string'&&f.nombre.trim()&&!vistas.has(f.sigla)&&vistas.add(f.sigla))
+    .map(f=>[f.sigla,f.nombre,Number.isInteger(f.creditos)?f.creditos:null]);
+  if(!nuevas.length)return false;
+  // Una referencia nueva: el índice de búsqueda la compara para rearmarse.
+  _cursosUcRemotos=_cursosUcRemotos.concat(nuevas).slice(-3000);
+  return true;
+}
+// Las palabras de la consulta tal como las compara la columna `busqueda`:
+// minúsculas, sin tildes y con romanos en cifras. Solo letras y números, así
+// que no hay forma de meter sintaxis en el filtro del servidor.
+function consultaCatalogoUc(q){
+  const n=normBusqueda(normName(q)).replace(/[^a-z0-9 ]+/g,' ');
+  const tokens=n.split(/\s+/).filter(t=>t&&!ENLACES_BUSQUEDA.has(t)).slice(0,4);
+  return tokens.join('').length>=2?tokens:null;
+}
+// supabaseClient y currentUser viven en app-session.js, que carga después.
+function clienteCatalogoUc(){return typeof supabaseClient!=='undefined'&&supabaseClient&&typeof supabaseClient.from==='function'?supabaseClient:null;}
+function pedirFrecuentesUc(carrera,repintar){
+  const cliente=clienteCatalogoUc();
+  if(!carrera||!cliente||typeof currentUser==='undefined'||!currentUser||_frecuentesUcPedidos.has(carrera))return;
+  _frecuentesUcPedidos.add(carrera);
+  Promise.resolve(cliente.rpc('cursos_frecuentes_uc',{p_carrera:carrera})).then(({data,error})=>{
+    if(error||!Array.isArray(data))return;
+    _frecuentesUc=data.map(f=>f&&f.sigla).filter(Boolean);
+    agregarCursosUcRemotos(data);
+    repintar();
+  }).catch(()=>{});
+}
+function buscarCatalogoUcServidor(q,repintar){
+  const tokens=consultaCatalogoUc(q);
+  clearTimeout(_busquedaUcTimer);
+  if(!tokens){_busquedaUcPendiente=false;return;}
+  const clave=tokens.join(' ');
+  if(clave===_busquedaUcUltima){_busquedaUcPendiente=false;return;}
+  _busquedaUcPendiente=true;
+  _busquedaUcTimer=setTimeout(async()=>{
+    try{
+      let consulta=clienteCatalogoUc().from('catalogo_uc').select('sigla,nombre,creditos')
+        .or(`sigla.ilike.${tokens[0].toUpperCase()}%,busqueda.ilike.%${tokens[0]}%`);
+      tokens.slice(1).forEach(t=>{consulta=consulta.ilike('busqueda',`%${t}%`);});
+      const {data,error}=await consulta.limit(40);
+      if(error)throw error;
+      _catalogoUcServidor='ok';_busquedaUcUltima=clave;
+      agregarCursosUcRemotos(data);
+    }catch(e){
+      // Tabla sin crear, sin red o cualquier otra cosa: el archivo de siempre.
+      _catalogoUcServidor='no';
+      cargarCursosUC().then(ok=>{if(ok)repintar();});
+    }finally{
+      _busquedaUcPendiente=false;
+      repintar();
+    }
+  },220);
+}
+// "Buscando…" mientras no haya una respuesta que permita decir que un ramo no
+// existe: sin probar el servidor, con una búsqueda en curso, o bajando el
+// archivo porque el servidor no respondió.
+function catalogoUcEnCamino(tenant){
+  if(tenant!=='uc'||cursosUcExtra())return false;
+  return _catalogoUcServidor!=='ok'||_busquedaUcPendiente;
+}
+function repintarAlCargarCursosUC(tenant,repintar,q,carrera){
   if(tenant!=='uc'||cursosUcExtra())return;
-  cargarCursosUC().then(ok=>{if(ok)repintar();});
+  if(_catalogoUcServidor==='no'||!clienteCatalogoUc()){cargarCursosUC().then(ok=>{if(ok)repintar();});return;}
+  if(!String(q||'').trim())pedirFrecuentesUc(carrera||S.carrera,repintar);
+  buscarCatalogoUcServidor(q,repintar);
+}
+// Al abrir el buscador, primero lo que más toma la gente de tu carrera, sin
+// repetir lo que ya tienes. Solo reordena: no agrega ni quita resultados.
+function priorizarFrecuentesUc(res,yaTengo){
+  if(!_frecuentesUc.length)return res;
+  const lugar=new Map(_frecuentesUc.map((s,i)=>[s,i]));
+  const frec=res.filter(r=>r.sigla&&lugar.has(r.sigla)&&!yaTengo.has(normName(r.nombre)))
+    .sort((a,b)=>lugar.get(a.sigla)-lugar.get(b.sigla));
+  const usados=new Set(frec);
+  return frec.concat(res.filter(r=>!usados.has(r)));
 }
 // El buscador cubre toda la universidad, no solo tu carrera: se piden las
 // mallas diferidas aunque la tuya venga en el archivo base (Ingeniería UC).
@@ -1563,7 +1653,7 @@ function renderObCourseResults(q){
     if(input&&input.value===q)renderObCourseResults(q);
   };
   repintarAlCargarMallas(selectedTenant,repintar);
-  repintarAlCargarCursosUC(selectedTenant,repintar);
+  repintarAlCargarCursosUC(selectedTenant,repintar,term,selectedCarrera);
   const res=searchCatalog(term,selectedTenant,selectedCarrera,selectedSem).slice(0,6);
   if(!res.length){
     box.innerHTML=`<p class="course-picker-reassurance">${catalogoUcEnCamino(selectedTenant)
@@ -2749,9 +2839,11 @@ function renderCatalogResults(q){
     if(input&&input.value===q)renderCatalogResults(q);
   };
   repintarAlCargarMallas(S.tenant,repintar);
-  repintarAlCargarCursosUC(S.tenant,repintar);
+  repintarAlCargarCursosUC(S.tenant,repintar,q,S.carrera);
   const yaTengo=new Set(S.ramos.map(r=>normName(r.nombre)));
-  const res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre).slice(0,6);
+  let res=searchCatalog(q,S.tenant,S.carrera,S.careerSemestre);
+  if(S.tenant==='uc'&&!String(q||'').trim())res=priorizarFrecuentesUc(res,yaTengo);
+  res=res.slice(0,6);
   if(res.length===0){
     const texto=!q||!q.trim()?'Sin ramos en el catálogo.'
       :catalogoUcEnCamino(S.tenant)?'Buscando en el catálogo de la UC…'
@@ -3281,6 +3373,7 @@ function fuentesDiferidasCatalogo(tenant){
   return {
     mallas:mallasExtraDe(tenant),
     cursos:tenant==='uc'?cursosUcExtra():null,
+    remotos:tenant==='uc'?_cursosUcRemotos:null,
   };
 }
 // El catálogo escribe el nivel en romano —"Matemáticas Avanzadas II"— y la
@@ -3307,10 +3400,10 @@ const ENLACES_BUSQUEDA=new Set(['de','del','la','el','los','las','y','e','o','u'
 function indiceBusquedaCatalogo(tenant,carrera){
   const key=catalogKey(tenant,carrera),fuentes=fuentesDiferidasCatalogo(tenant);
   const guardado=_indicesBusquedaCatalogo.get(key);
-  if(guardado&&guardado.mallas===fuentes.mallas&&guardado.cursos===fuentes.cursos)return guardado;
+  if(guardado&&guardado.mallas===fuentes.mallas&&guardado.cursos===fuentes.cursos&&guardado.remotos===fuentes.remotos)return guardado;
   const todos=catalogRamosUniversidad(tenant,carrera);
   const indice={
-    mallas:fuentes.mallas,cursos:fuentes.cursos,todos,
+    mallas:fuentes.mallas,cursos:fuentes.cursos,remotos:fuentes.remotos,todos,
     filas:todos.map(r=>{
       const nombre=normName(r.nombre);
       return {ramo:r,nombre,sigla:normName(r.sigla||''),busqueda:normBusqueda(nombre)};
@@ -6313,7 +6406,7 @@ function renderBusquedaSemestreAnterior(q){
     if(input&&input.value===q)renderBusquedaSemestreAnterior(q);
   };
   repintarAlCargarMallas(S.tenant,repintar);
-  repintarAlCargarCursosUC(S.tenant,repintar);
+  repintarAlCargarCursosUC(S.tenant,repintar,texto,S.carrera);
   const res=searchCatalog(texto,S.tenant,S.carrera,8)
     .filter(c=>!histManual.ramos.some(r=>normName(r.nombre)===normName(c.nombre)));
   box.innerHTML=(!res.length&&catalogoUcEnCamino(S.tenant)
