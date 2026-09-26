@@ -2276,20 +2276,11 @@ function pintarRecomendacionClase(contenedor){
     caja.innerHTML=imgLogoClase(url);caja.hidden=false;
   }).catch(()=>{});
   fila.classList.add('tiene-clase-apoyo');
-  // En celular la lista es una columna y el banner va pegado bajo su ramo. En
-  // la grilla de escritorio la clase ocupa UNA casilla: la de la derecha del
-  // ramo, o la de su izquierda si el ramo está en la última columna. Así ramo
-  // y clase quedan siempre en la misma fila, juntos.
-  const filas=[...contenedor.querySelectorAll('.ramo-row')];
-  let columnas=1;
-  try{const cs=getComputedStyle(contenedor);if(cs.display==='grid')columnas=cs.gridTemplateColumns.split(' ').filter(Boolean).length||1;}catch(e){}
-  if(columnas>1){
-    const derecha=filas.indexOf(fila)%columnas<columnas-1;
-    banner.classList.add('en-casilla',derecha?'a-la-derecha':'a-la-izquierda');
-    fila.classList.add(derecha?'junto-der':'junto-izq');
-    if(derecha)fila.after(banner);else fila.before(banner);
-    alinearRecomendacionConRamo(contenedor,fila,banner);
-  }else fila.after(banner);
+  // En el DOM el banner va siempre justo después de su ramo: así se lee en
+  // orden y en celular (una columna) queda pegado debajo. En la grilla se
+  // ubica aparte, en colocarRecomendacionEnGrilla.
+  fila.after(banner);
+  alinearRecomendacionConRamo(contenedor,fila,banner,{colocar:true});
   observarRecomendacionClase(banner,anuncio,sigla);
 }
 
@@ -2297,10 +2288,50 @@ function pintarRecomendacionClase(contenedor){
 // los dos queda centrado, y el título de la clase se alinea con el nombre del
 // ramo y sus datos con la sigla. Se mide en pantalla porque un nombre de ramo
 // puede ocupar una o dos líneas; se vuelve a medir si cambia el tamaño.
-function alinearRecomendacionConRamo(contenedor,fila,banner){
+// En la grilla de escritorio la clase ocupa UNA casilla junto a su ramo: la
+// de la derecha, o la de la izquierda si el ramo está en la última columna.
+// Ramo y clase se fijan en su fila y columna, y el resto de los ramos fluye
+// alrededor; el ramo queda exactamente donde estaba sin la clase.
+//
+// Antes se metía el banner antes o después del ramo en el DOM, con las
+// columnas contadas una sola vez. Con el ramo en la última columna, meterlo
+// antes empujaba al ramo a la fila siguiente, y la clase quedaba lejos de su
+// ramo, con el texto encima de otro (pasó el 2026-09-26 con Dinámica en la
+// tercera columna). Ahora se recalcula si cambia el ancho.
+function columnasGrillaRamos(contenedor){
+  try{
+    const cs=getComputedStyle(contenedor);
+    if(cs.display!=='grid')return 1;
+    // Con la grilla dibujada el valor viene en píxeles, una por columna. Sin
+    // dibujar (pantalla oculta) viene como la regla escrita: no se adivina.
+    const t=String(cs.gridTemplateColumns||'').trim();
+    return /^[\d.]+px( [\d.]+px)*$/.test(t)?t.split(' ').length:0;
+  }catch(e){return 1;}
+}
+function colocarRecomendacionEnGrilla(contenedor,fila,banner){
+  const columnas=columnasGrillaRamos(contenedor);
+  if(!columnas)return;
+  const casillas=[...contenedor.children].filter(el=>el!==banner);
+  const i=casillas.indexOf(fila);
+  const derecha=columnas>1&&i>=0&&i%columnas<columnas-1;
+  const enGrilla=columnas>1&&i>=0;
+  banner.classList.toggle('en-casilla',enGrilla);
+  banner.classList.toggle('a-la-derecha',enGrilla&&derecha);
+  banner.classList.toggle('a-la-izquierda',enGrilla&&!derecha);
+  fila.classList.toggle('junto-der',enGrilla&&derecha);
+  fila.classList.toggle('junto-izq',enGrilla&&!derecha);
+  if(!enGrilla){['--ca-fila','--ca-col-ramo','--ca-col-clase'].forEach(v=>{fila.style.removeProperty(v);banner.style.removeProperty(v);});return;}
+  const filaGrilla=Math.floor(i/columnas)+1,col=i%columnas+1;
+  [fila,banner].forEach(el=>el.style.setProperty('--ca-fila',String(filaGrilla)));
+  fila.style.setProperty('--ca-col-ramo',String(col));
+  banner.style.setProperty('--ca-col-clase',String(derecha?col+1:col-1));
+}
+
+function alinearRecomendacionConRamo(contenedor,fila,banner,{colocar=false}={}){
   let obs=null;
   const medir=()=>{
     if(!banner.isConnected||!fila.isConnected){if(obs)obs.disconnect();return;}
+    if(colocar)colocarRecomendacionEnGrilla(contenedor,fila,banner);
     const info=fila.querySelector('.ramo-info');
     if(info)fila.style.setProperty('--info-mitad',(info.offsetHeight/2)+'px');
     const nombre=fila.querySelector('.ramo-name'),meta=fila.querySelector('.ramo-meta');
