@@ -2929,7 +2929,21 @@ function renderModalColors(){
   });
 }
 // Matching tolerante: ignora tildes y mayúsculas para encontrar el preset.
-function normName(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
+// Se memoriza: el buscador de "Agregar ramo" compara ~10.000 cursos UC contra
+// los presets y normalizaba los mismos nombres millones de veces. En un iPhone
+// eso congelaba la pantalla varios segundos al abrir el modal (2026-09-26). La
+// función es pura, así que guardar el resultado no cambia nada más.
+const _normNameCache=new Map();
+function normName(s){
+  if(typeof s!=='string')return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  let v=_normNameCache.get(s);
+  if(v===undefined){
+    v=s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    if(_normNameCache.size>50000)_normNameCache.clear();
+    _normNameCache.set(s,v);
+  }
+  return v;
+}
 
 // El mismo ramo escrito con y sin número. Hay programas que numeran el primero
 // de una serie que en la malla va sin número: "Contabilidad I" es la
@@ -4155,14 +4169,28 @@ function findPresetName(nombre,tenant,carrera){
     return claveCatalogo(nombre,Object.keys(presets).filter(k=>pautaPresetSuficiente(evalsDePreset(presets[k]))),tenant);
   }
   if(tenant!=='uc'||!MALLA_UC[carrera])return null;
-  // La estrella y el selector prometen ponderaciones precargadas. Un programa
-  // que solo trae reglas (como Cálculo II) no debe fingir que las tiene, así
-  // que esos quedan fuera de la búsqueda en vez de descartarse después.
-  const conPauta=Object.keys(PRESETS_UC).filter(k=>{
-    const def=PRESETS_UC[k],evals=Array.isArray(def)?def:(def.evals||[]);
-    return evals.length&&pautaPresetSuficiente(evals)&&presetUcDisponible(k,carrera);
-  });
-  return claveCatalogo(nombre,conPauta,'uc');
+  return claveCatalogo(nombre,presetsUcConPauta(carrera),'uc');
+}
+// La estrella y el selector prometen ponderaciones precargadas. Un programa
+// que solo trae reglas (como Cálculo II) no debe fingir que las tiene, así
+// que esos quedan fuera de la búsqueda en vez de descartarse después.
+//
+// La lista depende solo de la carrera y de PRESETS_UC, que es un literal: se
+// arma una vez. Antes se rearmaba en CADA llamada, y armarla compara cada
+// preset con todos los demás; con ~10.000 cursos UC en el buscador eran
+// decenas de millones de comparaciones al abrir "Agregar ramo".
+const _presetsUcConPauta=new Map();
+function presetsUcConPauta(carrera){
+  const claves=Object.keys(PRESETS_UC),firma=carrera+'|'+claves.length;
+  let lista=_presetsUcConPauta.get(firma);
+  if(!lista){
+    lista=claves.filter(k=>{
+      const def=PRESETS_UC[k],evals=Array.isArray(def)?def:(def.evals||[]);
+      return evals.length&&pautaPresetSuficiente(evals)&&presetUcDisponible(k,carrera);
+    });
+    _presetsUcConPauta.set(firma,lista);
+  }
+  return lista;
 }
 // Reglas oficiales informativas que todavía no podemos representar en el
 // cálculo. Se recuperan por el origen del ramo para no inventarlas en manuales.
