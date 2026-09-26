@@ -43,7 +43,15 @@ const UBICACIONES_CLASE=[['online','Online'],['presencial','Presencial'],['hibri
 
 // Un borrador en Supabase es una clase COMPLETA, todavía no un formulario a
 // medio escribir: la tabla exige estos campos. No se añade nada a gradehub_v1.
-function validarBorradorClase(entrada){
+// El nombre de un ramo sin la sigla entre paréntesis: "Dinámica (ICE1514)" y
+// "Dinámica" son el mismo ramo para quien lee el anuncio.
+function nombreBaseRamoClase(nombre){return String(nombre||'').replace(/\s*\([^)]*\)\s*$/,'').trim();}
+function mismoRamoClase(a,b){
+  const n=x=>nombreBaseRamoClase(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return !!n(a)&&n(a)===n(b);
+}
+const ERROR_DOS_RAMOS_CLASE='Dos siglas solo se juntan si son el mismo ramo, como Dinámica ICE1514 y FIS1514. Si enseñas otro ramo, arma otro anuncio.';
+function validarBorradorClase(entrada,nombresPorSigla){
   if(!entrada||typeof entrada!=='object'||Array.isArray(entrada))return {ok:false,campo:'clase',error:'Completa los datos de tu clase.'};
   const tenant=String(entrada.tenant||'').trim();
   if(!['uc','fen','uai','uandes'].includes(tenant))return {ok:false,campo:'tenant',error:'Elige una universidad.'};
@@ -52,13 +60,19 @@ function validarBorradorClase(entrada){
   const descripcion=String(entrada.descripcion||'').trim();
   if(descripcion.length<20||descripcion.length>1500)return {ok:false,campo:'descripcion',error:'Cuenta qué harás en la clase (20 a 1500 caracteres).'};
   const siglas=Array.isArray(entrada.ramos_siglas)?entrada.ramos_siglas.map(s=>String(s||'').trim().toUpperCase()):[];
-  // Un ramo por anuncio (decisión de Lucas del 2026-09-25): cada clase se
-  // muestra y se mide en su ramo. Quien enseña varios arma un anuncio por
-  // cada uno. La base lo exige también, con un trigger.
+  // Un ramo por anuncio (decisión de Lucas del 2026-09-25), con una
+  // excepción desde el 2026-09-26: dos siglas del MISMO ramo, como Dinámica
+  // ICE1514 y FIS1514. Dos ramos distintos siguen siendo dos anuncios. La base
+  // exige uno o dos con un trigger; que sean el mismo ramo lo revisa esta
+  // validación y quien aprueba, porque la base no conoce los nombres.
   if(siglas.length<1||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s)))
     return {ok:false,campo:'ramos_siglas',error:'Elige el ramo de tu clase.'};
   if(siglas.length>MAX_RAMOS_POR_ANUNCIO||new Set(siglas).size!==siglas.length)
     return {ok:false,campo:'ramos_siglas',error:'Un anuncio puede tener hasta dos ramos. Si enseñas más, arma otro anuncio.'};
+  if(siglas.length===2){
+    const nombres=nombresPorSigla||nombresRamosParaClases(entrada.tenant);
+    if(!mismoRamoClase(nombres[siglas[0]],nombres[siglas[1]]))return {ok:false,campo:'ramos_siglas',error:ERROR_DOS_RAMOS_CLASE};
+  }
   if(!criteriosClaseValidos(entrada.criterios))return {ok:false,campo:'criterios',error:'Revisa el promedio y el avance elegidos para tu público.'};
   // Formato y lugar son opcionales. "Otra" exige escribirla: una opción
   // elegida sin texto se mostraría como nada.
@@ -835,7 +849,7 @@ let catalogoClasesActual=[],nombresCatalogoClasesActual={};
 function tarjetaCatalogoClase(a,{sigla,abierta=false}={}){
   const siglaMetrica=sigla||a.ramos_siglas[0]||'';
     const contacto=enlaceContactoClase(a.contacto_tipo,a.contacto_valor,mensajeContactoClase(a));
-    const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set(a.nombres_ramos||[])].join(' · ');
+    const siglas=a.ramos_siglas.join(' · '),nombres=[...new Set((a.nombres_ramos||[]).map(nombreBaseRamoClase).filter(Boolean))].join(' · ');
     // El flyer va como tarjeta aparte, bajo el anuncio y entero: metido al lado
     // del texto se recortaba y en celular no se veía nada. Aparece al abrir la
     // clase, así el catálogo cerrado no se alarga.
@@ -1627,7 +1641,7 @@ function activarBuscadorRamosClase(form,campo){
     // quitar uno para poner otro.
     const lleno=siglas.length>=MAX_RAMOS_POR_ANUNCIO;
     buscar.disabled=lleno;
-    buscar.placeholder=lleno?'Ya elegiste dos ramos. Quita uno para cambiarlo.':siglas.length?'Agrega otro ramo (opcional)':'Busca por nombre o sigla, ej. Cálculo II';
+    buscar.placeholder=lleno?'Ya elegiste dos siglas. Quita una para cambiarla.':siglas.length?'Otra sigla del mismo ramo (opcional)':'Busca por nombre o sigla, ej. Cálculo II';
   };
   const cerrar=()=>{lista.hidden=true;lista.innerHTML='';buscar.setAttribute('aria-expanded','false');};
   const mostrar=()=>{
@@ -1639,6 +1653,10 @@ function activarBuscadorRamosClase(form,campo){
   };
   const elegir=sg=>{
     const actuales=leer();
+    if(sg&&actuales.length===1&&actuales[0]!==sg&&!mismoRamoClase(nombreDe(actuales[0]),nombreDe(sg))){
+      if(typeof showToast==='function')showToast(ERROR_DOS_RAMOS_CLASE,true);
+      buscar.value='';cerrar();buscar.focus();return;
+    }
     if(sg&&!actuales.includes(sg)&&actuales.length<MAX_RAMOS_POR_ANUNCIO)escribir([...actuales,sg]);
     buscar.value='';cerrar();buscar.focus();
   };
@@ -1780,13 +1798,13 @@ function renderBorradorProfesor(raiz,anuncio){
       </div></details>
       <details class="profesor-seccion" open><summary><h3>2. Público</h3></summary><div class="profesor-seccion-cuerpo">
       <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
-      <label class="modal-label" for="pr-siglas-buscar">Ramos de tu clase · hasta 2</label>
+      <label class="modal-label" for="pr-siglas-buscar">Ramo de tu clase</label>
       <div class="profesor-ramos" id="pr-ramos-elegidos" aria-live="polite"></div>
       <div class="profesor-ramos-buscar">
         <input id="pr-siglas-buscar" type="search" autocomplete="off" placeholder="Busca por nombre o sigla, ej. Cálculo II" aria-describedby="pr-siglas-ayuda" aria-controls="pr-ramos-resultados">
         <ul class="profesor-ramos-resultados" id="pr-ramos-resultados" role="listbox" hidden></ul>
       </div>
-      <p class="profesor-info" id="pr-siglas-ayuda">Si la misma clase sirve para dos ramos, elige los dos. Si enseñas más, arma otro anuncio. Si un ramo no aparece, escribe su sigla completa.</p>
+      <p class="profesor-info" id="pr-siglas-ayuda">Si tu ramo tiene dos siglas, como Dinámica ICE1514 y FIS1514, puedes elegir las dos. Otro ramo va en otro anuncio. Si no aparece, escribe su sigla completa.</p>
       <input id="pr-siglas" type="hidden" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
       <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
       <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">
