@@ -245,7 +245,9 @@ alter table public.tutor_anuncios add constraint tutor_anuncios_contacto_tipo_ch
   check (contacto_tipo = 'whatsapp'
          or (precio_clp = 0 and contacto_tipo in ('instagram', 'enlace')));
 
--- UN RAMO POR ANUNCIO desde el 2026-09-25 (decisión de Lucas). Es un trigger
+-- UN RAMO POR ANUNCIO desde el 2026-09-25, HASTA DOS desde el 2026-09-26
+-- (decisiones de Lucas: la misma clase puede servir a dos siglas, como
+-- Dinámica ICE1514 y FIS1514). Es un trigger
 -- y no un CHECK a propósito: un CHECK revisa la fila entera en cada UPDATE, y
 -- un anuncio antiguo con dos ramos quedaría trabado —ni pausarlo se podría—.
 -- El trigger mira solo cuando se ESCRIBEN los ramos: crear o editarlos exige
@@ -256,8 +258,8 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if cardinality(new.ramos_siglas) <> 1 then
-    raise exception 'cada anuncio es para un solo ramo'
+  if cardinality(new.ramos_siglas) not between 1 and 2 then
+    raise exception 'cada anuncio es para uno o dos ramos'
       using errcode = 'check_violation';
   end if;
   return new;

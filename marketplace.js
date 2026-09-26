@@ -31,7 +31,9 @@ async function consultaCamposClase(hacer,base){
     capasColumnasClase=Math.min(capasColumnasClase,capas-1);
   }
 }
-const MAX_RAMOS_POR_ANUNCIO=1;
+// Hasta dos ramos por anuncio desde el 2026-09-26 (decisión de Lucas): la
+// misma clase puede servir a dos siglas, como Dinámica ICE1514 y FIS1514.
+const MAX_RAMOS_POR_ANUNCIO=2;
 const MAX_DETALLES_CLASE=4,MAX_ETIQUETA_DETALLE=30,MAX_VALOR_DETALLE=80;
 // Bajo el título de la recomendación caben pocos datos: el profesor elige
 // hasta tres. Sin elección son los de siempre.
@@ -56,7 +58,7 @@ function validarBorradorClase(entrada){
   if(siglas.length<1||siglas.some(s=>!/^[A-Z0-9-]{2,24}$/.test(s)))
     return {ok:false,campo:'ramos_siglas',error:'Elige el ramo de tu clase.'};
   if(siglas.length>MAX_RAMOS_POR_ANUNCIO||new Set(siglas).size!==siglas.length)
-    return {ok:false,campo:'ramos_siglas',error:'Cada anuncio es para un solo ramo. Si enseñas otro, arma otro anuncio.'};
+    return {ok:false,campo:'ramos_siglas',error:'Un anuncio puede tener hasta dos ramos. Si enseñas más, arma otro anuncio.'};
   if(!criteriosClaseValidos(entrada.criterios))return {ok:false,campo:'criterios',error:'Revisa el promedio y el avance elegidos para tu público.'};
   // Formato y lugar son opcionales. "Otra" exige escribirla: una opción
   // elegida sin texto se mostraría como nada.
@@ -1609,7 +1611,11 @@ function activarBuscadorRamosClase(form,campo){
     const siglas=leer();
     elegidasCaja.innerHTML=siglas.map(sg=>`<span class="profesor-ramo-chip"><b>${esc(sg)}</b>${nombreDe(sg)?`<span>${esc(nombreDe(sg))}</span>`:''}<button type="button" data-quitar-sigla="${esc(sg)}" aria-label="Quitar ${esc(sg)}">×</button></span>`).join('');
     elegidasCaja.querySelectorAll('[data-quitar-sigla]').forEach(b=>b.addEventListener('click',()=>escribir(leer().filter(x=>x!==b.dataset.quitarSigla))));
-    buscar.placeholder=siglas.length?'Cambiar de ramo':'Busca por nombre o sigla, ej. Cálculo II';
+    // Con el máximo elegido no se reemplaza ninguno a escondidas: hay que
+    // quitar uno para poner otro.
+    const lleno=siglas.length>=MAX_RAMOS_POR_ANUNCIO;
+    buscar.disabled=lleno;
+    buscar.placeholder=lleno?'Ya elegiste dos ramos. Quita uno para cambiarlo.':siglas.length?'Agrega otro ramo (opcional)':'Busca por nombre o sigla, ej. Cálculo II';
   };
   const cerrar=()=>{lista.hidden=true;lista.innerHTML='';buscar.setAttribute('aria-expanded','false');};
   const mostrar=()=>{
@@ -1620,8 +1626,8 @@ function activarBuscadorRamosClase(form,campo){
     lista.querySelectorAll('[data-sigla]').forEach(li=>li.addEventListener('mousedown',e=>{e.preventDefault();elegir(li.dataset.sigla);}));
   };
   const elegir=sg=>{
-    // Elegir otro reemplaza al anterior: un anuncio lleva un solo ramo.
-    if(sg)escribir([...leer().filter(x=>x!==sg),sg].slice(-MAX_RAMOS_POR_ANUNCIO));
+    const actuales=leer();
+    if(sg&&!actuales.includes(sg)&&actuales.length<MAX_RAMOS_POR_ANUNCIO)escribir([...actuales,sg]);
     buscar.value='';cerrar();buscar.focus();
   };
   const reindexar=()=>{indice=nombresRamosParaClases(tenantSel?tenantSel.value:S.tenant);pintarElegidas();if(buscar.value)mostrar();};
@@ -1762,13 +1768,13 @@ function renderBorradorProfesor(raiz,anuncio){
       </div></details>
       <details class="profesor-seccion" open><summary><h3>2. Público</h3></summary><div class="profesor-seccion-cuerpo">
       <label class="modal-label" for="pr-tenant">Universidad</label><select id="pr-tenant">${elegir([['uc','UC'],['fen','FEN'],['uai','UAI'],['uandes','UAndes']],anuncio&&anuncio.tenant||S.tenant)}</select>
-      <label class="modal-label" for="pr-siglas-buscar">Ramo de tu clase</label>
+      <label class="modal-label" for="pr-siglas-buscar">Ramos de tu clase · hasta 2</label>
       <div class="profesor-ramos" id="pr-ramos-elegidos" aria-live="polite"></div>
       <div class="profesor-ramos-buscar">
         <input id="pr-siglas-buscar" type="search" autocomplete="off" placeholder="Busca por nombre o sigla, ej. Cálculo II" aria-describedby="pr-siglas-ayuda" aria-controls="pr-ramos-resultados">
         <ul class="profesor-ramos-resultados" id="pr-ramos-resultados" role="listbox" hidden></ul>
       </div>
-      <p class="profesor-info" id="pr-siglas-ayuda">Un ramo por anuncio: si enseñas varios, arma uno para cada uno. Si no aparece, escribe su sigla completa.</p>
+      <p class="profesor-info" id="pr-siglas-ayuda">Si la misma clase sirve para dos ramos, elige los dos. Si enseñas más, arma otro anuncio. Si un ramo no aparece, escribe su sigla completa.</p>
       <input id="pr-siglas" type="hidden" value="${esc(anuncio&&Array.isArray(anuncio.ramos_siglas)?anuncio.ramos_siglas.join(', '):'')}">
       <label class="modal-label" for="pr-promedio">Promedio menor a</label><input id="pr-promedio" type="number" min="1.1" max="7" step="0.1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.promedioMenorA:5)}">
       <label class="modal-label" for="pr-avance">Mínimo evaluado · %</label><input id="pr-avance" type="number" min="0" max="99" step="1" required value="${esc(anuncio&&anuncio.criterios?anuncio.criterios.avanceMinimo:20)}">
@@ -1869,10 +1875,11 @@ function renderBorradorProfesor(raiz,anuncio){
   const pintarVistaCatalogo=borrador=>{
     const caja=vista.querySelector('.vista-catalogo');
     if(!caja)return;
-    const sigla=valorCampo('siglas').split(',').map(x=>siglaAnuncio(x)).filter(Boolean)[0]||'SIGLA';
-    const nombre=nombresRamosParaClases(valorCampo('tenant')||S.tenant)[sigla]||'';
+    const elegidas=valorCampo('siglas').split(',').map(x=>siglaAnuncio(x)).filter(Boolean);
+    const siglasVista=elegidas.length?elegidas:['SIGLA'];
+    const nombres=siglasVista.map(sg=>nombresRamosParaClases(valorCampo('tenant')||S.tenant)[sg]).filter(Boolean);
     caja.innerHTML=tarjetaCatalogoClase({...borrador,id:'vista-previa',titulo:borrador.titulo||'Tu clase',
-      descripcion:valorCampo('descripcion').trim()||'Acá va la descripción de tu clase.',ramos_siglas:[sigla],nombres_ramos:nombre?[nombre]:[],
+      descripcion:valorCampo('descripcion').trim()||'Acá va la descripción de tu clase.',ramos_siglas:siglasVista,nombres_ramos:nombres,
       ...(t=>({contacto_tipo:t,contacto_valor:(v=>v&&v!==PREFIJO_CONTACTO_CLASE[t].trim()?v:EJEMPLO_CONTACTO_CLASE[t])(valorCampo('contacto').trim())}))(contactosPermitidosClase(pesosDeTexto(valorCampo('precio'))).includes(valorCampo('contacto-tipo'))?valorCampo('contacto-tipo'):'whatsapp'),flyer_path:flyerVista?'vista-previa':null},{abierta:true});
     const flyer=caja.querySelector('.catalogo-clase-flyer');
     if(flyer){flyer.removeAttribute('data-flyer');flyer.hidden=false;flyer.innerHTML=`<img src="${esc(flyerVista)}" alt="">`;}
