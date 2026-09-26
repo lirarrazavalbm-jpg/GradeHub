@@ -93,6 +93,64 @@ as $$
   ) as filas;
 $$;
 
+-- SIGLAS QUE NO ERAN SIGLAS (2026-09-26). Los ramos UC agregados antes de que
+-- su sigla estuviera en el catálogo guardaron el nombre como clave, y ese
+-- nombre llegaba acá como `ramo_sigla`: "BIOLOGIA DE ORGANISMOS Y
+-- COMUNIDADES" y "BIO110C" eran dos grupos para el mismo ramo, y el consenso
+-- no llegaba a tres. Ahora solo se guarda algo con forma de sigla; si no la
+-- tiene, se busca en public.catalogo_uc por nombre y se usa solo si hay UNA
+-- coincidencia exacta. Si no, queda null y se agrupa por nombre como antes.
+create or replace function public.es_sigla_uc(p text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select coalesce(p ~ '^[A-Z0-9_]{3,12}$' and p ~ '[0-9]', false);
+$$;
+
+-- El nombre como lo compara `catalogo_uc.busqueda`: minúsculas, sin tildes y
+-- con los romanos en cifras. Espeja normBusqueda(normName()) de app.js.
+create or replace function public.busqueda_catalogo_uc(p text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select string_agg(
+           case t.w when 'i' then '1' when 'ii' then '2' when 'iii' then '3' when 'iv' then '4'
+                    when 'v' then '5' when 'vi' then '6' when 'vii' then '7' when 'viii' then '8'
+                    when 'ix' then '9' when 'x' then '10' when 'xi' then '11' when 'xii' then '12'
+                    else t.w end,
+           ' ' order by t.i)
+  from regexp_split_to_table(
+         btrim(regexp_replace(normalize(lower(coalesce(p, '')), NFD), '[\u0300-\u036f]', '', 'g')),
+         ' ') with ordinality as t(w, i);
+$$;
+
+create or replace function public.sigla_catalogo_uc(p_ramo text)
+returns text
+language plpgsql
+stable
+set search_path = ''
+as $$
+declare
+  encontradas text[];
+begin
+  -- Sin la tabla (supabase/catalogo_uc.sql) no se resuelve nada: null.
+  if to_regclass('public.catalogo_uc') is null then
+    return null;
+  end if;
+  execute 'select array_agg(sigla) from (select sigla from public.catalogo_uc where busqueda = $1 limit 2) s'
+    into encontradas using public.busqueda_catalogo_uc(p_ramo);
+  return case when cardinality(encontradas) = 1 then encontradas[1] end;
+end;
+$$;
+
+revoke all on function public.es_sigla_uc(text) from public, anon, authenticated;
+revoke all on function public.busqueda_catalogo_uc(text) from public, anon, authenticated;
+revoke all on function public.sigla_catalogo_uc(text) from public, anon, authenticated;
+
 create or replace function public.submit_catalog_report(
   p_tenant text,
   p_carrera text,
@@ -180,6 +238,11 @@ begin
     raise exception 'Las ponderaciones deben sumar 100%%';
   end if;
 
+  -- Un nombre no es una sigla (ver es_sigla_uc más arriba).
+  if p_tenant = 'uc' and not public.es_sigla_uc(sigla) then
+    sigla := public.sigla_catalogo_uc(p_ramo);
+  end if;
+
   -- Si el estudiante ya reportó ese ramo, actualiza su aporte. La carrera se
   -- guarda como contexto, pero nunca decide si dos estudiantes coinciden.
   -- También toma reportes antiguos sin sigla por nombre, para migrarlos al
@@ -198,6 +261,8 @@ begin
      and (
        (sigla is not null and ramo_sigla = sigla)
        or (ramo_sigla is null and ramo_norm = p_ramo_norm)
+       -- Su reporte viejo con el nombre como sigla se corrige, no se duplica.
+       or (ramo_norm = p_ramo_norm and not public.es_sigla_uc(ramo_sigla))
      );
 
   if not found then
@@ -274,3 +339,19 @@ grant execute on function public.catalog_consensus(text) to authenticated;
 update public.catalog_reports
    set huella = coalesce(public.huella_catalogo(estructura), '')
  where huella is distinct from coalesce(public.huella_catalogo(estructura), '');
+
+-- Los reportes UC que ya existen con un nombre donde va la sigla: se les pone
+-- la sigla del catálogo si hay una sola coincidencia exacta, o null si no (así
+-- se agrupan por nombre, igual que la app). Solo cambia `ramo_sigla`:
+-- estructura, huella y nota no se tocan. Correrlo de nuevo no cambia nada.
+update public.catalog_reports
+   set ramo_sigla = public.sigla_catalogo_uc(ramo)
+ where tenant = 'uc'
+   and ramo_sigla is not null
+   and not public.es_sigla_uc(ramo_sigla);
+
+update public.catalog_reports
+   set ramo_sigla = public.sigla_catalogo_uc(ramo)
+ where tenant = 'uc'
+   and ramo_sigla is null
+   and public.sigla_catalogo_uc(ramo) is not null;
