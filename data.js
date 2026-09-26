@@ -606,6 +606,18 @@ const PRESETS_UC={
   'Introducción al Álgebra Lineal':[
     ['Interrogación 1',20],['Interrogación 2',25],['Interrogación 3',25],['Examen',30],
   ],
+  // Biología de Organismos y Comunidades (BIO110C). No tenemos el programa:
+  // Lucas la confirmó el 26-09-2026 a partir del reporte de un estudiante que
+  // conoce, y coincide con otros cuatro reportes independientes: 5 controles
+  // de 4% cada uno, 3 interrogaciones de 20% y 4 talleres de 5% cada uno.
+  'Biología de Organismos y Comunidades':{
+    sigla:'BIO110C',
+    evals:[
+      ['Controles',20,{slots:5,slotLabel:'Control'}],
+      ['Interrogación 1',20],['Interrogación 2',20],['Interrogación 3',20],
+      ['Talleres',20,{slots:4,slotLabel:'Taller'}],
+    ],
+  },
   // Distribución y nombres confirmados por Lucas el 12-09-2026 a partir de
   // información entregada por un estudiante que está cursando estos ramos.
   'Introducción a la Macroeconomía':[
@@ -1825,8 +1837,9 @@ const CREDITOS_FEN={
 // búsqueda, que compara sin tildes, y evita mostrarle al estudiante un nombre
 // mal escrito.
 //
-// DOS CURSOS DE ESTA CLASE NO ESTÁN ACÁ y es a propósito: "Revelación y Fe"
-// (TTF012) y "Principios Ecológicos y Medio Ambiente" (BIO143M) ya tienen su
+// TRES CURSOS DE ESTA CLASE NO ESTÁN ACÁ y es a propósito: "Revelación y Fe"
+// (TTF012), "Principios Ecológicos y Medio Ambiente" (BIO143M) y "Biología de
+// Organismos y Comunidades" (BIO110C) ya tienen su
 // pauta oficial en PRESETS_UC y entran al buscador por `presetsFueraDeMalla`.
 // Repetirlos acá los mostraría dos veces, una con ponderaciones y otra sin
 // ellas. El segundo se llamaba "Principios de Ecología y Medio Ambiente" hasta
@@ -1838,8 +1851,9 @@ const CREDITOS_FEN={
 // cualquier otra. Si aparece el dato de a qué semestre pertenece, pasa a la
 // malla y sale de esta lista.
 const CURSOS_UC=[
-  // Optativos biológicos — los cuatro que pidieron los estudiantes
-  ['BIO110C','Biología de Organismos y Comunidades'],
+  // Optativos biológicos que pidieron los estudiantes. BIO110C salió de acá
+  // el 2026-09-26: ya tiene pauta en PRESETS_UC y entra por
+  // `presetsFueraDeMalla`, como los dos de abajo.
   ['BIO141C','Biología de la Célula'],
   ['BIO141T','Taller de Biología de la Célula'],
   // Formación Teológica (OFG). Un estudiante cursa uno de estos, no todos.

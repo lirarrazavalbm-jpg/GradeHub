@@ -3640,8 +3640,9 @@ function openReportModal(ramoId,conservarBorrador=false){
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Reportar pauta</div>
     <p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin-bottom:14px;">
-      Ajusta las evaluaciones y porcentajes de <b>${esc(r.nombre)}</b> para que calcen con tu curso. Si varios
-      estudiantes reportan lo mismo, pasa a ser la versi\u00f3n sugerida del cat\u00e1logo.
+      Ajusta las evaluaciones y porcentajes de <b>${esc(r.nombre)}</b> para que calcen con tu curso. Lo que cambies
+      tambi\u00e9n queda en tu ramo, con tus notas. Si varios estudiantes reportan lo mismo, pasa a ser la versi\u00f3n
+      sugerida del cat\u00e1logo.
     </p>
     <div class="rep-box">
       ${filas}
@@ -3663,6 +3664,38 @@ function openReportModal(ramoId,conservarBorrador=false){
   openModal();
 }
 
+// Lo que se corrige en "Reportar pauta" también queda en el ramo de quien lo
+// reporta. Antes el modal dejaba cambiar nombres, porcentajes y filas, pero eso
+// solo viajaba al servidor: la ficha seguía con la pauta anterior y parecía que
+// se había borrado (reportado el 2026-09-26). Las notas se conservan por nombre
+// con fusionarPauta, igual que al actualizar una pauta del catálogo, y cada
+// evaluación que sigue conserva su id, su fecha y su regla de aprobación.
+// Devuelve 'igual' | 'aplicada' | 'regla' (no se aplica: se perdería una regla).
+function aplicarReporteAlRamo(r,borrador){
+  const filas=(borrador||[]).map(e=>({...e,nombre:String(e.nombre||'').trim(),peso:parsePesoReporte(e.peso)}))
+    .filter(e=>e.nombre);
+  if(!r||!filas.length)return 'igual';
+  const actual=catsDePauta(r.categorias);
+  const firma=lista=>lista.map(c=>`${normName(c.nombre)}:${r2(Number(c.peso)||0)}:${Number(c.slots)>1?c.slots:1}`).sort().join('|');
+  if(firma(filas)===firma(actual))return 'igual';
+  const nombres=new Set(filas.map(e=>normName(e.nombre)));
+  const conRegla=new Set();
+  (r.gates||[]).forEach(g=>{if(g.catId)conRegla.add(g.catId);(g.catIds||[]).forEach(id=>conRegla.add(id));});
+  if(actual.some(c=>conRegla.has(c.id)&&!nombres.has(normName(c.nombre))))return 'regla';
+  const nuevas=filas.map(e=>{
+    const anterior=actual.find(c=>normName(c.nombre)===normName(e.nombre));
+    const cat=anterior?{...anterior,nombre:e.nombre,peso:e.peso}
+      :{id:uid(),nombre:e.nombre,peso:e.peso,ponderaNotas:false,directNota:true,notas:[]};
+    const slots=Number(e.slots)>1?Number(e.slots):null;
+    // El modal no edita casillas: una fila sin cantidad conserva las que ya
+    // tenía, así ninguna nota queda en una casilla que deja de mostrarse.
+    if(slots){cat.slots=slots;cat.directNota=true;}
+    return cat;
+  });
+  fusionarPauta(r,nuevas);
+  return 'aplicada';
+}
+
 async function enviarReporte(ramoId){
   const r=S.ramos.find(x=>x.id===ramoId);if(!r)return;
   const btn=document.getElementById('m-rep-btn');
@@ -3676,6 +3709,10 @@ async function enviarReporte(ramoId){
     showToast(est.length?textoEstadoReporte(estado):'Vuelve a abrir el reporte',true);return;
   }
   const notaEl=document.getElementById('m-rep-nota');
+  // Primero la pauta del estudiante: es suya y no depende de que el reporte
+  // llegue. Si la red falla, lo que corrigió igual queda guardado.
+  const enRamo=reporteRamoId===ramoId?aplicarReporteAlRamo(r,reporteDraft):'igual';
+  if(enRamo==='aplicada'){save();if(currentRamoId===r.id&&typeof renderRamo==='function')renderRamo();}
   if(btn){btn.disabled=true;btn.textContent='Enviando\u2026';}
   try{
     const {error}=await supabaseClient.rpc('submit_catalog_report',{
@@ -3693,12 +3730,15 @@ async function enviarReporte(ramoId){
     track('reporte_catalogo',{tenant:S.tenant});
     closeModal();
     reporteDraft=[];reporteRamoId=null;reporteComentarioDraft='';
-    showToast('Gracias \u00b7 tu reporte qued\u00f3 registrado');
+    showToast(enRamo==='aplicada'?'Gracias \u00b7 tu reporte qued\u00f3 registrado y tu pauta, actualizada'
+      :enRamo==='regla'?'Reporte enviado. Tu pauta no cambi\u00f3: una evaluaci\u00f3n con regla de aprobaci\u00f3n se ajusta en Editar pauta.'
+      :'Gracias \u00b7 tu reporte qued\u00f3 registrado');
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent='Enviar reporte';}
     // Tabla no creada todav\u00eda \u2192 mensaje entendible en vez del error crudo
     const msg=/relation .* does not exist|schema cache/i.test(e.message||'')
       ? 'Los reportes a\u00fan no est\u00e1n habilitados en el servidor.'
+      : enRamo==='aplicada'?'Tu pauta qued\u00f3 guardada, pero el reporte no se pudo enviar. Revisa tu conexi\u00f3n.'
       : 'No se pudo enviar. Revisa tu conexi\u00f3n.';
     showToast(msg,true);
   }
