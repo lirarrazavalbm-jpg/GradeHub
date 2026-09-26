@@ -707,22 +707,24 @@ function cursoUcCompleto(nombre,sigla){
 // un ramo que la persona declaró como suyo. Los créditos son un hecho del
 // curso; la pauta es una decisión de quien lo cursa.
 //
-// Y solo cuando el nombre es inequívoco. Hoy ningún nombre del catálogo repite
-// con créditos distintos, así que la guarda no se dispara nunca — está igual
-// porque el catálogo se edita todo el tiempo y crece con cada semestre. El día
-// que aparezcan dos siglas con el mismo nombre y distinto SCT, sin esto
-// elegiríamos una al azar y nadie se enteraría.
+// Y solo cuando el nombre es inequívoco. Si dos siglas comparten el mismo
+// nombre, no se elige una por el estudiante aunque hoy tengan los mismos SCT:
+// el catálogo se edita todo el tiempo y esa coincidencia puede cambiar.
 function creditosUCPorNombreUnico(nombre){
-  const filas=cursosUcExtra();
-  if(!filas||!nombre)return null;
-  const n=normName(nombre);
+  const filas=cursosUcExtra()||_cursosUcRemotos;
+  if(!filas.length||!nombre)return null;
+  const n=normBusqueda(normName(nombre));
   if(!n)return null;
-  let cr=null;
+  let cr=null,encontradas=0;
   for(const f of filas){
-    if(!Array.isArray(f)||normName(f[1]||'')!==n)continue;
+    if(!Array.isArray(f)||normBusqueda(normName(f[1]||''))!==n)continue;
+    encontradas++;
+    // Dos siglas con el mismo nombre no identifican un curso único, aunque
+    // hoy coincidan en SCT. El estudiante escribió un nombre, no eligió una
+    // de esas siglas: asignar cualquiera sería adivinar.
+    if(encontradas>1)return null;
     if(typeof f[2]!=='number')return null;
-    if(cr===null)cr=f[2];
-    else if(cr!==f[2])return null;
+    cr=f[2];
   }
   return cr;
 }
@@ -730,7 +732,7 @@ function creditosUCPorNombreUnico(nombre){
 // alguien agrega un ramo desde el catálogo mínimo. Solo completamos créditos
 // ausentes; nunca corregimos un valor ya guardado.
 function completarCreditosUCTrasCarga(){
-  if(S.tenant!=='uc'||!S.onboardingDone||!cursosUcExtra())return false;
+  if(S.tenant!=='uc'||!S.onboardingDone||!(cursosUcExtra()||_cursosUcRemotos.length))return false;
   let agregados=0;
   (S.ramos||[]).forEach(r=>{
     if(r.creditos!==null&&r.creditos!==undefined)return;
@@ -789,6 +791,61 @@ function consultaCatalogoUc(q){
 }
 // supabaseClient y currentUser viven en app-session.js, que carga después.
 function clienteCatalogoUc(){return typeof supabaseClient!=='undefined'&&supabaseClient&&typeof supabaseClient.from==='function'?supabaseClient:null;}
+let _creditosUcServidorPendiente=null;
+// Recupera solo las filas necesarias para una cuenta ya existente. Los ramos
+// con sigla se identifican por ella; los escritos a mano se consultan por la
+// `busqueda` exacta y solo reciben SCT si el resultado identifica un único
+// curso. Cualquier falla conserva el respaldo anterior: cursos-uc.js completo.
+function completarCreditosUCPendientes(){
+  if(S.tenant!=='uc'||!S.onboardingDone)return Promise.resolve(false);
+  const pendientes=(S.ramos||[]).filter(r=>(!r.origen||r.origen.tenant==='uc')&&(r.creditos===null||r.creditos===undefined));
+  if(!pendientes.length)return Promise.resolve(false);
+  if(cursosUcExtra())return Promise.resolve(completarCreditosUCTrasCarga());
+  if(_creditosUcServidorPendiente)return _creditosUcServidorPendiente;
+  const cliente=clienteCatalogoUc();
+  if(!cliente)return cargarCursosUC();
+
+  const siglas=[],nombres=[],vistasSiglas=new Set(),vistosNombres=new Set();
+  pendientes.forEach(r=>{
+    if(r.origen&&r.origen.tenant==='uc'){
+      const sigla=siglaDeRamo(r,'uc');
+      if(sigla&&!vistasSiglas.has(sigla.toUpperCase())){
+        vistasSiglas.add(sigla.toUpperCase());siglas.push(sigla.toUpperCase());
+      }
+      return;
+    }
+    if(r.origen)return;
+    const busqueda=normBusqueda(normName(r.nombre||''));
+    if(busqueda&&!vistosNombres.has(busqueda)){vistosNombres.add(busqueda);nombres.push(busqueda);}
+  });
+  // Un ramo de catálogo antiguo sin sigla resoluble no se puede consultar de
+  // forma inequívoca. En ese caso se conserva el archivo que ya resolvía esto.
+  if(pendientes.some(r=>r.origen&&r.origen.tenant==='uc'&&!siglaDeRamo(r,'uc')))return cargarCursosUC();
+
+  _creditosUcServidorPendiente=(async()=>{
+    try{
+      const pedir=async(campo,valores)=>{
+        if(!valores.length)return [];
+        const {data,error}=await cliente.from('catalogo_uc').select('sigla,nombre,creditos,busqueda').in(campo,valores);
+        if(error)throw error;
+        if(!Array.isArray(data))throw new Error('Respuesta inválida de catalogo_uc');
+        return data;
+      };
+      const [porSigla,porNombre]=await Promise.all([pedir('sigla',siglas),pedir('busqueda',nombres)]);
+      _catalogoUcServidor='ok';
+      agregarCursosUcRemotos(porSigla.concat(porNombre));
+      return completarCreditosUCTrasCarga();
+    }catch(e){
+      // Tabla sin aplicar, cliente sin conexión o red caída: mismo respaldo
+      // que tenía la app antes de consultar filas puntuales.
+      _catalogoUcServidor='no';
+      return cargarCursosUC();
+    }finally{
+      _creditosUcServidorPendiente=null;
+    }
+  })();
+  return _creditosUcServidorPendiente;
+}
 function pedirFrecuentesUc(carrera,repintar){
   const cliente=clienteCatalogoUc();
   if(!carrera||!cliente||typeof currentUser==='undefined'||!currentUser||_frecuentesUcPedidos.has(carrera))return;
@@ -1922,12 +1979,12 @@ function showMainApp(){
   // mientras esta condición lo excluía no se pedía el archivo, no se completaba
   // nada, y la cuenta entera se quedaba en promedio simple para siempre.
   //
-  // El costo es que una cuenta UC con un ramo verdaderamente propio y sin
-  // créditos baja los ~660 KB una vez. El service worker los cachea, y el
-  // precio de no hacerlo es mostrar un promedio que no es el ponderado.
+  // Primero se consultan solo las siglas y nombres exactos que faltan en
+  // catalogo_uc. El archivo completo queda como respaldo cuando Supabase no
+  // está disponible o no puede responder.
   if(S.tenant==='uc'&&(S.ramos||[]).some(r=>(!r.origen||r.origen.tenant==='uc')&&(r.creditos===null||r.creditos===undefined))){
     if(cursosUcExtra())completarCreditosUCTrasCarga();
-    else cargarCursosUC();
+    else completarCreditosUCPendientes();
   }
 }
 // Orden izq→der para el deslizar. Es una lista VIVA: la pestaña de profesor solo
