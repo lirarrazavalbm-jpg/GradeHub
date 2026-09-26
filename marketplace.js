@@ -455,7 +455,7 @@ function fondoDetrasClase(el){
 }
 function revisarLogoClase(img){
   const caja=img.parentElement;
-  if(!caja||!img.naturalWidth)return;
+  if(!caja||!img.naturalWidth||img.dataset.contorno==='1')return;
   let px;
   try{
     const lado=24,canvas=document.createElement('canvas');canvas.width=canvas.height=lado;
@@ -470,7 +470,38 @@ function revisarLogoClase(img){
   caja.classList.remove('logo-contorno');
   if(!visibles||transparentes/(px.length/4)<.1)return;
   const logo=suma/visibles,fondo=fondoDetrasClase(caja);
-  if((Math.max(logo,fondo)+.05)/(Math.min(logo,fondo)+.05)<2)caja.classList.add('logo-contorno');
+  if((Math.max(logo,fondo)+.05)/(Math.min(logo,fondo)+.05)<2)dibujarContornoLogoClase(img,caja);
+}
+// El contorno se dibuja en un canvas y el logo pasa a ser esa imagen. Antes
+// era un `filter: drop-shadow` de 0,8px encadenado: Chrome lo dibujaba nítido
+// y Safari (Mac y iPhone) como un halo borroso que dejaba el logo casi
+// ilegible (2026-09-26, logo de SalvaRamos). Pintado a mano se ve igual en
+// todos los navegadores: un borde fino del color del texto y un halo suave.
+function dibujarContornoLogoClase(img,caja){
+  if(img.dataset.contorno==='1')return;
+  try{
+    const dpr=Math.min(3,Math.max(1,(typeof devicePixelRatio==='number'&&devicePixelRatio)||1));
+    const alto=Math.max(24,caja.clientHeight||44)*dpr;
+    const esc=alto/img.naturalHeight,w=Math.max(1,Math.round(img.naturalWidth*esc)),h=Math.max(1,Math.round(alto));
+    const borde=1.2*dpr,halo=3.5*dpr,pad=Math.ceil(halo+1);
+    const color=String(getComputedStyle(caja).getPropertyValue('--fg')||'').trim()||'#f1f1f3';
+    // La silueta del logo en el color del texto.
+    const sil=document.createElement('canvas');sil.width=w;sil.height=h;
+    const cs=sil.getContext('2d');cs.drawImage(img,0,0,w,h);
+    cs.globalCompositeOperation='source-in';cs.fillStyle=color;cs.fillRect(0,0,w,h);
+    const out=document.createElement('canvas');out.width=w+2*pad;out.height=h+2*pad;
+    const co=out.getContext('2d');
+    // Halo suave: la silueta corrida en un anillo ancho, casi transparente.
+    co.globalAlpha=.07;
+    for(let k=0;k<24;k++){const a=k/24*2*Math.PI;co.drawImage(sil,pad+Math.cos(a)*halo,pad+Math.sin(a)*halo);}
+    // Borde fino y opaco.
+    co.globalAlpha=1;
+    for(let k=0;k<16;k++){const a=k/16*2*Math.PI;co.drawImage(sil,pad+Math.cos(a)*borde,pad+Math.sin(a)*borde);}
+    co.drawImage(img,pad,pad,w,h);
+    img.dataset.contorno='1';
+    img.src=out.toDataURL('image/png');
+    caja.classList.add('logo-contorno');
+  }catch(e){}
 }
 if(typeof document!=='undefined'&&typeof document.addEventListener==='function'){
   // load y error no burbujean: se escuchan en captura para todos los logos.

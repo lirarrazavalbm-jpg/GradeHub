@@ -112,5 +112,11 @@ ctx.getComputedStyle=()=>({display:'grid',gridTemplateColumns:'repeat(3, minmax(
 ctx.__b=el();run('colocarRecomendacionEnGrilla(__c,__f,__b)');
 chk('con la pantalla sin dibujar no adivina columnas',!ctx.__b.vars['--ca-fila']);
 
+console.log('\n=== El contorno del logo se ve igual en Safari ===');
+// Safari dibujaba el drop-shadow de 0,8px como un halo borroso (2026-09-26).
+const css=fs.readFileSync(path.join(raiz,'styles.css'),'utf8');
+chk('el logo no usa filter para su contorno',!/\.logo-contorno[^{]*\{[^}]*filter/.test(css));
+chk('lo pinta un canvas y no se vuelve a procesar',/function dibujarContornoLogoClase/.test(mk)&&/dataset\.contorno==='1'/.test(mk));
+
 console.log('\nPASS: '+ok+'   FAIL: '+fail);
 process.exit(fail?1:0);

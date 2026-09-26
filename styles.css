@@ -711,11 +711,12 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
    ancho usa su ancho (hasta un tope) en vez de encogerse en un cuadrado.
    `.logo-contorno` la pone marketplace.js solo cuando un logo transparente no
    se leería sobre el fondo del tema (verde oscuro en modo oscuro, por ejemplo):
-   el dibujo lleva un borde fino del color del texto, y sigue sin fondo. */
+   el dibujo lleva un borde fino del color del texto, y sigue sin fondo. El
+   borde lo pinta marketplace.js en un canvas, no un `filter`: Safari dibujaba
+   el drop-shadow como un halo borroso. */
 .clase-apoyo-logo{flex:none;align-self:center;display:flex;align-items:center;justify-content:center;height:40px;max-width:96px;}
 .clase-apoyo-logo[hidden]{display:none;}
 .clase-apoyo-logo img,.catalogo-clase-logo img{display:block;height:100%;width:auto;max-width:100%;object-fit:contain;border-radius:8px;}
-.logo-contorno img{filter:drop-shadow(0 0 .8px var(--fg)) drop-shadow(0 0 .8px var(--fg)) drop-shadow(0 0 4px color-mix(in srgb,var(--fg) 45%,transparent));}
 .clase-apoyo-cerrar{flex:none;display:flex;align-items:center;justify-content:center;width:44px;border:0;background:none;color:var(--fg3);cursor:pointer;}
 .clase-apoyo-cerrar .ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;}
 .ramo-reordering .clase-apoyo{display:none;}
