@@ -994,6 +994,16 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .clase-accion:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 .clase-sin-datos{margin:10px 0 0;font-size:0.75rem;line-height:1.45;color:var(--fg3);}
 .clase-num small{font-size:0.6875rem;color:var(--fg3);}
+.clase-etapas{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px;}
+.clase-etapa{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;}
+.clase-etapa>span{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fg3);}
+.clase-par{display:flex;align-items:flex-start;gap:10px;}
+.clase-par div{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.clase-par-sep{font-style:normal;font-size:1.25rem;font-weight:300;line-height:1.2;color:var(--fg3);}
+.clases-kpis-etapas .clase-par-sep{font-size:1.625rem;}
+.clase-par b{font-size:1.25rem;font-weight:800;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+.clase-par small{font-size:0.6875rem;color:var(--fg3);}
+.clases-kpis-etapas .clase-par b{font-size:1.625rem;}
 /* Página de Clases: primero cómo les va a las activas, después qué hacer.
    El resumen es una superficie neutra con cifras grandes; el color de acento
    solo marca las barras, nunca el semáforo académico. */
@@ -1008,7 +1018,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .clases-seccion h3{display:flex;align-items:center;gap:6px;margin:0 0 8px;font-size:0.75rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--fg3);}
 .clases-seccion h3 span{font-variant-numeric:tabular-nums;color:var(--fg2);}
 .clase-embudo{display:grid;gap:6px;margin-top:14px;}
-.clase-embudo-fila{display:grid;grid-template-columns:78px 1fr auto;align-items:center;gap:8px;font-size:0.75rem;color:var(--fg2);}
+.clase-embudo-fila{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:8px;font-size:0.75rem;color:var(--fg2);}
 .clase-embudo-fila b{font-variant-numeric:tabular-nums;color:var(--fg);}
 .clase-barra,.clase-riel{height:6px;border-radius:999px;background:var(--muted);overflow:hidden;}
 .clase-barra i,.clase-riel i{display:block;height:100%;background:var(--primary);transform-origin:left center;}

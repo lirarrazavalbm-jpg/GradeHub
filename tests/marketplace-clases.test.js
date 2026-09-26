@@ -125,7 +125,10 @@ vm.runInContext(`
   }
   await val("cargarAnunciosClases('uc')");
   const consulta=vm.runInContext('consultas[0]',ctx);
-  const serie=JSON.stringify(consulta);
+  // La consulta lleva la hora actual (vence_at > ahora). Se quita antes de
+  // buscar la nota 1.5: una hora como 02:07:01.556 la contiene y hacía fallar
+  // el test según el segundo en que corriera.
+  const serie=JSON.stringify(consulta).replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g,'<ahora>');
   chk('solo filtra por universidad y estado publicado',
     consulta.tabla==='tutor_anuncios'&&consulta.pasos.some(p=>p[0]==='eq'&&p[1]==='tenant'&&p[2]==='uc')&&
     consulta.pasos.some(p=>p[0]==='eq'&&p[1]==='estado'&&p[2]==='publicado'));
