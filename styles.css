@@ -309,7 +309,7 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .rep-balance.ok{color:var(--fg3);}
 .rep-balance.warn{color:var(--yellow);}
 /* RESULTADOS DE BÚSQUEDA EN EL CATÁLOGO */
-.cat-results{display:flex;flex-direction:column;gap:6px;max-height:34vh;overflow-y:auto;margin-bottom:4px;}
+.cat-results{display:flex;flex-direction:column;gap:6px;max-height:34vh;overflow-y:auto;overscroll-behavior:contain;margin-bottom:4px;}
 .cat-hit{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 13px;
   border:1px solid var(--border);background:var(--muted);border-radius:12px;cursor:pointer;
   font-family:var(--font-ui);transition:border-color var(--motion-fast),background var(--motion-fast),transform var(--motion-press);}
@@ -917,6 +917,9 @@ body.ramo-drag-active{overflow:hidden;-webkit-user-select:none;user-select:none;
 .modal-sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:16px 20px calc(28px + env(safe-area-inset-bottom,0px));width:100%;max-width:430px;box-shadow:0 -4px 32px rgba(0,0,0,.2);max-height:92vh;max-height:92dvh;overflow-y:auto;
   touch-action:pan-y;overscroll-behavior-y:contain;}
 .modal-title{font-size:1.0625rem;font-weight:700;color:var(--fg);margin-bottom:16px;}
+/* Sin doble toque para hacer zoom sobre un botón: en iPhone un toque rápido
+   se leía a veces como el comienzo de un doble toque y el botón no respondía. */
+button,[role="button"],a{touch-action:manipulation;}
 /* Ajustes y el modal de calendario eran los dos únicos sin salida propia: se
    cerraban tocando fuera del sheet. Desde que eso se retiró, necesitan la suya. */
 .settings-modal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
@@ -1615,7 +1618,13 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
    cuenta con que el viewport mida lo mismo que la app: en cualquier pantalla
    más ancha (una tablet en vertical, un monitor) los vecinos asomaban por los
    costados. En teléfono quedaban fuera de pantalla y no se notaba. */
-.app.tab-mode{overflow-x:hidden;}
+.app.tab-mode{overflow-x:hidden;overflow-x:clip;}
+/* `clip` y no solo `hidden`: con `overflow-x:hidden` el eje vertical pasa a
+   `auto` y .app se vuelve OTRO contenedor con scroll, alrededor del `.scroll`
+   de cada pantalla. En Safari de iPhone el dedo a veces se enganchaba a .app,
+   que no tiene nada que desplazar, y la lista de ramos dejaba de moverse
+   (2026-09-26, después de abrir "Agregar ramo"). `clip` recorta igual y no crea
+   contenedor. Donde no exista, queda el `hidden` de antes. */
 /* Las pantallas del carrusel se listan por id. La de Clases entra acá o queda
    sin posicionar y con display:none heredado, que es lo que pasó al agregarla:
    el contenido se dibujaba y la pantalla medía 0 por 0. */

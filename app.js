@@ -2727,7 +2727,10 @@ function openAddRamoModal(){
   openModal();
 
   const input=document.getElementById('m-ramo-search');
-  setTimeout(()=>{input.focus();},100);
+  // preventScroll: a los 100 ms la hoja todavía viene subiendo desde abajo de
+  // la pantalla, y Safari de iPhone desplazaba la página entera para mostrar
+  // el campo. Al cerrar, la página quedaba corrida y la lista no respondía.
+  setTimeout(()=>{try{input.focus({preventScroll:true});}catch(e){input.focus();}},100);
   const pintar=()=>{
     limpiarErrorCampo('m-ramo-search','m-ramo-error');
     if(hayCatalogo)renderCatalogResults(input.value);
@@ -6637,6 +6640,15 @@ function openModal(){
 // `transitionend`; sobraba entera.
 function closeModal(){
   document.getElementById('modal').classList.remove('open');
+  // En el carrusel de pestañas el documento nunca se desplaza: cada pantalla
+  // tiene su propio `.scroll`. Si el teclado de iPhone dejó la página corrida
+  // al escribir en el modal, se devuelve a su lugar para que el dedo vuelva a
+  // mover la lista y no ese desplazamiento fantasma.
+  try{
+    const app=document.querySelector('.app');
+    const se=document.scrollingElement;
+    if(app&&app.classList&&app.classList.contains('tab-mode')&&se&&se.scrollTop)se.scrollTop=0;
+  }catch(e){}
   // El foco vuelve a quien abrió, salvo que ese elemento ya no exista (un
   // botón de una lista que se volvió a dibujar). Ahí se deja como está: mandarlo
   // al body a la fuerza es peor que dejarlo quieto.
