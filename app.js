@@ -707,24 +707,26 @@ function cursoUcCompleto(nombre,sigla){
 // un ramo que la persona declaró como suyo. Los créditos son un hecho del
 // curso; la pauta es una decisión de quien lo cursa.
 //
-// Y solo cuando el nombre es inequívoco. Si dos siglas comparten el mismo
-// nombre, no se elige una por el estudiante aunque hoy tengan los mismos SCT:
-// el catálogo se edita todo el tiempo y esa coincidencia puede cambiar.
+// Y solo cuando el nombre es inequívoco. Hoy ningún nombre del catálogo repite
+// con créditos distintos, así que la guarda no se dispara nunca — está igual
+// porque el catálogo se edita todo el tiempo y crece con cada semestre. El día
+// que aparezcan dos siglas con el mismo nombre y distinto SCT, sin esto
+// elegiríamos una al azar y nadie se enteraría.
+//
+// Sin el archivo completo, mira las filas que trajo `catalogo_uc`: la consulta
+// por `busqueda` exacta devuelve TODAS las siglas con ese nombre, así que la
+// guarda ve los mismos repetidos que veía con el archivo.
 function creditosUCPorNombreUnico(nombre){
   const filas=cursosUcExtra()||_cursosUcRemotos;
   if(!filas.length||!nombre)return null;
-  const n=normBusqueda(normName(nombre));
+  const n=normName(nombre);
   if(!n)return null;
-  let cr=null,encontradas=0;
+  let cr=null;
   for(const f of filas){
-    if(!Array.isArray(f)||normBusqueda(normName(f[1]||''))!==n)continue;
-    encontradas++;
-    // Dos siglas con el mismo nombre no identifican un curso único, aunque
-    // hoy coincidan en SCT. El estudiante escribió un nombre, no eligió una
-    // de esas siglas: asignar cualquiera sería adivinar.
-    if(encontradas>1)return null;
+    if(!Array.isArray(f)||normName(f[1]||'')!==n)continue;
     if(typeof f[2]!=='number')return null;
-    cr=f[2];
+    if(cr===null)cr=f[2];
+    else if(cr!==f[2])return null;
   }
   return cr;
 }
@@ -794,8 +796,9 @@ function clienteCatalogoUc(){return typeof supabaseClient!=='undefined'&&supabas
 let _creditosUcServidorPendiente=null;
 // Recupera solo las filas necesarias para una cuenta ya existente. Los ramos
 // con sigla se identifican por ella; los escritos a mano se consultan por la
-// `busqueda` exacta y solo reciben SCT si el resultado identifica un único
-// curso. Cualquier falla conserva el respaldo anterior: cursos-uc.js completo.
+// `busqueda` exacta y pasan por la misma guarda de siempre
+// (creditosUCPorNombreUnico: un nombre repetido con SCT distintos no recibe
+// nada). Cualquier falla conserva el respaldo anterior: cursos-uc.js completo.
 function completarCreditosUCPendientes(){
   if(S.tenant!=='uc'||!S.onboardingDone)return Promise.resolve(false);
   const pendientes=(S.ramos||[]).filter(r=>(!r.origen||r.origen.tenant==='uc')&&(r.creditos===null||r.creditos===undefined));
