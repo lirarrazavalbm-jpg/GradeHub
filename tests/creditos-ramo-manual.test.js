@@ -74,8 +74,9 @@ S.ramos = [unRamo({ nombre: 'Nombre Repetido' })];
 completar();
 chk('y ese ramo se queda sin créditos en vez de recibir uno inventado', S.ramos[0].creditos === null);
 
-// Repetido pero coincidente: ahí sí hay una respuesta, y es esa.
-chk('un nombre repetido que concuerda sí resuelve', creditosPorNombre('Nombre Repetido Que Concuerda') === 8);
+// Aunque coincidan los SCT, dos siglas siguen siendo dos cursos posibles. El
+// estudiante declaró solo el nombre, así que no se elige una por él.
+chk('un nombre repetido que concuerda tampoco identifica un curso único', creditosPorNombre('Nombre Repetido Que Concuerda') === null);
 
 // Un nombre que no está en el catálogo se queda como está.
 chk('un ramo que de verdad es propio no recibe nada', creditosPorNombre('Mi Ramo Inventado') === null);
