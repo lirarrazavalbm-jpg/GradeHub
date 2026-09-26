@@ -712,9 +712,13 @@ function cursoUcCompleto(nombre,sigla){
 // porque el catálogo se edita todo el tiempo y crece con cada semestre. El día
 // que aparezcan dos siglas con el mismo nombre y distinto SCT, sin esto
 // elegiríamos una al azar y nadie se enteraría.
+//
+// Sin el archivo completo, mira las filas que trajo `catalogo_uc`: la consulta
+// por `busqueda` exacta devuelve TODAS las siglas con ese nombre, así que la
+// guarda ve los mismos repetidos que veía con el archivo.
 function creditosUCPorNombreUnico(nombre){
-  const filas=cursosUcExtra();
-  if(!filas||!nombre)return null;
+  const filas=cursosUcExtra()||_cursosUcRemotos;
+  if(!filas.length||!nombre)return null;
   const n=normName(nombre);
   if(!n)return null;
   let cr=null;
@@ -730,7 +734,7 @@ function creditosUCPorNombreUnico(nombre){
 // alguien agrega un ramo desde el catálogo mínimo. Solo completamos créditos
 // ausentes; nunca corregimos un valor ya guardado.
 function completarCreditosUCTrasCarga(){
-  if(S.tenant!=='uc'||!S.onboardingDone||!cursosUcExtra())return false;
+  if(S.tenant!=='uc'||!S.onboardingDone||!(cursosUcExtra()||_cursosUcRemotos.length))return false;
   let agregados=0;
   (S.ramos||[]).forEach(r=>{
     if(r.creditos!==null&&r.creditos!==undefined)return;
@@ -789,6 +793,62 @@ function consultaCatalogoUc(q){
 }
 // supabaseClient y currentUser viven en app-session.js, que carga después.
 function clienteCatalogoUc(){return typeof supabaseClient!=='undefined'&&supabaseClient&&typeof supabaseClient.from==='function'?supabaseClient:null;}
+let _creditosUcServidorPendiente=null;
+// Recupera solo las filas necesarias para una cuenta ya existente. Los ramos
+// con sigla se identifican por ella; los escritos a mano se consultan por la
+// `busqueda` exacta y pasan por la misma guarda de siempre
+// (creditosUCPorNombreUnico: un nombre repetido con SCT distintos no recibe
+// nada). Cualquier falla conserva el respaldo anterior: cursos-uc.js completo.
+function completarCreditosUCPendientes(){
+  if(S.tenant!=='uc'||!S.onboardingDone)return Promise.resolve(false);
+  const pendientes=(S.ramos||[]).filter(r=>(!r.origen||r.origen.tenant==='uc')&&(r.creditos===null||r.creditos===undefined));
+  if(!pendientes.length)return Promise.resolve(false);
+  if(cursosUcExtra())return Promise.resolve(completarCreditosUCTrasCarga());
+  if(_creditosUcServidorPendiente)return _creditosUcServidorPendiente;
+  const cliente=clienteCatalogoUc();
+  if(!cliente)return cargarCursosUC();
+
+  const siglas=[],nombres=[],vistasSiglas=new Set(),vistosNombres=new Set();
+  pendientes.forEach(r=>{
+    if(r.origen&&r.origen.tenant==='uc'){
+      const sigla=siglaDeRamo(r,'uc');
+      if(sigla&&!vistasSiglas.has(sigla.toUpperCase())){
+        vistasSiglas.add(sigla.toUpperCase());siglas.push(sigla.toUpperCase());
+      }
+      return;
+    }
+    if(r.origen)return;
+    const busqueda=normBusqueda(normName(r.nombre||''));
+    if(busqueda&&!vistosNombres.has(busqueda)){vistosNombres.add(busqueda);nombres.push(busqueda);}
+  });
+  // Un ramo de catálogo antiguo sin sigla resoluble no se puede consultar de
+  // forma inequívoca. En ese caso se conserva el archivo que ya resolvía esto.
+  if(pendientes.some(r=>r.origen&&r.origen.tenant==='uc'&&!siglaDeRamo(r,'uc')))return cargarCursosUC();
+
+  _creditosUcServidorPendiente=(async()=>{
+    try{
+      const pedir=async(campo,valores)=>{
+        if(!valores.length)return [];
+        const {data,error}=await cliente.from('catalogo_uc').select('sigla,nombre,creditos,busqueda').in(campo,valores);
+        if(error)throw error;
+        if(!Array.isArray(data))throw new Error('Respuesta inválida de catalogo_uc');
+        return data;
+      };
+      const [porSigla,porNombre]=await Promise.all([pedir('sigla',siglas),pedir('busqueda',nombres)]);
+      _catalogoUcServidor='ok';
+      agregarCursosUcRemotos(porSigla.concat(porNombre));
+      return completarCreditosUCTrasCarga();
+    }catch(e){
+      // Tabla sin aplicar, cliente sin conexión o red caída: mismo respaldo
+      // que tenía la app antes de consultar filas puntuales.
+      _catalogoUcServidor='no';
+      return cargarCursosUC();
+    }finally{
+      _creditosUcServidorPendiente=null;
+    }
+  })();
+  return _creditosUcServidorPendiente;
+}
 function pedirFrecuentesUc(carrera,repintar){
   const cliente=clienteCatalogoUc();
   if(!carrera||!cliente||typeof currentUser==='undefined'||!currentUser||_frecuentesUcPedidos.has(carrera))return;
@@ -1922,12 +1982,12 @@ function showMainApp(){
   // mientras esta condición lo excluía no se pedía el archivo, no se completaba
   // nada, y la cuenta entera se quedaba en promedio simple para siempre.
   //
-  // El costo es que una cuenta UC con un ramo verdaderamente propio y sin
-  // créditos baja los ~660 KB una vez. El service worker los cachea, y el
-  // precio de no hacerlo es mostrar un promedio que no es el ponderado.
+  // Primero se consultan solo las siglas y nombres exactos que faltan en
+  // catalogo_uc. El archivo completo queda como respaldo cuando Supabase no
+  // está disponible o no puede responder.
   if(S.tenant==='uc'&&(S.ramos||[]).some(r=>(!r.origen||r.origen.tenant==='uc')&&(r.creditos===null||r.creditos===undefined))){
     if(cursosUcExtra())completarCreditosUCTrasCarga();
-    else cargarCursosUC();
+    else completarCreditosUCPendientes();
   }
 }
 // Orden izq→der para el deslizar. Es una lista VIVA: la pestaña de profesor solo
