@@ -74,5 +74,19 @@ chk('solo Inicio lo pinta',/pintarRecomendacionClase\(c\)/.test(rm.slice(rm.inde
 chk('el alcance se registra como recomendación',/registrarAlcanceAnuncio\(anuncio\.id,'recomendacion'\)/.test(mk));
 chk('hay un interruptor para apagarlo',/const RECOMENDACIONES_CLASES_ACTIVAS=/.test(mk));
 
+console.log('\n=== Un ramo con laboratorio vinculado también recibe la recomendación ===');
+// Pasó el 2026-09-26 con Dinámica: sus evaluaciones suman 100 (la nota de
+// cátedra) y el laboratorio se combina encima con `aporta`, como hace el motor.
+// La recomendación esperaba que sumaran 70 y descartaba a todo el que lo cursa.
+const catedra={id:'cat',nombre:'Mecánica',sigla:'FIS9999',origen:{tenant:'uc',ramoKey:'FIS9999'},gates:[],
+  aporta:{ramo:'Laboratorio de Mecánica',peso:30,min:4.0},categorias:[
+  {id:'i1',nombre:'Interrogación 1',peso:40,directNota:true,notas:[{id:'x1',nombre:'Interrogación 1',valor:3.2,peso:1}]},
+  {id:'ex',nombre:'Examen',peso:60,directNota:true,notas:[]}]};
+const lab={id:'lab',nombre:'Laboratorio de Mecánica',sigla:'FIS9998',origen:{tenant:'uc',ramoKey:'FIS9998'},gates:[],categorias:[
+  {id:'inf',nombre:'Informes',peso:100,slots:4,directNota:true,notas:[{id:'y1',nombre:'Informe 1',slot:0,valor:3.5,peso:1}]}]};
+ctx.__avisosLab=[{...aviso('mec'),ramos_siglas:['FIS9999']}];
+ctx.__ramosLab=[catedra,lab];
+chk('la cátedra con laboratorio calza',run("seleccionarClaseApoyo(__avisosLab,__ramosLab,'uc',{ahora:"+lunes+"})")?.ramo.id==='cat');
+
 console.log('\nPASS: '+ok+'   FAIL: '+fail);
 process.exit(fail?1:0);

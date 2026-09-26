@@ -591,8 +591,11 @@ function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.
     if(!candidatos.length)continue;
     const cats=ramo.categorias||[];
     const total=cats.reduce((s,c)=>s+Number(c.peso||0),0);
-    const esperado=100-Number(ramo.aporta&&ramo.aporta.peso||0);
-    if(!Number.isFinite(total)||esperado<=0||Math.abs(total-esperado)>0.01||
+    // Las evaluaciones del ramo suman 100 aunque tenga un laboratorio
+    // vinculado: el motor combina ese `aporta` encima (Dinámica: 70% cátedra,
+    // 30% laboratorio). Esperar 100 menos el laboratorio dejaba sin
+    // recomendación a todo el que cursa Dinámica.
+    if(!Number.isFinite(total)||Math.abs(total-100)>0.01||
       cats.some(c=>!Number.isFinite(Number(c.peso))||Number(c.peso)<0||c.lista))continue;
     const avance=ramoProgress(ramo);
     if(!Number.isFinite(avance.total)||avance.total<=0||!Number.isFinite(avance.pending)||avance.pending<=0)continue;
