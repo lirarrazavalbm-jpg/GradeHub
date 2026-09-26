@@ -1773,6 +1773,10 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
   #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo .ramo-progress-track{bottom:auto;top:calc(50% + var(--info-mitad,22px) + 12px);}
   #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo .ramo-band{top:calc(50% - var(--info-mitad,22px));bottom:auto;height:calc(2 * var(--info-mitad,22px));transform:none;}
   #home-ramos .clase-apoyo.en-casilla{align-self:stretch;margin:0;animation:none;}
+  /* Fila y columna las pone colocarRecomendacionEnGrilla: el ramo se queda
+     donde estaba y la clase toma la casilla vecina en la misma fila. */
+  #home-ramos:not(.ramo-reordering) .ramo-row.tiene-clase-apoyo{grid-row:var(--ca-fila,auto);grid-column:var(--ca-col-ramo,auto);}
+  #home-ramos .clase-apoyo.en-casilla{grid-row:var(--ca-fila,auto);grid-column:var(--ca-col-clase,auto);}
   #home-ramos.ramo-reordering .ramo-row.tiene-clase-apoyo{border-radius:6px;background:transparent;margin:0;}
 }
 

@@ -88,5 +88,29 @@ ctx.__avisosLab=[{...aviso('mec'),ramos_siglas:['FIS9999']}];
 ctx.__ramosLab=[catedra,lab];
 chk('la cátedra con laboratorio calza',run("seleccionarClaseApoyo(__avisosLab,__ramosLab,'uc',{ahora:"+lunes+"})")?.ramo.id==='cat');
 
+console.log('\n=== En la grilla, la clase va junto a su ramo en cualquier posición ===');
+// Pasó el 2026-09-26: con Dinámica en la última columna la clase se metía
+// antes en el DOM, empujaba al ramo a la fila siguiente y quedaba lejos.
+const el=()=>{const clases=new Set(),vars={};return {clases,vars,
+  classList:{toggle:(c,on)=>{on?clases.add(c):clases.delete(c);}},
+  style:{setProperty:(k,v)=>{vars[k]=v;},removeProperty:k=>{delete vars[k];}}};};
+const grilla=(n,cols,pos)=>{
+  const hijos=Array.from({length:n},el),banner=el();
+  ctx.getComputedStyle=()=>({display:'grid',gridTemplateColumns:Array(cols).fill('400px').join(' ')});
+  ctx.__c={children:[...hijos.slice(0,pos+1),banner,...hijos.slice(pos+1)]};ctx.__f=hijos[pos];ctx.__b=banner;
+  run('colocarRecomendacionEnGrilla(__c,__f,__b)');
+  return {f:hijos[pos].vars,b:banner.vars,izq:banner.clases.has('a-la-izquierda')};
+};
+let g=grilla(6,3,2);
+chk('en la última columna, el ramo se queda en su casilla',g.f['--ca-fila']==='1'&&g.f['--ca-col-ramo']==='3');
+chk('y la clase toma la de su izquierda, en la misma fila',g.b['--ca-fila']==='1'&&g.b['--ca-col-clase']==='2'&&g.izq);
+g=grilla(6,3,4);
+chk('en el medio de la segunda fila, la clase va a la derecha',g.f['--ca-fila']==='2'&&g.f['--ca-col-ramo']==='2'&&g.b['--ca-col-clase']==='3'&&!g.izq);
+g=grilla(6,2,1);
+chk('con dos columnas también',g.f['--ca-col-ramo']==='2'&&g.b['--ca-col-clase']==='1'&&g.b['--ca-fila']==='1');
+ctx.getComputedStyle=()=>({display:'grid',gridTemplateColumns:'repeat(3, minmax(0, 1fr))'});
+ctx.__b=el();run('colocarRecomendacionEnGrilla(__c,__f,__b)');
+chk('con la pantalla sin dibujar no adivina columnas',!ctx.__b.vars['--ca-fila']);
+
 console.log('\nPASS: '+ok+'   FAIL: '+fail);
 process.exit(fail?1:0);
