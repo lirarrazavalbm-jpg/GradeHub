@@ -1305,8 +1305,8 @@ function cifrasClase({alcance,totales,hayCortes,campana,costo},pesos){
   const mitad=(v,d)=>`<div><b>${v}</b><small>${d}</small></div>`;
   const html=etapas.filter(([,p,v,siempre])=>siempre||p!==null&&p!==undefined||v!==null).map(([t,p,v])=>
     `<div class="clase-etapa"><span>${t}</span><div class="clase-par">${
-      p!==null&&p!==undefined?mitad(miles(p),'personas distintas'):campana||!v?mitad('—','personas distintas'):''}${
-      v!==null?mitad(miles(v),'veces en total'):''}</div></div>`).join('');
+      [p!==null&&p!==undefined?mitad(miles(p),'personas distintas'):campana||!v?mitad('—','personas distintas'):'',
+       v!==null?mitad(miles(v),'veces en total'):''].filter(Boolean).join('<i class="clase-par-sep" aria-hidden="true">/</i>')}</div></div>`).join('');
   const f=[];
   if(costo)f.push(['Va costando',pesos(costo.total),costo.tope!==null?`de tu tope de ${pesos(costo.tope)}`:'hasta ahora']);
   if(costo&&campana&&campana.contactos)f.push(['Por contacto',pesos(Math.round(costo.total/campana.contactos)),'lo que costó cada uno']);

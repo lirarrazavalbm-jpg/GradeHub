@@ -997,8 +997,10 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .clase-etapas{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px;}
 .clase-etapa{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;}
 .clase-etapa>span{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fg3);}
-.clase-par{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
-.clase-par div{display:flex;flex-direction:column;gap:2px;}
+.clase-par{display:flex;align-items:flex-start;gap:10px;}
+.clase-par div{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.clase-par-sep{font-style:normal;font-size:1.25rem;font-weight:300;line-height:1.2;color:var(--fg3);}
+.clases-kpis-etapas .clase-par-sep{font-size:1.625rem;}
 .clase-par b{font-size:1.25rem;font-weight:800;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
 .clase-par small{font-size:0.6875rem;color:var(--fg3);}
 .clases-kpis-etapas .clase-par b{font-size:1.625rem;}

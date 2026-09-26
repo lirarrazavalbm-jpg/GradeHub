@@ -93,8 +93,8 @@ const pintar=async(anuncios,datos)=>{
   chk('los días de campaña se cuentan',/días quedan/.test(html));
   html=await pintar([anuncio()],{campana:{dias:10,inicio:null,tope_clp:null,dias_cobrados:2,vistas:30,aperturas:5,contactos:1,costo:1750,agotada:false},
      totales:[{vista:'total',clave:'',tipo:'impresion',eventos:90},{vista:'total',clave:'',tipo:'clic',eventos:20}]});
-  chk('personas y veces de una misma etapa van juntas',/<span>Se mostró<\/span><div class="clase-par"><div><b>30<\/b><small>personas distintas<\/small><\/div><div><b>90<\/b><small>veces en total/.test(html)
-    &&/<span>La abrieron<\/span><div class="clase-par"><div><b>5<\/b><small>personas distintas<\/small><\/div><div><b>20<\/b><small>veces en total/.test(html));
+  chk('personas y veces de una misma etapa van juntas, separadas por una barra',/<span>Se mostró<\/span><div class="clase-par"><div><b>30<\/b><small>personas distintas<\/small><\/div><i class="clase-par-sep" aria-hidden="true">\/<\/i><div><b>90<\/b><small>veces en total/.test(html)
+    &&/<span>La abrieron<\/span><div class="clase-par"><div><b>5<\/b><small>personas distintas<\/small><\/div><i class="clase-par-sep" aria-hidden="true">\/<\/i><div><b>20<\/b><small>veces en total/.test(html));
 
   console.log('\n=== Lo que nadie vio todavía no tiene números ===');
   html=await pintar([anuncio({estado:'borrador',id:'b1'})],{alcance:99});
