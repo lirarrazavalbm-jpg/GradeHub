@@ -2133,12 +2133,12 @@ function renderBorradorProfesor(raiz,anuncio){
 //   anuncios públicos de tu universidad y se comparan acá con tus ramos y notas.
 //   Nada de eso viaja para elegir.
 // - Solo en Inicio, nunca en la ficha del ramo, la Agenda ni el ingreso de notas.
-// - Una en la mañana y una en la tarde (decisión de Lucas del 2026-09-25). Se
-//   muestra en la primera entrada de cada franja y se mantiene mientras dure
-//   esa visita. Si cierras la app y vuelves a entrar en la misma franja, no
-//   aparece; ni tampoco si la cerraste. La primera vez que cierras una clase,
-//   se esconde hasta la próxima franja; la segunda vez, esa clase no vuelve
-//   más en este dispositivo, y recién ahí se le dice.
+// - Una en la mañana y una en la tarde (decisión de Lucas del 2026-09-25). Lo
+//   único que gasta la franja es cerrarla con la X: recargar o volver a entrar
+//   la muestra de nuevo, la misma clase (ajuste del 2026-09-26; antes recargar
+//   la hacía desaparecer hasta la franja siguiente). La primera vez que cierras
+//   una clase, se esconde hasta la próxima franja; la segunda vez, esa clase no
+//   vuelve más en este dispositivo, y recién ahí se le dice.
 // - No dice "reprobando" ni diagnostica: ofrece apoyo para el ramo.
 // - El cierre y el día viven en `gradehub_marketplace_v1`, aparte de
 //   gradehub_v1: apagar esto no toca el estado académico.
@@ -2167,18 +2167,16 @@ const HORA_TARDE_CLASES=14;
 function franjaClases(ahora=Date.now()){
   return diaLocalClases(ahora)+(new Date(ahora).getHours()<HORA_TARDE_CLASES?'-manana':'-tarde');
 }
-// Una "visita" es una carga de la app: volver a entrar es otra visita.
-const VISITA_CLASES=Math.random().toString(36).slice(2)+Date.now().toString(36);
-
 // Pura: recibe anuncios, ramos y el estado guardado, y devuelve la
 // recomendación de esta franja (o null) junto con el estado que hay que guardar.
-function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now(),visita=VISITA_CLASES){
+function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now()){
   const franja=franjaClases(ahora),e=estado||{};
   if(e.franja===franja){
-    // En esta franja ya se mostró en otra visita, o se cerró: hasta la próxima.
-    if(e.cerrada||e.visita!==visita)return {sel:null,estado:e};
-    // Misma visita: la misma clase, si sigue calzando. Si subiste una nota y
-    // dejó de calzar, desaparece en vez de quedarse pegada.
+    // Cerrada con la X: hasta la próxima franja.
+    if(e.cerrada)return {sel:null,estado:e};
+    // Recargar o volver a entrar muestra la misma clase, si sigue calzando.
+    // Si subiste una nota y dejó de calzar, desaparece en vez de quedarse
+    // pegada, y no se reemplaza por otra en la misma franja.
     if(e.anuncioId){
       const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===e.anuncioId),ramos,tenant,{descartados:definitivasClases(e),ahora});
       return {sel,estado:e};
@@ -2188,20 +2186,20 @@ function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now(),visit
   // La franja queda tomada solo si se mostró una. Si no calza ninguna, no se
   // anota nada: una clase publicada más tarde tiene que poder aparecer.
   if(!sel)return {sel:null,estado:e};
-  return {sel,estado:{...e,franja,visita,anuncioId:sel.anuncio.id,cerrada:false}};
+  return {sel,estado:{...e,franja,anuncioId:sel.anuncio.id,cerrada:false}};
 }
 
 // Las clases cerradas dos veces. La lista `descartados` de la versión anterior
 // se ignora: ahí bastaba cerrarla una vez, y con la regla nueva eso no alcanza.
 function definitivasClases(e){return Array.isArray(e&&e.descartadasDefinitivas)?e.descartadasDefinitivas:[];}
 // Devuelve true si con este cierre la clase queda descartada para siempre.
-function descartarRecomendacionClase(anuncioId,ahora=Date.now(),visita=VISITA_CLASES){
+function descartarRecomendacionClase(anuncioId,ahora=Date.now()){
   const estado=leerEstadoMarketplace();
   const cierres={...(estado.cierres&&typeof estado.cierres==='object'?estado.cierres:{})};
   cierres[anuncioId]=(Number(cierres[anuncioId])||0)+1;
   const definitiva=cierres[anuncioId]>=2;
   const descartadasDefinitivas=definitiva?[...new Set([...definitivasClases(estado),anuncioId])].slice(-MAX_DESCARTADOS_CLASES):definitivasClases(estado);
-  guardarEstadoMarketplace({...estado,cierres,descartadasDefinitivas,franja:franjaClases(ahora),visita,anuncioId:null,cerrada:true});
+  guardarEstadoMarketplace({...estado,cierres,descartadasDefinitivas,franja:franjaClases(ahora),anuncioId:null,cerrada:true});
   return definitiva;
 }
 

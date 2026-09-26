@@ -31,10 +31,12 @@ const complicado=[ramo('r1',[3.5,3.5])],bien=[ramo('r1',[5.5,5.5])];
 console.log('=== Una en la mañana y una en la tarde ===');
 let r=dia(complicado,{},lunes);
 chk('elige una clase cuando el ramo calza',r.sel&&r.sel.anuncio.id==='a1'&&r.sel.ramo.id==='r1');
-chk('y anota la franja, la visita y cuál fue',r.estado.franja==='2026-09-28-manana'&&r.estado.visita==='v1'&&r.estado.anuncioId==='a1');
+chk('y anota la franja y cuál fue',r.estado.franja==='2026-09-28-manana'&&r.estado.anuncioId==='a1');
 const manana=r.estado;
 chk('en la misma visita se mantiene al volver a Inicio',dia(complicado,manana,lunes+3600e3).sel?.anuncio.id==='a1');
-chk('si vuelve a entrar esa mañana, no aparece',dia(complicado,manana,lunes+3600e3,'v2').sel===null);
+// Ajuste del 2026-09-26: recargar no gasta la franja, solo la X.
+chk('si recarga o vuelve a entrar esa mañana, sigue la misma clase',dia(complicado,manana,lunes+3600e3,'v2').sel?.anuncio.id==='a1');
+chk('recargar no anota nada nuevo',(r=>r.estado===manana)(dia(complicado,manana,lunes+3600e3,'v2')));
 chk('en la tarde vuelve a aparecer',dia(complicado,manana,lunesTarde,'v2').sel?.anuncio.id==='a1');
 chk('si sube la nota, desaparece en vez de quedar pegada',dia(bien,manana,lunes).sel===null);
 chk('sin un ramo que calce, no hay nada',dia(bien,{},lunes).sel===null);
