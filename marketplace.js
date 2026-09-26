@@ -1123,10 +1123,12 @@ function renderPostulacionProfesor(raiz){
   });
 }
 
-// Los anuncios de quien mira. La RLS ya delimita al dueño —un profesor ve los
-// suyos en cualquier estado y de los demás solo los publicados—, así que no se
-// filtra por autor_id acá: esa columna no tiene SELECT público y pedirla daría
-// un error de permisos.
+// Los anuncios de quien mira. La RLS deja leer los propios en cualquier estado
+// y, de los demás, los publicados: son públicos para el catálogo. No se puede
+// filtrar por autor_id acá (esa columna no tiene SELECT público), así que los
+// publicados se confirman uno por uno con `anuncio_propio`, que corre en el
+// servidor. Sin esto, cada profesor veía en su página las clases de los otros
+// (pasó el 2026-09-26 con la primera clase de un profesor externo).
 async function misAnunciosClase(){
   const uid=sesionProfesorClase();
   if(!uid)return {ok:false,error:'Inicia sesión para ver tus clases.'};
@@ -1134,9 +1136,16 @@ async function misAnunciosClase(){
     const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
       .select(campos).order('created_at',{ascending:false}),CAMPOS_PUBLICOS_ANUNCIO);
     if(error)throw error;
-    // Los publicados de otros tutores también pasan la RLS: se descartan por
-    // los que uno puede editar, que son los únicos con métricas propias.
-    return {ok:true,anuncios:Array.isArray(data)?data:[]};
+    const todos=Array.isArray(data)?data:[];
+    // Si no se puede confirmar un publicado, se falla entero en vez de
+    // adivinar: mostrar uno ajeno o esconder uno propio serían los dos malos.
+    const propio=await Promise.all(todos.map(async a=>{
+      if(a.estado!=='publicado')return true;
+      const r=await supabaseClient.rpc('anuncio_propio',{p_anuncio_id:a.id,p_editable:false});
+      if(r.error)throw r.error;
+      return r.data===true;
+    }));
+    return {ok:true,anuncios:todos.filter((_,i)=>propio[i])};
   }catch(e){return {ok:false,error:'No pudimos consultar tus clases. Intenta de nuevo.'};}
 }
 
