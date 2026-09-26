@@ -3719,9 +3719,23 @@ function quitarReporteFila(i){
 function siglaReporteUC(r){
   const o=r&&r.origen;
   if(!o||o.tenant!=='uc')return null;
-  if(typeof o.ramoKey==='string'&&o.ramoKey.trim())return o.ramoKey;
+  // Solo vale algo con forma de sigla. Los ramos agregados antes de que su
+  // sigla estuviera en el catálogo guardaron el NOMBRE como ramoKey, y ese
+  // nombre viajaba como si fuera la sigla: los reportes de un mismo ramo
+  // quedaban en dos grupos (BIO110C por un lado y "BIOLOGIA DE ORGANISMOS…"
+  // por otro) y el consenso no llegaba a tres (2026-09-26). No se reescribe el
+  // ramoKey guardado: la sigla se resuelve al reportar.
+  const fila=cursoUcCompleto(r.nombre,null);
   const clave=Object.keys(CREDITOS_UC).find(n=>normName(n)===normName(r.nombre));
-  return (clave&&CREDITOS_UC[clave]&&CREDITOS_UC[clave][1])||siglaUC(r.nombre,o.carrera)||null;
+  const candidatas=[r.sigla,o.ramoKey,clave&&CREDITOS_UC[clave]&&CREDITOS_UC[clave][1],siglaUC(r.nombre,o.carrera),fila&&fila[0]];
+  for(const c of candidatas){const s=siglaConForma(c);if(s)return s;}
+  return null;
+}
+// La misma forma que exige public.catalogo_uc, más un dígito: "BIO110C" sí,
+// "BIOLOGIA DE ORGANISMOS Y COMUNIDADES" no.
+function siglaConForma(s){
+  const t=typeof s==='string'?s.trim().toUpperCase():'';
+  return /^[A-Z0-9_]{3,12}$/.test(t)&&/\d/.test(t)?t:null;
 }
 
 // La clave del consenso identifica el ramo compartido, no el lugar que ocupa
@@ -3730,7 +3744,9 @@ function siglaReporteUC(r){
 // identificador oficial equivalente.
 function claveReporte(r){
   const o=r&&r.origen;
-  return (o&&o.ramoKey)||siglaReporteUC(r)||ramoKey(r&&r.nombre,o&&o.tenant,o&&o.carrera);
+  // En UC manda la sigla, aunque el ramoKey guardado sea el nombre: es la
+  // misma clave con la que el servidor agrupa los reportes.
+  return siglaReporteUC(r)||(o&&o.ramoKey)||ramoKey(r&&r.nombre,o&&o.tenant,o&&o.carrera);
 }
 
 function openReportModal(ramoId,conservarBorrador=false){
