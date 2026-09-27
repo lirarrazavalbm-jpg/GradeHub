@@ -588,6 +588,30 @@ function renderRamo(){
     else{aw.style.display='none';aw.innerHTML='';}
   }
 
+  // Contador de faltas: solo si el estudiante lo encendió en Editar ramo. Es
+  // su registro, no una regla del programa, así que no toca el promedio.
+  const fw=document.getElementById('faltas-contador');
+  if(fw){
+    if(!faltasActivas(r)){fw.style.display='none';fw.innerHTML='';}
+    else{
+      const {cantidad,limite}=r.faltas;
+      const quedan=limite!=null?limite-cantidad:null;
+      const detalle=limite==null?'Anota cada clase a la que no fuiste.'
+        :quedan>1?`Te quedan ${quedan} de ${limite}.`
+        :quedan===1?`Te queda 1 de ${limite}.`
+        :quedan===0?`Llegaste al máximo de ${limite}.`
+        :`Pasaste el máximo de ${limite} por ${-quedan}.`;
+      fw.style.display='flex';
+      fw.className='faltas-card'+(quedan!==null&&quedan<0?' is-excedido':quedan===0?' is-limite':'');
+      fw.innerHTML=`<div class="faltas-txt"><span class="faltas-titulo">Faltas</span><span class="faltas-detalle">${detalle}</span></div>
+        <div class="faltas-ctrl">
+          <button type="button" class="faltas-btn" onclick="cambiarFaltas(-1)" aria-label="Restar una falta" ${cantidad===0?'disabled':''}><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+          <span class="faltas-num" aria-live="polite">${cantidad}</span>
+          <button type="button" class="faltas-btn" onclick="cambiarFaltas(1)" aria-label="Sumar una falta" ${cantidad>=FALTAS_MAX?'disabled':''}><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+        </div>`;
+    }
+  }
+
   const rw=document.getElementById('recuperativo-warning');
   if(rw&&recuperativo){
     rw.style.display='flex';rw.className='weight-setup-nudge';rw.style.width='auto';rw.style.margin='12px 20px';

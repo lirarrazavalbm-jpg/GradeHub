@@ -2571,6 +2571,17 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 /* Notas que un agente propuso, dentro de la ficha del ramo. La nota anterior se
    muestra tachada al lado de la nueva: pisar un 6,2 con un 4,0 es una decisión
    distinta de llenar una casilla vacía. */
+.faltas-card{align-items:center;justify-content:space-between;gap:12px;margin:12px 20px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card);}
+.faltas-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.faltas-titulo{font-size:0.875rem;font-weight:650;color:var(--fg);}
+.faltas-detalle{font-size:0.75rem;color:var(--fg3);}
+.faltas-card.is-limite .faltas-detalle{color:var(--yellow);}
+.faltas-card.is-excedido .faltas-detalle{color:var(--red);}
+.faltas-ctrl{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.faltas-num{min-width:2ch;text-align:center;font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--fg);}
+.faltas-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--fg2);cursor:pointer;}
+.faltas-btn .ic{width:16px;height:16px;}
+.faltas-btn:disabled{opacity:.35;cursor:default;}
 .prop-notas-card{margin-bottom:12px;padding:13px;border:1px solid var(--border);border-radius:14px;background:var(--bg2);}
 .prop-notas-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
 .prop-notas-head b{font-size:0.875rem;font-weight:700;color:var(--fg);}
