@@ -46,7 +46,7 @@ chk('el tope va de $1.000 a $5.000.000',!val({dias:5,tope_clp:999}).ok&&!val({di
 chk('las fechas se cuentan en días calendario',run("diasEntreFechasClase('2026-10-01','2026-10-10')")===9&&run("sumarDiasFechaClase('2026-10-30',3)")==='2026-11-02');
 
 console.log('\n=== El servidor ===');
-chk('la campaña se paga por persona, una vez por anuncio y tipo',/primary key \(anuncio_id, user_id, tipo\)/.test(sql));
+chk('la campaña se paga por persona, una vez por publicación y tipo',/alter table public\.anuncio_interacciones add primary key \(anuncio_id, user_id, tipo, publicacion\)/.test(sql));
 chk('no cuentan el profesor ni una cuenta sin ramos',/cuenta_para_campana[\s\S]*?autor_id = p_user_id[\s\S]*?user_ramos where user_id = p_user_id/.test(sql));
 chk('un anuncio publicado no cambia su tope ni sus días',/function public\.anuncio_propio[\s\S]*?t\.estado in \('borrador', 'en_revision', 'pausado'\)/.test(sql)&&
   /anuncio_campanas_update_propia[\s\S]*?anuncio_propio\(anuncio_id, true\)/.test(sql));

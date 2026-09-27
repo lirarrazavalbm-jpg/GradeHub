@@ -1,3 +1,5 @@
+begin;
+
 -- Aprobar profesores y publicar sus clases, desde el SQL Editor de Supabase.
 --
 -- Hasta ahora aprobar era escribir UPDATE a mano y acertarle a la restricción
@@ -139,9 +141,9 @@ $$;
 -- Publica un anuncio en revisión. El cargo es obligatorio y explícito —0 es
 -- una decisión, "piloto sin cargo", no un valor por omisión— porque la tarifa
 -- todavía no está decidida y no puede quedar decidida por un default.
--- Desde CAMPAÑAS (2026-09-25) los días y el inicio los elige el profesor: si
--- el anuncio tiene campaña, se usan esos y `p_dias` queda de respaldo para los
--- anuncios de antes. Con inicio futuro queda PROGRAMADO: publicado, pero no se
+-- Los días, inicio y tope deben estar guardados por el profesor. `p_dias`
+-- se conserva en la firma para clientes anteriores, pero no sustituye esa
+-- configuración. Con inicio futuro queda PROGRAMADO: publicado, pero no se
 -- muestra hasta ese día (medianoche de Chile). La firma cambió su default, y
 -- Postgres no deja cambiarlo con create or replace: por eso el drop.
 drop function if exists admin.publicar_anuncio(uuid, integer, integer);
@@ -176,12 +178,21 @@ begin
     raise exception 'el anuncio no tiene título';
   end if;
 
-  select * into c from public.anuncio_campanas where anuncio_id = p_anuncio_id;
-  dias := coalesce(c.dias, p_dias, 30);
+  select * into c from public.anuncio_campanas where anuncio_id = p_anuncio_id for update;
+  if not found then
+    raise exception 'guarda los días y el tope antes de publicar';
+  end if;
+  dias := c.dias;
   if dias not between 1 and 90 then
     raise exception 'la campaña dura entre 1 y 90 días';
   end if;
   desde := greatest(ahora, coalesce((c.inicio::timestamp at time zone 'America/Santiago'), ahora));
+  -- Permite reprogramar para antes, sin reutilizar la identidad de una campaña.
+  while desde = a.publicado_at or exists (
+    select 1 from admin.anuncio_publicaciones where anuncio_id = a.id and publicado_at = desde
+  ) loop
+    desde := desde + interval '1 microsecond';
+  end loop;
   vence := desde + make_interval(days => dias);
 
   update public.tutor_anuncios
@@ -257,3 +268,5 @@ end;
 $$;
 
 revoke all on all functions in schema admin from public, anon, authenticated;
+
+commit;

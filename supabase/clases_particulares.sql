@@ -1,3 +1,5 @@
+begin;
+
 -- Marketplace de clases particulares.
 --
 -- APLÍCALO UNA VEZ en el SQL Editor de Supabase ANTES de mergear el PR que
@@ -112,6 +114,11 @@ create table if not exists public.tutor_anuncios (
 -- alcance único ya se registra más abajo, pero la tarifa no queda fijada en el
 -- aviso ni hay presupuesto exigido en el servidor, así que todavía no se cobra
 -- solo.
+-- Las filas anteriores conservan su alcance acumulado. Solo una publicación
+-- NUEVA empieza otra medición; no se reparte el pasado entre fechas inventadas.
+-- El cliente no recibe permisos de lectura/escritura sobre esta columna.
+alter table public.tutor_anuncios add column if not exists medicion_desde timestamptz not null default '-infinity';
+
 alter table public.tutor_anuncios add column if not exists criterios jsonb
   check (
     criterios is null or case
@@ -625,6 +632,12 @@ create table if not exists public.anuncio_metricas (
   primary key (anuncio_id, dia, tipo, tenant, ramo_sigla)
 );
 
+-- Identidad de la publicación. -infinity conserva el conjunto heredado.
+alter table public.anuncio_metricas add column if not exists publicacion timestamptz not null default '-infinity';
+alter table public.anuncio_metricas add column if not exists vence_publicacion timestamptz;
+alter table public.anuncio_metricas drop constraint if exists anuncio_metricas_pkey;
+alter table public.anuncio_metricas add primary key (anuncio_id, dia, tipo, tenant, ramo_sigla, publicacion);
+
 alter table public.anuncio_metricas enable row level security;
 revoke all on public.anuncio_metricas from public, anon, authenticated;
 
@@ -662,7 +675,7 @@ begin
     and estado = 'publicado'
     and (vence_at is null or vence_at > now())
     and public.tutor_aprobado(autor_id)
-  for key share;
+  for update;
 
   if not found then
     raise exception 'anuncio no disponible';
@@ -673,9 +686,9 @@ begin
 
   -- auth.uid() se descartó arriba: esta inserción no tiene ni puede recibir
   -- una columna de espectador. Solo queda el contador agregado.
-  insert into public.anuncio_metricas (anuncio_id, dia, tipo, tenant, ramo_sigla, eventos)
-  values (anuncio.id, current_date, p_tipo, anuncio.tenant, sigla, 1)
-  on conflict (anuncio_id, dia, tipo, tenant, ramo_sigla) do update
+  insert into public.anuncio_metricas (anuncio_id, dia, tipo, tenant, ramo_sigla, eventos, publicacion, vence_publicacion)
+  values (anuncio.id, current_date, p_tipo, anuncio.tenant, sigla, 1, anuncio.medicion_desde, anuncio.vence_at)
+  on conflict (anuncio_id, dia, tipo, tenant, ramo_sigla, publicacion) do update
     set eventos = public.anuncio_metricas.eventos + 1,
         updated_at = now()
     where public.anuncio_metricas.updated_at <= now() - interval '10 seconds';
@@ -709,6 +722,7 @@ begin
   select m.dia, m.tipo, m.tenant, m.ramo_sigla, m.eventos
   from public.anuncio_metricas m
   where m.anuncio_id = p_anuncio_id
+    and m.publicacion = (select medicion_desde from public.tutor_anuncios where id = p_anuncio_id)
     and m.eventos >= 15
   order by m.dia desc, m.tipo, m.ramo_sigla;
 end;
@@ -738,7 +752,8 @@ begin
   end if;
 
   return query
-  with m as (select * from public.anuncio_metricas where anuncio_id = p_anuncio_id)
+  with m as (select * from public.anuncio_metricas where anuncio_id = p_anuncio_id
+    and publicacion = (select medicion_desde from public.tutor_anuncios where id = p_anuncio_id))
   select 'total'::text, ''::text, m.tipo, sum(m.eventos)::integer from m group by m.tipo having sum(m.eventos) >= 15
   union all
   select 'dia', m.dia::text, m.tipo, sum(m.eventos)::integer from m group by m.dia, m.tipo having sum(m.eventos) >= 15
@@ -824,6 +839,15 @@ create table if not exists public.anuncio_alcance (
   primary key (anuncio_id, user_id)
 );
 
+-- Identidad de la publicación. -infinity conserva el conjunto heredado.
+alter table public.anuncio_alcance add column if not exists publicacion timestamptz not null default '-infinity';
+alter table public.anuncio_alcance add column if not exists vence_publicacion timestamptz;
+alter table public.anuncio_alcance drop constraint if exists anuncio_alcance_pkey;
+alter table public.anuncio_alcance add primary key (anuncio_id, user_id, publicacion);
+update public.anuncio_alcance a set vence_publicacion = t.vence_at
+from public.tutor_anuncios t
+where t.id = a.anuncio_id and a.publicacion = '-infinity' and a.vence_publicacion is null and t.vence_at is not null;
+
 alter table public.anuncio_alcance enable row level security;
 revoke all on public.anuncio_alcance from public, anon, authenticated;
 
@@ -878,13 +902,14 @@ begin
   end if;
   -- Desde CAMPAÑAS (2026-09-25): no cuenta un anuncio programado o que ya
   -- llegó a su tope, ni el propio profesor, ni una cuenta sin ramos.
+  perform 1 from public.tutor_anuncios where id = p_anuncio_id for update;
   if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
     return false;
   end if;
 
-  insert into public.anuncio_alcance (anuncio_id, user_id, canal)
-  values (p_anuncio_id, auth.uid(), p_canal)
-  on conflict (anuncio_id, user_id) do update
+  insert into public.anuncio_alcance (anuncio_id, user_id, canal, publicacion, vence_publicacion)
+  select id, auth.uid(), p_canal, medicion_desde, vence_at from public.tutor_anuncios where id = p_anuncio_id
+  on conflict (anuncio_id, user_id, publicacion) do update
     set canal = excluded.canal
     where public.rango_canal_alcance(excluded.canal) > public.rango_canal_alcance(public.anuncio_alcance.canal);
 
@@ -912,7 +937,8 @@ begin
     raise exception 'no puedes ver el alcance de este anuncio';
   end if;
 
-  return (select count(*)::integer from public.anuncio_alcance where anuncio_id = p_anuncio_id);
+  return (select count(*)::integer from public.anuncio_alcance where anuncio_id = p_anuncio_id
+    and publicacion = (select medicion_desde from public.tutor_anuncios where id = p_anuncio_id));
 end;
 $$;
 
@@ -939,6 +965,7 @@ begin
   select a.canal, count(*)::integer
   from public.anuncio_alcance a
   where a.anuncio_id = p_anuncio_id
+    and a.publicacion = (select medicion_desde from public.tutor_anuncios where id = p_anuncio_id)
   group by a.canal;
 end;
 $$;
@@ -962,8 +989,7 @@ begin
   delete from public.anuncio_alcance as a
    using public.tutor_anuncios as t
    where t.id = a.anuncio_id
-     and t.vence_at is not null
-     and t.vence_at < now() - make_interval(days => p_dias);
+     and coalesce(a.vence_publicacion, t.vence_at) < now() - make_interval(days => p_dias);
   get diagnostics filas = row_count;
   return filas;
 end;
@@ -1056,6 +1082,15 @@ create table if not exists public.anuncio_interacciones (
   dia         date not null default current_date,
   primary key (anuncio_id, user_id, tipo)
 );
+-- Identidad de la publicación. -infinity conserva el conjunto heredado.
+alter table public.anuncio_interacciones add column if not exists publicacion timestamptz not null default '-infinity';
+alter table public.anuncio_interacciones add column if not exists vence_publicacion timestamptz;
+alter table public.anuncio_interacciones drop constraint if exists anuncio_interacciones_pkey;
+alter table public.anuncio_interacciones add primary key (anuncio_id, user_id, tipo, publicacion);
+update public.anuncio_interacciones i set vence_publicacion = t.vence_at
+from public.tutor_anuncios t
+where t.id = i.anuncio_id and i.publicacion = '-infinity' and i.vence_publicacion is null and t.vence_at is not null;
+
 alter table public.anuncio_interacciones enable row level security;
 revoke all on public.anuncio_interacciones from public, anon, authenticated;
 
@@ -1071,6 +1106,41 @@ as $$
   end;
 $$;
 
+-- Intervalos no visibles por suspensión del profesor. No contienen alumnos.
+create table if not exists public.tutor_suspensiones (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references public.tutor_perfiles(user_id) on delete cascade,
+  desde timestamptz not null,
+  hasta timestamptz,
+  check (hasta is null or hasta >= desde)
+);
+create unique index if not exists tutor_suspension_abierta on public.tutor_suspensiones(user_id) where hasta is null;
+alter table public.tutor_suspensiones enable row level security;
+revoke all on public.tutor_suspensiones from public, anon, authenticated;
+
+-- Para quienes ya estaban suspendidos, se congela desde la instalación.
+-- No hay evidencia para recalcular días anteriores: esos importes se revisan a mano.
+insert into public.tutor_suspensiones(user_id, desde)
+select user_id, now() from public.tutor_perfiles where estado <> 'aprobado'
+on conflict (user_id) where hasta is null do nothing;
+
+create or replace function public.registrar_suspension_profesor()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.estado <> 'aprobado' and old.estado = 'aprobado' then
+    insert into public.tutor_suspensiones(user_id, desde) values(new.user_id, now())
+    on conflict (user_id) where hasta is null do nothing;
+  elsif new.estado = 'aprobado' and old.estado <> 'aprobado' then
+    update public.tutor_suspensiones set hasta = now() where user_id = new.user_id and hasta is null;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.registrar_suspension_profesor() from public, anon, authenticated;
+drop trigger if exists tutor_perfiles_suspension on public.tutor_perfiles;
+create trigger tutor_perfiles_suspension after update of estado on public.tutor_perfiles
+for each row execute function public.registrar_suspension_profesor();
+
 -- Lo que lleva una campaña. Uso interno: no tiene grant.
 create or replace function public.costo_campana(p_anuncio_id uuid)
 returns table (dias integer, inicio date, tope_clp integer, dias_cobrados integer,
@@ -1083,7 +1153,8 @@ as $$
 declare
   a public.tutor_anuncios%rowtype;
   c public.anuncio_campanas%rowtype;
-  hasta timestamptz;
+  hasta_cobro timestamptz;
+  segundos_suspendidos numeric := 0;
 begin
   select * into a from public.tutor_anuncios where id = p_anuncio_id;
   if not found then return; end if;
@@ -1095,14 +1166,18 @@ begin
   tope_clp := c.tope_clp;
   dias_cobrados := 0;
   if a.publicado_at is not null and a.publicado_at <= now() then
-    hasta := least(now(), coalesce(a.vence_at, 'infinity'), coalesce(c.detenido_at, 'infinity'));
-    dias_cobrados := greatest(0, ceil(extract(epoch from (hasta - a.publicado_at)) / 86400)::integer);
+    hasta_cobro := least(now(), coalesce(a.vence_at, 'infinity'), coalesce(c.detenido_at, 'infinity'));
+    select coalesce(sum(greatest(0, extract(epoch from
+      (least(hasta_cobro, coalesce(s.hasta, hasta_cobro)) - greatest(a.publicado_at, s.desde))))), 0)
+      into segundos_suspendidos from public.tutor_suspensiones s
+      where s.user_id = a.autor_id and s.desde < hasta_cobro and (s.hasta is null or s.hasta > a.publicado_at);
+    dias_cobrados := greatest(0, ceil((extract(epoch from (hasta_cobro - a.publicado_at)) - segundos_suspendidos) / 86400)::integer);
     if dias is not null then dias_cobrados := least(dias_cobrados, dias); end if;
   end if;
-  select count(*)::integer into vistas from public.anuncio_alcance where anuncio_id = p_anuncio_id;
+  select count(*)::integer into vistas from public.anuncio_alcance where anuncio_id = p_anuncio_id and publicacion = a.medicion_desde;
   select count(*) filter (where tipo = 'apertura')::integer, count(*) filter (where tipo = 'contacto')::integer
     into aperturas, contactos
-    from public.anuncio_interacciones where anuncio_id = p_anuncio_id;
+    from public.anuncio_interacciones where anuncio_id = p_anuncio_id and publicacion = a.medicion_desde;
   costo_bruto := dias_cobrados * public.tarifa_campana_clp('dia')
                + vistas * public.tarifa_campana_clp('vista')
                + aperturas * public.tarifa_campana_clp('apertura')
@@ -1187,11 +1262,12 @@ begin
   if p_tipo not in ('apertura', 'contacto') then
     raise exception 'tipo inválido';
   end if;
+  perform 1 from public.tutor_anuncios where id = p_anuncio_id for update;
   if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
     return false;
   end if;
-  insert into public.anuncio_interacciones (anuncio_id, user_id, tipo)
-  values (p_anuncio_id, auth.uid(), p_tipo)
+  insert into public.anuncio_interacciones (anuncio_id, user_id, tipo, publicacion, vence_publicacion)
+  select id, auth.uid(), p_tipo, medicion_desde, vence_at from public.tutor_anuncios where id = p_anuncio_id
   on conflict do nothing;
   get diagnostics filas = row_count;
   return filas = 1;
@@ -1270,11 +1346,37 @@ begin
   delete from public.anuncio_interacciones as i
    using public.tutor_anuncios as t
    where t.id = i.anuncio_id
-     and t.vence_at is not null
-     and t.vence_at < now() - make_interval(days => p_dias);
+     and coalesce(i.vence_publicacion, t.vence_at) < now() - make_interval(days => p_dias);
   get diagnostics filas = row_count;
   return filas;
 end;
 $$;
 revoke all on function public.limpiar_interacciones_anuncios(integer) from public, anon, authenticated;
 
+
+-- Una transición a revisión/publicación requiere configuración persistida.
+-- La marca interna solo cambia al comenzar una publicación nueva.
+create or replace function public.preparar_publicacion_clase()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.estado in ('en_revision', 'publicado') and (tg_op = 'INSERT' or new.estado is distinct from old.estado or new.publicado_at is distinct from old.publicado_at) then
+    perform 1 from public.anuncio_campanas where anuncio_id = new.id for update;
+    if not found then
+      raise exception 'guarda los días y el tope de la campaña antes de enviarla o publicarla' using errcode = '23514';
+    end if;
+  end if;
+  if new.estado = 'publicado' and (tg_op = 'INSERT' or old.estado <> 'publicado' or new.publicado_at is distinct from old.publicado_at) then
+    if new.publicado_at is null or (tg_op = 'UPDATE' and old.publicado_at is not null and new.publicado_at = old.publicado_at) then
+      raise exception 'una nueva publicación necesita su propia fecha de inicio' using errcode = '23514';
+    end if;
+    new.medicion_desde := new.publicado_at;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.preparar_publicacion_clase() from public, anon, authenticated;
+drop trigger if exists tutor_anuncios_publicacion on public.tutor_anuncios;
+create trigger tutor_anuncios_publicacion before insert or update of estado, publicado_at on public.tutor_anuncios
+for each row execute function public.preparar_publicacion_clase();
+
+commit;

@@ -1,3 +1,5 @@
+begin;
+
 -- ADMINISTRADORES DE GRADEHUB · verificación en dos pasos.
 --
 -- Pedido de Lucas del 2026-09-25: una página para ver y administrar las
@@ -137,6 +139,10 @@ begin
             'vence_at', a.vence_at,
             'created_at', a.created_at,
             'campana', (select to_jsonb(k) from public.costo_campana(a.id) k),
+            'cobros', coalesce((select jsonb_agg(jsonb_build_object(
+              'publicado_at', h.publicado_at, 'estado', h.estado, 'monto_clp', h.monto_clp,
+              'actualizado_at', h.actualizado_at) order by h.publicado_at desc)
+              from admin.cobros h where h.anuncio_id = a.id), '[]'::jsonb),
             'cobro', (select jsonb_build_object('estado', c.estado, 'monto_clp', c.monto_clp, 'actualizado_at', c.actualizado_at)
                         from admin.cobros c where c.anuncio_id = a.id and c.publicado_at = a.publicado_at)
           ) order by a.created_at desc)
@@ -196,9 +202,50 @@ begin
 end;
 $$;
 
--- Cobrado, en deuda o pendiente (sin fila), para la publicación actual del
--- anuncio. El monto lo escribe quien administra: en el piloto no hay cobro
--- automático.
+-- La fecha identifica qué publicación se está cobrando. Una renovación o
+-- una segunda pestaña no pueden redirigir un pago hacia otra campaña.
+create or replace function public.admin_marcar_cobro_publicacion(
+  p_anuncio_id uuid, p_publicado_at timestamptz, p_estado text, p_monto_clp integer
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, admin
+as $$
+declare
+  actual timestamptz;
+begin
+  perform admin.exigir_administrador();
+  if p_estado is null or p_estado not in ('cobrado', 'deuda', 'pendiente') then
+    raise exception 'estado de cobro inválido';
+  end if;
+  select publicado_at into actual from public.tutor_anuncios where id = p_anuncio_id for update;
+  if not found or p_publicado_at is null or not (
+    p_publicado_at is not distinct from actual
+    or exists (select 1 from admin.anuncio_publicaciones where anuncio_id = p_anuncio_id and publicado_at = p_publicado_at)
+    or exists (select 1 from admin.cobros where anuncio_id = p_anuncio_id and publicado_at = p_publicado_at)
+  ) then
+    raise exception 'esa publicación no existe';
+  end if;
+  if p_estado = 'pendiente' then
+    delete from admin.cobros where anuncio_id = p_anuncio_id and publicado_at = p_publicado_at;
+  else
+    if p_monto_clp is null or p_monto_clp not between 0 and 5000000 then
+      raise exception 'monto inválido';
+    end if;
+    insert into admin.cobros (anuncio_id, publicado_at, estado, monto_clp)
+    values (p_anuncio_id, p_publicado_at, p_estado, p_monto_clp)
+    on conflict (anuncio_id, publicado_at) do update
+      set estado = excluded.estado, monto_clp = excluded.monto_clp, actualizado_at = now();
+  end if;
+  insert into admin.acciones (admin_id, accion, objetivo, detalle)
+  values (auth.uid(), 'marcar_cobro', p_anuncio_id,
+    jsonb_build_object('publicado_at', p_publicado_at, 'estado', p_estado, 'monto_clp', p_monto_clp));
+  return true;
+end;
+$$;
+
+-- Compatibilidad con las pestañas que todavía usan el cliente anterior.
 create or replace function public.admin_marcar_cobro(p_anuncio_id uuid, p_estado text, p_monto_clp integer)
 returns boolean
 language plpgsql
@@ -209,29 +256,13 @@ declare
   desde timestamptz;
 begin
   perform admin.exigir_administrador();
-  if p_estado not in ('cobrado', 'deuda', 'pendiente') then
-    raise exception 'estado de cobro inválido';
-  end if;
-  select publicado_at into desde from public.tutor_anuncios where id = p_anuncio_id;
-  if desde is null then
-    raise exception 'ese anuncio no se ha publicado';
-  end if;
-  if p_estado = 'pendiente' then
-    delete from admin.cobros where anuncio_id = p_anuncio_id and publicado_at = desde;
-  else
-    if p_monto_clp is null or p_monto_clp not between 0 and 5000000 then
-      raise exception 'monto inválido';
-    end if;
-    insert into admin.cobros (anuncio_id, publicado_at, estado, monto_clp)
-    values (p_anuncio_id, desde, p_estado, p_monto_clp)
-    on conflict (anuncio_id, publicado_at) do update
-      set estado = excluded.estado, monto_clp = excluded.monto_clp, actualizado_at = now();
-  end if;
-  insert into admin.acciones (admin_id, accion, objetivo, detalle)
-  values (auth.uid(), 'marcar_cobro', p_anuncio_id, jsonb_build_object('estado', p_estado, 'monto_clp', p_monto_clp));
-  return true;
+  select publicado_at into desde from public.tutor_anuncios where id = p_anuncio_id for update;
+  return public.admin_marcar_cobro_publicacion(p_anuncio_id, desde, p_estado, p_monto_clp);
 end;
 $$;
+
+revoke all on function public.admin_marcar_cobro_publicacion(uuid, timestamptz, text, integer) from public, anon;
+grant execute on function public.admin_marcar_cobro_publicacion(uuid, timestamptz, text, integer) to authenticated;
 
 revoke all on function admin.exigir_administrador() from public, anon, authenticated;
 revoke all on function public.admin_panel_clases() from public, anon;
@@ -242,3 +273,5 @@ grant execute on function public.admin_panel_clases() to authenticated;
 grant execute on function public.admin_pausar_anuncio(uuid) to authenticated;
 grant execute on function public.admin_estado_profesor(uuid, text) to authenticated;
 grant execute on function public.admin_marcar_cobro(uuid, text, integer) to authenticated;
+
+commit;

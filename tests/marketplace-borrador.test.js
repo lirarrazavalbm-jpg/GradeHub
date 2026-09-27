@@ -11,7 +11,9 @@ const run=s=>vm.runInContext(s,ctx);
 if(!['validarBorradorClase','abrirBorradorClase','guardarBorradorClase','enviarBorradorClase'].every(n=>run(`typeof ${n}`)==='function')){
   console.error('FAIL: falta el ciclo de vida del borrador');process.exit(1);
 }
-let rows=[],fallar=false;
+let rows=[],fallar=false,campana={dias:10,inicio:null,tope_clp:10000};
+ctx.campanaPrueba=async()=>campana;
+run("leerCampanaClase=campanaPrueba");
 const calls=[];
 ctx.supabaseClient={from(tabla){
   if(tabla!=='tutor_anuncios')throw Error('Tabla inesperada');
@@ -79,6 +81,14 @@ function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
   const noEnviado=await run(`enviarBorradorClase('${anuncioId}')`);
   check('una caída de red no se anuncia como enviado',!noEnviado.ok&&rows[0].estado==='borrador');
   fallar=false;
+  const actualizaciones=calls.filter(c=>c.tipo==='update').length;
+  campana=null;
+  const sinCampana=await run(`enviarBorradorClase('${anuncioId}')`);
+  check('sin configuración guardada no se intenta enviar',!sinCampana.ok&&rows[0].estado==='borrador'&&calls.filter(c=>c.tipo==='update').length===actualizaciones);
+  campana={dias:0,inicio:null,tope_clp:10000};
+  const invalida=await run(`enviarBorradorClase('${anuncioId}')`);
+  check('una configuración inválida tampoco permite enviar',!invalida.ok&&rows[0].estado==='borrador');
+  campana={dias:10,inicio:null,tope_clp:10000};
   const enviado=await run(`enviarBorradorClase('${anuncioId}')`);
   check('enviar solo marca en revisión, nunca publica',enviado.ok&&rows[0].estado==='en_revision'&&
     !calls.at(-1).datos.publicado_at&&calls.at(-1).datos.estado==='en_revision');

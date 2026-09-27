@@ -333,6 +333,9 @@ async function enviarBorradorClase(id){
   if(!abierto.anuncio)return {ok:false,error:'Este anuncio ya no es un borrador. Vuelve a abrirlo.'};
   const valido=validarBorradorClase(abierto.anuncio);
   if(!valido.ok)return valido;
+  const campana=await leerCampanaClase(id);
+  if(!campana||!validarCampanaClase(campana).ok)
+    return {ok:false,error:'No se envió: primero guarda los días, la fecha y el tope de la campaña. Tu borrador sigue disponible.'};
   try{
     const {data,error}=await supabaseClient.from('tutor_anuncios')
       .update({estado:'en_revision'}).eq('id',id).eq('estado','borrador')
@@ -1023,8 +1026,13 @@ function payloadMetricaAnuncio(anuncioId,tipo,ramoSigla){
 // Abrió la clase o tocó contactar: una vez por persona y anuncio, lo cuenta el
 // servidor con la cuenta de la sesión. El Set solo ahorra llamadas repetidas.
 const INTERACCION_REGISTRADA=new Set();
+function claveMedicionClase(anuncioId){
+  const anuncio=catalogoClasesActual.find(a=>a.id===anuncioId)||
+    (anunciosRecomendacion.lista||[]).find(a=>a.id===anuncioId);
+  return (currentUser&&currentUser.id||'')+':'+anuncioId+':'+(anuncio&&anuncio.publicado_at||'');
+}
 async function registrarInteraccionAnuncio(anuncioId,tipo){
-  const clave=anuncioId+':'+tipo;
+  const clave=claveMedicionClase(anuncioId)+':'+tipo;
   if(!supabaseClient||!currentUser||!anuncioId||!['apertura','contacto'].includes(tipo)||INTERACCION_REGISTRADA.has(clave))return false;
   INTERACCION_REGISTRADA.add(clave);
   const {data,error}=await supabaseClient.rpc('registrar_interaccion_anuncio',{p_anuncio_id:anuncioId,p_tipo:tipo});
@@ -1066,7 +1074,7 @@ async function resumenMetricasAnuncio(anuncioId){
 const CANALES_ALCANCE=new Set(['recomendacion','busqueda','lista']);
 const ALCANCE_REGISTRADO=new Set();
 async function registrarAlcanceAnuncio(anuncioId,canal='recomendacion'){
-  const clave=anuncioId+':'+canal;
+  const clave=claveMedicionClase(anuncioId)+':'+canal;
   if(!supabaseClient||!currentUser||!anuncioId||!CANALES_ALCANCE.has(canal)||ALCANCE_REGISTRADO.has(clave))return false;
   ALCANCE_REGISTRADO.add(clave);
   const {data,error}=await supabaseClient.rpc('registrar_alcance_anuncio',{p_anuncio_id:anuncioId,p_canal:canal});
@@ -1767,7 +1775,7 @@ function filaRamoVistaPrevia(extra){
 // profesor y el anuncio lo lee cualquiera. Sin el SQL de campañas, `falta`
 // avisa que no se pudo guardar sin tratarlo como un error de la persona.
 function faltaTablaCampana(error){
-  return !!error&&(error.code==='42P01'||error.code==='PGRST205'||/anuncio_campanas/.test(String(error.message||'')));
+  return !!error&&(error.code==='42P01'||error.code==='PGRST205');
 }
 async function leerCampanaClase(anuncioId){
   if(!supabaseClient||!anuncioId)return null;
@@ -1782,7 +1790,7 @@ async function guardarCampanaClase(anuncioId,datos){
   try{
     const {error}=await supabaseClient.from('anuncio_campanas').upsert({anuncio_id:anuncioId,...datos},{onConflict:'anuncio_id'});
     if(!error)return {ok:true};
-    if(faltaTablaCampana(error))return {ok:false,falta:true};
+    if(faltaTablaCampana(error))return {ok:false,falta:true,error:'todavía no podemos guardar los días y el tope. El anuncio no se enviará hasta que estén guardados.'};
     console.warn('No se guardó la campaña:',error.code||'',error.message||error);
     return {ok:false,error:'no pudimos guardar los días y el tope. Intenta de nuevo.'};
   }catch(e){return {ok:false,error:'no pudimos guardar los días y el tope. Intenta de nuevo.'};}
@@ -2104,7 +2112,7 @@ function renderBorradorProfesor(raiz,anuncio){
       if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
       id=guardado.anuncio.id;
       const guardadaCampana=await guardarCampanaClase(id,campana.datos);
-      if(!guardadaCampana.ok&&!guardadaCampana.falta){estado.textContent='Tu clase se guardó, pero '+guardadaCampana.error;return;}
+      if(!guardadaCampana.ok){estado.textContent='Tu clase se guardó, pero '+(guardadaCampana.error||'no se guardaron los días y el tope. No se envió a revisión.');return;}
       if(file){estado.textContent='Borrador guardado. Subiendo flyer…';const subida=await subirFlyerClase(id,file);
         if(!subida.ok){estado.textContent='Borrador guardado, pero '+subida.error;return;}
         flyerActual=subida.path;campo('flyer').value='';form.querySelector('#pr-quitar-flyer').hidden=false;
@@ -2113,8 +2121,7 @@ function renderBorradorProfesor(raiz,anuncio){
         if(!respuesta.ok){estado.textContent=respuesta.error;return;}
         raiz.innerHTML='<div class="modal-title" id="modal-titulo">En revisión</div><p class="profesor-info" role="status">Recibimos tu anuncio. Nadie lo verá hasta que GradeHub lo revise y apruebe.</p>';return;
       }
-      estado.textContent=guardadaCampana.ok?'Borrador guardado. Puedes volver después o enviarlo a revisión.'
-        :'Borrador guardado. Los días y el tope todavía no se pueden guardar: se usan 10 días sin tope.';
+      estado.textContent='Borrador guardado. Puedes volver después o enviarlo a revisión.';
     }catch(e){estado.textContent='No pudimos completar la acción. Revisa si tu borrador quedó guardado e intenta de nuevo.';
     }finally{procesando=false;botones.forEach(b=>{if(b.isConnected)b.disabled=false;});}
   };
@@ -2216,15 +2223,16 @@ function cargarAnunciosRecomendacion(tenant,alTerminar){
 
 const RECOMENDACIONES_VISTAS=new Set();
 function observarRecomendacionClase(banner,anuncio,sigla){
-  if(typeof IntersectionObserver!=='function'||RECOMENDACIONES_VISTAS.has(anuncio.id))return;
+  const clave=claveMedicionClase(anuncio.id);
+  if(typeof IntersectionObserver!=='function'||RECOMENDACIONES_VISTAS.has(clave))return;
   let timer=null;
   const obs=new IntersectionObserver(entradas=>{
     const e=entradas[entradas.length-1];
     if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
       if(!timer)timer=setTimeout(()=>{
         timer=null;
-        if(!banner.isConnected||RECOMENDACIONES_VISTAS.has(anuncio.id))return;
-        RECOMENDACIONES_VISTAS.add(anuncio.id);obs.disconnect();
+        if(!banner.isConnected||RECOMENDACIONES_VISTAS.has(clave))return;
+        RECOMENDACIONES_VISTAS.add(clave);obs.disconnect();
         registrarMetricaAnuncio(anuncio.id,'impresion',sigla);
         registrarAlcanceAnuncio(anuncio.id,'recomendacion');
       },IMPRESION_MS);
@@ -2434,29 +2442,38 @@ function resumenAdminClases(profesores,ahora=Date.now()){
       const vig=vigenciaAnuncio(a,ahora),costo=costoCampanaClase(a.campana);
       if(vig==='publicado')r.activas++;else if(vig==='programado')r.programadas++;else if(vig==='en_revision')r.revision++;
       if(costo)r.gastado+=costo.total;
-      if(a.cobro&&a.cobro.estado==='cobrado')r.cobrado+=a.cobro.monto_clp;
-      if(a.cobro&&a.cobro.estado==='deuda')r.deuda+=a.cobro.monto_clp;
+      const cobros=Array.isArray(a.cobros)?a.cobros:(a.cobro?[a.cobro]:[]);
+      for(const c of cobros){
+        if(c.estado==='cobrado')r.cobrado+=c.monto_clp;
+        if(c.estado==='deuda')r.deuda+=c.monto_clp;
+      }
     }
   }
   return r;
+}
+function editorCobroAdmin(anuncioId,publicadoAt,estado,monto){
+  return `<div class="admin-cobro" data-admin-cobro="${esc(anuncioId)}" data-publicado-at="${esc(publicadoAt)}"><span>Cobro</span>
+    <select data-cobro-estado aria-label="Estado del cobro">${[['pendiente','Pendiente'],['cobrado','Cobrado'],['deuda','En deuda']].map(([v,t])=>`<option value="${v}"${v===estado?' selected':''}>${t}</option>`).join('')}</select>
+    <input type="text" inputmode="numeric" data-cobro-monto aria-label="Monto" value="${esc(textoPesosEscrito(monto))}">
+    <button type="button" class="clase-accion" data-cobro-guardar>Guardar</button></div>`;
 }
 function filaAdminAnuncio(a,ahora=Date.now()){
   const costo=costoCampanaClase(a.campana),[estado,clase]=estadoAdminAnuncio(a,costo,ahora);
   const vig=vigenciaAnuncio(a,ahora),publicado=!!a.publicado_at;
   const cobro=a.cobro&&a.cobro.estado||'pendiente',monto=a.cobro?a.cobro.monto_clp:(costo?costo.total:0);
   const fecha=t=>t?new Date(t).toLocaleDateString('es-CL',{day:'numeric',month:'short'}):'';
+  const anteriores=(a.cobros||[]).filter(c=>c.publicado_at!==a.publicado_at);
   return `<article class="admin-anuncio" data-admin-anuncio="${esc(a.id)}">
     <div class="admin-anuncio-top"><strong>${esc(a.titulo||'Sin título')}</strong><span class="clase-estado clase-estado-${esc(clase)}">${esc(estado)}</span></div>
     <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))} · ${esc(precioClase(a))}${publicado?` · ${fecha(a.publicado_at)} → ${fecha(a.vence_at)}`:''}</p>
     ${costo?`<p class="admin-anuncio-costo"><b>${pesosClase(costo.total)}</b>${costo.tope!==null?` de ${pesosClase(costo.tope)}`:' · sin tope'}</p>
       <p class="clase-sin-datos">${esc(lineaCostoCampanaClase(costo))}</p>`:''}
     <div class="admin-anuncio-acciones">
-      ${publicado?`<label class="admin-cobro"><span>Cobro</span>
-        <select data-cobro-estado>${[['pendiente','Pendiente'],['cobrado','Cobrado'],['deuda','En deuda']].map(([v,t])=>`<option value="${v}"${v===cobro?' selected':''}>${t}</option>`).join('')}</select>
-        <input type="text" inputmode="numeric" data-cobro-monto aria-label="Monto" value="${esc(textoPesosEscrito(monto))}">
-        <button type="button" class="clase-accion" data-cobro-guardar>Guardar</button></label>`:''}
+      ${publicado?editorCobroAdmin(a.id,a.publicado_at,cobro,monto):''}
       ${vig==='publicado'||vig==='programado'?`<button type="button" class="clase-accion" data-admin-pausar="${esc(a.id)}">Pausar aviso</button>`:''}
     </div>
+    ${anteriores.length?`<details><summary>Cobros anteriores (${anteriores.length})</summary>${anteriores.map(c=>
+      `<div><p class="clase-card-meta">Publicación del ${esc(new Date(c.publicado_at).toLocaleString('es-CL'))} · ${c.estado==='deuda'?'En deuda':'Cobrado'} · ${pesosClase(c.monto_clp)}</p>${editorCobroAdmin(a.id,c.publicado_at,c.estado,c.monto_clp)}</div>`).join('')}</details>`:''}
   </article>`;
 }
 function tarjetaAdminProfesor(p,ahora=Date.now()){
@@ -2508,13 +2525,19 @@ async function pintarPanelAdmin(raiz){
       ()=>llamar('admin_estado_profesor',{p_user_id:b.dataset.adminProfesor,p_estado:b.dataset.estado},pausar?'Profesor pausado':'Profesor reactivado'),
       {label:pausar?'Pausar':'Reactivar',danger:false});
   }));
-  raiz.querySelectorAll('[data-admin-anuncio]').forEach(fila=>{
+  raiz.querySelectorAll('[data-admin-cobro]').forEach(fila=>{
     const guardar=fila.querySelector('[data-cobro-guardar]'),monto=fila.querySelector('[data-cobro-monto]');
     if(monto)campoPesos(monto);
-    if(guardar)guardar.addEventListener('click',()=>{
+    if(guardar)guardar.addEventListener('click',async()=>{
       const estado=fila.querySelector('[data-cobro-estado]').value,valor=pesosDeTexto(monto.value);
       if(estado!=='pendiente'&&!Number.isSafeInteger(valor)){showToast('Escribe el monto',true);return;}
-      llamar('admin_marcar_cobro',{p_anuncio_id:fila.dataset.adminAnuncio,p_estado:estado,p_monto_clp:estado==='pendiente'?null:valor},'Cobro guardado');
+      if(guardar.disabled)return;
+      guardar.disabled=true;
+      try{
+        await llamar('admin_marcar_cobro_publicacion',{p_anuncio_id:fila.dataset.adminCobro,p_publicado_at:fila.dataset.publicadoAt,
+          p_estado:estado,p_monto_clp:estado==='pendiente'?null:valor},'Cobro guardado');
+      }catch(e){showToast('No pudimos guardar el cobro. Intenta de nuevo.',true);}
+      finally{if(guardar.isConnected)guardar.disabled=false;}
     });
   });
 }
