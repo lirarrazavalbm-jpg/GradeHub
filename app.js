@@ -4242,8 +4242,15 @@ function siglaParaCurso(r){
   const s=(r&&r.sigla)||siglaDeRamo(r);
   return typeof s==='string'&&s.trim()?s.trim():null;
 }
+// Lo último que se subió, por cuenta. Si cambió un promedio (o es otra cuenta),
+// la comparación guardada ya no vale y se vuelve a pedir; si no cambió nada,
+// no se repiten las llamadas cada vez que se abre Estadísticas.
+let _firmaNotasCurso=null;
 async function subirNotasCurso(){
   if(!supabaseClient||!currentUser)return;
+  const firma=currentUser.id+'|'+JSON.stringify((S.ramos||[]).map(r=>[siglaParaCurso(r),ramoAvg(r,undefined,S.ramos)]));
+  if(firma===_firmaNotasCurso)return;
+  invalidarPosicionesCurso();
   let fallos=0;
   for(const r of (S.ramos||[])){
     const sigla=siglaParaCurso(r);
@@ -4265,6 +4272,8 @@ async function subirNotasCurso(){
   // Que falle no puede romper Estadisticas, pero tampoco puede desaparecer: un
   // catch mudo aca fue la razon de que esto llevara dias sin funcionar.
   if(fallos)console.warn('No se pudieron subir '+fallos+' promedios al curso');
+  // Con fallos se reintenta la próxima vez en vez de dar la subida por hecha.
+  else _firmaNotasCurso=firma;
 }
 
 let _posCursoCache=null;
@@ -5189,6 +5198,14 @@ function ofrecerCompartirPauta(r){
     ()=>openReportModal(r.id),
     {label:'Revisar antes de enviar',danger:false,focusCancel:true});
 }
+// Un grupo de casillas vacío se dibuja cerrado (render-main.js), y eso está
+// bien para una pauta del catálogo con muchos grupos. Pero quien acaba de
+// marcar "varias" en su propia pauta esperaba ver dónde poner las notas: tres
+// reportes (2026-08-29/30) decían que las evaluaciones "desaparecían" al
+// marcarlo y "volvían" al desmarcarlo. Se abre solo el grupo que se armó recién.
+function abrirGrupoVacio(cat){
+  if(cat&&Number.isInteger(cat.slots)&&cat.slots>1&&!(cat.notas||[]).length)openCats[cat.id]=true;
+}
 function guardarPautaManual(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const estabaVacia=!(r.categorias||[]).some(c=>String(c.nombre||'').trim());
@@ -5210,6 +5227,7 @@ function guardarPautaManual(){
         existente.directNota=cantidadFija;
         if(cantidadFija)existente.slots=f.cantidad;
         else delete existente.slots;
+        abrirGrupoVacio(existente);
       }
       else if((existente.notas||[]).length<=1){existente.directNota=true;delete existente.slots;}
     }
@@ -5217,6 +5235,7 @@ function guardarPautaManual(){
       const cat={id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:!f.varias||cantidadFija,notas:[]};
       if(cantidadFija)cat.slots=f.cantidad;
       r.categorias.push(cat);
+      abrirGrupoVacio(cat);
     }
   });
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
