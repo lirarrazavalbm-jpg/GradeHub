@@ -85,7 +85,8 @@ jobs:
           data.js mallas-uc.js mallas-uai.js cursos-uc.js engine.js app.js app-session.js marketplace.js render-main.js render-agenda.js styles.css sw.js
           manifest.json _headers robots.txt sitemap.xml
           logo.svg og-v2.png icon.svg icon-192.png icon-512.png og-v3.png
-          functions/cal/[token].js functions/mcp/[[ruta]].js functions/mcp/herramientas.js'
+          functions/cal/[token].js functions/mcp/[[ruta]].js functions/mcp/herramientas.js
+          ocr/tesseract.min.js ocr/worker.min.js ocr/tesseract-core-simd-lstm.wasm.js ocr/tesseract-core-lstm.wasm.js ocr/eng.traineddata.gz ocr/LICENSE.txt'
           for f in $archivos_app; do
             [ -e "dist/$f" ] || { echo "FALTA en dist: $f — no se publica nada"; exit 1; }
           done
