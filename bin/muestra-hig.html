@@ -58,19 +58,25 @@ let profesores=[
 ];
 profesores[0].anuncios.push({...profesores[0].anuncios[1],id:'d1',titulo:'Repasa integrales conmigo',estado:'borrador'});
 const originales=JSON.stringify(profesores);
-let pagina='catalogo',pestana='campanas',filtro='',filtroPrecio='',busqueda='',seleccion=null;
+let pagina='catalogo',pestana='campanas',filtro='',precioDesde='',precioHasta='',soloGratis=false,busqueda='',seleccion=null;
 const $=id=>document.getElementById(id),normal=s=>normalizarBusquedaClase(s);
 const vacio=texto=>`<div class="gh-vacio"><h2>No hay resultados</h2><p>${esc(texto)}</p><button class="gh-boton" data-limpiar>Limpiar filtros</button></div>`;
 function mostrar(){
  $('contenido').innerHTML=pagina==='catalogo'?cabeceraMercado('Un poco de apoyo. Un gran avance.','Encuentra una clase para ese ramo que necesita un empujón.')+
- `<div class="gh-herramientas"><label class="gh-buscar"><span aria-hidden="true">⌕</span><input id="busqueda" type="search" placeholder="Busca por ramo, sigla o profesor" aria-label="Buscar clases"></label><label class="gh-filtro">Modalidad<select id="filtro"><option value="">Todas</option><option value="online">Online</option><option value="presencial">Presencial</option></select></label><label class="gh-filtro">Precio<select id="precio"><option value="">Todos</option><option value="gratis">Gratis</option><option value="15000">Hasta $15.000</option></select></label></div><div class="gh-lista-cabeza"><h2>Clases en tu universidad</h2><span id="cantidad" class="gh-nota" role="status"></span></div><div id="resultados" class="gh-catalogo"></div><p class="gh-nota" style="margin-top:24px">El catálogo no usa tus notas. Tú eliges qué clase explorar y a quién contactar.</p>`:
+ `<div class="gh-herramientas"><label class="gh-buscar"><span aria-hidden="true">⌕</span><input id="busqueda" type="search" placeholder="Busca por ramo, sigla o profesor" aria-label="Buscar clases"></label><label class="gh-filtro">Modalidad<select id="filtro"><option value="">Todas</option><option value="online">Online</option><option value="presencial">Presencial</option></select></label><div class="gh-precios" role="group" aria-label="Precio por clase en pesos"><label class="gh-filtro" for="precio-desde">Desde $<input id="precio-desde" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin mínimo" aria-describedby="precio-error"></label><label class="gh-filtro" for="precio-hasta">Hasta $<input id="precio-hasta" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin máximo" aria-describedby="precio-error"></label><label class="gh-gratis"><input id="solo-gratis" type="checkbox">Solo gratis</label><p id="precio-error" class="gh-precios-error" role="status"></p></div></div><div class="gh-lista-cabeza"><h2>Clases en tu universidad</h2><span id="cantidad" class="gh-nota" role="status"></span></div><div id="resultados" class="gh-catalogo"></div><p class="gh-nota" style="margin-top:24px">El catálogo no usa tus notas. Tú eliges qué clase explorar y a quién contactar.</p>`:
  pagina==='admin'?cabeceraMercado('Todo en orden.','Revisa anuncios, acompaña a los profesores y lleva los cobros al día.')+resumenOperativoHTML(profesores)+
  `<nav class="gh-pestanas" aria-label="Administración"><button data-seccion="campanas" aria-pressed="${pestana==='campanas'}">Campañas</button><button data-seccion="revision" aria-pressed="${pestana==='revision'}">Por revisar · ${resumenOperativoClases(profesores).revision}</button><button data-seccion="cobros" aria-pressed="${pestana==='cobros'}">Cobros e historial</button></nav><div class="gh-herramientas"><label class="gh-buscar"><span aria-hidden="true">⌕</span><input id="busqueda" type="search" placeholder="Buscar profesor, anuncio o ramo" aria-label="Buscar campañas"></label><label class="gh-filtro">Estado<select id="filtro"><option value="">Todos</option><option value="activa">Activas</option><option value="programada">Programadas</option><option value="pausada">Pausadas</option><option value="tope">Tope alcanzado</option></select></label></div><div class="gh-lista-cabeza"><h2>${pestana==='revision'?'Anuncios por revisar':pestana==='cobros'?'Campañas con cobros registrados':'Todas las campañas'}</h2><span class="gh-nota" id="cantidad" role="status"></span></div><div id="resultados" class="gh-lista"></div>`:
  cabeceraMercado('Tu conocimiento puede ayudar.','Este es tu espacio para publicar clases y ver cómo les va.',`<button class="gh-boton gh-boton-principal" id="nuevo">＋ Crear anuncio</button>`)+
  `<div class="demo-profesor-intro"><div><p class="gh-ceja">TU ESPACIO DE PROFESOR</p><h2>Enseña a tu manera.</h2><p>Elige qué ofrecer, a quién llegar y cuánto destinar a tu campaña. Tú pones el límite.</p><button class="gh-boton" id="editar">Continuar un borrador ↗</button></div><div><ol><li><b>Prepara tu clase.</b> Cuenta qué van a trabajar.</li><li><b>Define público y presupuesto.</b> Siempre con un tope.</li><li><b>Revisa y envía.</b> Nada se publica sin aprobación.</li></ol></div></div><div class="gh-lista-cabeza"><h2>Tus anuncios</h2><span class="gh-nota">Costo estimado durante el piloto</span></div><div id="resultados" class="gh-lista"></div>`;
  if($('busqueda')){$('busqueda').value=busqueda;$('busqueda').addEventListener('input',e=>{busqueda=e.target.value;pintarResultados();});}
  if($('filtro')){$('filtro').value=filtro;$('filtro').addEventListener('change',e=>{filtro=e.target.value;pintarResultados();});}
- if($('precio')){$('precio').value=filtroPrecio;$('precio').addEventListener('change',e=>{filtroPrecio=e.target.value;pintarResultados();});}
+ if($('precio-desde')){
+  $('precio-desde').value=precioDesde;$('precio-hasta').value=precioHasta;$('solo-gratis').checked=soloGratis;
+  $('precio-desde').disabled=$('precio-hasta').disabled=soloGratis;
+  $('precio-desde').oninput=e=>{precioDesde=e.target.value;pintarResultados();};
+  $('precio-hasta').oninput=e=>{precioHasta=e.target.value;pintarResultados();};
+  $('solo-gratis').onchange=e=>{soloGratis=e.target.checked;$('precio-desde').disabled=$('precio-hasta').disabled=soloGratis;pintarResultados();};
+ }
  document.querySelectorAll('[data-seccion]').forEach(b=>b.onclick=()=>{pestana=b.dataset.seccion;filtro='';mostrar();});
  if($('nuevo'))$('nuevo').onclick=()=>formulario(false);if($('editar'))$('editar').onclick=()=>formulario(true);
  pintarResultados();
@@ -81,10 +87,16 @@ function pintarResultados(){
  else if(pagina==='profesor')filas=filas.filter(f=>f.profesor.user_id==='profe-demo');
  else filas=filas.filter(f=>(!filtro||f.estado.clave===filtro)&&(pestana!=='revision'||f.estado.clave==='revision')&&(pestana!=='cobros'||f.anuncio.cobros?.length));
  if(busqueda&&pagina!=='profesor')filas=filas.filter(f=>normal(f.profesor.nombre+' '+f.anuncio.titulo+' '+f.anuncio.ramos_siglas.join(' ')+' '+f.anuncio.nombres_ramos.join(' ')).includes(normal(busqueda)));
- const precio=$('precio')?.value;if(precio)filas=filas.filter(f=>precio==='gratis'?f.anuncio.precio_clp===0:f.anuncio.precio_clp<=Number(precio));
+ if(pagina==='catalogo'){
+  const minimo=precioDesde===''?0:Number(precioDesde),maximo=precioHasta===''?Infinity:Number(precioHasta);
+  const invalido=!soloGratis&&(!Number.isSafeInteger(minimo)||minimo<0||!(maximo===Infinity||Number.isSafeInteger(maximo))||maximo<0||minimo>maximo);
+  $('precio-error').textContent=invalido?'Escribe montos válidos; el máximo debe ser igual o mayor al mínimo.':'';
+  $('precio-desde').setAttribute('aria-invalid',String(invalido));$('precio-hasta').setAttribute('aria-invalid',String(invalido));
+  filas=invalido?[]:filas.filter(f=>soloGratis?f.anuncio.precio_clp===0:f.anuncio.precio_clp>=minimo&&f.anuncio.precio_clp<=maximo);
+ }
  if($('cantidad'))$('cantidad').textContent=filas.length+' '+(pagina==='catalogo'?(filas.length===1?'clase':'clases'):(filas.length===1?'campaña':'campañas'));
  $('resultados').innerHTML=filas.length?filas.map(f=>pagina==='catalogo'?tarjetaMercadoHTML(f.anuncio,f.profesor):filaOperativaHTML(f)).join(''):vacio('Prueba otro nombre o amplía los filtros.');
- document.querySelectorAll('[data-limpiar]').forEach(b=>b.onclick=()=>{filtro='';filtroPrecio='';busqueda='';mostrar();});
+ document.querySelectorAll('[data-limpiar]').forEach(b=>b.onclick=()=>{filtro='';precioDesde='',precioHasta='',soloGratis=false;busqueda='';mostrar();});
  document.querySelectorAll('[data-campana]').forEach(b=>b.onclick=()=>abrirDetalle(b.dataset.campana));
  document.querySelectorAll('[data-abrir]').forEach(b=>b.onclick=()=>{const f=filas.find(f=>f.anuncio.id===b.dataset.abrir);abrirDialogo('Clase particular',tarjetaMercadoHTML(f.anuncio,f.profesor,{abierta:true}));});
 }
@@ -121,6 +133,6 @@ $('cerrar-detalle').onclick=()=>{$('detalle').close();mostrar();};
 $('detalle').addEventListener('close',()=>mostrar());
 document.addEventListener('click',e=>{if(e.target.closest('[data-contactar]')){e.preventDefault();showToast('Aquí se abriría el contacto del profesor. Esta muestra no envía mensajes.');}});
 $('tema').onclick=()=>{const oscuro=document.documentElement.dataset.modo!=='oscuro';document.documentElement.dataset.modo=oscuro?'oscuro':'claro';$('tema').textContent=oscuro?'Modo claro':'Modo oscuro';$('tema').setAttribute('aria-label','Cambiar a '+$('tema').textContent.toLowerCase());};
-$('reiniciar').onclick=()=>{profesores=JSON.parse(originales);filtro='';filtroPrecio='';busqueda='';mostrar();showToast('La muestra volvió a su estado inicial.');};
+$('reiniciar').onclick=()=>{profesores=JSON.parse(originales);filtro='';precioDesde='',precioHasta='',soloGratis=false;busqueda='';mostrar();showToast('La muestra volvió a su estado inicial.');};
 mostrar();
 </script></body></html>

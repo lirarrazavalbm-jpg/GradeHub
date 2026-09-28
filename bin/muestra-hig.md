@@ -11,6 +11,11 @@ bandeja de revisión, estados y cobros históricos. Personas y datos son fictici
 los cambios solo viven en memoria y se reinician al recargar. No tiene conexiones
 a Supabase: la política de contenido bloquea todas las conexiones de red.
 
+El filtro de precio admite mínimo y máximo opcionales, ambos en pesos enteros,
+y «Solo gratis». El rango se conserva al abrir y cerrar detalles. Los buscadores
+usan un único contorno de foco en el contenedor; las filas mantienen separadores
+rectos con un fondo redondeado al pasar el cursor o recibir foco de teclado.
+
 ## Reutilización
 
 - `marketplace-vistas.js`: renderizadores y proyección de estados sin IO. Usa
