@@ -39,8 +39,13 @@ const base="({tenant:'uc',ramos_siglas:['MAT1610'],criterios:{promedioMenorA:5,a
 const valida=(tipo,valor)=>run(`validarBorradorClase({...${base},contacto_tipo:${JSON.stringify(tipo)},contacto_valor:${JSON.stringify(valor)}})`);
 chk('"+56 " sin número no pasa',!valida('whatsapp','+56 ').ok&&/WhatsApp/.test(valida('whatsapp','+56 ').error));
 chk('"+56 9 " sin número tampoco',!valida('whatsapp','+56 9 ').ok);
-chk('con un 9 de más avisa y no se guarda',!valida('whatsapp','+56 9 9123 45678').ok&&/9 dígitos/.test(valida('whatsapp','+56 9 9123 45678').error));
-chk('sin el +56 tampoco',!valida('whatsapp','9 1234 5678').ok);
+chk('con un 9 de más el borrador igual se guarda',valida('whatsapp','+56 9 9123 45678').ok);
+const lista=v=>run(`contactoListoParaPublicar({contacto_tipo:'whatsapp',contacto_valor:${JSON.stringify(v)}})`);
+chk('pero no se envía a revisión',!lista('+56 9 9123 45678').ok&&/9 dígitos/.test(lista('+56 9 9123 45678').error)&&lista('+56 9 9123 45678').campo==='contacto_valor');
+chk('sin el +56 tampoco se envía',!lista('9 1234 5678').ok);
+chk('bien escrito sí se envía',lista('+56 9 1234 5678').ok);
+chk('Instagram no pasa por esta revisión',run("contactoListoParaPublicar({contacto_tipo:'instagram',contacto_valor:'@profe'})").ok);
+chk('enviar a revisión la usa',/const listo=contactoListoParaPublicar\(valido\.datos\);\s*if\(!listo\.ok\)return listo;/.test(require('fs').readFileSync(require('path').join(__dirname,'..','marketplace.js'),'utf8')));
 chk('un número completo sí pasa',valida('whatsapp','+56 9 1234 5678').ok);
 chk('en una clase pagada Instagram no se acepta',!valida('instagram','@profe.calculo').ok&&/WhatsApp/.test(valida('instagram','@profe.calculo').error));
 chk('ni un link de inscripción',!valida('enlace','https://forms.gle/abc').ok);

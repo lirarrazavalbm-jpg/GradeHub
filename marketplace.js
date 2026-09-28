@@ -126,7 +126,6 @@ function validarBorradorClase(entrada,nombresPorSigla){
   // solo, sin número ni usuario, pasaba como contacto válido y el anuncio
   // llegaba a revisión con un botón que no lleva a ninguna parte.
   if(!enlaceContactoClase(contacto_tipo,contacto_valor))return {ok:false,campo:'contacto_valor',error:ERROR_CONTACTO_CLASE[contacto_tipo]};
-  if(contacto_tipo==='whatsapp'&&!whatsappChilenoCompleto(contacto_valor))return {ok:false,campo:'contacto_valor',error:ERROR_WHATSAPP_CHILE};
   // Lista blanca: nunca aceptar un estado de publicación, marcas de pago ni
   // datos académicos del estudiante enviados junto con el formulario.
   return {ok:true,datos:{tenant,ramos_siglas:siglas,
@@ -178,12 +177,18 @@ function textoWhatsappEscrito(texto){
 }
 // Un número de Chile tiene 9 dígitos después del 56. Uno con el código de país
 // y un dígito de más o de menos, o un celular sin el 56 ("9 1234 5678", que
-// wa.me leería como de otro país), no se publica.
+// wa.me leería como de otro país), se puede escribir y guardar en el borrador,
+// pero no se envía a revisión: ver enviarBorradorClase.
 const ERROR_WHATSAPP_CHILE='Revisa tu número: después del +56 van 9 dígitos, por ejemplo +56 9 1234 5678.';
 function whatsappChilenoCompleto(valor){
   const d=String(valor||'').replace(/\D/g,'');
   if(d.startsWith('56'))return d.length===11;
   return !(d.length===9&&d.startsWith('9'));
+}
+function contactoListoParaPublicar(datos){
+  if(datos&&datos.contacto_tipo==='whatsapp'&&!whatsappChilenoCompleto(datos.contacto_valor))
+    return {ok:false,campo:'contacto_valor',error:ERROR_WHATSAPP_CHILE};
+  return {ok:true};
 }
 function textoInstagramEscrito(texto){
   const t=String(texto||'').replace(/\s+/g,'');
@@ -351,6 +356,11 @@ async function enviarBorradorClase(id){
   if(!abierto.anuncio)return {ok:false,error:'Este anuncio ya no es un borrador. Vuelve a abrirlo.'};
   const valido=validarBorradorClase(abierto.anuncio);
   if(!valido.ok)return valido;
+  // El borrador se guarda con el número como esté; lo que no pasa es a
+  // revisión. Así el profesor tiene que mirar un número mal escrito antes de
+  // que un estudiante le escriba a otra persona (decisión de Lucas, 2026-09-28).
+  const listo=contactoListoParaPublicar(valido.datos);
+  if(!listo.ok)return listo;
   try{
     const {data,error}=await supabaseClient.from('tutor_anuncios')
       .update({estado:'en_revision'}).eq('id',id).eq('estado','borrador')
@@ -2128,7 +2138,7 @@ function renderBorradorProfesor(raiz,anuncio){
         flyerActual=subida.path;campo('flyer').value='';form.querySelector('#pr-quitar-flyer').hidden=false;
       }
       if(enviar){estado.textContent='Enviando a revisión…';const respuesta=await enviarBorradorClase(id);
-        if(!respuesta.ok){estado.textContent=respuesta.error;return;}
+        if(!respuesta.ok){estado.textContent=respuesta.error;if(respuesta.campo==='contacto_valor')enfocar(campo('contacto'));return;}
         raiz.innerHTML='<div class="modal-title" id="modal-titulo">En revisión</div><p class="profesor-info" role="status">Recibimos tu anuncio. Nadie lo verá hasta que GradeHub lo revise y apruebe.</p>';return;
       }
       estado.textContent=guardadaCampana.ok?'Borrador guardado. Puedes volver después o enviarlo a revisión.'
