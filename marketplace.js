@@ -122,10 +122,11 @@ function validarBorradorClase(entrada,nombresPorSigla){
       ?'Elige cómo te contactarán: WhatsApp, Instagram o un link de inscripción.'
       :'Las clases pagadas se contactan por WhatsApp. Escribe tu número.'};
   if(contacto_valor.length<3||contacto_valor.length>160)return {ok:false,campo:'contacto_valor',error:'Revisa el dato de contacto.'};
-  // El formulario rellena "+56 9 " o "@" solo: sin esta comprobación el prefijo
+  // El formulario rellena "+56 " o "@" solo: sin esta comprobación el prefijo
   // solo, sin número ni usuario, pasaba como contacto válido y el anuncio
   // llegaba a revisión con un botón que no lleva a ninguna parte.
   if(!enlaceContactoClase(contacto_tipo,contacto_valor))return {ok:false,campo:'contacto_valor',error:ERROR_CONTACTO_CLASE[contacto_tipo]};
+  if(contacto_tipo==='whatsapp'&&!whatsappChilenoCompleto(contacto_valor))return {ok:false,campo:'contacto_valor',error:ERROR_WHATSAPP_CHILE};
   // Lista blanca: nunca aceptar un estado de publicación, marcas de pago ni
   // datos académicos del estudiante enviados junto con el formulario.
   return {ok:true,datos:{tenant,ramos_siglas:siglas,
@@ -160,18 +161,35 @@ function pesosDeTexto(texto){
 
 // WhatsApp de Chile con sus espacios: "+56 9 1234 5678". Solo se ordena un
 // celular chileno; un número de otro país se deja tal como lo escribieron.
+//
+// El campo parte con "+56 " y NO con "+56 9 ": con el 9 ya puesto, quien
+// escribía su número como lo dice ("9 1234 5678") quedaba con un 9 de más, y
+// esta función además cortaba en 8 dígitos, así que el último se perdía sin
+// aviso. Así se publicó un anuncio cuyo botón abría el chat de un número que no
+// era (2026-09-28). Ahora no se corta nada: lo que sobra queda a la vista y la
+// validación lo rechaza.
 function textoWhatsappEscrito(texto){
   const t=String(texto||'');
-  const digitos=t.replace(/\D/g,'');
-  if(!/^\s*\+?\s*56/.test(t)||!digitos.startsWith('569'))return t;
-  const resto=digitos.slice(3,11);
-  return '+56 9 '+(resto.length>4?resto.slice(0,4)+' '+resto.slice(4):resto);
+  if(!/^\s*\+?\s*56/.test(t))return t;
+  const resto=t.replace(/\D/g,'').slice(2);
+  if(!resto.startsWith('9'))return t;
+  const cel=resto.slice(1);
+  return '+56 9 '+(cel.length>4?cel.slice(0,4)+' '+cel.slice(4):cel);
+}
+// Un número de Chile tiene 9 dígitos después del 56. Uno con el código de país
+// y un dígito de más o de menos, o un celular sin el 56 ("9 1234 5678", que
+// wa.me leería como de otro país), no se publica.
+const ERROR_WHATSAPP_CHILE='Revisa tu número: después del +56 van 9 dígitos, por ejemplo +56 9 1234 5678.';
+function whatsappChilenoCompleto(valor){
+  const d=String(valor||'').replace(/\D/g,'');
+  if(d.startsWith('56'))return d.length===11;
+  return !(d.length===9&&d.startsWith('9'));
 }
 function textoInstagramEscrito(texto){
   const t=String(texto||'').replace(/\s+/g,'');
   return t&&!t.startsWith('@')?'@'+t:t;
 }
-const PREFIJO_CONTACTO_CLASE={whatsapp:'+56 9 ',instagram:'@',enlace:'https://'};
+const PREFIJO_CONTACTO_CLASE={whatsapp:'+56 ',instagram:'@',enlace:'https://'};
 const EJEMPLO_CONTACTO_CLASE={whatsapp:'+56 9 1234 5678',instagram:'@salvaramos',enlace:'https://forms.gle/…'};
 
 // Reescribe el campo con su formato sin mandar el cursor al final: cuenta
