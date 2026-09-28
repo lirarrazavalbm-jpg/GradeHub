@@ -1200,11 +1200,37 @@ async function abrirWrapped(){
   ov.innerHTML=`<span class="wrapped-luz a"></span><span class="wrapped-luz b"></span>
     <div class="wrapped-barras"></div>
     <button class="wrapped-cerrar" type="button" aria-label="Cerrar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <div class="wrapped-slide" aria-live="polite"></div>`;
+    <div class="wrapped-slide" aria-live="polite"></div>
+    <div class="wrapped-pasos"><button type="button" data-paso="-1">Anterior</button><button type="button" data-paso="1">Siguiente</button></div>`;
   // Tocar el tercio izquierdo vuelve, el resto avanza: igual que las historias.
+  // Los botones "Anterior" y "Siguiente" hacen lo mismo para VoiceOver y el
+  // teclado, que no tienen cómo tocar un tercio de pantalla (HIG, Accessibility:
+  // "Offer alternatives to gestures").
   ov.addEventListener('click',e=>{
     if(e.target.closest('.wrapped-cerrar'))return cerrarWrapped();
-    pasarWrapped(e.clientX<ov.clientWidth/3?-1:1);
+    const b=e.target.closest('[data-paso]');
+    pasarWrapped(b?Number(b.dataset.paso):e.clientX<ov.clientWidth/3?-1:1);
+  });
+  // Deslizar hacia abajo cierra, que es lo que se espera en iOS (HIG, Modality).
+  // La pantalla sigue al dedo y, si no bajó lo suficiente, vuelve a su lugar
+  // (HIG, Motion: el movimiento sigue el gesto). Solo arranca con el contenido
+  // arriba del todo, para no pelearle el scroll a una pantalla con texto grande.
+  let y0=null,dy=0;
+  ov.addEventListener('touchstart',e=>{
+    y0=ov.querySelector('.wrapped-slide').scrollTop>0?null:e.touches[0].clientY;dy=0;
+    ov.style.transition='none';
+  },{passive:true});
+  ov.addEventListener('touchmove',e=>{
+    if(y0===null)return;
+    dy=Math.max(0,e.touches[0].clientY-y0);
+    ov.style.transform=dy?`translateY(${dy}px)`:'';
+  },{passive:true});
+  ov.addEventListener('touchend',()=>{
+    if(y0===null)return;
+    y0=null;
+    ov.style.transition='transform var(--motion-base) var(--ease-out)';
+    if(dy>120){ov.style.transform='translateY(100%)';setTimeout(cerrarWrapped,220);}
+    else ov.style.transform='';
   });
   document.addEventListener('keydown',teclaWrapped);
   document.body.appendChild(ov);

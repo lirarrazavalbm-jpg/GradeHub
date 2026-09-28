@@ -45,6 +45,13 @@ chk('no aparece el 19 de diciembre',!run('wrappedDisponible(new Date(2026,11,19)
 chk('aparece el 20 de diciembre',run('wrappedDisponible(new Date(2026,11,20))'));
 chk('se va en marzo',!run('wrappedDisponible(new Date(2027,2,1))'));
 
+// HIG, Accessibility: un gesto necesita una alternativa, y el texto tiene que
+// poder agrandarse al 200% sin que nada se salga de la pantalla.
+const render=fs.readFileSync(raiz+'render-main.js','utf8'),css=fs.readFileSync(raiz+'styles.css','utf8');
+chk('VoiceOver y teclado tienen Anterior y Siguiente',/data-paso="-1">Anterior</.test(render)&&/data-paso="1">Siguiente</.test(render));
+chk('los números gigantes no crecen con el texto del sistema',/\.wrapped-big\{font-size:clamp\(\d+px,[^;]*\d+px\)/.test(css));
+chk('la pantalla se desplaza si el texto grande no cabe',/\.wrapped-slide\{[^}]*overflow-y:auto/.test(css));
+
 const sql=fs.readFileSync(raiz+'supabase/universidad_posicion.sql','utf8');
 chk('SQL: exige sesión',/uid is null/.test(sql));
 chk('SQL: mínimo de cinco personas',/n < 5/.test(sql));

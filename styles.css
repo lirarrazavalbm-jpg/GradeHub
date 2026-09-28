@@ -2618,12 +2618,12 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .wrapped-barras{display:flex;gap:4px;}
 .wrapped-barras span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.28);}
 .wrapped-barras span.on{background:#fff;}
-.wrapped-cerrar{align-self:flex-end;width:44px;height:44px;margin:4px -10px 0 0;padding:0;border:0;background:none;color:#fff;display:grid;place-items:center;}
-.wrapped-slide{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;width:100%;max-width:430px;margin:0 auto;padding-bottom:6vh;}
+.wrapped-cerrar{position:relative;z-index:1;align-self:flex-end;width:44px;height:44px;margin:4px -10px 0 0;padding:0;border:0;background:none;color:#fff;display:grid;place-items:center;}
+.wrapped-slide{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;justify-content:safe center;gap:14px;width:100%;max-width:430px;margin:0 auto;padding-bottom:6vh;}
 .wrapped-slide>*,.wrapped-puntos span,.wrapped-ramos span{animation:wrappedIn var(--motion-screen) var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2);}
 .wrapped-k{font-size:.8125rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
 .wrapped-titulo{font-size:clamp(2.25rem,10vw,3.25rem);font-weight:800;line-height:1.05;letter-spacing:-.03em;text-wrap:balance;overflow-wrap:anywhere;}
-.wrapped-big{font-size:clamp(5.5rem,32vw,9.5rem);font-weight:900;line-height:.88;letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .93 .08 calc(h + var(--h) + 20));}
+.wrapped-big{font-size:clamp(88px,32vw,152px);font-weight:900;line-height:.88;letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .93 .08 calc(h + var(--h) + 20));}
 .wrapped-sub{font-size:1.25rem;font-weight:500;line-height:1.35;text-wrap:pretty;}
 .wrapped-pie{font-size:.875rem;font-weight:600;}
 .wrapped-puntos{display:grid;grid-template-columns:repeat(10,1fr);gap:8px;max-width:320px;margin-top:6px;}
@@ -2635,13 +2635,22 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    pantallazo, con la marca adentro. */
 .wrapped-tarjeta{position:relative;overflow:hidden;isolation:isolate;padding:24px 22px 20px;border-radius:24px;background:color-mix(in srgb,var(--primary) 40%,#07080a);background:oklch(from var(--primary) .4 .14 calc(h + 60));border:1px solid rgba(255,255,255,.22);box-shadow:0 24px 60px -24px rgba(0,0,0,.7);}
 .wrapped-tarjeta::after{content:"";position:absolute;z-index:-1;width:280px;height:280px;right:-120px;top:-130px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 48%,#000),transparent 68%);background:radial-gradient(circle,oklch(from var(--primary) .6 .16 calc(h + 110)),transparent 68%);}
-.wrapped-tarjeta-big{display:flex;align-items:baseline;gap:10px;margin:8px 0 14px;font-size:4.5rem;font-weight:900;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .95 .07 calc(h + 20));}
+.wrapped-tarjeta-big{display:flex;align-items:baseline;gap:10px;margin:8px 0 14px;font-size:72px;font-weight:900;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .95 .07 calc(h + 20));}
 .wrapped-tarjeta-big small{font-size:1rem;font-weight:600;letter-spacing:0;color:#fff;}
 .wrapped-filas{display:grid;gap:10px;}
-.wrapped-filas div{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding-top:10px;border-top:1px solid rgba(255,255,255,.2);font-size:1rem;}
+.wrapped-filas div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 16px;padding-top:10px;border-top:1px solid rgba(255,255,255,.2);font-size:1rem;}
 .wrapped-filas span{flex:none;}
-.wrapped-filas b{font-weight:800;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.wrapped-filas b{margin-left:auto;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:break-word;min-width:0;}
 .wrapped-marca{margin-top:18px;font-size:1.0625rem;font-weight:800;letter-spacing:-.01em;}
+/* Números de pantalla completa: ya miden 88px o más, así que no escalan con
+   el tamaño de texto del sistema; al 200% un "84%" se salía por el borde. El
+   resto del texto sí escala, y la pantalla se desplaza si no cabe. */
+/* Anterior/Siguiente: para VoiceOver y teclado. Invisibles hasta recibir el
+   foco con teclado, y ahí aparecen abajo como dos botones de verdad. */
+.wrapped-pasos button{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
+.wrapped-pasos button:focus-visible{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:auto;height:44px;margin:0;padding:0 18px;clip-path:none;border-radius:999px;background:#fff;color:#07080a;font:inherit;font-weight:700;}
+.wrapped-pasos button[data-paso="-1"]:focus-visible{left:24px;}
+.wrapped-pasos button[data-paso="1"]:focus-visible{right:24px;}
 @keyframes wrappedIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
 @keyframes wrappedFundido{from{opacity:0;}to{opacity:1;}}
 @media(prefers-reduced-motion:reduce){
