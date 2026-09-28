@@ -2583,77 +2583,181 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .admin-profesor .clase-accion{width:auto;justify-self:start;margin:0;padding-left:14px;padding-right:14px;}
 
 /* ─── Wrapped: el semestre en historias (render-main.js) ───
-   Fondo oscuro teñido con el color del tema, igual en claro y en oscuro: así
-   el texto blanco pasa 4,5:1 con cualquier acento, y las luces se oscurecen
-   con negro antes de ponerse detrás del texto por la misma razón. Nunca el
-   semáforo: un promedio bajo 4,0 no se pinta rojo acá ni uno alto verde. */
-.home-wrapped{position:relative;overflow:hidden;isolation:isolate;margin:16px 20px 4px;padding:16px 16px 14px;border-radius:16px;background:color-mix(in srgb,var(--primary) 32%,#07080a);color:#fff;gap:4px;}
-.home-wrapped::before{content:"";position:absolute;z-index:-1;width:240px;height:240px;right:-80px;top:-110px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 55%,#000),transparent 68%);}
-.home-wrapped-k{font-size:.6875rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
-.home-wrapped strong{font-size:1.375rem;font-weight:800;line-height:1.15;letter-spacing:-.02em;}
-.home-wrapped small{font-size:.875rem;line-height:1.4;}
-.home-wrapped button{min-height:44px;justify-self:start;margin-top:10px;padding:0 20px;border:0;border-radius:999px;background:#fff;color:#07080a;font:inherit;font-size:.9375rem;font-weight:700;}
-/* Cada pantalla tiene su color: el del tema girado en el círculo cromático
-   (--h grados). Los giros van hacia azul, violeta y magenta desde el turquesa
-   por defecto, lejos del verde y del rojo del semáforo. La luminosidad queda
-   fija en .3, así que el blanco pasa 4,5:1 sin importar el tono. El
-   `color-mix` de antes es para navegadores sin color relativo.
+   Oscuro tipo OLED, teñido con el color del tema, igual en claro y en oscuro.
+   Cada pantalla gira el tono del tema (--h) hacia azul, violeta y magenta, lejos
+   del verde y del rojo del semáforo: ningún número se pinta según la nota. La
+   luminosidad de fondo queda fija, así que el blanco pasa 4,5:1 con cualquier
+   acento. El `color-mix` que va antes de cada `oklch(from …)` es el respaldo
+   para navegadores sin color relativo (iOS < 16.4).
    ponytail: con un acento que no sea turquesa, un giro podría acercarse al
-   rojo o al verde; si pasa, fijar los tonos por acento en vez de girarlos. */
-.wrapped{--h:0;position:fixed;inset:0;z-index:400;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;background-color:color-mix(in srgb,var(--primary) 28%,#060708);background-color:oklch(from var(--primary) .3 .11 calc(h + var(--h)));transition:background-color 600ms var(--ease-out);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 12px) 24px calc(env(safe-area-inset-bottom,0px) + 24px);cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;overscroll-behavior:contain;}
-/* Las luces viajan a otro rincón en cada pantalla. 600ms a mano: la escala
-   llega a 320 y un desplazamiento de este tamaño en 320 se ve como un salto. */
-.wrapped-luz{position:absolute;z-index:-1;width:120vmin;height:120vmin;border-radius:50%;pointer-events:none;transition:transform 600ms var(--ease-out);}
-.wrapped-luz.a{left:-45vmin;top:-50vmin;background:radial-gradient(circle,color-mix(in srgb,var(--primary) 70%,#000),transparent 66%);background:radial-gradient(circle,oklch(from var(--primary) .52 .17 calc(h + var(--h) + 20)),transparent 66%);}
-.wrapped-luz.b{right:-55vmin;bottom:-55vmin;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 48%,#000),transparent 66%);background:radial-gradient(circle,oklch(from var(--primary) .5 .16 calc(h + var(--h) + 55)),transparent 66%);}
+   rojo o al verde; si pasa, fijar los tonos por acento en vez de girarlos.
+   Materiales (HIG, Materials): la X y Compartir son controles y van en vidrio;
+   la tarjeta final es contenido y va en material sólido, nunca en vidrio. */
+.wrapped{--h:0;--font-cifra:ui-rounded,var(--font-ui);position:fixed;inset:0;z-index:400;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;background-color:color-mix(in srgb,var(--primary) 22%,#050608);background-color:oklch(from var(--primary) .21 .07 calc(h + var(--h)));transition:background-color 600ms var(--ease-out);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 10px) 24px calc(env(safe-area-inset-bottom,0px) + 20px);cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;overscroll-behavior:contain;animation:wrappedAbrir var(--motion-screen) var(--ease-out) backwards;}
+.wrapped.saliendo{animation:wrappedSalir var(--motion-base) var(--ease-standard) forwards;pointer-events:none;}
 .wrapped[data-tono="1"]{--h:40;}
 .wrapped[data-tono="2"]{--h:80;}
 .wrapped[data-tono="3"]{--h:115;}
+/* Grano de película, fijo: le da el acabado de impreso y rompe el degradado
+   plano de las luces. No se mueve: nada en bucle (HIG, Accessibility). */
+.wrapped::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.13;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");}
+/* Las luces viajan a otro rincón en cada pantalla. 600ms a mano: la escala
+   llega a 320 y un desplazamiento de este tamaño en 320 se ve como un salto. */
+.wrapped-luz{position:absolute;z-index:-1;border-radius:50%;pointer-events:none;transition:transform 600ms var(--ease-out);}
+.wrapped-luz.a{width:125vmin;height:125vmin;left:-50vmin;top:-55vmin;background:radial-gradient(circle,color-mix(in srgb,var(--primary) 70%,#000),transparent 66%);background:radial-gradient(circle,oklch(from var(--primary) .5 .17 calc(h + var(--h) + 20)),transparent 66%);}
+.wrapped-luz.b{width:130vmin;height:130vmin;right:-60vmin;bottom:-60vmin;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 48%,#000),transparent 66%);background:radial-gradient(circle,oklch(from var(--primary) .48 .16 calc(h + var(--h) + 55)),transparent 66%);}
+.wrapped-luz.c{width:70vmin;height:70vmin;left:55%;top:38%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 30%,transparent),transparent 70%);background:radial-gradient(circle,oklch(from var(--primary) .58 .12 calc(h + var(--h) + 35) / .55),transparent 70%);}
 .wrapped[data-tono="1"] .wrapped-luz.a{transform:translate(60vmin,20vmin);}
 .wrapped[data-tono="1"] .wrapped-luz.b{transform:translate(-50vmin,-35vmin);}
+.wrapped[data-tono="1"] .wrapped-luz.c{transform:translate(-45vmin,30vmin) scale(1.2);}
 .wrapped[data-tono="2"] .wrapped-luz.a{transform:translate(15vmin,85vmin) scale(1.15);}
 .wrapped[data-tono="2"] .wrapped-luz.b{transform:translate(-15vmin,-80vmin);}
+.wrapped[data-tono="2"] .wrapped-luz.c{transform:translate(-20vmin,-40vmin) scale(.8);}
 .wrapped[data-tono="3"] .wrapped-luz.a{transform:translate(75vmin,65vmin) scale(.85);}
 .wrapped[data-tono="3"] .wrapped-luz.b{transform:translate(-70vmin,0) scale(1.2);}
+.wrapped[data-tono="3"] .wrapped-luz.c{transform:translate(-60vmin,-10vmin);}
+/* Muestras de color para la imagen de compartir: el canvas no lee variables. */
+.wrapped-tinta{display:none;}
+.wrapped-tinta.a{color:color-mix(in srgb,var(--primary) 70%,#000);color:oklch(from var(--primary) .5 .17 calc(h + var(--h) + 20));}
+.wrapped-tinta.b{color:color-mix(in srgb,var(--accent) 48%,#000);color:oklch(from var(--primary) .48 .16 calc(h + var(--h) + 55));}
+.wrapped-barras,.wrapped-cerrar,.wrapped-slide{position:relative;z-index:1;}
 .wrapped-barras{display:flex;gap:4px;}
-.wrapped-barras span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.28);}
-.wrapped-barras span.on{background:#fff;}
-.wrapped-cerrar{position:relative;z-index:1;align-self:flex-end;width:44px;height:44px;margin:4px -10px 0 0;padding:0;border:0;background:none;color:#fff;display:grid;place-items:center;}
-.wrapped-slide{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;justify-content:safe center;gap:14px;width:100%;max-width:430px;margin:0 auto;padding-bottom:6vh;}
-.wrapped-slide>*,.wrapped-puntos span,.wrapped-ramos span{animation:wrappedIn var(--motion-screen) var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2);}
-.wrapped-k{font-size:.8125rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
-.wrapped-titulo{font-size:clamp(2.25rem,10vw,3.25rem);font-weight:800;line-height:1.05;letter-spacing:-.03em;text-wrap:balance;overflow-wrap:anywhere;}
-.wrapped-big{font-size:clamp(88px,32vw,152px);font-weight:900;line-height:.88;letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .93 .08 calc(h + var(--h) + 20));}
-.wrapped-sub{font-size:1.25rem;font-weight:500;line-height:1.35;text-wrap:pretty;}
-.wrapped-pie{font-size:.875rem;font-weight:600;}
-.wrapped-puntos{display:grid;grid-template-columns:repeat(10,1fr);gap:8px;max-width:320px;margin-top:6px;}
-.wrapped-puntos span{aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,255,255,.45);}
-.wrapped-puntos span.on{background:#fff;border-color:#fff;}
-.wrapped-ramos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
-.wrapped-ramos span{width:34px;height:8px;border-radius:4px;box-shadow:0 0 0 1px rgba(255,255,255,.25);}
-/* La tarjeta final es la que se comparte: tiene que verse bien sola en un
-   pantallazo, con la marca adentro. */
-.wrapped-tarjeta{position:relative;overflow:hidden;isolation:isolate;padding:24px 22px 20px;border-radius:24px;background:color-mix(in srgb,var(--primary) 40%,#07080a);background:oklch(from var(--primary) .4 .14 calc(h + 60));border:1px solid rgba(255,255,255,.22);box-shadow:0 24px 60px -24px rgba(0,0,0,.7);}
-.wrapped-tarjeta::after{content:"";position:absolute;z-index:-1;width:280px;height:280px;right:-120px;top:-130px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 48%,#000),transparent 68%);background:radial-gradient(circle,oklch(from var(--primary) .6 .16 calc(h + 110)),transparent 68%);}
-.wrapped-tarjeta-big{display:flex;align-items:baseline;gap:10px;margin:8px 0 14px;font-size:72px;font-weight:900;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .95 .07 calc(h + 20));}
-.wrapped-tarjeta-big small{font-size:1rem;font-weight:600;letter-spacing:0;color:#fff;}
-.wrapped-filas{display:grid;gap:10px;}
-.wrapped-filas div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 16px;padding-top:10px;border-top:1px solid rgba(255,255,255,.2);font-size:1rem;}
-.wrapped-filas span{flex:none;}
-.wrapped-filas b{margin-left:auto;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:break-word;min-width:0;}
-.wrapped-marca{margin-top:18px;font-size:1.0625rem;font-weight:800;letter-spacing:-.01em;}
-/* Números de pantalla completa: ya miden 88px o más, así que no escalan con
-   el tamaño de texto del sistema; al 200% un "84%" se salía por el borde. El
-   resto del texto sí escala, y la pantalla se desplaza si no cabe. */
+.wrapped-barras span{flex:1;height:3px;border-radius:2px;overflow:hidden;background:rgba(255,255,255,.26);}
+.wrapped-barras span::after{content:"";display:block;height:100%;background:#fff;transform-origin:left;transform:scaleX(0);}
+.wrapped-barras span.on::after{transform:none;}
+.wrapped-barras span.ahora::after{animation:wrappedLlena var(--motion-screen) var(--ease-out) forwards;}
+.wrapped-vidrio{border:0;color:#fff;background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);box-shadow:inset 0 1px 0 rgba(255,255,255,.42),inset 0 0 0 1px rgba(255,255,255,.12),0 10px 30px -12px rgba(0,0,0,.55);}
+.wrapped-cerrar{align-self:flex-end;width:44px;height:44px;margin:10px -8px 0 0;padding:0;border-radius:50%;display:grid;place-items:center;}
+.wrapped-slide{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;justify-content:safe center;gap:14px;width:100%;max-width:430px;margin:0 auto;padding-bottom:5vh;scrollbar-width:none;}
+.wrapped-slide>*{animation:wrappedIn var(--motion-screen) var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2);}
+.wrapped[data-dir="atras"] .wrapped-slide>*{animation-name:wrappedInAtras;}
+/* Tipografía (HIG, Typography): una sola familia, la del sistema. Las cifras
+   van en su variante redondeada (`ui-rounded`), la de los números de Fitness;
+   jerarquía por tamaño + peso, nunca grosores finos. El tracking se cierra al
+   crecer el texto y se abre en lo chico. */
+.wrapped-k{display:flex;align-items:center;gap:10px;font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;}
+.wrapped-k::before{content:"";width:18px;height:2px;border-radius:1px;background:currentColor;flex:none;}
+.wrapped-titulo{font-size:clamp(2.25rem,10.5vw,3.25rem);font-weight:800;line-height:1.02;letter-spacing:-.035em;text-wrap:balance;overflow-wrap:anywhere;}
+/* Los números de pantalla completa ya miden 88px o más, así que no escalan con
+   el texto del sistema: al 200% un "84%" se salía por el borde. El resto sí
+   escala, y la pantalla se desplaza si no cabe (HIG: al agrandar, prioriza lo
+   importante). */
+.wrapped-big{font-size:clamp(88px,34vw,160px);font-family:var(--font-cifra);font-weight:800;line-height:.86;letter-spacing:-.045em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .93 .08 calc(h + var(--h) + 20));}
+@supports (background-clip:text) or (-webkit-background-clip:text){
+  .wrapped-big,.wrapped-tarjeta-big{background-image:radial-gradient(130% 150% at 15% 0%,#fff 0 35%,currentColor 75%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+}
+.wrapped-sub{font-size:1.1875rem;font-weight:500;line-height:1.35;letter-spacing:-.005em;text-wrap:pretty;}
+.wrapped-pie{font-size:.8125rem;font-weight:600;letter-spacing:.01em;}
+.wrapped-oculto,.wrapped-pasos button{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
 /* Anterior/Siguiente: para VoiceOver y teclado. Invisibles hasta recibir el
    foco con teclado, y ahí aparecen abajo como dos botones de verdad. */
-.wrapped-pasos button{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
-.wrapped-pasos button:focus-visible{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:auto;height:44px;margin:0;padding:0 18px;clip-path:none;border-radius:999px;background:#fff;color:#07080a;font:inherit;font-weight:700;}
+.wrapped-pasos button:focus-visible{position:fixed;z-index:2;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:auto;height:44px;margin:0;padding:0 18px;clip-path:none;border-radius:999px;background:#fff;color:#07080a;font:inherit;font-weight:700;}
 .wrapped-pasos button[data-paso="-1"]:focus-visible{left:24px;}
 .wrapped-pasos button[data-paso="1"]:focus-visible{right:24px;}
-@keyframes wrappedIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+/* Portada: el semestre en grande, en contorno, como un afiche. Decorado. */
+/* Relleno tenue y no contorno: el trazo de una fuente variable dibuja los
+   cruces internos de cada número. Ajustado al ancho para no cortarse. */
+.wrapped-poster{position:absolute;left:-.04em;bottom:2vh;z-index:-1;font:800 min(23vw,150px)/.8 var(--font-cifra);letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.07);white-space:nowrap;pointer-events:none;}
+.wrapped-slide>.wrapped-poster{animation-name:wrappedFundido;}
+/* Mejor nota: un destello detrás del número, que aparece una vez y se queda. */
+.wrapped-destello{position:relative;isolation:isolate;align-self:flex-start;}
+.wrapped-rayos{position:absolute;z-index:-1;left:50%;top:50%;width:560px;height:560px;margin:-280px 0 0 -280px;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.11) 0deg 5deg,transparent 5deg 15deg);-webkit-mask:radial-gradient(circle,#000 12%,transparent 64%);mask:radial-gradient(circle,#000 12%,transparent 64%);animation:wrappedRayos 900ms var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2);}
+/* Un punto por nota, del color de su ramo. El borde claro lo separa del fondo
+   aunque el ramo sea oscuro. */
+.wrapped-grilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(18px,1fr));gap:6px;max-width:340px;margin-top:4px;}
+.wrapped-grilla span{aspect-ratio:1;border-radius:5px;background:var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);animation:wrappedPunto var(--motion-screen) var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2);}
+/* El arco del promedio: blanco sobre una pista tenue, con la marca del 4,0. */
+.wrapped-arco{width:100%;max-width:300px;overflow:visible;margin-top:2px;}
+.wrapped-arco .pista,.wrapped-arco .valor{fill:none;stroke-width:10;stroke-linecap:round;}
+.wrapped-arco .pista{stroke:rgba(255,255,255,.18);}
+.wrapped-arco .valor{stroke:#fff;stroke-dasharray:var(--v) 100;animation:wrappedArco 900ms var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2);}
+.wrapped-arco line{stroke:rgba(255,255,255,.6);stroke-width:2;}
+.wrapped-arco text{fill:#fff;font:700 11px var(--font-cifra);}
+.wrapped-arco circle{fill:#fff;filter:drop-shadow(0 0 6px rgba(255,255,255,.8));animation:wrappedPunto var(--motion-screen) var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2 + 700ms);}
+/* Ranking: la línea de color a la izquierda, como en Inicio; la barra es blanca. */
+.wrapped-ranking{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:12px;}
+.wrapped-ranking li{display:grid;grid-template-columns:1fr auto;column-gap:12px;row-gap:7px;padding-left:12px;border-left:3px solid var(--c);animation:wrappedSube var(--motion-screen) var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2);}
+.wrapped-ranking span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9375rem;font-weight:600;}
+.wrapped-ranking b{font:800 1rem var(--font-cifra);font-variant-numeric:tabular-nums;}
+.wrapped-ranking i{grid-column:1/-1;height:6px;border-radius:3px;overflow:hidden;background:rgba(255,255,255,.16);}
+.wrapped-ranking i::after{content:"";display:block;height:100%;border-radius:inherit;background:rgba(255,255,255,.55);transform-origin:left;transform:scaleX(var(--v));animation:wrappedBarra 700ms var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2 + 120ms);}
+.wrapped-ranking li.top span{font-weight:800;}
+.wrapped-ranking li.top i::after{background:#fff;}
+/* Regla de 0 a 100 con "Tú" encima: se lee como posición, no como nota. */
+.wrapped-regla{position:relative;display:grid;grid-template-columns:1fr 1fr;row-gap:8px;max-width:340px;padding-top:38px;}
+.wrapped-regla .pista{grid-column:1/-1;height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.18);}
+.wrapped-regla .pista i{display:block;height:100%;border-radius:inherit;background:#fff;transform-origin:left;transform:scaleX(calc(var(--p) / 100));animation:wrappedBarra 900ms var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2);}
+.wrapped-regla b{position:absolute;top:0;left:clamp(22px,calc(var(--p) * 1%),calc(100% - 22px));translate:-50% 0;padding:4px 11px;border-radius:999px;background:#fff;color:#07080a;font-size:.8125rem;font-weight:800;animation:wrappedSube var(--motion-screen) var(--ease-out) both;animation-delay:calc(var(--d,0) * var(--motion-fast) / 2 + 600ms);}
+.wrapped-regla b::after{content:"";position:absolute;left:50%;bottom:-4px;width:8px;height:8px;margin-left:-4px;background:#fff;transform:rotate(45deg);}
+.wrapped-regla span{font-size:.75rem;font-weight:600;}
+.wrapped-regla span:last-child{text-align:right;}
+/* La tarjeta final es la que se comparte: material sólido, con la marca
+   adentro, para que el pantallazo se entienda solo. */
+.wrapped-tarjeta{position:relative;overflow:hidden;isolation:isolate;padding:20px 22px 20px;border-radius:28px;background:rgba(6,8,12,.6);-webkit-backdrop-filter:blur(28px) saturate(150%);backdrop-filter:blur(28px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.1),0 30px 80px -30px rgba(0,0,0,.85);}
+.wrapped-tarjeta::after{content:"";position:absolute;z-index:-1;width:300px;height:300px;right:-130px;top:-150px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 48%,#000),transparent 68%);background:radial-gradient(circle,oklch(from var(--primary) .58 .16 calc(h + var(--h) + 60)),transparent 68%);}
+.wrapped-tarjeta-marca{display:flex;align-items:center;gap:8px;font-size:.9375rem;font-weight:700;letter-spacing:-.01em;}
+.wrapped-tarjeta-marca img{width:28px;height:28px;border-radius:7px;}
+.wrapped-tarjeta-marca em{margin-left:auto;font-style:normal;font-size:.8125rem;font-weight:600;letter-spacing:.02em;}
+.wrapped-tarjeta-big{display:flex;flex-direction:column;margin:22px 0 18px;font:800 88px/.86 var(--font-cifra);letter-spacing:-.045em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .93 .08 calc(h + var(--h) + 20));}
+.wrapped-tarjeta-big small{margin-top:10px;font:600 .9375rem var(--font-ui);letter-spacing:0;color:#fff;-webkit-text-fill-color:#fff;}
+.wrapped-filas{display:grid;gap:10px;}
+.wrapped-filas div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:2px 16px;padding-top:10px;border-top:1px solid rgba(255,255,255,.18);font-size:1rem;}
+.wrapped-filas span{flex:none;}
+.wrapped-filas b{margin-left:auto;min-width:0;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:break-word;}
+.wrapped-marca{margin-top:18px;font-size:1rem;font-weight:800;letter-spacing:-.01em;}
+.wrapped-acciones{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:6px;}
+.wrapped-compartir{display:inline-flex;align-items:center;gap:8px;min-height:50px;padding:0 24px;border-radius:999px;font:inherit;font-size:1rem;font-weight:700;}
+/* Inicio: la entrada. Una pila de historias a la derecha, con el semestre en
+   la de arriba; las tres con los tonos que van a salir adentro. */
+.home-wrapped{--font-cifra:ui-rounded,var(--font-ui);position:relative;overflow:hidden;isolation:isolate;margin:16px 20px 4px;padding:18px 16px 16px 18px;border-radius:20px;grid-template-columns:1fr auto;align-items:center;gap:14px;background-color:color-mix(in srgb,var(--primary) 24%,#06070a);background-color:oklch(from var(--primary) .21 .07 h);color:#fff;}
+.home-wrapped::before{content:"";position:absolute;z-index:-1;width:260px;height:260px;right:-60px;top:-120px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 50%,#000),transparent 68%);background:radial-gradient(circle,oklch(from var(--primary) .5 .16 calc(h + 50)),transparent 68%);}
+.home-wrapped::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.12;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");}
+.home-wrapped-texto{display:grid;gap:4px;min-width:0;}
+.home-wrapped-k{font-size:.6875rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;}
+.home-wrapped strong{font-size:1.3125rem;font-weight:800;line-height:1.12;letter-spacing:-.025em;text-wrap:balance;}
+.home-wrapped small{font-size:.875rem;line-height:1.4;}
+.home-wrapped button{justify-self:start;display:inline-flex;align-items:center;gap:8px;min-height:44px;margin-top:10px;padding:0 18px;border:0;border-radius:999px;background:#fff;color:#07080a;font:inherit;font-size:.9375rem;font-weight:700;}
+.home-wrapped button[aria-busy="true"]{opacity:.72;cursor:progress;}
+.home-wrapped-pila{position:relative;width:74px;height:108px;margin-right:6px;}
+.home-wrapped-pila span{position:absolute;inset:0;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),0 12px 24px -10px rgba(0,0,0,.7);}
+.home-wrapped-pila span:nth-child(1){transform:rotate(-13deg) translateX(-12px);background-color:color-mix(in srgb,var(--primary) 40%,#1a1030);background-color:oklch(from var(--primary) .4 .14 calc(h + 80));}
+.home-wrapped-pila span:nth-child(2){transform:rotate(-5deg) translateX(-4px);background-color:color-mix(in srgb,var(--primary) 50%,#0a1430);background-color:oklch(from var(--primary) .42 .14 calc(h + 40));}
+.home-wrapped-pila span:nth-child(3){transform:rotate(5deg) translateX(6px);display:flex;align-items:flex-end;padding:9px;background:radial-gradient(90% 70% at 30% 20%,color-mix(in srgb,var(--accent) 60%,#000),color-mix(in srgb,var(--primary) 45%,#05060a));background:radial-gradient(90% 70% at 30% 20%,oklch(from var(--primary) .62 .15 calc(h + 20)),oklch(from var(--primary) .3 .1 h));}
+.home-wrapped-pila b{font:800 .8125rem/1 var(--font-cifra);letter-spacing:-.01em;}
+@keyframes wrappedAbrir{from{opacity:0;transform:translateY(32px) scale(.97);}to{opacity:1;transform:none;}}
+@keyframes wrappedSalir{to{opacity:0;transform:translateY(32px) scale(.97);}}
+@keyframes wrappedIn{from{opacity:0;transform:translate3d(28px,0,0);}to{opacity:1;transform:none;}}
+@keyframes wrappedInAtras{from{opacity:0;transform:translate3d(-28px,0,0);}to{opacity:1;transform:none;}}
+@keyframes wrappedSube{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@keyframes wrappedPunto{from{opacity:0;transform:scale(.4);}to{opacity:1;transform:none;}}
+@keyframes wrappedRayos{from{opacity:0;transform:scale(.6) rotate(-24deg);}to{opacity:1;transform:none;}}
+@keyframes wrappedArco{from{stroke-dasharray:0 100;}}
+@keyframes wrappedBarra{from{transform:scaleX(0);}}
+@keyframes wrappedLlena{to{transform:none;}}
 @keyframes wrappedFundido{from{opacity:0;}to{opacity:1;}}
+@keyframes wrappedFundidoSalir{from{opacity:1;}to{opacity:0;}}
+/* Movimiento reducido: todo pasa a fundido, sin recorrido, zoom ni giro, y
+   las luces no se desplazan (HIG, Accessibility). */
 @media(prefers-reduced-motion:reduce){
-  .wrapped-slide>*,.wrapped-puntos span,.wrapped-ramos span{animation-name:wrappedFundido;}
+  .wrapped{animation-name:wrappedFundido;}
+  .wrapped.saliendo{animation-name:wrappedFundidoSalir;}
+  .wrapped[data-dir] .wrapped-slide>*,.wrapped-grilla span,.wrapped-ranking li,.wrapped-regla b,.wrapped-rayos,.wrapped-arco circle{animation-name:wrappedFundido;}
+  .wrapped-arco .valor,.wrapped-ranking i::after,.wrapped-regla .pista i,.wrapped-barras span.ahora::after{animation:none;transform:scaleX(var(--v,1));}
+  .wrapped-regla .pista i{transform:scaleX(calc(var(--p) / 100));}
+  .wrapped-barras span.ahora::after{transform:none;}
   .wrapped-luz{transition:none;}
+}
+/* Aumentar contraste y Reducir transparencia (HIG, Color y Materials): fondo
+   negro liso, sin luces ni grano, texto blanco macizo y bordes definidos. */
+@media(prefers-contrast:more){
+  .wrapped,.home-wrapped{background-color:#000;}
+  .wrapped-luz,.wrapped::after,.home-wrapped::before,.home-wrapped::after,.wrapped-tarjeta::after{display:none;}
+  .wrapped-big,.wrapped-tarjeta-big{background:none;color:#fff;-webkit-text-fill-color:#fff;}
+  .wrapped-tarjeta{background:#000;box-shadow:inset 0 0 0 2px #fff;-webkit-backdrop-filter:none;backdrop-filter:none;}
+  .wrapped-vidrio{background:#000;box-shadow:inset 0 0 0 2px #fff;-webkit-backdrop-filter:none;backdrop-filter:none;}
+  .wrapped-barras span{background:rgba(255,255,255,.55);}
+}
+@media(prefers-reduced-transparency:reduce){
+  .wrapped-vidrio{background:#26262b;-webkit-backdrop-filter:none;backdrop-filter:none;}
+  .wrapped-tarjeta{background:#0c0e12;-webkit-backdrop-filter:none;backdrop-filter:none;}
 }

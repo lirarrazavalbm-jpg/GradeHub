@@ -45,6 +45,19 @@ chk('no aparece el 19 de diciembre',!run('wrappedDisponible(new Date(2026,11,19)
 chk('aparece el 20 de diciembre',run('wrappedDisponible(new Date(2026,11,20))'));
 chk('se va en marzo',!run('wrappedDisponible(new Date(2027,2,1))'));
 
+// Las piezas visuales dicen lo mismo que los números.
+ctx.__ramos[0].nombre='Micro';
+const d2=run('datosWrapped(__ramos)');
+chk('la grilla tiene un punto por nota',d2.notasColores.length===d2.nNotas);
+chk('el ranking va de mejor a peor',d2.ranking.map(x=>x.nombre).join()==='Micro,Conta');
+const cifra=run('cifraWrapped("5.6",1)');
+chk('la cifra que cuenta termina en el texto que formateó la app',/data-hasta="5.6"/.test(cifra)&&/data-desde="1"/.test(cifra)&&/>5\.6<\/span>/.test(cifra));
+chk('VoiceOver lee la cifra final, no el conteo',/aria-hidden="true"/.test(cifra)&&/class="wrapped-oculto">5\.6</.test(cifra));
+chk('un porcentaje cuenta con su signo',/data-suf="%"/.test(run('cifraWrapped("84%")')));
+const todas=JSON.stringify(run('slidesWrapped(datosWrapped(__ramos),{curso:{ramo:"Micro",mejorQue:84,total:26},uni:{total:121,mejorQue:71}},"2026-2")'));
+chk('promedio con arco, estrella con ranking y comparaciones con regla',/wrapped-arco/.test(todas)&&/wrapped-ranking/.test(todas)&&(todas.match(/wrapped-regla/g)||[]).length===2);
+chk('el arco no usa colores del semáforo',!/var\(--(green|yellow|red)/.test(run('arcoWrapped(3.2)')));
+
 // HIG, Accessibility: un gesto necesita una alternativa, y el texto tiene que
 // poder agrandarse al 200% sin que nada se salga de la pantalla.
 const render=fs.readFileSync(raiz+'render-main.js','utf8'),css=fs.readFileSync(raiz+'styles.css','utf8');
