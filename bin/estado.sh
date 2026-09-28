@@ -51,7 +51,7 @@ fi
 
 echo
 echo "=== TUS ISSUES ABIERTAS ==="
-# La cola de AGENTS.md se desactualiza —ya pasó dos veces que alguien empezó a
+# La cola de docs/contexto.md se desactualiza —ya pasó dos veces que alguien empezó a
 # implementar algo que estaba hecho—, y hay pegas que no son de nadie más:
 # las de panel de Supabase y Cloudflare no las puede hacer ningún agente. Eso
 # vive en las issues asignadas, no en el archivo, así que salen acá.
