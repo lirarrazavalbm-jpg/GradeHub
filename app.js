@@ -2554,9 +2554,6 @@ function mallaFaltantes(){
   const ramos=(mallaFor(S.tenant)[S.carrera]||{})[S.careerSemestre]||[];
   return ramos.filter(n=>!S.ramos.some(r=>r.nombre.toLowerCase()===n.toLowerCase()));
 }
-function maybeOfferMalla(){
-  if(mallaFaltantes().length) openMallaModal();
-}
 let _mallaSel={}, _mallaList=[];
 function openMallaModal(){
   if(!S.carrera){showToast('Primero elige tu carrera en Configuración');return;}
@@ -4596,10 +4593,6 @@ async function aportarPautasAlCatalogo(){
 
 // \u00bfEl ramo viene de otro cat\u00e1logo que el actual? (el estudiante se cambi\u00f3 de
 // universidad o de carrera y arrastr\u00f3 ramos del anterior)
-function ramoEsDeOtroCatalogo(r){
-  if(!r||!r.origen)return false;
-  return r.origen.tenant!==S.tenant||r.origen.carrera!==S.carrera;
-}
 // La malla y el registro de presets escriben el mismo ramo distinto: en la
 // malla es "Filosofía: ¿Para Qué?" y la clave del preset es
 // 'Filosofía: ¿para qué?'. Buscar por igualdad exacta hacía que el onboarding
