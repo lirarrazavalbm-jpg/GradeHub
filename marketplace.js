@@ -616,12 +616,6 @@ function siglaRamoParaClases(ramo){
   return siglaAnuncio(ramo.sigla||siglaDeRamo(ramo,origen.tenant));
 }
 
-function ramosLocalesConSigla(ramos){
-  const vistos=new Set();
-  return (Array.isArray(ramos)?ramos:[]).map(siglaRamoParaClases)
-    .filter(sigla=>sigla&& !vistos.has(sigla) && (vistos.add(sigla),true));
-}
-
 // Recibe anuncios ya descargados y ramos que YA viven en el navegador. Esta
 // operación no llama a Supabase ni envía notas o ramos para elegir el aviso.
 function anunciosParaRamosLocales(anuncios,ramos){

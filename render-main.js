@@ -213,7 +213,6 @@ function renderHome(){
           <span class="chevron-r">›</span>
         </div>`);
     }
-    const maxInsights=2;
     // Última nota: solo la muestro si NO hay próxima ni riesgo (para no saturar)
     if(cards.length===0){
       const lg=latestGrade();
@@ -399,9 +398,6 @@ function renderRamo(){
   if(r.categorias.length>0){
     const categoriasActivas=resumenCategoriasCalculadas(r,calculo);
     const totalPeso=categoriasActivas.reduce((a,c)=>a+c.peso,0);
-    let pesoConNotas=0,sumaPonderada=0;
-    categoriasActivas.forEach(c=>{if(c.valor!==null&&c.valor!==undefined){pesoConNotas+=c.peso;sumaPonderada+=c.valor*c.peso;}});
-    const pesoSinNotas=totalPeso-pesoConNotas;
     // ¿Hay un piso de nota activo? (sección calificada bajo su mínimo → topa la final)
     const gateHit=gatesActivas(r)[0]||null;
     // Cuánto falta por rendir, contando CASILLAS y no categorías.
@@ -941,7 +937,6 @@ function renderStats(){
       : Math.abs(diff)<0.05?`Vas igual que en ${previo.label||'el semestre anterior'}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${tendencia} ${previo.label||'el semestre anterior'}.`;
     const avanceTail=Math.min(14,100-avance.pct);
     const falta=loQueFaltaPorRamo(S.ramos);
-    const necesidadPorRamo=new Map(falta.map(x=>[x.ramo.id,x]));
     const filaNecesidad=x=>{
       const imposible=x.necesita>7.05;
       const valor=imposible?'—':nfNecesaria(Math.max(1,x.necesita));

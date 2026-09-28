@@ -540,8 +540,23 @@ let _syncTimer=null;
 function syncToCloud(){
   if(!supabaseClient||!currentUser)return;
   clearTimeout(_syncTimer);
-  _syncTimer=setTimeout(syncNow,800); // agrupa ediciones rápidas
+  _syncTimer=setTimeout(()=>{_syncTimer=null;syncNow();},800); // agrupa ediciones rápidas
 }
+// Si la persona cambia de app o cierra la pestaña antes de esos 800 ms, el
+// temporizador no alcanza a correr y la nube se queda sin la última edición.
+// Al volver a entrar, afterLogin() carga la nube encima de la copia local y
+// esa nota se pierde sin aviso. Cuando la página se esconde, se sube de
+// inmediato lo que estaba esperando.
+function subirSyncPendiente(){
+  if(!_syncTimer)return false;
+  clearTimeout(_syncTimer);_syncTimer=null;
+  syncNow();
+  return true;
+}
+if(typeof document!=='undefined'&&typeof document.addEventListener==='function')
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')subirSyncPendiente();});
+if(typeof window!=='undefined'&&typeof window.addEventListener==='function')
+  window.addEventListener('pagehide',subirSyncPendiente);
 async function syncNow(){
   if(!supabaseClient||!currentUser)return false;
   try{

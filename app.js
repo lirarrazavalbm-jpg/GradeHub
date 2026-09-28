@@ -974,7 +974,8 @@ function save(){
     }catch(e){
       const lleno = e && (e.name==='QuotaExceededError' || e.code===22 || e.code===1014 || /quota|exceeded/i.test(e.message||''));
       if(lleno){
-        showToast('<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Almacenamiento lleno',true);
+        // showToast escribe con textContent: un <svg> acá salía como texto.
+        showToast('El navegador se quedó sin espacio. Tus cambios se respaldan en la nube, pero no en este dispositivo.',true);
       }else{
         // localStorage dejó de estar disponible → seguimos en memoria + nube, sin spamear
         _storageOK=false;
@@ -2553,9 +2554,6 @@ function mallaFaltantes(){
   if(!S.carrera) return [];
   const ramos=(mallaFor(S.tenant)[S.carrera]||{})[S.careerSemestre]||[];
   return ramos.filter(n=>!S.ramos.some(r=>r.nombre.toLowerCase()===n.toLowerCase()));
-}
-function maybeOfferMalla(){
-  if(mallaFaltantes().length) openMallaModal();
 }
 let _mallaSel={}, _mallaList=[];
 function openMallaModal(){
@@ -4242,8 +4240,15 @@ function siglaParaCurso(r){
   const s=(r&&r.sigla)||siglaDeRamo(r);
   return typeof s==='string'&&s.trim()?s.trim():null;
 }
+// Lo último que se subió, por cuenta. Si cambió un promedio (o es otra cuenta),
+// la comparación guardada ya no vale y se vuelve a pedir; si no cambió nada,
+// no se repiten las llamadas cada vez que se abre Estadísticas.
+let _firmaNotasCurso=null;
 async function subirNotasCurso(){
   if(!supabaseClient||!currentUser)return;
+  const firma=currentUser.id+'|'+JSON.stringify((S.ramos||[]).map(r=>[siglaParaCurso(r),ramoAvg(r,undefined,S.ramos)]));
+  if(firma===_firmaNotasCurso)return;
+  invalidarPosicionesCurso();
   let fallos=0;
   for(const r of (S.ramos||[])){
     const sigla=siglaParaCurso(r);
@@ -4265,6 +4270,8 @@ async function subirNotasCurso(){
   // Que falle no puede romper Estadisticas, pero tampoco puede desaparecer: un
   // catch mudo aca fue la razon de que esto llevara dias sin funcionar.
   if(fallos)console.warn('No se pudieron subir '+fallos+' promedios al curso');
+  // Con fallos se reintenta la próxima vez en vez de dar la subida por hecha.
+  else _firmaNotasCurso=firma;
 }
 
 let _posCursoCache=null;
@@ -4587,10 +4594,6 @@ async function aportarPautasAlCatalogo(){
 
 // \u00bfEl ramo viene de otro cat\u00e1logo que el actual? (el estudiante se cambi\u00f3 de
 // universidad o de carrera y arrastr\u00f3 ramos del anterior)
-function ramoEsDeOtroCatalogo(r){
-  if(!r||!r.origen)return false;
-  return r.origen.tenant!==S.tenant||r.origen.carrera!==S.carrera;
-}
 // La malla y el registro de presets escriben el mismo ramo distinto: en la
 // malla es "Filosofía: ¿Para Qué?" y la clave del preset es
 // 'Filosofía: ¿para qué?'. Buscar por igualdad exacta hacía que el onboarding
@@ -5189,6 +5192,14 @@ function ofrecerCompartirPauta(r){
     ()=>openReportModal(r.id),
     {label:'Revisar antes de enviar',danger:false,focusCancel:true});
 }
+// Un grupo de casillas vacío se dibuja cerrado (render-main.js), y eso está
+// bien para una pauta del catálogo con muchos grupos. Pero quien acaba de
+// marcar "varias" en su propia pauta esperaba ver dónde poner las notas: tres
+// reportes (2026-08-29/30) decían que las evaluaciones "desaparecían" al
+// marcarlo y "volvían" al desmarcarlo. Se abre solo el grupo que se armó recién.
+function abrirGrupoVacio(cat){
+  if(cat&&Number.isInteger(cat.slots)&&cat.slots>1&&!(cat.notas||[]).length)openCats[cat.id]=true;
+}
 function guardarPautaManual(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const estabaVacia=!(r.categorias||[]).some(c=>String(c.nombre||'').trim());
@@ -5210,6 +5221,7 @@ function guardarPautaManual(){
         existente.directNota=cantidadFija;
         if(cantidadFija)existente.slots=f.cantidad;
         else delete existente.slots;
+        abrirGrupoVacio(existente);
       }
       else if((existente.notas||[]).length<=1){existente.directNota=true;delete existente.slots;}
     }
@@ -5217,6 +5229,7 @@ function guardarPautaManual(){
       const cat={id:uid(),nombre:f.nombre.trim(),peso:f.peso,ponderaNotas:false,directNota:!f.varias||cantidadFija,notas:[]};
       if(cantidadFija)cat.slots=f.cantidad;
       r.categorias.push(cat);
+      abrirGrupoVacio(cat);
     }
   });
   const estado=estadoPauta(r.categorias);save();track('configurar_pauta',{evaluaciones:filas.length,total:estado.total});closeModal();renderRamo();
