@@ -2872,7 +2872,7 @@ function openAddRamoModal(){
     <div class="modal-input"><input type="text" id="m-ramo-search" placeholder="${ejemploRamo}" maxlength="${NOMBRE_MAX}" autocomplete="off" autocapitalize="none" aria-describedby="m-ramo-error"/></div>
     <p id="m-ramo-error" role="alert" hidden style="margin:7px 0 0;font-size:0.75rem;line-height:1.4;color:var(--red);"></p>
     ${hayCatalogo?'<div id="m-ramo-results" class="cat-results"></div>':''}
-    ${S.tenant==='uc'?'<button type="button" class="horario-importar-link" onclick="abrirImportarHorarioBuscacursos()">Pegar horario de BuscaCursos</button>':''}
+    ${S.tenant==='uc'?'<button type="button" class="horario-importar-link" onclick="abrirImportarHorarioBuscacursos()">Subir foto de tu horario</button>':''}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" id="m-add-ramo-btn" onclick="confirmAddRamo()">Agregar ramo</button>
@@ -2961,69 +2961,211 @@ function addFromCatalog(nombre,sigla){
 
 // BuscaCursos repite SIGLA-SECCIÓN en cada bloque del horario. Extraer no
 // significa aceptar: las siglas se validan contra cursos-uc.js después.
+//
+// La sección es opcional: en una foto el lector a veces pierde el "-1", y
+// perder la sección no puede costar el ramo entero. Si la misma sigla aparece
+// con y sin sección, manda la que la trae.
 function extraerCodigosHorarioBuscacursos(texto){
-  const encontrados=new Map();
+  const encontrados=new Map(),conSeccion=new Set();
   // Incluye las siglas atípicas que existen en el catálogo oficial: EDU21DC,
   // ESM01AD y UC_0001. La forma sola nunca autoriza un ramo: manda el catálogo.
-  const patron=/(^|[^A-Z0-9_])([A-Z]{2,5}\d{2,4}[A-Z]{0,2}|UC_\d{4})\s*[-‐‑‒–—]\s*(\d{1,3})(?![A-Z0-9])/gi;
+  const patron=/(^|[^A-Z0-9_])([A-Z]{2,5}\d{2,4}[A-Z]{0,2}|UC_\d{4})(?:\s*[-‐‑‒–—]\s*(\d{1,3}))?(?![A-Z0-9_])/gi;
   for(const match of String(texto||'').matchAll(patron)){
-    const sigla=match[2].toUpperCase(),seccion=seccionValida(Number(match[3]));
-    if(seccion===null)continue;
-    const clave=sigla+'-'+seccion;
+    const sigla=match[2].toUpperCase();
+    const seccion=match[3]===undefined?null:seccionValida(Number(match[3]));
+    if(match[3]!==undefined&&seccion===null)continue;
+    if(seccion!==null)conSeccion.add(sigla);
+    const clave=sigla+'-'+(seccion??'');
     if(!encontrados.has(clave))encontrados.set(clave,{sigla,seccion});
   }
-  return [...encontrados.values()];
+  return [...encontrados.values()].filter(r=>r.seccion!==null||!conSeccion.has(r.sigla));
 }
+
+// Lo que el lector confunde en un pantallazo: un uno o una barra por una I, un
+// cero por una O ("1IC2233" es IIC2233), y al revés en los números ("MAT161O"
+// es MAT1610). Solo se corrige algo con forma de sigla UC —tres letras y tres
+// o cuatro cifras, con al menos dos letras de verdad— y el resto del texto no
+// se toca. Corregir no autoriza nada: la sigla igual tiene que existir en el
+// catálogo para proponerse.
+function normalizarTextoOcrHorario(texto){
+  return String(texto||'').toUpperCase().replace(/(^|[^A-Z0-9_])([A-Z01|]{3})([0-9OIL|]{3}[0-9OIL|D]?)([A-Z]?)(?=$|[^A-Z0-9_])/g,
+    (m,antes,letras,num,extra)=>/[A-Z].*[A-Z]/.test(letras)&&/\d/.test(num)
+      ?antes+letras.replace(/[1|]/g,'I').replace(/0/g,'O')+num.replace(/[OD]/g,'0').replace(/[IL|]/g,'1')+extra:m);
+}
+// La L y la I también se confunden entre letras ("LIC2233"). Si la sigla leída
+// no existe, se prueban esos cambios y se acepta solo si UNA variante existe
+// en el catálogo: con dos candidatas, adivinar sería inventar el ramo.
+function siglaOcrEnCatalogo(sigla,existe){
+  if(existe(sigla))return sigla;
+  const m=/^([A-Z]{2,5})(.*)$/.exec(sigla);
+  if(!m||!/[IL]/.test(m[1]))return sigla;
+  const letras=[...m[1]],pos=letras.map((c,i)=>c==='I'||c==='L'?i:-1).filter(i=>i>=0);
+  const halladas=new Set();
+  for(let mask=1;mask<(1<<pos.length);mask++){
+    const v=letras.slice();
+    pos.forEach((i,b)=>{if(mask&(1<<b))v[i]=v[i]==='I'?'L':'I';});
+    const cand=v.join('')+m[2];
+    if(existe(cand))halladas.add(cand);
+  }
+  return halladas.size===1?[...halladas][0]:sigla;
+}
+
+// ─── LEER EL HORARIO DESDE UNA FOTO ─────────────────────────────────────────
+//
+// Nadie tiene su horario como texto: lo tiene como pantallazo. La foto se lee
+// EN EL TELÉFONO con Tesseract.js, servido desde /ocr/ en este mismo dominio:
+// la imagen no sale del dispositivo y no hay un tercero que la vea. Se baja
+// solo cuando alguien elige una foto (unos 7 MB la primera vez, después queda
+// en caché). Lo leído pasa por el mismo camino que el texto pegado: solo se
+// proponen siglas del catálogo UC y nada se agrega sin que la persona lo marque.
+// Compilar WebAssembly exige 'wasm-unsafe-eval' en la CSP (_headers).
+const OCR_BASE='/ocr/';
+let _tesseractCargando=null;
+function cargarTesseract(){
+  if(window.Tesseract)return Promise.resolve(true);
+  if(_tesseractCargando)return _tesseractCargando;
+  _tesseractCargando=new Promise(resolve=>{
+    const s=document.createElement('script');
+    s.src=OCR_BASE+'tesseract.min.js';
+    s.onload=()=>resolve(!!window.Tesseract);
+    s.onerror=()=>{_tesseractCargando=null;resolve(false);};
+    document.head.appendChild(s);
+  });
+  return _tesseractCargando;
+}
+// Módulo mínimo con una instrucción SIMD: si el navegador lo valida, se usa el
+// motor SIMD, que lee bastante más rápido. Si no, el normal.
+function wasmSimdDisponible(){
+  try{return typeof WebAssembly==='object'&&WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]));}
+  catch(e){return false;}
+}
+// Una foto de 12 MP no lee mejor que una de 2.400 px y en un iPhone puede
+// quedarse sin memoria. Al revés, un pantallazo chico (de computador, a 1x)
+// tiene letras de pocos píxeles y el lector confunde más: se agranda al doble.
+async function imagenParaOcr(file){
+  const LADO=2400,CHICO=1400;
+  try{
+    if(typeof createImageBitmap!=='function')return file;
+    const bmp=await createImageBitmap(file);
+    const lado=Math.max(bmp.width,bmp.height);
+    const escala=lado>LADO?LADO/lado:lado<CHICO?2:1;
+    if(escala===1){bmp.close&&bmp.close();return file;}
+    const c=document.createElement('canvas');
+    c.width=Math.round(bmp.width*escala);c.height=Math.round(bmp.height*escala);
+    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+    bmp.close&&bmp.close();
+    return await new Promise(r=>c.toBlob(b=>r(b||file),'image/png'));
+  }catch(e){return file;}
+}
+async function leerTextoDeImagen(file,progreso){
+  if(!await cargarTesseract())throw new Error('ocr-no-carga');
+  const base=new URL(OCR_BASE,location.href).href;
+  const worker=await window.Tesseract.createWorker('eng',1,{
+    workerPath:base+'worker.min.js',
+    corePath:base+(wasmSimdDisponible()?'tesseract-core-simd-lstm.wasm.js':'tesseract-core-lstm.wasm.js'),
+    langPath:base.replace(/\/$/,''),
+    workerBlobURL:false,
+    logger:m=>{if(progreso&&m&&m.status==='recognizing text'&&typeof m.progress==='number')progreso(m.progress);},
+  });
+  try{
+    // tesseract.js usa por defecto un solo bloque de texto (modo 6). Un
+    // horario es una grilla, y el modo automático (3) la lee bastante mejor:
+    // con el 6, un pantallazo de celular perdía ramos y cambiaba secciones.
+    await worker.setParameters({tessedit_pageseg_mode:'3'});
+    const {data}=await worker.recognize(await imagenParaOcr(file));
+    return (data&&data.text)||'';
+  }finally{try{await worker.terminate();}catch(e){}}
+}
+const FOTO_HORARIO_MAX=20*1024*1024;
+let _horarioLeyendoFoto=false;
+async function leerFotoHorario(input){
+  const file=input&&input.files&&input.files[0];
+  const estado=document.getElementById('m-horario-estado');
+  if(!file||!estado||_horarioLeyendoFoto)return false;
+  if(!/^image\//.test(file.type||'')){estado.textContent='Elige una imagen: un pantallazo o una foto de tu horario.';input.value='';return false;}
+  if(file.size>FOTO_HORARIO_MAX){estado.textContent='Esa imagen pesa demasiado. Prueba con un pantallazo del horario.';input.value='';return false;}
+  _horarioLeyendoFoto=true;input.disabled=true;
+  estado.textContent='Preparando el lector… la primera vez se bajan unos 7 MB.';
+  let texto;
+  try{
+    texto=await leerTextoDeImagen(file,p=>{
+      if(document.getElementById('m-horario-estado')===estado)estado.textContent=`Leyendo tu horario… ${Math.round(p*100)}%`;
+    });
+  }catch(e){
+    if(document.getElementById('m-horario-estado')===estado)
+      estado.textContent='No pudimos leer la foto. Revisa tu conexión e intenta de nuevo, o pega el horario como texto.';
+    return false;
+  }finally{_horarioLeyendoFoto=false;input.disabled=false;input.value='';}
+  // Si cerró el modal mientras se leía, lo leído no abre nada.
+  if(document.getElementById('m-horario-estado')!==estado)return false;
+  track('horario_foto_leida');
+  return reconocerHorarioBuscacursos(texto);
+}
+
 let _horarioUCReconocido=null,_horarioTextoPegado='';
 function abrirImportarHorarioBuscacursos(conservarTexto=false){
   if(S.tenant!=='uc')return;
   if(!conservarTexto)_horarioTextoPegado='';
   _horarioUCReconocido=null;
   document.getElementById('modal-content').innerHTML=`
-    <div class="modal-title">Pegar horario de BuscaCursos</div>
-    <p class="modal-desc">Copia tu horario y pégalo acá. Buscaremos las siglas y secciones; podrás revisar los ramos antes de agregarlos.</p>
-    <label class="modal-label" for="m-horario-texto">Tu horario</label>
-    <textarea id="m-horario-texto" class="horario-importar-texto" rows="7" maxlength="20000" placeholder="Ej.: MAT1610-1, IIC2333-2" aria-describedby="m-horario-estado"></textarea>
+    <div class="modal-title">Subir foto de tu horario</div>
+    <p class="modal-desc">Sube un pantallazo de tu horario de BuscaCursos. Lo leemos en tu teléfono: <b>la imagen no sale de tu dispositivo</b>. Después revisas los ramos antes de agregarlos.</p>
+    <label class="btn-confirm horario-foto-btn" for="m-horario-foto">Elegir foto del horario</label>
+    <input type="file" id="m-horario-foto" class="horario-foto-input" accept="image/*" onchange="leerFotoHorario(this)" aria-describedby="m-horario-estado"/>
     <p id="m-horario-estado" class="horario-importar-estado" role="status" aria-live="polite">Solo se reconocerán siglas verificadas en el catálogo UC.</p>
+    <details class="horario-texto-alt"${conservarTexto&&_horarioTextoPegado?' open':''}>
+      <summary>¿Tienes el horario como texto? Pégalo</summary>
+      <textarea id="m-horario-texto" class="horario-importar-texto" rows="5" maxlength="20000" placeholder="Ej.: MAT1610-1, IIC2333-2" aria-label="Tu horario como texto"></textarea>
+      <button type="button" class="btn-cancel" id="m-horario-reconocer" onclick="reconocerHorarioBuscacursos()">Revisar texto</button>
+    </details>
     <div class="modal-btns">
       <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="btn-confirm" id="m-horario-reconocer" onclick="reconocerHorarioBuscacursos()">Revisar ramos</button>
     </div>`;
   openModal();
   const entrada=document.getElementById('m-horario-texto');
   entrada.value=_horarioTextoPegado;
-  entrada.focus();
 }
-async function reconocerHorarioBuscacursos(){
+// `textoDeFoto` llega de leerFotoHorario; sin él, se lee lo pegado.
+async function reconocerHorarioBuscacursos(textoDeFoto){
   if(S.tenant!=='uc')return false;
-  const entrada=document.getElementById('m-horario-texto');
-  if(!entrada)return false;
-  const boton=document.getElementById('m-horario-reconocer');
-  if(!boton||boton.disabled)return false;
-  _horarioTextoPegado=entrada.value;
-  const codigos=extraerCodigosHorarioBuscacursos(entrada.value);
+  const deFoto=typeof textoDeFoto==='string';
   const estado=document.getElementById('m-horario-estado');
+  const entrada=document.getElementById('m-horario-texto');
+  if(!estado||(!deFoto&&!entrada))return false;
+  const boton=document.getElementById('m-horario-reconocer');
+  if(!deFoto&&(!boton||boton.disabled))return false;
+  if(!deFoto)_horarioTextoPegado=entrada.value;
+  const codigos=extraerCodigosHorarioBuscacursos(deFoto?normalizarTextoOcrHorario(textoDeFoto):entrada.value);
   _horarioUCReconocido=null;
-  if(!codigos.length){estado.textContent='No encontramos siglas con sección, como MAT1610-1. Revisa lo que pegaste.';entrada.focus();return false;}
-  boton.disabled=true;
+  if(!codigos.length){
+    estado.textContent=deFoto
+      ?'No encontramos siglas en la foto. Prueba con un pantallazo más nítido, donde se lean códigos como MAT1610-1.'
+      :'No encontramos siglas con sección, como MAT1610-1. Revisa lo que pegaste.';
+    if(!deFoto)entrada.focus();
+    return false;
+  }
+  if(boton)boton.disabled=true;
   estado.textContent='Cargando el catálogo UC para comprobar las siglas…';
   let cargado=false;
   try{cargado=await cargarCursosUC();}catch(e){}
   // El estudiante puede cerrar el modal mientras llegan los ~660 KB. En ese
   // caso la respuesta tardía no abre una propuesta ni modifica el semestre.
-  if(document.getElementById('m-horario-texto')!==entrada)return false;
-  boton.disabled=false;
+  if(document.getElementById('m-horario-estado')!==estado)return false;
+  if(boton)boton.disabled=false;
   const filas=cursosUcExtra();
   if(!cargado||!filas){estado.textContent='No pudimos cargar el catálogo UC. Revisa tu conexión e intenta de nuevo; tu horario sigue aquí.';return false;}
 
   const porSigla=new Map(filas.filter(f=>Array.isArray(f)&&typeof f[0]==='string').map(f=>[f[0].toUpperCase(),f]));
   const secciones=new Map();
-  codigos.forEach(({sigla,seccion})=>{
+  codigos.map(r=>deFoto?{...r,sigla:siglaOcrEnCatalogo(r.sigla,x=>porSigla.has(x))}:r).forEach(({sigla,seccion})=>{
     if(!secciones.has(sigla))secciones.set(sigla,new Set());
     secciones.get(sigla).add(seccion);
   });
   const ambiguas=[...secciones].filter(([,s])=>s.size>1).map(([sigla])=>sigla);
-  const desconocidas=[...secciones.keys()].filter(sigla=>!porSigla.has(sigla));
+  // "IC2233" junto a IIC2233 es la misma sigla leída cortada, no un ramo que
+  // falte: avisarla solo haría dudar de un resultado que está bien.
+  const conocidas=[...secciones.keys()].filter(sigla=>porSigla.has(sigla));
+  const desconocidas=[...secciones.keys()].filter(sigla=>!porSigla.has(sigla)&&!conocidas.some(k=>k!==sigla&&k.endsWith(sigla)));
   // El catálogo combinado decide qué nombre corresponde al preset cuando la
   // malla y el archivo completo llaman distinto al mismo ramo.
   const catalogoPorSigla=new Map(indiceBusquedaCatalogo('uc',S.carrera).todos
@@ -3042,16 +3184,16 @@ async function reconocerHorarioBuscacursos(){
   if(yaTienes)avisos.push(`${yaTienes} ${yaTienes===1?'ramo ya está':'ramos ya están'} en tu semestre.`);
   const lista=_horarioUCReconocido.map((r,i)=>`<label class="agent-ramo-row">
     <input type="checkbox" class="agent-ramo-check horario-ramo-check" data-i="${i}" checked/>
-    <span><b>${esc(r.nombre)}</b><small>${esc(r.sigla)} · Sección ${r.seccion}</small></span>
+    <span><b>${esc(r.nombre)}</b><small>${esc(r.sigla)}${r.seccion!=null?` · Sección ${r.seccion}`:''}</small></span>
   </label>`).join('');
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Ramos reconocidos</div>
     <p class="modal-desc">Revisa lo que encontramos en el catálogo UC. <b>Todavía no agregamos nada.</b> Desmarca los que no llevas.</p>
     ${avisos.length?`<p class="horario-importar-estado" role="status">${avisos.join(' ')}</p>`:''}
-    ${lista?`<div class="agent-ramo-list">${lista}</div>`:'<p class="cat-empty">No hay ramos nuevos para agregar. Puedes corregir el texto o agregarlos uno por uno.</p>'}
+    ${lista?`<div class="agent-ramo-list">${lista}</div>`:'<p class="cat-empty">No hay ramos nuevos para agregar. Puedes probar con otra foto o agregarlos uno por uno.</p>'}
     <div class="modal-btns">
       <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button type="button" class="btn-cancel" onclick="abrirImportarHorarioBuscacursos(true)">Corregir</button>
+      <button type="button" class="btn-cancel" onclick="abrirImportarHorarioBuscacursos(true)">Volver</button>
       ${lista?'<button type="button" class="btn-confirm" onclick="aplicarHorarioBuscacursos()">Agregar los marcados</button>':''}
     </div>`;
   return true;
@@ -3066,7 +3208,7 @@ function aplicarHorarioBuscacursos(){
     if(ramoPropuestoYaEsta(r))return;
     const creado=crearRamoDesdeCatalogo(r.nombre,r.sigla);
     if(!creado)return;
-    creado.seccion=r.seccion;
+    if(r.seccion!=null)creado.seccion=r.seccion;
     puestos++;
   });
   if(!puestos){showToast('Ya tienes esos ramos en tu semestre',true);return false;}
