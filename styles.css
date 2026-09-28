@@ -1547,6 +1547,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .horario-foto-btn:has(+ .horario-foto-input:focus-visible){outline:2px solid var(--primary);outline-offset:2px;}
 .horario-foto-btn:has(+ .horario-foto-input:disabled){opacity:.35;cursor:default;}
 .horario-texto-alt{margin:0 0 12px;}
+.horario-secciones-titulo{margin:16px 0 0;}
 .horario-texto-alt summary{cursor:pointer;color:var(--fg2);font-size:.8125rem;font-weight:600;padding:4px 0 8px;}
 .horario-texto-alt .btn-cancel{display:block;width:100%;margin-top:8px;}
 .horario-importar-estado{margin:9px 0 13px;color:var(--fg2);font-size:.78125rem;line-height:1.45;overflow-wrap:anywhere;}

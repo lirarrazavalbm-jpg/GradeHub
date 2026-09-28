@@ -3189,7 +3189,7 @@ async function leerFotoHorario(input){
   return reconocerHorarioBuscacursos(lecturas);
 }
 
-let _horarioUCReconocido=null,_horarioTextoPegado='';
+let _horarioUCReconocido=null,_horarioSeccionesUC=[],_horarioTextoPegado='';
 function abrirImportarHorarioBuscacursos(conservarTexto=false){
   if(S.tenant!=='uc')return;
   if(!conservarTexto)_horarioTextoPegado='';
@@ -3224,7 +3224,7 @@ async function reconocerHorarioBuscacursos(lecturasFoto){
   if(!deFoto&&(!boton||boton.disabled))return false;
   if(!deFoto)_horarioTextoPegado=entrada.value;
   let codigos=deFoto?codigosDeFotoHorario(lecturasFoto):extraerCodigosHorarioBuscacursos(entrada.value);
-  _horarioUCReconocido=null;
+  _horarioUCReconocido=null;_horarioSeccionesUC=[];
   if(!codigos.length){
     estado.textContent=deFoto
       ?'No encontramos siglas en la foto. Prueba con un pantallazo más nítido, donde se lean códigos como MAT1610-1.'
@@ -3275,6 +3275,14 @@ async function reconocerHorarioBuscacursos(lecturasFoto){
 
   const yaTienes=[...secciones].filter(([sigla,s])=>s.size===1&&porSigla.has(sigla)
     &&ramoPropuestoYaEsta({sigla,nombre:(catalogoPorSigla.get(sigla)||{}).nombre||porSigla.get(sigla)[1]})).length;
+  // Los que ya tienes pueden recibir la sección leída. Solo se ofrece si se
+  // leyó una sección y es distinta de la guardada; si ya tenían otra, va
+  // DESMARCADO: cambiarla es una decisión, no un relleno (Lucas, 2026-09-28).
+  // Aplicarlo escribe solo `seccion`: notas, pauta y créditos no se tocan.
+  _horarioSeccionesUC=[...secciones].filter(([sigla,s])=>s.size===1&&[...s][0]!=null&&porSigla.has(sigla))
+    .map(([sigla,s])=>{const ramo=ramoConSigla(sigla);return ramo&&ramo.seccion!==[...s][0]
+      ?{id:ramo.id,nombre:ramo.nombre,sigla,antes:ramo.seccion??null,seccion:[...s][0]}:null;})
+    .filter(Boolean);
   const avisos=[];
   // De una foto, lo que no calza con el catálogo suele ser ruido del lector
   // ("TTF0012"): nombrarlo solo confunde. Se dice qué hacer si falta algo.
@@ -3287,15 +3295,23 @@ async function reconocerHorarioBuscacursos(lecturasFoto){
     <input type="checkbox" class="agent-ramo-check horario-ramo-check" data-i="${i}" checked/>
     <span><b>${esc(r.nombre)}</b><small>${esc(r.sigla)}${r.seccion!=null?` · Sección ${r.seccion}`:''}</small></span>
   </label>`).join('');
+  const listaSecciones=_horarioSeccionesUC.map((r,i)=>`<label class="agent-ramo-row">
+    <input type="checkbox" class="agent-ramo-check horario-seccion-check" data-i="${i}"${r.antes==null?' checked':''}/>
+    <span><b>${esc(r.nombre)}</b><small>${esc(r.sigla)} · ${r.antes==null?`Sección ${r.seccion}`:`Sección ${r.antes} → ${r.seccion}`}</small></span>
+  </label>`).join('');
+  const textoBoton=lista&&listaSecciones?'Aplicar lo marcado':lista?'Agregar los marcados':'Poner las secciones';
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Ramos reconocidos</div>
-    <p class="modal-desc">Revisa lo que encontramos en el catálogo UC. <b>Todavía no agregamos nada.</b> Desmarca los que no llevas.</p>
+    <p class="modal-desc">Revisa lo que encontramos en el catálogo UC. <b>Todavía no cambiamos nada.</b> Desmarca lo que no corresponde.</p>
     ${avisos.length?`<p class="horario-importar-estado" role="status">${avisos.join(' ')}</p>`:''}
-    ${lista?`<div class="agent-ramo-list">${lista}</div>`:'<p class="cat-empty">No hay ramos nuevos para agregar. Puedes probar con otra foto o agregarlos uno por uno.</p>'}
+    ${lista?`<div class="agent-ramo-list">${lista}</div>`:listaSecciones?'':'<p class="cat-empty">No hay ramos nuevos para agregar. Puedes probar con otra foto o agregarlos uno por uno.</p>'}
+    ${listaSecciones?`<p class="modal-label horario-secciones-titulo">Ponerle la sección a los que ya tienes</p>
+    <p class="horario-importar-estado">Solo cambia la sección. Tus notas y tu pauta quedan igual.${_horarioSeccionesUC.some(r=>r.antes!=null)?' Los que ya tenían otra sección van desmarcados: márcalos si la foto está bien.':''}</p>
+    <div class="agent-ramo-list">${listaSecciones}</div>`:''}
     <div class="modal-btns">
       <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button type="button" class="btn-cancel" onclick="abrirImportarHorarioBuscacursos(true)">Volver</button>
-      ${lista?'<button type="button" class="btn-confirm" onclick="aplicarHorarioBuscacursos()">Agregar los marcados</button>':''}
+      ${lista||listaSecciones?`<button type="button" class="btn-confirm" onclick="aplicarHorarioBuscacursos()">${textoBoton}</button>`:''}
     </div>`;
   return true;
 }
@@ -3303,8 +3319,10 @@ function aplicarHorarioBuscacursos(){
   if(S.tenant!=='uc'||!Array.isArray(_horarioUCReconocido))return false;
   const marcados=[...document.querySelectorAll('.horario-ramo-check')]
     .filter(c=>c.checked).map(c=>_horarioUCReconocido[Number(c.dataset.i)]).filter(Boolean);
-  if(!marcados.length){showToast('No marcaste ningún ramo',true);return false;}
-  let puestos=0;
+  const seccionesMarcadas=[...document.querySelectorAll('.horario-seccion-check')]
+    .filter(c=>c.checked).map(c=>(_horarioSeccionesUC||[])[Number(c.dataset.i)]).filter(Boolean);
+  if(!marcados.length&&!seccionesMarcadas.length){showToast('No marcaste nada',true);return false;}
+  let puestos=0,actualizados=0;
   marcados.forEach(r=>{
     if(ramoPropuestoYaEsta(r))return;
     const creado=crearRamoDesdeCatalogo(r.nombre,r.sigla);
@@ -3312,11 +3330,25 @@ function aplicarHorarioBuscacursos(){
     if(r.seccion!=null)creado.seccion=r.seccion;
     puestos++;
   });
-  if(!puestos){showToast('Ya tienes esos ramos en tu semestre',true);return false;}
-  save();track('ramos_horario_agregados',{cantidad:puestos});
-  _horarioUCReconocido=null;_horarioTextoPegado='';
+  // Se vuelve a buscar el ramo por id Y sigla: si entretanto se borró o se le
+  // cambió la sigla, no se le escribe nada.
+  seccionesMarcadas.forEach(r=>{
+    const ramo=(S.ramos||[]).find(x=>x.id===r.id);
+    if(!ramo||ramoConSigla(r.sigla)!==ramo)return;
+    const seccion=seccionValida(r.seccion);
+    if(seccion===null||ramo.seccion===seccion)return;
+    ramo.seccion=seccion;actualizados++;
+  });
+  if(!puestos&&!actualizados){showToast('Ya tienes esos ramos en tu semestre',true);return false;}
+  save();
+  if(puestos)track('ramos_horario_agregados',{cantidad:puestos});
+  if(actualizados)track('secciones_horario_puestas',{cantidad:actualizados});
+  _horarioUCReconocido=null;_horarioSeccionesUC=[];_horarioTextoPegado='';
   closeModal();renderHome();
-  showToast(puestos===1?'Ramo agregado desde tu horario':`${puestos} ramos agregados desde tu horario`);
+  const partes=[];
+  if(puestos)partes.push(puestos===1?'1 ramo agregado':`${puestos} ramos agregados`);
+  if(actualizados)partes.push(actualizados===1?'1 sección puesta':`${actualizados} secciones puestas`);
+  showToast(partes.join(' y ')+' desde tu horario');
   return true;
 }
 function renderModalColors(){
@@ -5580,6 +5612,12 @@ function ramoPropuestoYaEsta(r){
     if(r.sigla&&existente)return normName(existente)===normName(r.sigla);
     return normName(x.nombre)===normName(r.nombre);
   });
+}
+// El ramo guardado con ESA sigla. Solo por sigla: por nombre se confunden los
+// homónimos (TEB110 y TTF012 se llaman igual) y no se toca un ramo ajeno.
+function ramoConSigla(sigla){
+  if(!sigla)return null;
+  return (S.ramos||[]).find(x=>{const k=x.sigla||siglaDeRamo(x);return k&&normName(k)===normName(sigla);})||null;
 }
 function propuestasFechasDeRamo(ramo){
   if(!ramo)return [];
