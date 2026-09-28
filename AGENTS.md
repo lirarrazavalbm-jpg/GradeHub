@@ -56,6 +56,8 @@ proyecto entero cuesta ~80k tokens y casi nunca hace falta.
 ## Dónde está cada cosa
 
 **No leas `app.js` entero: son ~40k tokens.** Ubica con `rg -n` y lee el trozo.
+`rg` salta los archivos de datos grandes listados en `.ignore` (`cursos-uc.js`,
+`ocr/`, el inventario del catálogo UC…); para buscar adentro, nómbralos.
 
 | Vas a tocar | Archivo | Cómo llegar |
 |---|---|---|
