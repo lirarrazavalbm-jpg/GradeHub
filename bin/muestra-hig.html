@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="es" data-modo="claro">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'">
 <title>GradeHub · Clases y administración · Muestra</title>
 <style>__ESTILOS__</style><style>__VISTAS_CSS__</style>
 <style>
 body{display:block;overflow:auto;background:var(--bg);font-family:var(--font-ui);color:var(--fg);margin:0;padding:0;}
 .demo-aviso{background:var(--muted);border-bottom:1px solid var(--border);font-size:12px;color:var(--fg2);padding:9px 24px;display:flex;justify-content:space-between;gap:12px;}
-.demo-aviso button{border:0;background:none;color:var(--fg2);font:inherit;text-decoration:underline;cursor:pointer;}
+.demo-aviso button{min-height:44px;min-width:44px;border:0;background:none;color:var(--fg2);font:inherit;text-decoration:underline;cursor:pointer;}
 .demo-barra{padding:0 36px;min-height:78px;display:flex;align-items:center;gap:50px;border-bottom:1px solid var(--border);}
 .demo-marca{font-size:23px;font-weight:750;letter-spacing:-1px;white-space:nowrap;}.demo-marca span{color:var(--primary);}
 .demo-nav{display:flex;gap:6px;flex:1;}.demo-nav button{border:0;background:none;padding:14px 18px;min-height:48px;color:var(--fg2);font-size:14px;border-radius:10px;font-weight:550;cursor:pointer;}.demo-nav button[aria-current=page]{background:var(--muted);color:var(--fg);}
@@ -18,6 +18,7 @@ body{display:block;overflow:auto;background:var(--bg);font-family:var(--font-ui)
 .demo-profesor-intro{display:grid;grid-template-columns:1.2fr 1fr;gap:36px;margin-bottom:32px;}.demo-profesor-intro>div{padding:28px;border-radius:14px;background:var(--muted);}.demo-profesor-intro h2{font-size:24px;letter-spacing:-.03em;margin:8px 0 12px;}.demo-profesor-intro p{color:var(--fg2);margin-bottom:20px;}
 .demo-profesor-intro ol{padding-left:22px;color:var(--fg2);}.demo-profesor-intro li{padding:8px 0;}.demo-profesor-intro li b{color:var(--fg);}
 @media(max-width:760px){.demo-barra{padding:16px 20px;gap:16px;flex-wrap:wrap;}.demo-nav{order:3;flex-basis:100%;}.demo-nav button{flex:1;padding:10px 6px;}.demo-herramientas{margin-left:auto;}.demo-lienzo{padding:30px 20px;}.demo-aviso{padding:8px 20px;font-size:11px;}.demo-profesor-intro{grid-template-columns:1fr;gap:16px;}.demo-pie{flex-direction:column;gap:6px;}}
+body{padding-bottom:env(safe-area-inset-bottom);}.demo-barra,.demo-lienzo{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right));}
 </style></head>
 <body class="gh-mercado">
 <div class="demo-aviso"><span>Muestra interactiva · personas, campañas y cobros ficticios</span><button id="reiniciar">Reiniciar muestra</button></div>
