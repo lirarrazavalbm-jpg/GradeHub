@@ -129,6 +129,27 @@ su nota; el avance de Inicio es un riel neutro con `scaleX`, no un fondo relleno
 Las superficies de Neutro son blancas/casi negras; Papel y Pizarra siguen siendo
 preferencias válidas. No cambies el semáforo para armonizar la interfaz.
 
+**Las decisiones de diseño e interacción se guían por las Human Interface
+Guidelines de Apple** (https://developer.apple.com/design/human-interface-guidelines).
+Decisión de Lucas del 2026-09-28: la mayoría usa GradeHub desde el iPhone, y
+las HIG son la referencia de cómo se espera que se sienta una app ahí. Antes de
+diseñar una pantalla, un control o un flujo, revisa qué dicen para ese caso.
+Lo que más aplica a una PWA:
+
+- Todo lo que se toca mide al menos 44×44 pt, aunque se vea más chico.
+- Texto legible sin zoom y que respete el tamaño que eligió la persona; el
+  contraste mínimo es 4,5:1 para texto normal, también en modo oscuro.
+- Respeta las áreas seguras (`env(safe-area-inset-*)`): nada importante bajo
+  el notch ni bajo la barra de inicio.
+- Las hojas (el modal) se cierran de la forma esperada y una acción
+  destructiva pide confirmación y se ve como tal.
+- El movimiento acompaña, no decora, y respeta `prefers-reduced-motion`.
+- Jerarquía clara: una acción principal por pantalla, lenguaje directo.
+
+Las HIG no pisan las reglas de esta sección: el semáforo, la tipografía del
+sistema y la dirección Editorial se mantienen. Si una guía choca con una regla
+de acá, dilo en vez de elegir por tu cuenta.
+
 **`gradehub_v1` es la clave de localStorage.** No se renombra sin migración.
 
 **La `sb_secret_*` de Supabase nunca va en el código.** Solo la `sb_publishable_*`,
