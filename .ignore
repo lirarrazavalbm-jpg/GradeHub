@@ -1,0 +1,13 @@
+# Archivos que `rg` (y la búsqueda de los agentes) salta por defecto.
+#
+# Son datos generados o de terceros: pesan mucho y cualquier búsqueda amplia
+# los devolvía enteros, gastando tokens en líneas que nadie iba a leer. No
+# cambia nada para git ni para el deploy. Para buscar adentro, nómbralos:
+#   rg -n "BIO143M" cursos-uc.js
+cursos-uc.js
+ocr/
+package-lock.json
+supabase/catalogo_uc.csv
+docs/catalogo-uc-*.json
+docs/catalogo-uc-*.md
+docs/benchmark-pautas-uc-*

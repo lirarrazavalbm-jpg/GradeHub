@@ -6,7 +6,7 @@
    el bloque de ritmo de más abajo. */
 button{font-family:inherit;transition:transform var(--motion-press) var(--ease-standard);}
 button:active{transform:scale(.97);}
-.ramo-row:active,.cat-header:active,.portal-link:active{transform:none;}
+.ramo-row:active,.cat-header:active{transform:none;}
 :focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 /* El movimiento reducido se atiende entero al final del archivo, junto al
    bloque de ritmo. Acá había un `*{...:.01ms!important}` que apagaba todo. */
@@ -117,9 +117,9 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
 /* Íconos de línea: heredan tamaño y color del contexto */
 .ic{width:1em;height:1em;display:inline-block;vertical-align:-.14em;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
 .nav-icon .ic{width:22px;height:22px;stroke-width:1.9;}
-.ob-icon .ic,.gpa-icon .ic{width:.62em;height:.62em;}
+.ob-icon .ic{width:.62em;height:.62em;}
 /* Tipografía display para títulos y números clave */
-.ob-title,.topbar-title,.gpa-num,.ramo-hero-avg,.stat-val,.stat-big,.brand-word{font-family:var(--font-ui);letter-spacing:-.02em;}
+.ob-title,.topbar-title,.gpa-num,.ramo-hero-avg,.stat-val,.brand-word{font-family:var(--font-ui);letter-spacing:-.02em;}
 .gpa-num,.ramo-hero-avg{font-feature-settings:'tnum' 1;}
 /* Fila de evaluación directa (presets): escribir solo la nota */
 .eval-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-left:3px solid transparent;border-radius:14px;padding:13px 15px;margin-bottom:8px;box-shadow:var(--shadow);transition:border-left-color var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
@@ -178,7 +178,6 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
 .screen.active{display:flex;}
 .topbar{display:flex;align-items:center;gap:10px;padding:14px 16px 12px;background:var(--bg2);background:color-mix(in srgb,var(--bg2),transparent 12%);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
 .topbar-title{font-size:1.0625rem;font-weight:700;flex:1;min-width:0;color:var(--fg);letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.back-btn{width:32px;height:32px;border-radius:10px;border:none;background:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:1rem;}
 .icon-btn{width:36px;height:36px;border-radius:11px;border:1px solid transparent;background:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--fg2);font-size:1rem;font-weight:600;transition:background var(--motion-fast),color var(--motion-fast),border-color var(--motion-fast);}
 .icon-btn:hover{background:color-mix(in srgb,var(--muted),var(--primary) 12%);color:var(--fg);}
 .icon-btn .ic{width:18px;height:18px;stroke-width:2;}
@@ -231,12 +230,9 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
 .ob-title-accent{background-image:linear-gradient(var(--gradient-accent),var(--primary) 0%,var(--accent) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
 .ob-brand{font-family:var(--font-ui);font-size:0.75rem;font-weight:800;color:var(--primary);text-align:center;letter-spacing:.15em;text-transform:uppercase;margin-bottom:16px;}
 /* Botones de login social (Google / Apple) */
-.oauth-group{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
 .oauth-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px;border:1.5px solid var(--border2);border-radius:12px;background:var(--card);color:var(--fg);font-family:var(--font-ui);font-size:0.90625rem;font-weight:600;cursor:pointer;transition:background var(--motion-fast),border-color var(--motion-fast),transform var(--motion-press);}
 .oauth-btn:hover{background:var(--muted);}
 .oauth-btn:active{transform:scale(.99);}
-.oauth-apple{background:#000;color:#fff;border-color:#2a2a2a;}
-.oauth-apple:hover{background:#1a1a1a;}
 .oauth-divider{display:flex;align-items:center;gap:12px;width:100%;margin:12px 0 16px;color:var(--fg3);font-size:0.75rem;font-weight:500;}
 .oauth-divider::before,.oauth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
 .ob-sub{font-size:0.9375rem;color:var(--fg2);text-align:center;line-height:1.5;margin-bottom:32px;max-width:340px;letter-spacing:-.005em;}
@@ -646,9 +642,6 @@ input.rep-peso-input{width:100%;min-height:44px;box-sizing:border-box;padding:9p
 .simg-row-name{font-size:0.90625rem;font-weight:600;color:var(--fg);letter-spacing:-.01em;display:flex;align-items:center;gap:7px;min-width:0;}
 .simg-row-name span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .simg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.simg-row-val{font-family:var(--font-ui);font-size:1.1875rem;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;flex-shrink:0;}
-.simg-row-val.hyp{opacity:1;}
-.simg-row-val.real{opacity:.5;}
 /* Stepper de nota simulada. Reemplazó al slider: 60 pasos de 0,1 en el ancho de
    un teléfono no se pueden apuntar, y el dedo tapaba justo el número que había
    que leer. Los botones son de 44px porque menos que eso no se acierta. */
@@ -827,7 +820,6 @@ body.ramo-drag-active{overflow:hidden;-webkit-user-select:none;user-select:none;
 .empty-icon{width:60px;height:60px;border-radius:18px;background:var(--muted);background:color-mix(in srgb,var(--primary),transparent 88%);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:1.625rem;margin-bottom:14px;}
 .empty-title{font-size:1.0625rem;font-weight:700;color:var(--fg);margin-bottom:6px;}
 .empty-sub{font-size:0.8125rem;color:var(--fg2);line-height:1.5;max-width:240px;margin-bottom:20px;}
-.btn-outline{padding:10px 20px;background:var(--primary);color:var(--primary-fg);border:none;border-radius:10px;font-size:0.875rem;font-weight:600;cursor:pointer;}
 /* RAMO DETAIL — hero editorial */
 .ramo-hero{padding:12px 20px 22px;}
 .ramo-hero-label{font-size:0.78125rem;color:var(--fg2);letter-spacing:-.005em;margin-bottom:6px;}
@@ -1215,14 +1207,8 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .nav-item.active{color:var(--primary);}
 .nav-icon{font-size:1.25rem;}
 /* STATS */
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 20px;margin-bottom:20px;}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px 16px 14px;box-shadow:var(--shadow);cursor:pointer;transition:transform var(--motion-press),border-color var(--motion-fast),box-shadow var(--motion-fast);}
 
-.stat-icon-wrap{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:var(--primary);background:color-mix(in srgb,var(--primary),transparent 85%);}
-.stat-icon-wrap .ic{width:16px;height:16px;stroke-width:2.1;}
-.stat-icon-wrap.stat-icon-good{color:var(--green);background:var(--green-bg);}
-.stat-icon-wrap.stat-icon-warn{color:var(--yellow);background:var(--yellow-bg);}
-.stat-icon-wrap.stat-icon-bad{color:var(--red);background:var(--red-bg);}
 .stat-label{font-size:0.65625rem;color:var(--fg3);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;}
 .stat-val{font-family:var(--font-ui);font-size:1.75rem;font-weight:800;letter-spacing:-.035em;color:var(--fg);line-height:1;font-variant-numeric:tabular-nums;}
 .stat-sub{font-size:0.75rem;color:var(--fg3);margin-top:6px;line-height:1.35;letter-spacing:-.005em;overflow-wrap:anywhere;}
@@ -1249,31 +1235,11 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .stats-priority-row{margin-bottom:8px;min-height:72px;}
 .stats-priority-value{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:66px;font-size:1.375rem;line-height:1;font-weight:800;letter-spacing:-.045em;font-variant-numeric:tabular-nums;}
 .stats-priority-value small{font-size:.625rem;font-weight:700;letter-spacing:.035em;text-transform:uppercase;color:var(--fg3);}
-.stats-ramo-list{margin:0 20px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);}
-.stats-ramo-row{width:100%;min-height:70px;display:grid;grid-template-columns:4px minmax(0,1fr) auto auto;align-items:center;gap:12px;border:0;border-bottom:1px solid var(--border);padding:11px 15px 11px 0;background:transparent;color:inherit;text-align:left;font-family:var(--font-ui);cursor:pointer;}
-.stats-ramo-row:last-child{border-bottom:none;}
-.stats-ramo-color{align-self:stretch;border-radius:0 5px 5px 0;}
-.stats-ramo-main{min-width:0;display:flex;flex-direction:column;gap:4px;}
-.stats-ramo-main strong{font-size:.90625rem;line-height:1.2;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.stats-ramo-main small{font-size:.71875rem;line-height:1.25;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.stats-ramo-progress{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:.8125rem;font-weight:750;line-height:1;color:var(--fg2);font-variant-numeric:tabular-nums;}
-.stats-ramo-progress small{font-size:.59375rem;font-weight:700;letter-spacing:.035em;text-transform:uppercase;color:var(--fg3);}
-.stats-ramo-avg{min-width:30px;font-size:1.0625rem;font-weight:800;line-height:1;text-align:right;letter-spacing:-.04em;font-variant-numeric:tabular-nums;}
 .stats-range-card{padding:17px 18px 16px;}
-@media(hover:hover) and (pointer:fine){.stats-ramo-row:hover{background:var(--muted);}}
-@media(max-width:380px){.stats-ramo-row{gap:9px;padding-right:11px;}.stats-ramo-progress{display:none;}.stats-situation-value{font-size:2rem;}}
+@media(max-width:380px){.stats-situation-value{font-size:2rem;}}
 /* AGENDA */
-.ag-section{margin-bottom:22px;}
-.ag-section-label{font-family:var(--font-ui);font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.9px;margin-bottom:10px;padding:0 2px;}
-.ag-item{display:flex;align-items:center;gap:14px;padding:14px 14px 14px 12px;background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:8px;cursor:pointer;transition:border-color var(--motion-fast),transform var(--motion-press),box-shadow var(--motion-fast);}
 
-.ag-item:active{transform:scale(.99);}
-.ag-date{width:48px;height:48px;border-radius:12px;background:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;line-height:1;}
 .ag-day{font-family:var(--font-ui);font-size:1.25rem;font-weight:800;color:var(--fg);letter-spacing:-.03em;font-variant-numeric:tabular-nums;}
-.ag-mon{font-size:0.59375rem;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.6px;margin-top:2px;}
-.ag-info{flex:1;min-width:0;}
-.ag-name{font-size:0.9375rem;font-weight:600;color:var(--fg);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ag-meta{font-size:0.78125rem;color:var(--fg3);margin-top:3px;display:flex;align-items:center;gap:6px;}
 .ag-ramo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 /* AGENDA — lista priorizada (urgencia × peso × riesgo) */
 .agenda-sub{font-size:0.84375rem;color:var(--fg3);margin-top:6px;letter-spacing:-.005em;font-family:var(--font-ui);font-weight:500;}
@@ -1419,10 +1385,6 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .ag-empty-cta:hover{box-shadow:0 8px 20px -6px color-mix(in srgb,var(--primary),transparent 55%);}
 .ag-empty-cta:active{transform:scale(.98);}
 /* SETTINGS */
-.settings-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border);}
-.settings-row:last-of-type{border-bottom:none;}
-.settings-label{font-size:0.9375rem;color:var(--fg);}
-.settings-val{font-size:0.875rem;color:var(--fg3);}
 /* Ajustes deja de ser una lista única: cada categoría es un destino. En teléfono
    primero se elige una sección y luego se entra a su detalle; en escritorio las
    dos piezas conviven para no perder contexto al cambiar entre opciones. */
@@ -1542,6 +1504,14 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .horario-importar-link:hover{border-color:var(--primary);}
 .horario-importar-texto{display:block;width:100%;box-sizing:border-box;min-height:132px;padding:12px;border:1px solid var(--border2);border-radius:10px;background:var(--card);color:var(--fg);font:400 .875rem/1.45 var(--font-ui);resize:vertical;}
 .horario-importar-texto:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.horario-foto-btn{display:block;text-align:center;margin:4px 0 0;}
+.horario-foto-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;}
+.horario-foto-btn:has(+ .horario-foto-input:focus-visible){outline:2px solid var(--primary);outline-offset:2px;}
+.horario-foto-btn:has(+ .horario-foto-input:disabled){opacity:.35;cursor:default;}
+.horario-texto-alt{margin:0 0 12px;}
+.horario-secciones-titulo{margin:16px 0 0;}
+.horario-texto-alt summary{cursor:pointer;color:var(--fg2);font-size:.8125rem;font-weight:600;padding:4px 0 8px;}
+.horario-texto-alt .btn-cancel{display:block;width:100%;margin-top:8px;}
 .horario-importar-estado{margin:9px 0 13px;color:var(--fg2);font-size:.78125rem;line-height:1.45;overflow-wrap:anywhere;}
 .agent-proposal-list{margin:11px 0 0;padding:0;list-style:none;border-top:1px solid var(--border);}
 .agent-proposal-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.78125rem;line-height:1.35;}
@@ -1607,7 +1577,6 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .app-footer-claim{display:block;font-size:0.75rem;font-weight:600;color:var(--fg2);margin-bottom:3px;letter-spacing:-.01em;}
 /* En el onboarding es lo último que se lee antes de escribir el nombre, así que
    va discreta: acompaña, no interrumpe el paso. */
-.ob-claim{margin:10px 0 0;font-size:0.75rem;font-weight:600;color:var(--primary);letter-spacing:-.01em;}
 .app-footer a{color:var(--fg3);text-decoration:none;}
 .app-footer a:hover{color:var(--primary);}
 /* SCREEN TRANSITIONS */
@@ -1659,10 +1628,6 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
   position:absolute;top:0;left:0;right:0;bottom:0;z-index:15;background:var(--bg2);
 }
 /* APPROVAL CHIP */
-.aprov-chip{display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:5px 10px;border-radius:8px;font-size:0.75rem;font-weight:600;}
-.aprov-chip.good{background:var(--green-bg);color:var(--green);}
-.aprov-chip.bad{background:var(--red-bg);color:var(--red);}
-.aprov-chip.warn{background:var(--yellow-bg);color:var(--yellow);}
 /* HISTORIAL */
 .hist-card{background:var(--card);border:1px solid var(--border);border-radius:16px;margin:0 20px 10px;overflow:hidden;box-shadow:var(--shadow);transition:transform var(--motion-press),border-color var(--motion-fast);}
 
@@ -1915,11 +1880,6 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 
 /* Solo se renderiza si hay al menos una pauta oficial. Un "0 pautas oficiales"
    como titular haría ver el producto vacío justo cuando recién se llenó. */
-.courses-official{display:flex;align-items:center;gap:8px;width:100%;
-  margin-top:14px;padding:11px 13px;border-radius:12px;
-  background:var(--green-bg);border:1px solid color-mix(in srgb,var(--green),transparent 70%);
-  font-size:0.8125rem;font-weight:600;color:var(--green);letter-spacing:-.005em;text-align:left;}
-.courses-official .ic{width:15px;height:15px;flex-shrink:0;}
 
 /* ── Aviso de pauta faltante, dentro del ramo ────────────────────────────
    Aparece al ingresar la primera nota de un ramo sin ponderaciones: ese es
@@ -2027,11 +1987,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 
 /* Todas las superficies tocables comparten una respuesta breve. En móvil el
    gesto es el feedback; el hover solo se habilita para puntero preciso. */
-.icon-btn,.back-btn,.avatar-btn,.topbar-link,.nav-item,.ramo-row,.insight-card,
-.stat-card,.ag-row,.eval-row,.eval-group,.cat-card,.cat-hit,.course-picker-result,
-.course-picker-manual,.tenant-opt,.s-tenant-btn,.carrera-opt,.sem-btn,.modo-opt,
-.btn-primary,.btn-outline,.btn-cancel,.btn-confirm,.btn-danger,.btn-prim-sm,
-.ramo-action,.gpa-start-btn,.ag-empty-cta,.add-nota-btn,.add-cat-btn,.user-menu-item{
+.icon-btn,.avatar-btn,.topbar-link,.nav-item,.ramo-row,.insight-card,.stat-card,.ag-row,.eval-row,.eval-group,.cat-card,.cat-hit,.course-picker-result,.course-picker-manual,.tenant-opt,.s-tenant-btn,.carrera-opt,.sem-btn,.modo-opt,.btn-primary,.btn-cancel,.btn-confirm,.btn-danger,.btn-prim-sm,.ramo-action,.gpa-start-btn,.ag-empty-cta,.add-nota-btn,.add-cat-btn,.user-menu-item{
   transition:transform var(--motion-press) var(--ease-standard),
     box-shadow var(--motion-fast) var(--ease-standard),
     border-color var(--motion-fast) var(--ease-standard),
@@ -2039,14 +1995,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
     color var(--motion-fast) var(--ease-standard),opacity var(--motion-fast) var(--ease-standard);
 }
 
-.icon-btn:active,.back-btn:active,.avatar-btn:active,.topbar-link:active,.nav-item:active,
-.ramo-row:active,.insight-card:active,.stat-card:active,.ag-row:active,.eval-row:active,
-.eval-group:active,.cat-card:active,.cat-hit:active,.course-picker-result:active,
-.course-picker-manual:active,.tenant-opt:active,.s-tenant-btn:active,.carrera-opt:active,
-.sem-btn:active,.modo-opt:active,.btn-primary:active,.btn-outline:active,.btn-cancel:active,
-.btn-confirm:active,.btn-danger:active,.btn-prim-sm:active,.ramo-action:active,
-.gpa-start-btn:active,.ag-empty-cta:active,.add-nota-btn:active,.add-cat-btn:active,
-.user-menu-item:active{transform:scale(.985);}
+.icon-btn:active,.avatar-btn:active,.topbar-link:active,.nav-item:active,.ramo-row:active,.insight-card:active,.stat-card:active,.ag-row:active,.eval-row:active,.eval-group:active,.cat-card:active,.cat-hit:active,.course-picker-result:active,.course-picker-manual:active,.tenant-opt:active,.s-tenant-btn:active,.carrera-opt:active,.sem-btn:active,.modo-opt:active,.btn-primary:active,.btn-cancel:active,.btn-confirm:active,.btn-danger:active,.btn-prim-sm:active,.ramo-action:active,.gpa-start-btn:active,.ag-empty-cta:active,.add-nota-btn:active,.add-cat-btn:active,.user-menu-item:active{transform:scale(.985);}
 
 /* Hover con desplazamiento, detrás de la barrera táctil.
    En un teléfono, tocar un elemento dispara :hover y el transform QUEDA PEGADO
@@ -2058,7 +2007,6 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
   .ramo-row:hover{transform:none;background:color-mix(in srgb,var(--fg) 4%,var(--bg2));box-shadow:none;}
   .ramo-row:hover .ramo-band{transform:scaleX(1.65) scaleY(1);filter:brightness(1.2);box-shadow:0 0 6px color-mix(in srgb,var(--ramo-tint) 35%,transparent);}
   .stat-card:hover{transform:translateY(-1px);border-color:var(--border2);box-shadow:var(--shadow-lg);}
-  .ag-item:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:var(--shadow);}
   .ag-row:hover{transform:translateY(-1px);border-color:var(--border2);box-shadow:var(--shadow);}
   .ag-priority-card:hover{transform:translateY(-2px);border-color:var(--ag-course);box-shadow:0 10px 28px -14px color-mix(in srgb,var(--ag-course),transparent 45%);}
   .ag-order-option:hover{color:var(--fg);}
@@ -2069,12 +2017,8 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 @media(hover:hover) and (pointer:fine){
   .insight-card:hover,.stat-card:hover,.ag-row:hover,.eval-row:hover,
   .eval-group:hover,.cat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
-  .icon-btn:hover,.back-btn:hover,.avatar-btn:hover,.topbar-link:hover,.nav-item:hover,
-  .course-picker-result:hover,.course-picker-manual:hover,.tenant-opt:hover,.s-tenant-btn:hover,
-  .carrera-opt:hover,.sem-btn:hover,.modo-opt:hover,.user-menu-item:hover{transform:translateY(-1px);}
-  .btn-primary:hover,.btn-outline:hover,.btn-cancel:hover,.btn-confirm:hover,.btn-danger:hover,
-  .btn-prim-sm:hover,.ramo-action:hover,.gpa-start-btn:hover,.ag-empty-cta:hover,
-  .add-nota-btn:hover,.add-cat-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow);}
+  .icon-btn:hover,.avatar-btn:hover,.topbar-link:hover,.nav-item:hover,.course-picker-result:hover,.course-picker-manual:hover,.tenant-opt:hover,.s-tenant-btn:hover,.carrera-opt:hover,.sem-btn:hover,.modo-opt:hover,.user-menu-item:hover{transform:translateY(-1px);}
+  .btn-primary:hover,.btn-cancel:hover,.btn-confirm:hover,.btn-danger:hover,.btn-prim-sm:hover,.ramo-action:hover,.gpa-start-btn:hover,.ag-empty-cta:hover,.add-nota-btn:hover,.add-cat-btn:hover{transform:translateY(-1px);box-shadow:var(--shadow);}
 }
 
 /* Los bloques se leen como parte de una misma página gracias a un ritmo de
@@ -2113,16 +2057,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 
   /* Hundirse al tocar y levantarse al apuntar: el color y la sombra siguen
      respondiendo, el desplazamiento no. */
-  button:active,.ramo-action:active,.avatar-btn:active,.oauth-btn:active,.cat-hit:active,
-  .tenant-opt:active,.btn-primary:active,.btn-primary:not(:disabled):active,
-  .gpa-num:active,.gpa-start-btn:active,
-  .sim-global-cta:active,.simg-step:active:not(:disabled),.insight-card:active,.ramo-row:active,
-  .ag-item:active,.ag-row:active,.ag-priority-card:active,.ag-order-option:active,.ag-undated-action:active,.ag-empty-cta:active,.course-picker-result:active,
-  .icon-btn:active,.back-btn:active,.topbar-link:active,.nav-item:active,.stat-card:active,
-  .eval-row:active,.eval-group:active,.cat-card:active,.course-picker-manual:active,
-  .s-tenant-btn:active,.carrera-opt:active,.sem-btn:active,.modo-opt:active,.btn-outline:active,
-  .btn-cancel:active,.btn-confirm:active,.btn-danger:active,.btn-prim-sm:active,
-  .add-nota-btn:active,.add-cat-btn:active,.user-menu-item:active{transform:none;}
+  button:active,.ramo-action:active,.avatar-btn:active,.oauth-btn:active,.cat-hit:active,.tenant-opt:active,.btn-primary:active,.btn-primary:not(:disabled):active,.gpa-num:active,.gpa-start-btn:active,.sim-global-cta:active,.simg-step:active:not(:disabled),.insight-card:active,.ramo-row:active,.ag-row:active,.ag-priority-card:active,.ag-order-option:active,.ag-undated-action:active,.ag-empty-cta:active,.course-picker-result:active,.icon-btn:active,.topbar-link:active,.nav-item:active,.stat-card:active,.eval-row:active,.eval-group:active,.cat-card:active,.course-picker-manual:active,.s-tenant-btn:active,.carrera-opt:active,.sem-btn:active,.modo-opt:active,.btn-cancel:active,.btn-confirm:active,.btn-danger:active,.btn-prim-sm:active,.add-nota-btn:active,.add-cat-btn:active,.user-menu-item:active{transform:none;}
 
   /* El sheet sube el 100% de su alto: es el desplazamiento más grande de la
      app. Sin transición el @starting-style deja de tener efecto y el sheet
@@ -2156,14 +2091,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
    anularlo también va detrás: fuera de ella no hay nada que anular, y una
    regla `:hover` suelta con transform es justo lo que el test prohíbe. */
 @media(prefers-reduced-motion:reduce) and (hover:hover) and (pointer:fine){
-  .insight-card:hover,.ramo-row:hover,.stat-card:hover,.ag-item:hover,.ag-row:hover,
-  .hist-card:hover,.eval-row:hover,.eval-group:hover,.cat-card:hover,.icon-btn:hover,
-  .back-btn:hover,.avatar-btn:hover,.topbar-link:hover,.nav-item:hover,.error-cta:hover,
-  .course-picker-result:hover,.course-picker-manual:hover,.tenant-opt:hover,.s-tenant-btn:hover,
-  .carrera-opt:hover,.sem-btn:hover,.modo-opt:hover,.user-menu-item:hover,.btn-primary:hover,
-  .btn-outline:hover,.btn-cancel:hover,.btn-confirm:hover,.btn-danger:hover,.btn-prim-sm:hover,
-  .ramo-action:hover,.gpa-start-btn:hover,.ag-empty-cta:hover,.add-nota-btn:hover,
-  .add-cat-btn:hover,.section-hd-add:hover{transform:none;}
+  .insight-card:hover,.ramo-row:hover,.stat-card:hover,.ag-row:hover,.hist-card:hover,.eval-row:hover,.eval-group:hover,.cat-card:hover,.icon-btn:hover,.avatar-btn:hover,.topbar-link:hover,.nav-item:hover,.error-cta:hover,.course-picker-result:hover,.course-picker-manual:hover,.tenant-opt:hover,.s-tenant-btn:hover,.carrera-opt:hover,.sem-btn:hover,.modo-opt:hover,.user-menu-item:hover,.btn-primary:hover,.btn-cancel:hover,.btn-confirm:hover,.btn-danger:hover,.btn-prim-sm:hover,.ramo-action:hover,.gpa-start-btn:hover,.ag-empty-cta:hover,.add-nota-btn:hover,.add-cat-btn:hover,.section-hd-add:hover{transform:none;}
 }
 
 /* ── El momento de la nota ───────────────────────────────────────────────
@@ -2308,8 +2236,7 @@ body{background-image:none;-webkit-font-smoothing:antialiased;}
    diálogo. Destructivos y avisos conservan sus clases/colores semánticos. */
 .btn-primary,.btn-confirm,.ob-next,.gpa-start-btn,.ag-empty-cta,.error-cta,.ramo-action.primary{background:var(--fg);background-image:none;color:var(--bg2);border-radius:8px;box-shadow:none;font-weight:600;}
 .btn-primary:not(:disabled):hover,.gpa-start-btn:hover,.ag-empty-cta:hover,.error-cta:hover,.ramo-action.primary:hover{box-shadow:none;}
-.btn-cancel,.btn-outline,.ramo-action,.topbar-link{border-radius:8px;box-shadow:none;}
-.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--fg);}
+.btn-cancel,.ramo-action,.topbar-link{border-radius:8px;box-shadow:none;}
 .btn-cancel{color:var(--fg);background:var(--muted);}
 .ramo-action:not(.primary){background:transparent;border:1px solid var(--border2);color:var(--fg2);font-weight:500;}
 .modal-sheet{border:1px solid var(--border);border-bottom:0;box-shadow:0 -12px 48px rgba(0,0,0,.16);border-radius:18px 18px 0 0;}
@@ -2337,7 +2264,7 @@ body{background-image:none;-webkit-font-smoothing:antialiased;}
 .ob-title-left{font-size:1.75rem;}
 .ob-sub{line-height:1.55;}
 .ob-icon{border-radius:12px;box-shadow:none;}
-.ob-step-num,.ob-claim{color:var(--fg3);font-weight:500;}
+.ob-step-num{color:var(--fg3);font-weight:500;}
 .error-page{background-image:none;}
 .error-code{color:var(--fg);text-shadow:none;font-weight:500;}
 .error-mark{background:var(--card);color:var(--fg);border-color:var(--border);box-shadow:none;border-radius:8px;}
@@ -2359,7 +2286,6 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 
 /* Agenda comparte la línea de identidad y filas sobrias. Fechas, pesos y
    avisos siguen visibles, incluidas las evaluaciones pasadas sin nota. */
-.agenda-topline{border-bottom:1px solid var(--border);padding-bottom:18px;}
 .ag-priority-card,.ag-event-priority-sec>.ag-priority-card{border:1px solid var(--border);border-radius:8px;background:var(--card);box-shadow:none;padding:17px 16px 16px 20px;}
 .ag-priority-bar{inset:0 auto 0 0;width:2px;height:auto;}
 .ag-priority-rank{color:var(--fg3);font-weight:600;}
@@ -2377,14 +2303,9 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 
 /* Estadísticas: contexto y números, sin iconos con medallas ni sombras.
    El llenado de avance sigue usando sus paradas funcionales exactas. */
-.stat-card,.stats-ramo-list{border-radius:8px;box-shadow:none;}
+.stat-card{border-radius:8px;box-shadow:none;}
 .stat-label{font-weight:550;}
 .stat-val,.stats-situation-value,.stats-priority-value{font-weight:500;}
-.stats-ramo-row{grid-template-columns:2px minmax(0,1fr) auto auto;}
-.stat-icon-wrap{background:none;color:var(--fg3);padding:0;width:22px;height:22px;border-radius:0;margin-bottom:12px;}
-.stat-icon-wrap.stat-icon-good{color:var(--green);}
-.stat-icon-wrap.stat-icon-warn{color:var(--yellow);}
-.stat-icon-wrap.stat-icon-bad{color:var(--red);}
 .stats-situation-value,.stats-situation-progress span{color:var(--fg);}
 .stats-situation-reading{font-weight:550;}
 .simg-hero{background:var(--card);box-shadow:none;border-radius:8px;}
@@ -2571,6 +2492,17 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 /* Notas que un agente propuso, dentro de la ficha del ramo. La nota anterior se
    muestra tachada al lado de la nueva: pisar un 6,2 con un 4,0 es una decisión
    distinta de llenar una casilla vacía. */
+.faltas-card{align-items:center;justify-content:space-between;gap:12px;margin:12px 20px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--card);}
+.faltas-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.faltas-titulo{font-size:0.875rem;font-weight:650;color:var(--fg);}
+.faltas-detalle{font-size:0.75rem;color:var(--fg3);}
+.faltas-card.is-limite .faltas-detalle{color:var(--yellow);}
+.faltas-card.is-excedido .faltas-detalle{color:var(--red);}
+.faltas-ctrl{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.faltas-num{min-width:2ch;text-align:center;font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--fg);}
+.faltas-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--fg2);cursor:pointer;}
+.faltas-btn .ic{width:16px;height:16px;}
+.faltas-btn:disabled{opacity:.35;cursor:default;}
 .prop-notas-card{margin-bottom:12px;padding:13px;border:1px solid var(--border);border-radius:14px;background:var(--bg2);}
 .prop-notas-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px;}
 .prop-notas-head b{font-size:0.875rem;font-weight:700;color:var(--fg);}

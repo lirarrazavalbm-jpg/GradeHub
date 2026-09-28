@@ -76,7 +76,7 @@ jobs:
             --exclude 'node_modules' --exclude 'dist' --exclude 'docs' \
             --exclude 'tests' --exclude 'supabase' --exclude 'bin' \
             --exclude '*.md' --exclude 'package.json' --exclude 'package-lock.json' \
-            --exclude '.gitignore'
+            --exclude '.gitignore' --exclude '.ignore'
 
           # Lista cerrada: comprueba a la vez que la app esté completa y que
           # ningún artefacto interno termine publicado por una exclusión
@@ -84,8 +84,9 @@ jobs:
           archivos_app='index.html 404.html preguntas.html privacidad.html terminos.html
           data.js mallas-uc.js mallas-uai.js cursos-uc.js engine.js app.js app-session.js marketplace.js render-main.js render-agenda.js styles.css sw.js
           manifest.json _headers robots.txt sitemap.xml
-          logo.svg og-v2.png icon.svg icon-192.png icon-512.png og-v3.png
-          functions/cal/[token].js functions/mcp/[[ruta]].js functions/mcp/herramientas.js'
+          logo.svg icon.svg icon-192.png icon-512.png og-v3.png
+          functions/cal/[token].js functions/mcp/[[ruta]].js functions/mcp/herramientas.js
+          ocr/tesseract.min.js ocr/worker.min.js ocr/tesseract-core-simd-lstm.wasm.js ocr/tesseract-core-lstm.wasm.js ocr/eng.traineddata.gz ocr/LICENSE.txt'
           for f in $archivos_app; do
             [ -e "dist/$f" ] || { echo "FALTA en dist: $f — no se publica nada"; exit 1; }
           done

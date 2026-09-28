@@ -14,7 +14,9 @@ function element(id,value=''){
 }
 const form=element('#profesor-borrador');form.reportValidity=()=>true;
 ['titulo','descripcion','precio','modalidad','ubicacion','contacto-tipo','contacto','flyer',
-  'tenant','siglas','promedio','avance','inicio','dias','fin','tope','campana-resumen'].forEach(id=>element('#pr-'+id));
+  'tenant','siglas','promedio','avance','inicio','dias','fin','tope','campana-resumen','contacto-error'].forEach(id=>element('#pr-'+id));
+elements['#pr-contacto-error'].hidden=true;
+Object.assign(elements['#pr-contacto'],{atributos:{},setAttribute(k,v){this.atributos[k]=v;},removeAttribute(k){delete this.atributos[k];},scrollIntoView(){this.visto=true;}});
 Object.assign(elements['#pr-dias'],{value:'10'});
 Object.assign(elements['#pr-tope'],{value:'$10.000'});
 Object.assign(elements['#pr-titulo'],{value:'Clases de Cálculo I'});
@@ -67,9 +69,21 @@ function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
   await events['#pr-enviar:click']();
   check('enviar pasa por guardado y queda en revisión',guardados===4&&enviados===1&&
     /En revisión/.test(raiz.innerHTML)&&!/publicado/i.test(raiz.innerHTML));
+  // Un WhatsApp mal escrito se guarda, pero no pasa a revisión: el error sale
+  // en rojo bajo la casilla y la pantalla vuelve a ella.
+  ctx.enviarSimulado=async()=>{enviados++;return {ok:false,campo:'contacto_valor',error:'Revisa tu número: después del +56 van 9 dígitos, por ejemplo +56 9 1234 5678.'};};
+  run('enviarBorradorClase=enviarSimulado');
+  const input=elements['#pr-contacto'],error=elements['#pr-contacto-error'];
+  input.enfocado=false;raiz.innerHTML='';
+  await events['#pr-enviar:click']();
+  check('un número mal escrito no queda en revisión',guardados===5&&enviados===2&&!/En revisión/.test(raiz.innerHTML)&&/9 dígitos/.test(elements['.profesor-estado'].textContent));
+  check('el error sale bajo la casilla',error.hidden===false&&/9 dígitos/.test(error.textContent));
+  check('y la pantalla vuelve a la casilla',input.enfocado===true&&input.visto===true&&input.atributos['aria-invalid']==='true');
+  events['#pr-contacto:input']({inputType:'insertText'});
+  check('al corregir, el error se va',error.hidden===true&&error.textContent===''&&!input.atributos['aria-invalid']);
   elements['#pr-tope'].value='$500';
   await events['#pr-guardar:click']();
-  check('un tope imposible no guarda nada',guardados===4&&/tope/.test(elements['.profesor-estado'].textContent));
+  check('un tope imposible no guarda nada',guardados===5&&/tope/.test(elements['.profesor-estado'].textContent));
   elements['#pr-tope'].value='$10.000';
   for(const fallo of [{ok:false,falta:true},{ok:false,error:'permiso denegado'}, {ok:false,error:'red caída'}]){
     errorCampana=fallo;
@@ -79,6 +93,6 @@ function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
   }
   errorCampana=null;
   await events['#pr-enviar:click']();
-  check('puede reenviar después de corregir el guardado del tope',enviados===2);
+  check('puede reenviar después de corregir el guardado del tope',enviados===3);
   console.log(`Formulario de profesor OK: ${n}`);
 })().catch(e=>{console.error('FAIL:',e.message);process.exitCode=1;});
