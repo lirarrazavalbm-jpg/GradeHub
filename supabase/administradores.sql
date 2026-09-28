@@ -1,3 +1,23 @@
+-- PR #515 · RESPALDO OBLIGATORIO ANTES DE APLICAR A UNA BASE EXISTENTE.
+-- 1. Ejecutar supabase/respaldo_campanas_515.sql UNA VEZ (schema privado,
+--    RLS y permisos revocados; falla si ya existe para no pisar el respaldo).
+--    Sus consultas incluyen:
+--    create table respaldo_515.anuncio_metricas as select * from public.anuncio_metricas;
+--    create table respaldo_515.anuncio_alcance as select * from public.anuncio_alcance;
+--    create table respaldo_515.anuncio_interacciones as select * from public.anuncio_interacciones;
+-- 2. Aplicar clases_particulares.sql, admin_clases.sql, administradores.sql,
+--    en ese orden. Cada archivo es transaccional y reaplicable.
+-- DESHACER (también si solo se alcanzó a aplicar el primer archivo):
+-- 1. No publicar/renovar campañas durante la reversión.
+-- 2. Ejecutar supabase/revertir_campanas_515.sql completo en SQL Editor.
+--    Bloquea escrituras, archiva TODAS las métricas posteriores, restaura las
+--    llaves antiguas y funciones respaldadas, sin restaurar cuentas ni cobros
+--    a una foto vieja. Las métricas operativas quedan en la publicación actual.
+-- 3. Ejecutar las consultas de docs/marketplace-campanas-seguras.md, sección
+--    Reversión. No reaplicar los SQL antiguos por sí solos: sus ON CONFLICT
+--    necesitan las llaves anteriores. No borrar respaldo_515 hasta verificar.
+-- Ningún deploy ejecuta estos archivos. Solo el SQL Editor de Lucas.
+
 begin;
 
 -- ADMINISTRADORES DE GRADEHUB · verificación en dos pasos.

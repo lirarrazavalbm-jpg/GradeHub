@@ -122,7 +122,7 @@ function validarBorradorClase(entrada,nombresPorSigla){
       ?'Elige cómo te contactarán: WhatsApp, Instagram o un link de inscripción.'
       :'Las clases pagadas se contactan por WhatsApp. Escribe tu número.'};
   if(contacto_valor.length<3||contacto_valor.length>160)return {ok:false,campo:'contacto_valor',error:'Revisa el dato de contacto.'};
-  // El formulario rellena "+56 9 " o "@" solo: sin esta comprobación el prefijo
+  // El formulario rellena "+56 " o "@" solo: sin esta comprobación el prefijo
   // solo, sin número ni usuario, pasaba como contacto válido y el anuncio
   // llegaba a revisión con un botón que no lleva a ninguna parte.
   if(!enlaceContactoClase(contacto_tipo,contacto_valor))return {ok:false,campo:'contacto_valor',error:ERROR_CONTACTO_CLASE[contacto_tipo]};
@@ -160,18 +160,41 @@ function pesosDeTexto(texto){
 
 // WhatsApp de Chile con sus espacios: "+56 9 1234 5678". Solo se ordena un
 // celular chileno; un número de otro país se deja tal como lo escribieron.
+//
+// El campo parte con "+56 " y NO con "+56 9 ": con el 9 ya puesto, quien
+// escribía su número como lo dice ("9 1234 5678") quedaba con un 9 de más, y
+// esta función además cortaba en 8 dígitos, así que el último se perdía sin
+// aviso. Así se publicó un anuncio cuyo botón abría el chat de un número que no
+// era (2026-09-28). Ahora no se corta nada: lo que sobra queda a la vista y la
+// validación lo rechaza.
 function textoWhatsappEscrito(texto){
   const t=String(texto||'');
-  const digitos=t.replace(/\D/g,'');
-  if(!/^\s*\+?\s*56/.test(t)||!digitos.startsWith('569'))return t;
-  const resto=digitos.slice(3,11);
-  return '+56 9 '+(resto.length>4?resto.slice(0,4)+' '+resto.slice(4):resto);
+  if(!/^\s*\+?\s*56/.test(t))return t;
+  const resto=t.replace(/\D/g,'').slice(2);
+  if(!resto.startsWith('9'))return t;
+  const cel=resto.slice(1);
+  return '+56 9 '+(cel.length>4?cel.slice(0,4)+' '+cel.slice(4):cel);
+}
+// Un número de Chile tiene 9 dígitos después del 56. Uno con el código de país
+// y un dígito de más o de menos, o un celular sin el 56 ("9 1234 5678", que
+// wa.me leería como de otro país), se puede escribir y guardar en el borrador,
+// pero no se envía a revisión: ver enviarBorradorClase.
+const ERROR_WHATSAPP_CHILE='Revisa tu número: después del +56 van 9 dígitos, por ejemplo +56 9 1234 5678.';
+function whatsappChilenoCompleto(valor){
+  const d=String(valor||'').replace(/\D/g,'');
+  if(d.startsWith('56'))return d.length===11;
+  return !(d.length===9&&d.startsWith('9'));
+}
+function contactoListoParaPublicar(datos){
+  if(datos&&datos.contacto_tipo==='whatsapp'&&!whatsappChilenoCompleto(datos.contacto_valor))
+    return {ok:false,campo:'contacto_valor',error:ERROR_WHATSAPP_CHILE};
+  return {ok:true};
 }
 function textoInstagramEscrito(texto){
   const t=String(texto||'').replace(/\s+/g,'');
   return t&&!t.startsWith('@')?'@'+t:t;
 }
-const PREFIJO_CONTACTO_CLASE={whatsapp:'+56 9 ',instagram:'@',enlace:'https://'};
+const PREFIJO_CONTACTO_CLASE={whatsapp:'+56 ',instagram:'@',enlace:'https://'};
 const EJEMPLO_CONTACTO_CLASE={whatsapp:'+56 9 1234 5678',instagram:'@salvaramos',enlace:'https://forms.gle/…'};
 
 // Reescribe el campo con su formato sin mandar el cursor al final: cuenta
@@ -333,15 +356,20 @@ async function enviarBorradorClase(id){
   if(!abierto.anuncio)return {ok:false,error:'Este anuncio ya no es un borrador. Vuelve a abrirlo.'};
   const valido=validarBorradorClase(abierto.anuncio);
   if(!valido.ok)return valido;
-  const campana=await leerCampanaClase(id);
-  if(!campana||!validarCampanaClase(campana).ok)
+  // El borrador se guarda con el número como esté; lo que no pasa es a
+  // revisión. Así el profesor tiene que mirar un número mal escrito antes de
+  // que un estudiante le escriba a otra persona (decisión de Lucas, 2026-09-28).
+  const listo=contactoListoParaPublicar(valido.datos);
+  if(!listo.ok)return listo;
+  const campana=await leerCampanaClase(id,{diagnostico:true});
+  if(!campana?.sqlAnterior&&(!campana||!validarCampanaClase(campana).ok))
     return {ok:false,error:'No se envió: primero guarda los días, la fecha y el tope de la campaña. Tu borrador sigue disponible.'};
   try{
     const {data,error}=await supabaseClient.from('tutor_anuncios')
       .update({estado:'en_revision'}).eq('id',id).eq('estado','borrador')
       .select('id,estado').single();
     if(error||!data||data.estado!=='en_revision')return {ok:false,error:'No se envió a revisión. Tu borrador sigue disponible.'};
-    return {ok:true,anuncio:data};
+    return {ok:true,anuncio:data,sqlAnterior:!!campana?.sqlAnterior};
   }catch(e){return {ok:false,error:'No se envió a revisión. Tu borrador sigue disponible.'};}
 }
 
@@ -589,12 +617,6 @@ function siglaRamoParaClases(ramo){
   // Los ramos antiguos recurren al mismo resolutor que la ficha, sin inferir
   // que cualquier ramoKey sea una sigla (en FEN suele ser un nombre).
   return siglaAnuncio(ramo.sigla||siglaDeRamo(ramo,origen.tenant));
-}
-
-function ramosLocalesConSigla(ramos){
-  const vistos=new Set();
-  return (Array.isArray(ramos)?ramos:[]).map(siglaRamoParaClases)
-    .filter(sigla=>sigla&& !vistos.has(sigla) && (vistos.add(sigla),true));
 }
 
 // Recibe anuncios ya descargados y ramos que YA viven en el navegador. Esta
@@ -1774,23 +1796,27 @@ function filaRamoVistaPrevia(extra){
 // La campaña vive aparte del anuncio (anuncio_campanas): el tope es del
 // profesor y el anuncio lo lee cualquiera. Sin el SQL de campañas, `falta`
 // avisa que no se pudo guardar sin tratarlo como un error de la persona.
-function faltaTablaCampana(error){
-  return !!error&&(error.code==='42P01'||error.code==='PGRST205');
+// Solo ausencia explícita de esquema: jamás degradar por red, RLS o validación.
+function sqlClasesDesactualizado(error){
+  return !!error&&['42883','42703','PGRST202','PGRST204','42P01','PGRST205'].includes(error.code);
 }
-async function leerCampanaClase(anuncioId){
+function faltaTablaCampana(error){return sqlClasesDesactualizado(error);}
+const compatibilidadSqlClases={campanas:false,cobros:false};
+const AVISO_SQL_CLASES='SQL de campañas pendiente. Se usa el modo anterior: los cobros solo se guardan para la publicación actual y los días y el tope pueden no estar guardados. Aplica los tres archivos SQL antes de publicar o renovar campañas.';
+async function leerCampanaClase(anuncioId,{diagnostico=false}={}){
   if(!supabaseClient||!anuncioId)return null;
   try{
     const {data,error}=await supabaseClient.from('anuncio_campanas').select('dias,inicio,tope_clp').eq('anuncio_id',anuncioId).maybeSingle();
-    if(error){if(!faltaTablaCampana(error))console.warn('No se pudo leer la campaña:',error.code||'',error.message||error);return null;}
-    return data||null;
+    if(error){if(faltaTablaCampana(error)){compatibilidadSqlClases.campanas=true;return diagnostico?{sqlAnterior:true}:null;}console.warn('No se pudo leer la campaña:',error.code||'',error.message||error);return null;}
+    compatibilidadSqlClases.campanas=false;return data||null;
   }catch(e){return null;}
 }
 async function guardarCampanaClase(anuncioId,datos){
   if(!supabaseClient||!anuncioId)return {ok:false,error:'no pudimos guardar la campaña.'};
   try{
     const {error}=await supabaseClient.from('anuncio_campanas').upsert({anuncio_id:anuncioId,...datos},{onConflict:'anuncio_id'});
-    if(!error)return {ok:true};
-    if(faltaTablaCampana(error))return {ok:false,falta:true,error:'todavía no podemos guardar los días y el tope. El anuncio no se enviará hasta que estén guardados.'};
+    if(!error){compatibilidadSqlClases.campanas=false;return {ok:true};}
+    if(faltaTablaCampana(error)){compatibilidadSqlClases.campanas=true;return {ok:false,falta:true,error:'el servidor aún no guarda los días y el tope; se usará el proceso de revisión anterior.'};}
     console.warn('No se guardó la campaña:',error.code||'',error.message||error);
     return {ok:false,error:'no pudimos guardar los días y el tope. Intenta de nuevo.'};
   }catch(e){return {ok:false,error:'no pudimos guardar los días y el tope. Intenta de nuevo.'};}
@@ -1828,7 +1854,8 @@ function renderBorradorProfesor(raiz,anuncio){
         <label class="modal-label" for="pr-contacto-tipo">Cómo te contactarán</label><select id="pr-contacto-tipo">${elegir(CONTACTOS_CLASE,tipoContactoInicial)}</select>
         <p class="profesor-info">Como la clase es gratis, puedes llevar a tu Instagram o a un link de inscripción en vez de WhatsApp.</p>
       </div>
-      <label class="modal-label" for="pr-contacto" id="pr-contacto-etiqueta">Tu WhatsApp</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" aria-describedby="pr-contacto-ayuda" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
+      <label class="modal-label" for="pr-contacto" id="pr-contacto-etiqueta">Tu WhatsApp</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" aria-describedby="pr-contacto-error pr-contacto-ayuda" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
+      <p id="pr-contacto-error" role="alert" hidden style="margin:6px 0 0;font-size:0.8125rem;color:var(--red);"></p>
       <p class="profesor-info" id="pr-contacto-ayuda"></p>
       <label class="modal-label" for="pr-flyer">Flyer · opcional</label><input id="pr-flyer" type="file" accept="image/jpeg,image/png,image/webp"><p class="profesor-info">JPG, PNG o WebP · máximo 5 MB. Primero se guarda el borrador y después se sube la imagen.</p>
       <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
@@ -2089,6 +2116,21 @@ function renderBorradorProfesor(raiz,anuncio){
   // se abre su sección antes de avisar o de llevar el foco ahí.
   const abrirSeccionDe=el=>{const d=el&&typeof el.closest==='function'?el.closest('details'):null;if(d)d.open=true;return el;};
   const enfocar=el=>{abrirSeccionDe(el);if(el&&typeof el.focus==='function')el.focus();};
+  // Un número mal escrito se dice bajo su casilla, en rojo, y la pantalla se
+  // lleva hasta ahí: el aviso de abajo del formulario solo no se ve en móvil.
+  const errorContacto=campo('contacto-error');
+  const marcarContacto=mensaje=>{
+    const input=campo('contacto');
+    if(errorContacto){errorContacto.textContent=mensaje;errorContacto.hidden=false;}
+    if(input&&typeof input.setAttribute==='function')input.setAttribute('aria-invalid','true');
+    enfocar(input);
+    if(input&&typeof input.scrollIntoView==='function')input.scrollIntoView({block:'center'});
+  };
+  const limpiarContacto=()=>{
+    if(errorContacto&&!errorContacto.hidden){errorContacto.hidden=true;errorContacto.textContent='';}
+    const input=campo('contacto');if(input&&typeof input.removeAttribute==='function')input.removeAttribute('aria-invalid');
+  };
+  if(contacto&&typeof contacto.addEventListener==='function')contacto.addEventListener('input',limpiarContacto);
   const procesar=async enviar=>{
     if(procesando)return;
     if(typeof form.querySelectorAll==='function')[...form.querySelectorAll(':invalid')].forEach(abrirSeccionDe);
@@ -2109,19 +2151,19 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo==='contacto_valor'){marcarContacto(guardado.error);return;}if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
       id=guardado.anuncio.id;
       const guardadaCampana=await guardarCampanaClase(id,campana.datos);
-      if(!guardadaCampana.ok){estado.textContent='Tu clase se guardó, pero '+(guardadaCampana.error||'no se guardaron los días y el tope. No se envió a revisión.');return;}
+      if(!guardadaCampana.ok&&!guardadaCampana.falta){estado.textContent='Tu clase se guardó, pero '+(guardadaCampana.error||'no se guardaron los días y el tope. No se envió a revisión.');return;}
       if(file){estado.textContent='Borrador guardado. Subiendo flyer…';const subida=await subirFlyerClase(id,file);
         if(!subida.ok){estado.textContent='Borrador guardado, pero '+subida.error;return;}
         flyerActual=subida.path;campo('flyer').value='';form.querySelector('#pr-quitar-flyer').hidden=false;
       }
       if(enviar){estado.textContent='Enviando a revisión…';const respuesta=await enviarBorradorClase(id);
-        if(!respuesta.ok){estado.textContent=respuesta.error;return;}
-        raiz.innerHTML='<div class="modal-title" id="modal-titulo">En revisión</div><p class="profesor-info" role="status">Recibimos tu anuncio. Nadie lo verá hasta que GradeHub lo revise y apruebe.</p>';return;
+        if(!respuesta.ok){estado.textContent=respuesta.error;if(respuesta.campo==='contacto_valor')marcarContacto(respuesta.error);return;}
+        raiz.innerHTML='<div class="modal-title" id="modal-titulo">En revisión</div><p class="profesor-info" role="status">Recibimos tu anuncio. Nadie lo verá hasta que GradeHub lo revise y apruebe.</p>'+(guardadaCampana.falta||respuesta.sqlAnterior?'<p class="profesor-info" role="status">Los días y el tope todavía no se guardaron. GradeHub debe confirmarlos contigo antes de publicar.</p>':'');return;
       }
-      estado.textContent='Borrador guardado. Puedes volver después o enviarlo a revisión.';
+      estado.textContent='Borrador guardado. Puedes volver después o enviarlo a revisión.'+(guardadaCampana.falta?' Los días y el tope aún no se guardaron; deben confirmarse antes de publicar.':'');
     }catch(e){estado.textContent='No pudimos completar la acción. Revisa si tu borrador quedó guardado e intenta de nuevo.';
     }finally{procesando=false;botones.forEach(b=>{if(b.isConnected)b.disabled=false;});}
   };
@@ -2490,6 +2532,21 @@ function tarjetaAdminProfesor(p,ahora=Date.now()){
     ${anuncios.length?`<div class="admin-anuncios">${anuncios.map(a=>filaAdminAnuncio(a,ahora)).join('')}</div>`:''}
   </section>`;
 }
+async function marcarCobroAdmin(args){
+  const actual=await supabaseClient.rpc('admin_marcar_cobro_publicacion',args);
+  if(!actual.error){compatibilidadSqlClases.cobros=false;return actual;}
+  if(!sqlClasesDesactualizado(actual.error))return actual;
+  compatibilidadSqlClases.cobros=true;
+  // El RPC antiguo no recibe fecha. Nunca usarlo para un cobro histórico ni
+  // para una fila que otra pestaña ya renovó. Se vuelve a leer antes de guardar.
+  const panel=await supabaseClient.rpc('admin_panel_clases');
+  if(panel.error)return panel;
+  const anuncio=(panel.data||[]).flatMap(p=>p.anuncios||[]).find(a=>a.id===args.p_anuncio_id);
+  if(!anuncio||!args.p_publicado_at||Date.parse(anuncio.publicado_at)!==Date.parse(args.p_publicado_at))
+    return {error:{message:'La publicación cambió o es histórica. Actualiza el panel y aplica el SQL antes de editar ese cobro.'}};
+  const {p_anuncio_id,p_estado,p_monto_clp}=args;
+  return supabaseClient.rpc('admin_marcar_cobro',{p_anuncio_id,p_estado,p_monto_clp});
+}
 async function pintarPanelAdmin(raiz){
   raiz.innerHTML='<p class="profesor-info" role="status">Cargando…</p>';
   let profesores;
@@ -2498,10 +2555,11 @@ async function pintarPanelAdmin(raiz){
     if(error){console.warn('No se pudo cargar la administración:',error.code||'',error.message||error);
       raiz.innerHTML=`<p class="profesor-info" role="alert">${error.code==='42501'?'Esta cuenta no tiene acceso de administración.':'No pudimos cargar la administración. Intenta de nuevo.'}</p>`;return;}
     profesores=Array.isArray(data)?data:[];
+    if(profesores.some(p=>(p.anuncios||[]).some(a=>!Array.isArray(a.cobros))))compatibilidadSqlClases.cobros=true;
   }catch(e){raiz.innerHTML='<p class="profesor-info" role="alert">No pudimos cargar la administración. Intenta de nuevo.</p>';return;}
   const ahora=Date.now(),r=resumenAdminClases(profesores,ahora);
   const kpi=(t,v,d)=>`<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`;
-  raiz.innerHTML=`<div class="clase-nums clases-kpis">
+  raiz.innerHTML=`${compatibilidadSqlClases.campanas||compatibilidadSqlClases.cobros?`<p class="profesor-info" role="status">${esc(AVISO_SQL_CLASES)}</p>`:''}<div class="clase-nums clases-kpis">
       ${kpi('Profesores',r.profesores,`${r.pendientes} esperando · ${r.suspendidos} pausados`)}
       ${kpi('Campañas activas',r.activas,`${r.programadas} programadas · ${r.revision} en revisión`)}
       ${kpi('Gastado',pesosClase(r.gastado),'lo que costaría')}
@@ -2534,8 +2592,10 @@ async function pintarPanelAdmin(raiz){
       if(guardar.disabled)return;
       guardar.disabled=true;
       try{
-        await llamar('admin_marcar_cobro_publicacion',{p_anuncio_id:fila.dataset.adminCobro,p_publicado_at:fila.dataset.publicadoAt,
-          p_estado:estado,p_monto_clp:estado==='pendiente'?null:valor},'Cobro guardado');
+        const resultado=await marcarCobroAdmin({p_anuncio_id:fila.dataset.adminCobro,p_publicado_at:fila.dataset.publicadoAt,
+          p_estado:estado,p_monto_clp:estado==='pendiente'?null:valor});
+        if(resultado.error){showToast(resultado.error.message||'No se pudo guardar el cobro.',true);return;}
+        showToast('Cobro guardado'+(compatibilidadSqlClases.cobros?' con el SQL anterior':''));await repintar();
       }catch(e){showToast('No pudimos guardar el cobro. Intenta de nuevo.',true);}
       finally{if(guardar.isConnected)guardar.disabled=false;}
     });

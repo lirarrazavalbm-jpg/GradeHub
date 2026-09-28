@@ -606,6 +606,18 @@ const PRESETS_UC={
   'Introducción al Álgebra Lineal':[
     ['Interrogación 1',20],['Interrogación 2',25],['Interrogación 3',25],['Examen',30],
   ],
+  // Entendiendo a Rusia: Historia, Cultura y Presente del Gigante Eurasiatico
+  // (IHI0534). No tenemos el programa: Lucas la confirmó el 27-09-2026 a partir
+  // de dos reportes que dan los mismos pesos escritos distinto — afiche 30%,
+  // cinco discusiones bibliográficas de 6% cada una y prueba 40%.
+  'Entendiendo a Rusia: Historia, Cultura y Presente del Gigante Eurasiatico':{
+    sigla:'IHI0534',
+    evals:[
+      ['Afiche académico',30],
+      ['Discusiones bibliográficas',30,{slots:5,slotLabel:'Discusión bibliográfica'}],
+      ['Prueba escrita',40],
+    ],
+  },
   // Biología de Organismos y Comunidades (BIO110C). No tenemos el programa:
   // Lucas la confirmó el 26-09-2026 a partir del reporte de un estudiante que
   // conoce, y coincide con otros cuatro reportes independientes: 5 controles
@@ -1080,14 +1092,21 @@ const PRESETS_UC={
       ['Examen final escrito',40],
     ],
   },
-  // INTRO A LA MICROECONOMÍA (EAE1110) NO ENTRA, a propósito. El catálogo la
-  // publica como Guías 20 / Pruebas 45 / Examen 35, pero dos estudiantes de
-  // Comercial reportaron por su cuenta, en septiembre de 2026, la misma otra
-  // estructura: Examen 30, Prueba 1 y Prueba 2 de 22,5 y Trabajo grupal 5, y
-  // difieren solo en cómo se reparte el 20% restante. Dos personas que cursan
-  // el ramo hoy pesan más que una ficha genérica sin período: cargarla les
-  // pondría a todos una pauta equivocada con cara de oficial. Queda sin pauta
-  // hasta que aparezca el programa del semestre o el consenso llegue a tres.
+  // INTRO A LA MICROECONOMÍA (EAE1110). El catálogo la publica como Guías 20 /
+  // Pruebas 45 / Examen 35, pero quienes la cursan en 2026-2 reportan otra
+  // estructura. Quedó sin pauta hasta que llegaran a tres, y llegaron: tres
+  // estudiantes de Comercial dan exactamente estos pesos (un cuarto reparte los
+  // controles con participación). Lucas la confirmó el 27-09-2026. No es el
+  // programa oficial: si aparece el del semestre, ese manda.
+  'Introducción a la Microeconomía':{
+    sigla:'EAE1110',
+    evals:[
+      ['Control 1',10],['Control 2',10],
+      ['Prueba 1',22.5],['Prueba 2',22.5],
+      ['Trabajo grupal',5],
+      ['Examen',30],
+    ],
+  },
   'Análisis Económico: La Experiencia Chilena':{
     evals:[
       ['Pruebas',25,{slots:2}],
@@ -1423,6 +1442,9 @@ const PRESETS_UC_COM=[
   'Introducción a la Macroeconomía',
   'Probabilidad y Estadística',
   'Filosofía: ¿para qué?',
+  'Introducción a la Microeconomía',
+  // Optativo de formación general: es el mismo curso (IHI0534) en las dos carreras.
+  'Entendiendo a Rusia: Historia, Cultura y Presente del Gigante Eurasiatico',
 ];
 // CÁLCULO I ES EL MISMO RAMO EN LAS DOS CARRERAS. Acá decía lo contrario —que el
 // de Comercial era otro curso de otra facultad y no heredaba estos pesos— y el

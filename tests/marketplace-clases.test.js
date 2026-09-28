@@ -209,7 +209,7 @@ vm.runInContext(`
     chk(`${tabla} tiene RLS activa`,new RegExp(`alter table public\\.${tabla} enable row level security`,'i').test(sql));
   });
   chk('las tablas con identidad borran sus filas junto con la cuenta',
-    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===5);
+    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===6);
   chk('las aperturas y contactos por persona no se pueden leer desde el cliente',
     /revoke all on public\.anuncio_interacciones from public, anon, authenticated/i.test(sql)&&
     !/grant [^;]*on public\.anuncio_interacciones/i.test(sql));
