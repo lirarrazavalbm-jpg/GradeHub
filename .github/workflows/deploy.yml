@@ -76,7 +76,7 @@ jobs:
             --exclude 'node_modules' --exclude 'dist' --exclude 'docs' \
             --exclude 'tests' --exclude 'supabase' --exclude 'bin' \
             --exclude '*.md' --exclude 'package.json' --exclude 'package-lock.json' \
-            --exclude '.gitignore'
+            --exclude '.gitignore' --exclude '.ignore'
 
           # Lista cerrada: comprueba a la vez que la app esté completa y que
           # ningún artefacto interno termine publicado por una exclusión
