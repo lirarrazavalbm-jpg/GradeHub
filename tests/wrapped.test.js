@@ -55,7 +55,8 @@ chk('la pantalla se desplaza si el texto grande no cabe',/\.wrapped-slide\{[^}]*
 const sql=fs.readFileSync(raiz+'supabase/universidad_posicion.sql','utf8');
 chk('SQL: exige sesión',/uid is null/.test(sql));
 chk('SQL: mínimo de cinco personas',/n < 5/.test(sql));
-chk('SQL: solo authenticated la ejecuta',/revoke all on function public\.universidad_posicion\(text\) from public/.test(sql)&&/to authenticated;/.test(sql));
+// `from public` solo no alcanza en Supabase: `anon` tiene su propio EXECUTE.
+chk('SQL: solo authenticated la ejecuta (anon revocado aparte)',/revoke all on function public\.universidad_posicion\(text\) from public, anon;/.test(sql)&&/to authenticated;/.test(sql));
 chk('SQL: no crea tablas nuevas',!/create table/i.test(sql));
 
 if(fail){console.log(`\n${fail} fallaron`);process.exit(1);}

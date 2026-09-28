@@ -66,5 +66,9 @@ begin
 end;
 $$;
 
-revoke all on function public.universidad_posicion(text) from public;
+-- `from public` no basta: Supabase le da EXECUTE a `anon` explícitamente en
+-- cada función nueva de `public`, y ese permiso sobrevive a revocar `public`.
+-- Pasó al aplicarlo el 2026-09-28: `anon` quedó pudiendo llamarla. No se
+-- filtraba nada (sin sesión corta en la primera línea), pero la puerta se cierra.
+revoke all on function public.universidad_posicion(text) from public, anon;
 grant execute on function public.universidad_posicion(text) to authenticated;
