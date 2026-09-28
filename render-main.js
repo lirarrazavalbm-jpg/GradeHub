@@ -41,6 +41,7 @@ function renderRecorreccionesHome(){
 }
 function renderHome(){
   renderRecorreccionesHome();
+  renderWrappedHome();
   const g=gpa(S.ramos);
   const gpael=document.getElementById('home-gpa');
   const emptyHint=document.getElementById('gpa-empty-hint');
@@ -1078,4 +1079,187 @@ function renderStats(){
   // El HTML ya está en pantalla; la comparación se rellena cuando el servidor
   // conteste. Sin await: Estadísticas no espera por una sección secundaria.
   if(!seccionOculta('curso'))pintarPosicionesCurso();
+}
+
+// ─── WRAPPED: EL SEMESTRE EN HISTORIAS ───────────────────────────────────────
+// Al cierre del semestre, Inicio ofrece un resumen en pantallas que se pasan
+// tocando, como las historias. Se arma en el navegador con lo que ya está en
+// `S`: no se guarda nada ni se migra nada. La comparación con el resto sale de
+// `curso_posicion` y `universidad_posicion`, que solo devuelven porcentajes y
+// solo desde cinco personas.
+//
+// Sale el 20 de diciembre y no antes: para entonces ya están las notas de
+// exámenes y recuperativos, y un resumen con el examen pendiente dice un
+// promedio que todavía puede cambiar. Decisión de Martín del 2026-09-28.
+// `#wrapped` en la URL lo muestra antes de tiempo, para probarlo.
+const WRAPPED_DESDE='2026-12-20',WRAPPED_HASTA='2027-03-01';
+function wrappedDisponible(hoy){
+  const d=hoy||new Date();
+  const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return iso>=WRAPPED_DESDE&&iso<WRAPPED_HASTA;
+}
+
+// El semestre en curso si tiene notas; si ya se archivó, el último archivado
+// (el historial guarda lo más reciente al inicio).
+function ramosWrapped(){
+  const conNota=rs=>ramosDelPromedio(rs||[]).some(r=>ramoAvg(r,undefined,rs)!==null);
+  if(conNota(S.ramos))return {ramos:S.ramos,actual:true,label:semester()};
+  const h=(S.historial||[])[0];
+  return h&&conNota(h.ramos)?{ramos:h.ramos,actual:false,label:h.label}:null;
+}
+
+// Todo sale de `ramoAvg` y `gpa`: son las únicas fórmulas de promedio que hay,
+// y el resumen tiene que decir los mismos números que Inicio.
+function datosWrapped(ramos){
+  const lista=ramosDelPromedio(ramos).map(r=>({r,avg:ramoAvg(r,undefined,ramos)})).filter(x=>x.avg!==null);
+  if(!lista.length)return null;
+  let mejor=null,nNotas=0;
+  lista.forEach(({r})=>(r.categorias||[]).forEach(c=>(c.notas||[]).forEach(n=>{
+    if(typeof n.valor!=='number')return;
+    nNotas++;
+    if(!mejor||n.valor>mejor.valor)mejor={valor:n.valor,ramo:r.nombre,evaluacion:n.nombre||c.nombre};
+  })));
+  const orden=[...lista].sort((a,b)=>b.avg-a.avg);
+  return {
+    gpa:gpa(ramos),nRamos:lista.length,nNotas,mejor,
+    colores:lista.map(x=>x.r.color),
+    aprobando:lista.filter(x=>notaAprobada(x.avg)).length,
+    estrella:orden[0],
+    // Con un solo ramo, "el que más te costó" sería la misma estrella.
+    dificil:orden.length>1?orden[orden.length-1]:null,
+  };
+}
+
+// Solo para el semestre en curso: es el que tiene promedios en `curso_notas`.
+// Si el servidor no contesta o no llegan a cinco, esas pantallas no aparecen.
+async function comparacionWrapped(){
+  if(!supabaseClient||!currentUser)return null;
+  const out={};
+  try{
+    await subirNotasCurso();
+    const pos=await cargarPosicionesCurso()||{};
+    const top=(S.ramos||[]).filter(r=>pos[r.id]).sort((a,b)=>pos[b.id].mejorQue-pos[a.id].mejorQue)[0];
+    if(top)out.curso={ramo:top.nombre,...pos[top.id]};
+    const {data,error}=await supabaseClient.rpc('universidad_posicion',{p_tenant:S.tenant});
+    if(error)throw error;
+    const f=Array.isArray(data)?data[0]:data;
+    if(f&&typeof f.mejor_que==='number'&&typeof f.total==='number')out.uni={total:f.total,mejorQue:f.mejor_que};
+  }catch(e){console.warn('Wrapped sin comparación',e);}
+  return out;
+}
+
+// Cada pantalla es texto ya escapado. La última es la que se comparte, así que
+// lleva solo lo que uno querría mostrar: nada del ramo que más costó.
+// Diez puntos, llenos según el porcentaje: "7 de cada 10" se entiende de un
+// vistazo, un 70% suelto no tanto.
+function puntosWrapped(p){
+  const n=Math.round(p/10);
+  return `<div class="wrapped-puntos" aria-hidden="true">${Array.from({length:10},(_,i)=>`<span class="${i<n?'on':''}" style="--d:${3+i/2}"></span>`).join('')}</div>`;
+}
+function slidesWrapped(d,comp,label){
+  const s=[],pl=n=>n!==1?'s':'';
+  // `short` ("FEN", "UC"): "En toda U. de Chile · FEN" no se dice así.
+  const u=esc((TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'tu universidad');
+  const nombre=esc((S.userName||'').split(' ')[0]||'');
+  s.push({tipo:'portada',k:esc(label),titulo:nombre?`${nombre}, este fue tu semestre`:'Este fue tu semestre',sub:'Tus notas, contadas de otra forma.'});
+  s.push({k:'Este semestre ingresaste',big:String(d.nNotas),sub:`nota${pl(d.nNotas)} en ${d.nRamos} ramo${pl(d.nRamos)}`,
+    viz:`<div class="wrapped-ramos" aria-hidden="true">${d.colores.map((c,i)=>`<span style="background:${esc(c)};--d:${3+i/2}"></span>`).join('')}</div>`});
+  if(d.gpa!==null)s.push({k:'Tu promedio',big:fmtPromedio(d.gpa),sub:`${d.aprobando} de ${d.nRamos} ramo${pl(d.nRamos)} sobre el 4,0`});
+  if(d.mejor)s.push({k:'Tu mejor nota',big:fmt(d.mejor.valor),sub:`${d.mejor.valor>=7?'Nada más que decir.<br>':''}${esc(d.mejor.evaluacion)} · ${esc(d.mejor.ramo)}`});
+  s.push({k:'Tu ramo estrella',titulo:esc(d.estrella.r.nombre),big:fmtPromedio(d.estrella.avg),sub:'Tu mejor promedio del semestre.'});
+  // "Lo sacaste adelante" solo si de verdad lo aprobó: el resumen no celebra
+  // lo que el semáforo pinta rojo.
+  if(d.dificil)s.push({k:'El que más pelea dio',titulo:esc(d.dificil.r.nombre),big:fmtPromedio(d.dificil.avg),
+    sub:notaAprobada(d.dificil.avg)?'Y lo sacaste adelante.':'Un semestre no define a nadie.'});
+  if(comp&&comp.curso)s.push({k:`En ${esc(comp.curso.ramo)}`,big:comp.curso.mejorQue+'%',
+    sub:frasePosicionCurso(comp.curso.mejorQue,comp.curso.total).replace(/<\/?b>/g,'')+'.',viz:puntosWrapped(comp.curso.mejorQue)});
+  // El servidor compara el promedio simple de los ramos, no el ponderado de
+  // Inicio (ver universidad_posicion.sql): por eso la frase dice "tus ramos".
+  if(comp&&comp.uni)s.push({k:`En toda ${u}`,big:comp.uni.mejorQue+'%',
+    sub:`Con tus ramos quedas igual o por sobre el ${comp.uni.mejorQue}% de otras ${comp.uni.total-1} personas de ${u} en GradeHub.`,viz:puntosWrapped(comp.uni.mejorQue)});
+  const filas=[];
+  if(d.mejor)filas.push(['Mejor nota',fmt(d.mejor.valor)]);
+  filas.push(['Ramo estrella',esc(d.estrella.r.nombre)]);
+  if(comp&&comp.uni)filas.push([`En ${u}`,`sobre el ${comp.uni.mejorQue}%`]);
+  s.push({tipo:'final',k:esc(label),big:d.gpa!==null?fmtPromedio(d.gpa):null,filas});
+  return s;
+}
+
+let _wrapped=null;
+async function abrirWrapped(){
+  const base=ramosWrapped();if(!base||_wrapped)return;
+  const btn=document.getElementById('home-wrapped-btn');
+  if(btn){btn.disabled=true;btn.textContent='Preparando…';}
+  const comp=base.actual?await Promise.race([comparacionWrapped(),new Promise(r=>setTimeout(()=>r(null),4000))]):null;
+  if(btn){btn.disabled=false;btn.textContent='Ver mi semestre';}
+  const slides=slidesWrapped(datosWrapped(base.ramos),comp,base.label);
+  track('wrapped_open',{pantallas:slides.length});
+  const ov=document.createElement('div');
+  ov.className='wrapped';
+  ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');ov.setAttribute('aria-label','Tu semestre en GradeHub');
+  ov.innerHTML=`<span class="wrapped-luz a"></span><span class="wrapped-luz b"></span>
+    <div class="wrapped-barras"></div>
+    <button class="wrapped-cerrar" type="button" aria-label="Cerrar"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="wrapped-slide" aria-live="polite"></div>`;
+  // Tocar el tercio izquierdo vuelve, el resto avanza: igual que las historias.
+  ov.addEventListener('click',e=>{
+    if(e.target.closest('.wrapped-cerrar'))return cerrarWrapped();
+    pasarWrapped(e.clientX<ov.clientWidth/3?-1:1);
+  });
+  document.addEventListener('keydown',teclaWrapped);
+  document.body.appendChild(ov);
+  _wrapped={ov,slides,i:0,foco:document.activeElement};
+  pintarWrapped();
+  ov.querySelector('.wrapped-cerrar').focus();
+}
+function pintarWrapped(){
+  const {ov,slides,i}=_wrapped,s=slides[i];
+  // Las dos luces del fondo cambian de lugar en cada pantalla: es lo que hace
+  // sentir que se avanzó, sin mover el texto de su sitio.
+  ov.dataset.tono=String(i%4);
+  ov.querySelector('.wrapped-barras').innerHTML=slides.map((_,j)=>`<span class="${j<=i?'on':''}"></span>`).join('');
+  // `--d` escalona la entrada: primero de qué se habla, después el número.
+  let d=0;const p=(cls,html)=>html?`<p class="${cls}" style="--d:${d++}">${html}</p>`:'';
+  ov.querySelector('.wrapped-slide').innerHTML=s.tipo==='final'
+    ? `<div class="wrapped-tarjeta" style="--d:0">
+        <p class="wrapped-k">Mi ${s.k} en GradeHub</p>
+        ${s.big?`<p class="wrapped-tarjeta-big">${s.big}<small>promedio</small></p>`:''}
+        <div class="wrapped-filas">${s.filas.map(([a,b])=>`<div><span>${a}</span><b>${b}</b></div>`).join('')}</div>
+        <p class="wrapped-marca">gradehub.cl</p>
+      </div>
+      <p class="wrapped-pie" style="--d:2">Saca un pantallazo y compártelo</p>`
+    : p('wrapped-k',s.k)+p('wrapped-titulo',s.titulo)+p('wrapped-big',s.big)+p('wrapped-sub',s.sub)
+      +(s.viz?`<div style="--d:${d++}">${s.viz}</div>`:'')
+      +(s.tipo==='portada'?p('wrapped-pie','Toca para seguir'):'');
+}
+function pasarWrapped(paso){
+  if(!_wrapped)return;
+  const i=_wrapped.i+paso;
+  if(i>=_wrapped.slides.length)return cerrarWrapped();
+  _wrapped.i=Math.max(0,i);
+  pintarWrapped();
+}
+function teclaWrapped(e){
+  if(e.key==='Escape')cerrarWrapped();
+  else if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();pasarWrapped(1);}
+  else if(e.key==='ArrowLeft')pasarWrapped(-1);
+}
+function cerrarWrapped(){
+  if(!_wrapped)return;
+  document.removeEventListener('keydown',teclaWrapped);
+  _wrapped.ov.remove();
+  const foco=_wrapped.foco;_wrapped=null;
+  if(foco&&foco.focus)foco.focus();
+}
+
+function renderWrappedHome(){
+  const caja=document.getElementById('home-wrapped');
+  if(!caja)return;
+  if(!((wrappedDisponible()||location.hash==='#wrapped')&&ramosWrapped())){caja.style.display='none';caja.innerHTML='';return;}
+  caja.style.display='grid';
+  caja.innerHTML=`<span class="home-wrapped-k">Ya está listo</span>
+    <strong>Tu semestre, en resumen</strong>
+    <small>Tus números, tu mejor nota y cómo te fue al lado del resto.</small>
+    <button id="home-wrapped-btn" type="button">Ver mi semestre</button>`;
+  document.getElementById('home-wrapped-btn').addEventListener('click',abrirWrapped);
 }
