@@ -91,6 +91,34 @@ const codigos=t=>run(`extraerCodigosHorarioBuscacursos(normalizarTextoOcrHorario
   await run('leerFotoHorario(__input)');
   chk('TTF012 no está en cursos-uc.js pero sí en PRESETS_UC',run("_horarioUCReconocido.length===1&&_horarioUCReconocido[0].sigla==='TTF012'&&_horarioUCReconocido[0].nombre==='Revelación y Fe'"));
 
+  console.log('\n=== A los ramos que ya tienes solo se les pone la sección ===');
+  run(`CURSOS_UC_FULL=[['MAT1620','Cálculo II',10],['IIC2233','Programación Avanzada',10],['FIS1514','Dinámica',10],['ICS1113','Optimización',10]];
+    S.ramos=[];__g=0;
+    ['MAT1620','IIC2233','FIS1514'].forEach(k=>{const r=crearRamoDesdeCatalogo(CURSOS_UC_FULL.find(f=>f[0]===k)[1],k);r.categorias=[{id:'c'+k,nombre:'Prueba',peso:100,notas:[{id:'n'+k,valor:5.5}]}];});
+    S.ramos[1].seccion=1;S.ramos[2].seccion=13;
+    globalThis.__antes=JSON.stringify(S.ramos.map(r=>({...r,seccion:undefined})));`);
+  run('abrirImportarHorarioBuscacursos()');
+  run("leerFotoOcr=async()=>[{texto:'MAT1620-2 IIC2233-2 FIS1514-13 ICS1113-4'}]");
+  ctx.__input={files:[{type:'image/png',size:1000}],value:'x'};
+  await run('leerFotoHorario(__input)');
+  const html=get('modal-content').innerHTML;
+  chk('ofrece la sección al que no tenía, marcado',/horario-seccion-check" data-i="0" checked/.test(html)&&/MAT1620 · Sección 2</.test(html));
+  chk('al que tenía otra lo muestra con el cambio y desmarcado',/IIC2233 · Sección 1 → 2/.test(html)&&!/horario-seccion-check" data-i="1" checked/.test(html));
+  chk('al que ya tiene la misma no lo ofrece',!/FIS1514 · Sección/.test(html));
+  chk('el ramo nuevo sigue ofreciéndose para agregar',run("_horarioUCReconocido.map(r=>r.sigla).join()")==='ICS1113');
+  chk('antes de confirmar no cambia nada',run('__g===0&&S.ramos[0].seccion==null&&S.ramos[1].seccion===1'));
+  ctx.document.querySelectorAll=sel=>sel==='.horario-seccion-check'?[{checked:true,dataset:{i:'0'}},{checked:false,dataset:{i:'1'}}]
+    :sel==='.horario-ramo-check'?[{checked:false,dataset:{i:'0'}}]:[];
+  run('aplicarHorarioBuscacursos()');
+  chk('pone solo la sección marcada',run('S.ramos[0].seccion===2&&S.ramos[1].seccion===1&&S.ramos[2].seccion===13&&S.ramos.length===3'));
+  chk('notas, pauta y todo lo demás quedan igual',run('JSON.stringify(S.ramos.map(r=>({...r,seccion:undefined})))===__antes'));
+  chk('guarda una sola vez',run('__g===1'));
+  run('abrirImportarHorarioBuscacursos()');
+  run("leerFotoOcr=async()=>[{texto:'IIC2233- MAT1620'}]");
+  await run('leerFotoHorario(__input)');
+  chk('sin sección leída no se ofrece nada que borre la guardada',run('_horarioSeccionesUC.length===0'));
+  ctx.document.querySelectorAll=()=>[];
+
   console.log('\n=== Si algo falla, se dice y no se escribe nada ===');
   run('abrirImportarHorarioBuscacursos()');
   ctx.__input={files:[{type:'application/pdf',size:1000}],value:'x'};
