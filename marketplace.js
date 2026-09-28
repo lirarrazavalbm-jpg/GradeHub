@@ -1848,7 +1848,8 @@ function renderBorradorProfesor(raiz,anuncio){
         <label class="modal-label" for="pr-contacto-tipo">Cómo te contactarán</label><select id="pr-contacto-tipo">${elegir(CONTACTOS_CLASE,tipoContactoInicial)}</select>
         <p class="profesor-info">Como la clase es gratis, puedes llevar a tu Instagram o a un link de inscripción en vez de WhatsApp.</p>
       </div>
-      <label class="modal-label" for="pr-contacto" id="pr-contacto-etiqueta">Tu WhatsApp</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" aria-describedby="pr-contacto-ayuda" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
+      <label class="modal-label" for="pr-contacto" id="pr-contacto-etiqueta">Tu WhatsApp</label><input id="pr-contacto" type="text" minlength="3" maxlength="160" required autocomplete="off" aria-describedby="pr-contacto-error pr-contacto-ayuda" placeholder="${esc(EJEMPLO_CONTACTO_CLASE[tipoContactoInicial])}" value="${esc(anuncio&&anuncio.contacto_valor!=null?anuncio.contacto_valor:PREFIJO_CONTACTO_CLASE[tipoContactoInicial])}">
+      <p id="pr-contacto-error" role="alert" hidden style="margin:6px 0 0;font-size:0.8125rem;color:var(--red);"></p>
       <p class="profesor-info" id="pr-contacto-ayuda"></p>
       <label class="modal-label" for="pr-flyer">Flyer · opcional</label><input id="pr-flyer" type="file" accept="image/jpeg,image/png,image/webp"><p class="profesor-info">JPG, PNG o WebP · máximo 5 MB. Primero se guarda el borrador y después se sube la imagen.</p>
       <div class="profesor-flyer-preview" hidden><img alt="Vista previa del flyer"></div>
@@ -2109,6 +2110,21 @@ function renderBorradorProfesor(raiz,anuncio){
   // se abre su sección antes de avisar o de llevar el foco ahí.
   const abrirSeccionDe=el=>{const d=el&&typeof el.closest==='function'?el.closest('details'):null;if(d)d.open=true;return el;};
   const enfocar=el=>{abrirSeccionDe(el);if(el&&typeof el.focus==='function')el.focus();};
+  // Un número mal escrito se dice bajo su casilla, en rojo, y la pantalla se
+  // lleva hasta ahí: el aviso de abajo del formulario solo no se ve en móvil.
+  const errorContacto=campo('contacto-error');
+  const marcarContacto=mensaje=>{
+    const input=campo('contacto');
+    if(errorContacto){errorContacto.textContent=mensaje;errorContacto.hidden=false;}
+    if(input&&typeof input.setAttribute==='function')input.setAttribute('aria-invalid','true');
+    enfocar(input);
+    if(input&&typeof input.scrollIntoView==='function')input.scrollIntoView({block:'center'});
+  };
+  const limpiarContacto=()=>{
+    if(errorContacto&&!errorContacto.hidden){errorContacto.hidden=true;errorContacto.textContent='';}
+    const input=campo('contacto');if(input&&typeof input.removeAttribute==='function')input.removeAttribute('aria-invalid');
+  };
+  if(contacto&&typeof contacto.addEventListener==='function')contacto.addEventListener('input',limpiarContacto);
   const procesar=async enviar=>{
     if(procesando)return;
     if(typeof form.querySelectorAll==='function')[...form.querySelectorAll(':invalid')].forEach(abrirSeccionDe);
@@ -2129,7 +2145,7 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo==='contacto_valor'){marcarContacto(guardado.error);return;}if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
       id=guardado.anuncio.id;
       const guardadaCampana=await guardarCampanaClase(id,campana.datos);
       if(!guardadaCampana.ok&&!guardadaCampana.falta){estado.textContent='Tu clase se guardó, pero '+guardadaCampana.error;return;}
@@ -2138,7 +2154,7 @@ function renderBorradorProfesor(raiz,anuncio){
         flyerActual=subida.path;campo('flyer').value='';form.querySelector('#pr-quitar-flyer').hidden=false;
       }
       if(enviar){estado.textContent='Enviando a revisión…';const respuesta=await enviarBorradorClase(id);
-        if(!respuesta.ok){estado.textContent=respuesta.error;if(respuesta.campo==='contacto_valor')enfocar(campo('contacto'));return;}
+        if(!respuesta.ok){estado.textContent=respuesta.error;if(respuesta.campo==='contacto_valor')marcarContacto(respuesta.error);return;}
         raiz.innerHTML='<div class="modal-title" id="modal-titulo">En revisión</div><p class="profesor-info" role="status">Recibimos tu anuncio. Nadie lo verá hasta que GradeHub lo revise y apruebe.</p>';return;
       }
       estado.textContent=guardadaCampana.ok?'Borrador guardado. Puedes volver después o enviarlo a revisión.'
