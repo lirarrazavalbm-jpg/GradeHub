@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es" data-modo="claro">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'">
+<title>GradeHub · Clases y administración · Muestra</title>
+<style>__ESTILOS__</style><style>__VISTAS_CSS__</style>
+<style>
+body{display:block;overflow:auto;background:var(--bg);font-family:var(--font-ui);color:var(--fg);margin:0;padding:0;}
+.demo-aviso{background:var(--muted);border-bottom:1px solid var(--border);font-size:12px;color:var(--fg2);padding:9px 24px;display:flex;justify-content:space-between;gap:12px;}
+.demo-aviso button{min-height:44px;min-width:44px;border:0;background:none;color:var(--fg2);font:inherit;text-decoration:underline;cursor:pointer;}
+.demo-barra{padding:0 36px;min-height:78px;display:flex;align-items:center;gap:50px;border-bottom:1px solid var(--border);}
+.demo-marca{font-size:23px;font-weight:750;letter-spacing:-1px;white-space:nowrap;}.demo-marca span{color:var(--primary);}
+.demo-nav{display:flex;gap:6px;flex:1;}.demo-nav button{border:0;background:none;padding:14px 18px;min-height:48px;color:var(--fg2);font-size:14px;border-radius:10px;font-weight:550;cursor:pointer;}.demo-nav button[aria-current=page]{background:var(--muted);color:var(--fg);}
+.demo-herramientas{display:flex;gap:12px;align-items:center;font-size:12px;color:var(--fg2);}.demo-tema{border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:10px;padding:9px 12px;min-height:44px;cursor:pointer;}
+.demo-lienzo{max-width:1170px;margin:0 auto;padding:48px 36px 70px;}
+.demo-pie{display:flex;justify-content:space-between;gap:20px;margin-top:50px;padding-top:20px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);}
+.demo-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:calc(100% - 32px);padding:13px 20px;border:1px solid var(--border);background:var(--fg);color:var(--bg);border-radius:12px;z-index:20;font-size:14px;box-shadow:var(--shadow-lg);}.demo-toast:empty{display:none;}
+.demo-profesor-intro{display:grid;grid-template-columns:1.2fr 1fr;gap:36px;margin-bottom:32px;}.demo-profesor-intro>div{padding:28px;border-radius:14px;background:var(--muted);}.demo-profesor-intro h2{font-size:24px;letter-spacing:-.03em;margin:8px 0 12px;}.demo-profesor-intro p{color:var(--fg2);margin-bottom:20px;}
+.demo-profesor-intro ol{padding-left:22px;color:var(--fg2);}.demo-profesor-intro li{padding:8px 0;}.demo-profesor-intro li b{color:var(--fg);}
+@media(max-width:760px){.demo-barra{padding:16px 20px;gap:16px;flex-wrap:wrap;}.demo-nav{order:3;flex-basis:100%;}.demo-nav button{flex:1;padding:10px 6px;}.demo-herramientas{margin-left:auto;}.demo-lienzo{padding:30px 20px;}.demo-aviso{padding:8px 20px;font-size:11px;}.demo-profesor-intro{grid-template-columns:1fr;gap:16px;}.demo-pie{flex-direction:column;gap:6px;}}
+body{padding-bottom:env(safe-area-inset-bottom);}.demo-barra,.demo-lienzo{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right));}
+</style></head>
+<body class="gh-mercado">
+<div class="demo-aviso"><span>Muestra interactiva · personas, campañas y cobros ficticios</span><button id="reiniciar">Reiniciar muestra</button></div>
+<header class="demo-barra"><div class="demo-marca">Grade<span>Hub</span><span aria-hidden="true">.</span></div><nav class="demo-nav" aria-label="Espacios"><button data-pagina="catalogo" aria-current="page">Buscar clases</button><button data-pagina="profesor">Mis anuncios</button><button data-pagina="admin">Administración</button></nav><div class="demo-herramientas"><span>UC</span><button class="demo-tema" id="tema" aria-label="Cambiar a modo oscuro">Modo oscuro</button></div></header>
+<main class="demo-lienzo"><div id="contenido"></div><footer class="demo-pie"><span>GradeHub · Por estudiantes, para estudiantes.</span><span>Las acciones de esta muestra no modifican cuentas reales.</span></footer></main>
+<dialog id="detalle" class="gh-dialogo" aria-labelledby="dialogo-titulo"><div class="gh-dialogo-barra"><strong id="dialogo-titulo">Detalle de campaña</strong><button class="gh-boton gh-boton-texto" id="cerrar-detalle">Cerrar ×</button></div><div id="detalle-cuerpo" class="gh-dialogo-cuerpo"></div></dialog>
+<div class="demo-toast" id="aviso" role="status" aria-live="polite"></div>
+<script>
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const S={tenant:'uc'},currentUser={id:'profe-demo'};
+const CREDITOS_POR_TENANT={uc:{'Cálculo II':[10,'MAT1620'],'Álgebra Lineal':[10,'MAT1203'],'Física General':[10,'FIS1503']}};
+const supabaseClient=null;
+let toastTimer;
+function showToast(t){clearTimeout(toastTimer);document.getElementById('aviso').textContent=t;toastTimer=setTimeout(()=>document.getElementById('aviso').textContent='',4500);}
+function openModal(){}function closeModal(){document.getElementById('detalle').close();}
+</script>
+<script>__MARKETPLACE__</script>
+<script>__VISTAS_JS__</script>
+<script>
+const fecha=d=>new Date(Date.now()+d*86400000).toISOString();
+const costo=(v,a,c,d=4,tope=15000)=>({vistas:v,aperturas:a,contactos:c,dias_cobrados:d,dias:14,tope_clp:tope});
+const base={tenant:'uc',ramos_siglas:['MAT1620'],nombres_ramos:['Cálculo II'],estado:'publicado',publicado_at:fecha(-4),vence_at:fecha(10),modalidad:'individual',ubicacion:'online',precio_clp:15000,contacto_tipo:'whatsapp',contacto_valor:'56900000000',criterios:{promedioMenorA:5,avanceMinimo:20},detalles:[{etiqueta:'Duración',valor:'60 minutos'},{etiqueta:'Incluye',valor:'Guía de ejercicios'}]};
+let profesores=[
+ {user_id:'profe-demo',nombre:'Catalina Rojas',estado:'aprobado',anuncios:[
+  {...base,id:'a1',titulo:'Cálculo II, paso a paso',descripcion:'Entiende el porqué de cada ejercicio. Repasamos integrales y series a tu ritmo, con una guía para seguir practicando después.',campana:costo(186,24,3),cobros:[{publicado_at:fecha(-35),estado:'deuda',monto_clp:6500}]},
+  {...base,id:'a2',titulo:'Prepara tu próxima interrogación',descripcion:'Una sesión para resolver los ejercicios que todavía te complican. Trae tus dudas y armamos juntos un plan de repaso.',estado:'en_revision',publicado_at:null,vence_at:null,campana:costo(0,0,0,0,10000),cobros:[]}
+ ]},
+ {user_id:'p2',nombre:'Tomás Vidal',estado:'aprobado',anuncios:[
+  {...base,id:'a3',titulo:'Álgebra con ejercicios resueltos',ramos_siglas:['MAT1203'],nombres_ramos:['Álgebra Lineal'],descripcion:'Matrices, espacios vectoriales y transformaciones, desde la intuición hasta la demostración. Clases individuales con material de apoyo.',ubicacion:'presencial',precio_clp:12000,campana:costo(94,18,2),cobros:[{publicado_at:fecha(-40),estado:'cobrado',monto_clp:4800}]},
+  {...base,id:'a4',titulo:'Taller de matrices y determinantes',ramos_siglas:['MAT1203'],nombres_ramos:['Álgebra Lineal'],descripcion:'Trabajamos problemas en grupo y comparamos distintas formas de resolverlos. Una oportunidad para practicar antes de la prueba.',modalidad:'grupal',precio_clp:8000,publicado_at:fecha(3),vence_at:fecha(17),campana:costo(0,0,0,0),cobros:[]}
+ ]},
+ {user_id:'p3',nombre:'Isidora León',estado:'aprobado',anuncios:[
+  {...base,id:'a5',titulo:'Física: de la idea al ejercicio',ramos_siglas:['FIS1503'],nombres_ramos:['Física General'],descripcion:'Dibujamos el problema, elegimos las herramientas y resolvemos con calma. Apoyo en mecánica y preparación de evaluaciones.',precio_clp:18000,campana:costo(72,12,1),cobros:[]},
+  {...base,id:'a6',titulo:'Repaso abierto de integrales',descripcion:'Un encuentro gratuito para repasar los conceptos fundamentales y resolver dudas comunes. No necesitas preparación previa.',modalidad:'grupal',precio_clp:0,campana:costo(58,8,0),cobros:[]}
+ ]},
+ {user_id:'p4',nombre:'Benjamín Soto',estado:'suspendido',anuncios:[{...base,id:'a7',titulo:'Acompañamiento en Cálculo II',descripcion:'Clases de apoyo y resolución de ejercicios para el semestre.',campana:costo(60,6,1),cobros:[]}]},
+ {user_id:'p5',nombre:'Antonia Pérez',estado:'aprobado',anuncios:[{...base,id:'a8',titulo:'Repaso intensivo de Cálculo II',descripcion:'Un repaso ordenado de los contenidos de la próxima evaluación.',campana:costo(200,30,9,4,10000),cobros:[{publicado_at:base.publicado_at,estado:'deuda',monto_clp:10000}],cobro:{estado:'deuda',monto_clp:10000}}]}
+];
+profesores[0].anuncios.push({...profesores[0].anuncios[1],id:'d1',titulo:'Repasa integrales conmigo',estado:'borrador'});
+const originales=JSON.stringify(profesores);
+let pagina='catalogo',pestana='campanas',filtro='',precioDesde='',precioHasta='',soloGratis=false,busqueda='',seleccion=null;
+const $=id=>document.getElementById(id),normal=s=>normalizarBusquedaClase(s);
+const vacio=texto=>`<div class="gh-vacio"><h2>No hay resultados</h2><p>${esc(texto)}</p><button class="gh-boton" data-limpiar>Limpiar filtros</button></div>`;
+function mostrar(){
+ $('contenido').innerHTML=pagina==='catalogo'?cabeceraMercado('Un poco de apoyo. Un gran avance.','Encuentra una clase para ese ramo que necesita un empujón.')+
+ `<div class="gh-herramientas"><label class="gh-buscar"><span aria-hidden="true">⌕</span><input id="busqueda" type="search" placeholder="Busca por ramo, sigla o profesor" aria-label="Buscar clases"></label><label class="gh-filtro">Modalidad<select id="filtro"><option value="">Todas</option><option value="online">Online</option><option value="presencial">Presencial</option></select></label><div class="gh-precios" role="group" aria-label="Precio por clase en pesos"><label class="gh-filtro" for="precio-desde">Desde $<input id="precio-desde" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin mínimo" aria-describedby="precio-error"></label><label class="gh-filtro" for="precio-hasta">Hasta $<input id="precio-hasta" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin máximo" aria-describedby="precio-error"></label><label class="gh-gratis"><input id="solo-gratis" type="checkbox">Solo gratis</label><p id="precio-error" class="gh-precios-error" role="status"></p></div></div><div class="gh-lista-cabeza"><h2>Clases en tu universidad</h2><span id="cantidad" class="gh-nota" role="status"></span></div><div id="resultados" class="gh-catalogo"></div><p class="gh-nota" style="margin-top:24px">El catálogo no usa tus notas. Tú eliges qué clase explorar y a quién contactar.</p>`:
+ pagina==='admin'?cabeceraMercado('Todo en orden.','Revisa anuncios, acompaña a los profesores y lleva los cobros al día.')+resumenOperativoHTML(profesores)+
+ `<nav class="gh-pestanas" aria-label="Administración"><button data-seccion="campanas" aria-pressed="${pestana==='campanas'}">Campañas</button><button data-seccion="revision" aria-pressed="${pestana==='revision'}">Por revisar · ${resumenOperativoClases(profesores).revision}</button><button data-seccion="cobros" aria-pressed="${pestana==='cobros'}">Cobros e historial</button></nav><div class="gh-herramientas"><label class="gh-buscar"><span aria-hidden="true">⌕</span><input id="busqueda" type="search" placeholder="Buscar profesor, anuncio o ramo" aria-label="Buscar campañas"></label><label class="gh-filtro">Estado<select id="filtro"><option value="">Todos</option><option value="activa">Activas</option><option value="programada">Programadas</option><option value="pausada">Pausadas</option><option value="tope">Tope alcanzado</option></select></label></div><div class="gh-lista-cabeza"><h2>${pestana==='revision'?'Anuncios por revisar':pestana==='cobros'?'Campañas con cobros registrados':'Todas las campañas'}</h2><span class="gh-nota" id="cantidad" role="status"></span></div><div id="resultados" class="gh-lista"></div>`:
+ cabeceraMercado('Tu conocimiento puede ayudar.','Este es tu espacio para publicar clases y ver cómo les va.',`<button class="gh-boton gh-boton-principal" id="nuevo">＋ Crear anuncio</button>`)+
+ `<div class="demo-profesor-intro"><div><p class="gh-ceja">TU ESPACIO DE PROFESOR</p><h2>Enseña a tu manera.</h2><p>Elige qué ofrecer, a quién llegar y cuánto destinar a tu campaña. Tú pones el límite.</p><button class="gh-boton" id="editar">Continuar un borrador ↗</button></div><div><ol><li><b>Prepara tu clase.</b> Cuenta qué van a trabajar.</li><li><b>Define público y presupuesto.</b> Siempre con un tope.</li><li><b>Revisa y envía.</b> Nada se publica sin aprobación.</li></ol></div></div><div class="gh-lista-cabeza"><h2>Tus anuncios</h2><span class="gh-nota">Costo estimado durante el piloto</span></div><div id="resultados" class="gh-lista"></div>`;
+ if($('busqueda')){$('busqueda').value=busqueda;$('busqueda').addEventListener('input',e=>{busqueda=e.target.value;pintarResultados();});}
+ if($('filtro')){$('filtro').value=filtro;$('filtro').addEventListener('change',e=>{filtro=e.target.value;pintarResultados();});}
+ if($('precio-desde')){
+  $('precio-desde').value=precioDesde;$('precio-hasta').value=precioHasta;$('solo-gratis').checked=soloGratis;
+  $('precio-desde').disabled=$('precio-hasta').disabled=soloGratis;
+  $('precio-desde').oninput=e=>{precioDesde=e.target.value;pintarResultados();};
+  $('precio-hasta').oninput=e=>{precioHasta=e.target.value;pintarResultados();};
+  $('solo-gratis').onchange=e=>{soloGratis=e.target.checked;$('precio-desde').disabled=$('precio-hasta').disabled=soloGratis;pintarResultados();};
+ }
+ document.querySelectorAll('[data-seccion]').forEach(b=>b.onclick=()=>{pestana=b.dataset.seccion;filtro='';mostrar();});
+ if($('nuevo'))$('nuevo').onclick=()=>formulario(false);if($('editar'))$('editar').onclick=()=>formulario(true);
+ pintarResultados();
+}
+function pintarResultados(){
+ let filas=filasOperativasClases(profesores);
+ if(pagina==='catalogo')filas=filas.filter(f=>f.estado.clave==='activa'&&(!filtro||f.anuncio.ubicacion===filtro));
+ else if(pagina==='profesor')filas=filas.filter(f=>f.profesor.user_id==='profe-demo');
+ else filas=filas.filter(f=>(!filtro||f.estado.clave===filtro)&&(pestana!=='revision'||f.estado.clave==='revision')&&(pestana!=='cobros'||f.anuncio.cobros?.length));
+ if(busqueda&&pagina!=='profesor')filas=filas.filter(f=>normal(f.profesor.nombre+' '+f.anuncio.titulo+' '+f.anuncio.ramos_siglas.join(' ')+' '+f.anuncio.nombres_ramos.join(' ')).includes(normal(busqueda)));
+ if(pagina==='catalogo'){
+  const minimo=precioDesde===''?0:Number(precioDesde),maximo=precioHasta===''?Infinity:Number(precioHasta);
+  const invalido=!soloGratis&&(!Number.isSafeInteger(minimo)||minimo<0||!(maximo===Infinity||Number.isSafeInteger(maximo))||maximo<0||minimo>maximo);
+  $('precio-error').textContent=invalido?'Escribe montos válidos; el máximo debe ser igual o mayor al mínimo.':'';
+  $('precio-desde').setAttribute('aria-invalid',String(invalido));$('precio-hasta').setAttribute('aria-invalid',String(invalido));
+  filas=invalido?[]:filas.filter(f=>soloGratis?f.anuncio.precio_clp===0:f.anuncio.precio_clp>=minimo&&f.anuncio.precio_clp<=maximo);
+ }
+ if($('cantidad'))$('cantidad').textContent=filas.length+' '+(pagina==='catalogo'?(filas.length===1?'clase':'clases'):(filas.length===1?'campaña':'campañas'));
+ $('resultados').innerHTML=filas.length?filas.map(f=>pagina==='catalogo'?tarjetaMercadoHTML(f.anuncio,f.profesor):filaOperativaHTML(f)).join(''):vacio('Prueba otro nombre o amplía los filtros.');
+ document.querySelectorAll('[data-limpiar]').forEach(b=>b.onclick=()=>{filtro='';precioDesde='',precioHasta='',soloGratis=false;busqueda='';mostrar();});
+ document.querySelectorAll('[data-campana]').forEach(b=>b.onclick=()=>abrirDetalle(b.dataset.campana));
+ document.querySelectorAll('[data-abrir]').forEach(b=>b.onclick=()=>{const f=filas.find(f=>f.anuncio.id===b.dataset.abrir);abrirDialogo('Clase particular',tarjetaMercadoHTML(f.anuncio,f.profesor,{abierta:true}));});
+}
+function abrirDialogo(titulo,html){$('dialogo-titulo').textContent=titulo;$('detalle-cuerpo').innerHTML=html;if(!$('detalle').open)$('detalle').showModal();$('detalle').scrollTop=0;}
+function abrirDetalle(id){
+ seleccion=filasOperativasClases(profesores).find(f=>f.anuncio.id===id);const {profesor:p,anuncio:a,estado}=seleccion;
+ if(pagina==='profesor'){if(a.estado==='borrador'){formulario(true);return;}abrirDialogo('Tu campaña',detalleOperativoHTML(p,a,{administrar:false}));return;}
+ abrirDialogo('Detalle de campaña',detalleOperativoHTML(p,a)+(estado.clave==='revision'?`<div class="gh-detalle-seccion"><label for="motivo">Comentario para el profesor</label><textarea id="motivo" placeholder="Explica qué necesita ajustar, si corresponde."></textarea><div class="gh-acciones"><button class="gh-boton" id="devolver">Pedir cambios</button><button class="gh-boton gh-boton-principal" id="aprobar">Aprobar anuncio</button></div></div>`:`<div class="gh-acciones"><button class="gh-boton" id="pausar">${a.estado==='pausado'?'Enviar nuevamente a revisión':'Pausar anuncio'}</button><button class="gh-boton" id="profesor-estado">${p.estado==='suspendido'?'Reactivar profesor':'Suspender profesor'}</button></div>`));
+ if($('aprobar'))$('aprobar').onclick=()=>{a.estado='publicado';a.publicado_at=fecha(0);a.vence_at=fecha(14);cerrarYActualizar('Anuncio aprobado. La campaña ya aparece en el catálogo de muestra.');};
+ if($('devolver'))$('devolver').onclick=()=>{if(!$('motivo').value.trim()){$('motivo').setCustomValidity('Escribe qué debe ajustar el profesor.');$('motivo').reportValidity();return;}a.estado='borrador';cerrarYActualizar('Cambios solicitados. El anuncio volvió a borrador en esta muestra.');};
+ if($('motivo'))$('motivo').oninput=()=> $('motivo').setCustomValidity('');
+ if($('pausar'))$('pausar').onclick=()=>{a.estado=a.estado==='pausado'?'en_revision':'pausado';cerrarYActualizar('Estado del anuncio actualizado en la muestra.');};
+ if($('profesor-estado'))$('profesor-estado').onclick=()=>{p.estado=p.estado==='suspendido'?'aprobado':'suspendido';cerrarYActualizar('Estado del profesor actualizado. Revisa las campañas visibles.');};
+ document.querySelectorAll('[data-cobro-guardar]').forEach(b=>b.onclick=()=>{const fila=b.closest('[data-admin-cobro]'),estado=fila.querySelector('select').value,monto=pesosDeTexto(fila.querySelector('input').value),fechaCobro=fila.dataset.publicadoAt;
+  if(estado!=='pendiente'&&(!Number.isSafeInteger(monto)||monto<0||monto>5000000)){showToast('Escribe un monto entre $0 y $5.000.000.');return;}
+  a.cobros=(a.cobros||[]).filter(c=>c.publicado_at!==fechaCobro);if(estado!=='pendiente')a.cobros.push({publicado_at:fechaCobro,estado,monto_clp:monto});a.cobro=a.cobros.find(c=>c.publicado_at===a.publicado_at)||null;cerrarYActualizar('Cobro guardado solo en esta muestra.');});
+}
+function cerrarYActualizar(texto){$('detalle').close();mostrar();showToast(texto);}
+function formulario(recuperar){
+ abrirDialogo('Preparar anuncio','<div id="form-real"></div>');
+ const a=recuperar?profesores[0].anuncios.find(a=>a.estado==='borrador')||null:null;
+ renderBorradorProfesor($('form-real'),a);
+}
+// Adaptadores exclusivos de la muestra. Los componentes conservan validación real.
+let borradorDemo=null;
+guardarBorradorClase=async(datos,id)=>{const v=validarBorradorClase(datos);if(!v.ok)return v;borradorDemo={...datos,id:id||'borrador-'+Date.now(),nombres_ramos:[],estado:'borrador',cobros:[]};const lista=profesores[0].anuncios,i=lista.findIndex(a=>a.id===borradorDemo.id);if(i>=0)lista[i]=borradorDemo;else lista.push(borradorDemo);return {ok:true,anuncio:borradorDemo};};
+guardarCampanaClase=async(id,datos)=>{if(borradorDemo)borradorDemo.campana={...datos,vistas:0,aperturas:0,contactos:0,dias_cobrados:0};return {ok:true};};
+leerCampanaClase=async id=>profesores[0].anuncios.find(a=>a.id===id)?.campana||({dias:14,inicio:null,tope_clp:15000});
+enviarBorradorClase=async()=>{if(!borradorDemo)return {ok:false,error:'Guarda el borrador primero.'};const a={...borradorDemo,nombres_ramos:[],estado:'en_revision',campana:costo(0,0,0,0,borradorDemo.campana?.tope_clp||15000),cobros:[]};const lista=profesores[0].anuncios;const i=lista.findIndex(x=>x.id===a.id);if(i>=0)lista[i]=a;else lista.push(a);return {ok:true};};
+renderLogoProfesor=async()=>{};
+subirFlyerClase=async()=>({ok:false,error:'La muestra no sube archivos. Puedes probar el anuncio sin flyer.'});
+document.querySelectorAll('[data-pagina]').forEach(b=>b.onclick=()=>{pagina=b.dataset.pagina;filtro='';busqueda='';document.querySelectorAll('[data-pagina]').forEach(n=>n.setAttribute('aria-current',n===b?'page':'false'));mostrar();});
+$('cerrar-detalle').onclick=()=>{$('detalle').close();mostrar();};
+$('detalle').addEventListener('close',()=>mostrar());
+document.addEventListener('click',e=>{if(e.target.closest('[data-contactar]')){e.preventDefault();showToast('Aquí se abriría el contacto del profesor. Esta muestra no envía mensajes.');}});
+$('tema').onclick=()=>{const oscuro=document.documentElement.dataset.modo!=='oscuro';document.documentElement.dataset.modo=oscuro?'oscuro':'claro';$('tema').textContent=oscuro?'Modo claro':'Modo oscuro';$('tema').setAttribute('aria-label','Cambiar a '+$('tema').textContent.toLowerCase());};
+$('reiniciar').onclick=()=>{profesores=JSON.parse(originales);filtro='';precioDesde='',precioHasta='',soloGratis=false;busqueda='';mostrar();showToast('La muestra volvió a su estado inicial.');};
+mostrar();
+</script></body></html>

@@ -1,0 +1,109 @@
+/* Componentes de la propuesta, con los tokens reales de GradeHub. */
+.gh-mercado{color:var(--fg);font-family:var(--font-ui);font-size:15px;line-height:1.5;}
+.gh-mercado button,.gh-mercado input,.gh-mercado select{font:inherit;}
+.gh-mercado button,.gh-mercado select{cursor:pointer;}
+.gh-mercado button:disabled{opacity:.5;cursor:wait;}
+.gh-mercado .gh-cabecera{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:0 0 36px;}
+.gh-ceja{color:var(--primary);font-size:11px;font-weight:750;letter-spacing:.12em;margin:0 0 12px;}
+.gh-mercado h1{font-size:clamp(30px,4vw,44px);letter-spacing:-.045em;font-weight:680;line-height:1.12;}
+.gh-bajada{color:var(--fg2);margin-top:12px;max-width:590px;font-size:16px;}
+.gh-boton{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 17px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--fg);font-weight:600;text-decoration:none;white-space:nowrap;}
+.gh-boton:hover{background:var(--muted);}
+.gh-boton-principal{background:var(--primary);color:var(--primary-fg);border-color:var(--primary);}
+.gh-boton-principal:hover{background:var(--primary-grad);}
+.gh-boton-texto{background:transparent;border-color:transparent;color:var(--fg2);}
+.gh-resumen{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;padding:0 0 28px;border-bottom:1px solid var(--border);margin-bottom:32px;}
+.gh-resumen>div+div{border-left:1px solid var(--border);padding-left:24px;}
+.gh-resumen span{display:block;font-size:13px;color:var(--fg2);}
+.gh-resumen strong{display:block;font-size:30px;letter-spacing:-.04em;font-weight:650;margin:7px 0;font-variant-numeric:tabular-nums;}
+.gh-resumen strong small{font-size:13px;letter-spacing:0;color:var(--fg3);font-weight:450;}
+.gh-resumen p{color:var(--fg3);font-size:12px;}
+.gh-herramientas{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:22px;}
+.gh-buscar{flex:1;min-width:180px;display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:0 14px;}
+.gh-buscar input{width:100%;padding:12px 0;min-height:46px;border:0;outline:none;background:transparent;color:var(--fg);}
+.gh-buscar input:focus,.gh-buscar input:focus-visible{border:0;outline:none;box-shadow:none;}
+.gh-buscar:focus-within{outline:2px solid var(--primary);outline-offset:2px;}
+.gh-filtro{display:flex;align-items:center;gap:8px;color:var(--fg2);font-size:13px;}
+.gh-filtro select{min-height:46px;border:1px solid var(--border);border-radius:10px;padding:8px 30px 8px 12px;background:var(--card);color:var(--fg);}
+.gh-pestanas{display:flex;gap:6px;margin-bottom:24px;border-bottom:1px solid var(--border);overflow-x:auto;}
+.gh-pestanas button{flex:none;min-height:48px;padding:10px 14px;border:0;border-bottom:2px solid transparent;background:none;color:var(--fg2);font-weight:550;}
+.gh-pestanas button[aria-pressed=true]{border-bottom-color:var(--primary);color:var(--primary);}
+.gh-lista{border-top:1px solid var(--border);}
+.gh-lista-cabeza{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px;}
+.gh-lista-cabeza h2{font-size:17px;font-weight:650;letter-spacing:-.02em;}
+.gh-nota{font-size:13px;color:var(--fg3);line-height:1.5;}
+.gh-fila{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr) 150px 145px 20px;width:100%;align-items:center;text-align:left;gap:22px;border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent;color:var(--fg);padding:22px 4px;}
+.gh-fila::before{content:'';position:absolute;inset:4px -10px;z-index:-1;border-radius:12px;background:transparent;pointer-events:none;transition:background var(--motion-fast);}
+.gh-fila:hover::before,.gh-fila:focus-visible::before{background:var(--muted);}
+.gh-fila:focus-visible{border-radius:12px;}
+.gh-fila:active{transform:none;}
+.gh-fila-identidad{display:flex;align-items:center;gap:14px;min-width:0;}
+.gh-fila-identidad>span:last-child{min-width:0;}
+.gh-fila b{font-size:15px;font-weight:600;display:block;line-height:1.4;}
+.gh-fila small{display:block;font-size:13px;color:var(--fg3);margin-top:4px;}
+.gh-inicial{display:inline-flex;align-items:center;justify-content:center;flex:none;width:38px;height:38px;border:1px solid var(--border);background:var(--muted);color:var(--fg2);border-radius:50%;font-weight:650;font-size:15px;}
+.gh-estado{display:inline-flex;align-items:center;justify-content:center;justify-self:start;gap:6px;padding:5px 9px;border-radius:6px;background:var(--muted);color:var(--fg2);font-size:12px;white-space:nowrap;}
+.gh-estado::before{content:'';height:5px;width:5px;border-radius:50%;background:currentColor;}
+.gh-estado-activa{background:var(--green-bg);color:var(--green);}
+.gh-estado-revision,.gh-estado-tope{background:var(--yellow-bg);color:var(--yellow);}
+.gh-estado-programada{background:var(--primary-light);color:var(--primary);}
+.gh-fila-importe{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+.gh-fila-importe small{font-weight:400;font-size:12px;}
+.gh-flecha{color:var(--fg3);font-size:19px;}
+.gh-catalogo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;}
+.gh-oferta{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:var(--card);display:flex;flex-direction:column;}
+.gh-profesor-linea{display:flex;gap:10px;align-items:center;padding:20px 22px 0;font-size:13px;font-weight:600;}
+.gh-profesor-linea small{display:block;font-size:11px;color:var(--fg3);font-weight:400;}
+.gh-mercado .gh-oferta .catalogo-clase-card{border:0;border-radius:0;}
+.gh-mercado .catalogo-clase-contenido{padding:20px 22px;}
+.gh-mercado .catalogo-clase-cabeza small{font-size:10px;color:var(--fg3);letter-spacing:.05em;}
+.gh-mercado .catalogo-clase-contenido h3{font-size:21px;line-height:1.3;font-weight:620;letter-spacing:-.035em;margin-top:9px;}
+.gh-mercado .catalogo-clase-descripcion{font-size:14px;line-height:1.65;margin:15px 0;color:var(--fg2);}
+.gh-mercado .catalogo-clase-datos{border-top:1px solid var(--border);padding-top:16px;margin-top:8px;}
+.gh-mercado .catalogo-clase-ver,.gh-mercado .catalogo-clase-contacto{min-height:44px;width:100%;font-size:14px;font-weight:600;}
+.gh-mercado .catalogo-clase-ver{border:1px solid var(--border);border-radius:9px;background:var(--muted);color:var(--fg);margin-top:20px;padding:10px;}
+.gh-mercado .catalogo-clase-detalles{padding-top:18px;}
+.gh-vacio{text-align:center;padding:60px 24px;border:1px dashed var(--border2);border-radius:14px;}
+.gh-vacio h2{font-size:21px;margin-bottom:10px;}
+.gh-vacio p{color:var(--fg2);margin-bottom:20px;}
+.gh-dialogo{margin:auto;width:min(660px,calc(100% - 32px));max-height:90dvh;border:1px solid var(--border);border-radius:18px;background:var(--card);color:var(--fg);padding:0;box-shadow:var(--shadow-lg);}
+.gh-dialogo::backdrop{background:rgba(0,0,0,.35);}
+.gh-dialogo-barra{display:flex;justify-content:space-between;align-items:center;padding:14px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:3;}
+.gh-dialogo-cuerpo{padding:26px;}
+.gh-detalle-cabecera h2{font-size:26px;line-height:1.2;letter-spacing:-.03em;margin-bottom:8px;}
+.gh-detalle-cabecera>p:not(.gh-ceja){color:var(--fg2);margin-bottom:14px;}
+.gh-presupuesto{margin-top:28px;padding:22px;background:var(--muted);border-radius:12px;}
+.gh-presupuesto span{font-size:13px;color:var(--fg2);}
+.gh-presupuesto strong{display:block;font-size:29px;letter-spacing:-.04em;margin:5px 0 14px;}
+.gh-presupuesto strong small{font-size:15px;color:var(--fg3);font-weight:400;letter-spacing:0;}
+.gh-presupuesto progress{display:block;width:100%;height:6px;accent-color:var(--primary);border:0;}
+.gh-presupuesto p{font-size:12px;color:var(--fg2);margin-top:12px;}
+.gh-desglose{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px 0;}
+.gh-desglose strong{display:block;font-size:23px;}
+.gh-desglose span{font-size:12px;color:var(--fg3);}
+.gh-detalle-seccion{padding:20px 0;border-top:1px solid var(--border);}
+.gh-detalle-seccion summary{min-height:44px;cursor:pointer;font-weight:600;}
+.gh-detalle-seccion h3{font-size:17px;margin-bottom:8px;}
+.gh-mercado .admin-anuncio{background:transparent;padding:12px 0;}
+.gh-mercado .admin-cobro{padding:12px 0;gap:8px;}
+.gh-mercado .admin-cobro select,.gh-mercado .admin-cobro input,.gh-mercado .clase-accion,.gh-mercado .profesor-linea-opcion{min-height:44px;}
+.gh-mercado .profesor-ramo-chip button{width:44px;height:44px;}
+.gh-mercado .admin-anuncio .clase-accion{width:auto;margin:0;}
+.gh-mercado .admin-anuncio-top,.gh-mercado .admin-anuncio>p,.gh-mercado .admin-anuncio [data-admin-pausar]{display:none;}
+.gh-acciones{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px;}
+.gh-acciones>*{flex:1;}
+.gh-mercado textarea{display:block;width:100%;min-height:90px;border:1px solid var(--border2);background:var(--bg2);border-radius:10px;color:var(--fg);font:inherit;padding:12px;margin:8px 0;}
+.gh-mercado .profesor-form{gap:18px;}
+.gh-mercado .profesor-form .profesor-form-campos{gap:12px;}
+.gh-mercado .profesor-form-vista{margin-top:20px;}
+@media(max-width:760px){.gh-resumen{grid-template-columns:repeat(2,1fr);gap:24px 16px;}.gh-resumen>div+div{padding-left:0;border:0;}.gh-cabecera{align-items:flex-start!important;}.gh-fila{grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:20px 0;}.gh-fila-identidad{grid-column:1/-1;}.gh-fila-importe{grid-column:2;grid-row:2;}.gh-flecha{display:none;}.gh-catalogo{grid-template-columns:1fr;}.gh-dialogo-cuerpo{padding:20px;}.gh-bajada{font-size:14px;}.gh-mercado .gh-cabecera{margin-bottom:26px;}.gh-desglose{gap:8px;}.gh-desglose strong{font-size:20px;}}
+
+@media(max-width:760px){.gh-herramientas>.gh-buscar{flex-basis:100%;}}
+.gh-precios{display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex-basis:100%;}
+.gh-precios .gh-filtro{flex:0 1 190px;}
+.gh-precios input[type=number]{width:120px;min-width:0;min-height:44px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--fg);}
+.gh-gratis{display:flex;align-items:center;gap:8px;min-height:44px;font-size:13px;color:var(--fg2);cursor:pointer;}
+.gh-gratis input{width:18px;height:18px;accent-color:var(--primary);}
+.gh-precios-error{flex-basis:100%;color:var(--red);font-size:13px;}
+.gh-precios-error:empty{display:none;}
+@media(prefers-reduced-motion:reduce){.gh-fila::before{transition:none;}}
