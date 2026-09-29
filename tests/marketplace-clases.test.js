@@ -209,7 +209,7 @@ vm.runInContext(`
     chk(`${tabla} tiene RLS activa`,new RegExp(`alter table public\\.${tabla} enable row level security`,'i').test(sql));
   });
   chk('las tablas con identidad borran sus filas junto con la cuenta',
-    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===5);
+    (sql.match(/references auth\.users\(id\) on delete cascade/gi)||[]).length===6);
   chk('las aperturas y contactos por persona no se pueden leer desde el cliente',
     /revoke all on public\.anuncio_interacciones from public, anon, authenticated/i.test(sql)&&
     !/grant [^;]*on public\.anuncio_interacciones/i.test(sql));
@@ -259,7 +259,7 @@ vm.runInContext(`
   const rpc=(sql.match(/create or replace function public\.registrar_metrica_anuncio[\s\S]*?\n\$\$;/)||[])[0]||'';
   chk('la RPC exige sesión y descarta su identidad antes de guardar',
     /if auth\.uid\(\) is null/.test(rpc)&&
-    /insert into public\.anuncio_metricas \(anuncio_id, dia, tipo, tenant, ramo_sigla, eventos\)/.test(rpc)&&
+    /insert into public\.anuncio_metricas \(anuncio_id, dia, tipo, tenant, ramo_sigla, eventos, publicacion, vence_publicacion\)/.test(rpc)&&
     !/user_id|viewer|device/i.test(rpc.replace(/--[^\n]*/g,'')));
   chk('la frecuencia se limita en el servidor sin guardar una identidad',
     /updated_at <= now\(\) - interval '10 seconds'/.test(rpc));
@@ -272,10 +272,10 @@ vm.runInContext(`
   console.log('\n=== Alcance único: lo que sí se puede cobrar ===');
   const alcanceSql=sql.slice(sql.indexOf('create table if not exists public.anuncio_alcance'));
   const tablaAlcance=(sql.match(/create table if not exists public\.anuncio_alcance \(([\s\S]*?)\n\);/)||[])[1]||'';
-  chk('se cobra por cuenta distinta y no por visita: la llave es (aviso, cuenta)',
-    /primary key \(anuncio_id, user_id\)/.test(tablaAlcance)&&
+  chk('se cobra una vez por cuenta y publicación, no por visita',
+    /alter table public\.anuncio_alcance add primary key \(anuncio_id, user_id, publicacion\)/.test(alcanceSql)&&
     // Una segunda vista no suma otra fila: a lo más sube el camino, y solo hacia uno más caro.
-    /on conflict \(anuncio_id, user_id\) do update\s+set canal = excluded\.canal\s+where public\.rango_canal_alcance\(excluded\.canal\) > public\.rango_canal_alcance\(public\.anuncio_alcance\.canal\)/.test(alcanceSql));
+    /on conflict \(anuncio_id, user_id, publicacion\) do update\s+set canal = excluded\.canal\s+where public\.rango_canal_alcance\(excluded\.canal\) > public\.rango_canal_alcance\(public\.anuncio_alcance\.canal\)/.test(alcanceSql));
   chk('la fila no guarda el criterio del aviso, ni ramo, ni nota, ni promedio',
     !!tablaAlcance&&!/criterio|promedio|nota|sigla|avance/i.test(tablaAlcance.replace(/--[^\n]*/g,'')));
   chk('nadie lee la tabla: ni select para authenticated',
@@ -296,6 +296,23 @@ vm.runInContext(`
   chk('si la llamada falla se puede reintentar, y un alcance desconocido no es cero',
     /ALCANCE_REGISTRADO\.delete\(clave\)/.test(src)&&
     /async function alcanceAnuncio\([\s\S]*?return null;[\s\S]*?Number\.isInteger\(data\)\?data:null/.test(src));
+
+  ctx.mediciones=[];
+  val(`supabaseClient={rpc:async(nombre,datos)=>{mediciones.push({nombre,datos});return {data:true,error:null};}};
+    currentUser={id:'cuenta-uno'}; catalogoClasesActual=[{id:'medicion',publicado_at:'2026-09-01T12:00:00Z'}];`);
+  await val("registrarAlcanceAnuncio('medicion','lista')");
+  await val("registrarInteraccionAnuncio('medicion','contacto')");
+  await val("registrarAlcanceAnuncio('medicion','lista')");
+  await val("registrarInteraccionAnuncio('medicion','contacto')");
+  chk('el cliente evita repetir una medición de la misma publicación',ctx.mediciones.length===2);
+  val("catalogoClasesActual[0].publicado_at='2026-09-27T12:00:00Z'");
+  await val("registrarAlcanceAnuncio('medicion','lista')");
+  await val("registrarInteraccionAnuncio('medicion','contacto')");
+  chk('una republicación permite medir a la misma cuenta otra vez',ctx.mediciones.length===4);
+  val("currentUser={id:'cuenta-dos'}");
+  await val("registrarAlcanceAnuncio('medicion','lista')");
+  await val("registrarInteraccionAnuncio('medicion','contacto')");
+  chk('cambiar de cuenta no hereda la deduplicación anterior',ctx.mediciones.length===6);
 
   console.log(fail?`\nFAIL: ${fail}`:`\nMarketplace OK: ${ok}`);
   process.exit(fail?1:0);

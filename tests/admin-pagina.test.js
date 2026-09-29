@@ -10,9 +10,9 @@ const chk=(n,c)=>{if(c){ok++;console.log('  OK   '+n);}else{fail++;console.log('
 console.log('=== El servidor ===');
 const sql=leer('supabase/administradores.sql').split('\n').map(l=>l.replace(/--.*$/,'')).join('\n');
 const funciones=[...sql.matchAll(/create or replace function public\.(admin_\w+)\s*\([\s\S]*?\$\$;/g)];
-chk('existen las cuatro funciones de la página',['admin_panel_clases','admin_pausar_anuncio','admin_estado_profesor','admin_marcar_cobro']
+chk('existen las cinco funciones de la página',['admin_panel_clases','admin_pausar_anuncio','admin_estado_profesor','admin_marcar_cobro','admin_marcar_cobro_publicacion']
   .every(f=>funciones.some(m=>m[1]===f)));
-chk('cada una exige administración verificada antes de hacer nada',funciones.length===4&&
+chk('cada una exige administración verificada antes de hacer nada',funciones.length===5&&
   funciones.every(m=>/\bbegin\s+perform admin\.exigir_administrador\(\);/.test(m[0])));
 chk('y esa exigencia pide la lista y el segundo factor',/function admin\.exigir_administrador[\s\S]*?administrador_verificado\(\)[\s\S]*?raise exception/.test(sql));
 chk('anon no puede llamarlas',funciones.every(m=>new RegExp(`revoke all on function public\\.${m[1]}\\([^)]*\\) from public, anon;`).test(sql)));
@@ -43,6 +43,14 @@ const r=run('resumenAdminClases(__p,__ahora)');
 chk('el resumen separa activas, programadas y en revisión',r.activas===1&&r.programadas===1&&r.revision===1);
 chk('lo gastado aplica el tope, igual que lo ve el profesor',r.gastado===10000);
 chk('la deuda se suma aparte',r.deuda===10000&&r.cobrado===0);
+ctx.__historicos=[{...profesores[0],anuncios:[{...profesores[0].anuncios[0],
+  cobro:{estado:'cobrado',monto_clp:2000},cobros:[
+    {publicado_at:iso(-40),estado:'deuda',monto_clp:7000},
+    {publicado_at:iso(-5),estado:'cobrado',monto_clp:2000}]}]}];
+const historial=run('resumenAdminClases(__historicos,__ahora)');
+chk('la deuda anterior sigue en el resumen sin duplicar el cobro actual',historial.deuda===7000&&historial.cobrado===2000);
+const ficha=run('tarjetaAdminProfesor(__historicos[0],__ahora)');
+chk('la deuda anterior se puede gestionar por su fecha',/Cobros anteriores/.test(ficha)&&ficha.includes('data-publicado-at="'+iso(-40)+'"'));
 const html=run('tarjetaAdminProfesor(__p[0],__ahora)');
 chk('un anuncio sobre su tope dice que llegó',/Llegó al tope/.test(html));
 chk('uno programado se ve como programado y se puede pausar',/Programado/.test(html)&&/data-admin-pausar="a2"/.test(html));

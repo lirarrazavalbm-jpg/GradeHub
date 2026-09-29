@@ -983,7 +983,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .clase-num{display:flex;flex-direction:column;gap:2px;}
 .clase-num span{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--fg3);}
 .clase-num b{font-size:1.25rem;font-weight:800;color:var(--fg);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-.clase-accion{margin-top:12px;width:100%;min-height:40px;padding:8px 12px;border:1px solid var(--border2);
+.clase-accion{margin-top:12px;width:100%;min-height:44px;min-width:44px;padding:8px 12px;border:1px solid var(--border2);
   border-radius:10px;background:none;color:var(--fg2);font:inherit;font-size:0.8125rem;font-weight:600;cursor:pointer;
   transition:color var(--motion-fast) var(--ease-standard),border-color var(--motion-fast) var(--ease-standard);}
 .clase-accion:hover{color:var(--fg);border-color:var(--fg3);}
@@ -2577,7 +2577,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .admin-anuncio-costo{margin:0;font-size:.875rem;font-variant-numeric:tabular-nums;}
 .admin-anuncio-acciones{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .admin-cobro{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.8125rem;color:var(--fg2);}
-.admin-cobro select,.admin-cobro input{min-height:36px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--fg);font:inherit;font-size:.8125rem;}
+.admin-cobro select,.admin-cobro input{min-height:44px;min-width:44px;padding:6px 8px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--fg);font:inherit;font-size:.8125rem;}
 .admin-cobro input{width:96px;font-variant-numeric:tabular-nums;}
 
 .admin-profesor .clase-accion{width:auto;justify-self:start;margin:0;padding-left:14px;padding-right:14px;}

@@ -1,24 +1,6 @@
--- PR #515 · RESPALDO OBLIGATORIO ANTES DE APLICAR A UNA BASE EXISTENTE.
--- 1. Ejecutar supabase/respaldo_campanas_515.sql UNA VEZ (schema privado,
---    RLS y permisos revocados; falla si ya existe para no pisar el respaldo).
---    Sus consultas incluyen:
---    create table respaldo_515.anuncio_metricas as select * from public.anuncio_metricas;
---    create table respaldo_515.anuncio_alcance as select * from public.anuncio_alcance;
---    create table respaldo_515.anuncio_interacciones as select * from public.anuncio_interacciones;
--- 2. Aplicar clases_particulares.sql, admin_clases.sql, administradores.sql,
---    en ese orden. Cada archivo es transaccional y reaplicable.
--- DESHACER (también si solo se alcanzó a aplicar el primer archivo):
--- 1. No publicar/renovar campañas durante la reversión.
--- 2. Ejecutar supabase/revertir_campanas_515.sql completo en SQL Editor.
---    Bloquea escrituras, archiva TODAS las métricas posteriores, restaura las
---    llaves antiguas y funciones respaldadas, sin restaurar cuentas ni cobros
---    a una foto vieja. Las métricas operativas quedan en la publicación actual.
--- 3. Ejecutar las consultas de docs/marketplace-campanas-seguras.md, sección
---    Reversión. No reaplicar los SQL antiguos por sí solos: sus ON CONFLICT
---    necesitan las llaves anteriores. No borrar respaldo_515 hasta verificar.
--- Ningún deploy ejecuta estos archivos. Solo el SQL Editor de Lucas.
-
-begin;
+-- Esquema anterior a #515, fijado en 2a6118e. Solo para pruebas locales.
+create function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('aal',coalesce(current_setting('audit.aal',true),'aal1')) $$;
+create table public.user_ramos(user_id uuid);
 
 -- Marketplace de clases particulares.
 --
@@ -134,11 +116,6 @@ create table if not exists public.tutor_anuncios (
 -- alcance único ya se registra más abajo, pero la tarifa no queda fijada en el
 -- aviso ni hay presupuesto exigido en el servidor, así que todavía no se cobra
 -- solo.
--- Las filas anteriores conservan su alcance acumulado. Solo una publicación
--- NUEVA empieza otra medición; no se reparte el pasado entre fechas inventadas.
--- El cliente no recibe permisos de lectura/escritura sobre esta columna.
-alter table public.tutor_anuncios add column if not exists medicion_desde timestamptz not null default '-infinity';
-
 alter table public.tutor_anuncios add column if not exists criterios jsonb
   check (
     criterios is null or case
@@ -652,25 +629,6 @@ create table if not exists public.anuncio_metricas (
   primary key (anuncio_id, dia, tipo, tenant, ramo_sigla)
 );
 
--- Identidad de la publicación. -infinity conserva el conjunto heredado.
-alter table public.anuncio_metricas add column if not exists publicacion timestamptz not null default '-infinity';
-alter table public.anuncio_metricas add column if not exists vence_publicacion timestamptz;
--- Reaplicar no reconstruye la llave ni pierde filas. Una forma desconocida
--- aborta la transacción: no se destruyen constraints que no conocemos.
-do $$
-declare llave text;
-begin
-  select pg_get_constraintdef(oid) into llave from pg_constraint
-    where conrelid = 'public.anuncio_metricas'::regclass and contype = 'p';
-  if llave = 'PRIMARY KEY (anuncio_id, dia, tipo, tenant, ramo_sigla)' then
-    alter table public.anuncio_metricas drop constraint anuncio_metricas_pkey;
-    alter table public.anuncio_metricas add primary key (anuncio_id, dia, tipo, tenant, ramo_sigla, publicacion);
-  elsif llave is distinct from 'PRIMARY KEY (anuncio_id, dia, tipo, tenant, ramo_sigla, publicacion)' then
-    raise exception 'llave inesperada en anuncio_metricas: %', llave;
-  end if;
-end;
-$$;
-
 alter table public.anuncio_metricas enable row level security;
 revoke all on public.anuncio_metricas from public, anon, authenticated;
 
@@ -708,7 +666,7 @@ begin
     and estado = 'publicado'
     and (vence_at is null or vence_at > now())
     and public.tutor_aprobado(autor_id)
-  for update;
+  for key share;
 
   if not found then
     raise exception 'anuncio no disponible';
@@ -719,9 +677,9 @@ begin
 
   -- auth.uid() se descartó arriba: esta inserción no tiene ni puede recibir
   -- una columna de espectador. Solo queda el contador agregado.
-  insert into public.anuncio_metricas (anuncio_id, dia, tipo, tenant, ramo_sigla, eventos, publicacion, vence_publicacion)
-  values (anuncio.id, current_date, p_tipo, anuncio.tenant, sigla, 1, anuncio.medicion_desde, anuncio.vence_at)
-  on conflict (anuncio_id, dia, tipo, tenant, ramo_sigla, publicacion) do update
+  insert into public.anuncio_metricas (anuncio_id, dia, tipo, tenant, ramo_sigla, eventos)
+  values (anuncio.id, current_date, p_tipo, anuncio.tenant, sigla, 1)
+  on conflict (anuncio_id, dia, tipo, tenant, ramo_sigla) do update
     set eventos = public.anuncio_metricas.eventos + 1,
         updated_at = now()
     where public.anuncio_metricas.updated_at <= now() - interval '10 seconds';
@@ -755,7 +713,6 @@ begin
   select m.dia, m.tipo, m.tenant, m.ramo_sigla, m.eventos
   from public.anuncio_metricas m
   where m.anuncio_id = p_anuncio_id
-    and m.publicacion = (select medicion_desde from public.tutor_anuncios where id = p_anuncio_id)
     and m.eventos >= 15
   order by m.dia desc, m.tipo, m.ramo_sigla;
 end;
@@ -785,8 +742,7 @@ begin
   end if;
 
   return query
-  with m as (select * from public.anuncio_metricas where anuncio_id = p_anuncio_id
-    and publicacion = (select medicion_desde from public.tutor_anuncios where id = p_anuncio_id))
+  with m as (select * from public.anuncio_metricas where anuncio_id = p_anuncio_id)
   select 'total'::text, ''::text, m.tipo, sum(m.eventos)::integer from m group by m.tipo having sum(m.eventos) >= 15
   union all
   select 'dia', m.dia::text, m.tipo, sum(m.eventos)::integer from m group by m.dia, m.tipo having sum(m.eventos) >= 15
@@ -872,28 +828,6 @@ create table if not exists public.anuncio_alcance (
   primary key (anuncio_id, user_id)
 );
 
--- Identidad de la publicación. -infinity conserva el conjunto heredado.
-alter table public.anuncio_alcance add column if not exists publicacion timestamptz not null default '-infinity';
-alter table public.anuncio_alcance add column if not exists vence_publicacion timestamptz;
--- Reaplicar no reconstruye la llave ni pierde filas. Una forma desconocida
--- aborta la transacción: no se destruyen constraints que no conocemos.
-do $$
-declare llave text;
-begin
-  select pg_get_constraintdef(oid) into llave from pg_constraint
-    where conrelid = 'public.anuncio_alcance'::regclass and contype = 'p';
-  if llave = 'PRIMARY KEY (anuncio_id, user_id)' then
-    alter table public.anuncio_alcance drop constraint anuncio_alcance_pkey;
-    alter table public.anuncio_alcance add primary key (anuncio_id, user_id, publicacion);
-  elsif llave is distinct from 'PRIMARY KEY (anuncio_id, user_id, publicacion)' then
-    raise exception 'llave inesperada en anuncio_alcance: %', llave;
-  end if;
-end;
-$$;
-update public.anuncio_alcance a set vence_publicacion = t.vence_at
-from public.tutor_anuncios t
-where t.id = a.anuncio_id and a.publicacion = '-infinity' and a.vence_publicacion is null and t.vence_at is not null;
-
 alter table public.anuncio_alcance enable row level security;
 revoke all on public.anuncio_alcance from public, anon, authenticated;
 
@@ -948,14 +882,13 @@ begin
   end if;
   -- Desde CAMPAÑAS (2026-09-25): no cuenta un anuncio programado o que ya
   -- llegó a su tope, ni el propio profesor, ni una cuenta sin ramos.
-  perform 1 from public.tutor_anuncios where id = p_anuncio_id for update;
   if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
     return false;
   end if;
 
-  insert into public.anuncio_alcance (anuncio_id, user_id, canal, publicacion, vence_publicacion)
-  select id, auth.uid(), p_canal, medicion_desde, vence_at from public.tutor_anuncios where id = p_anuncio_id
-  on conflict (anuncio_id, user_id, publicacion) do update
+  insert into public.anuncio_alcance (anuncio_id, user_id, canal)
+  values (p_anuncio_id, auth.uid(), p_canal)
+  on conflict (anuncio_id, user_id) do update
     set canal = excluded.canal
     where public.rango_canal_alcance(excluded.canal) > public.rango_canal_alcance(public.anuncio_alcance.canal);
 
@@ -983,8 +916,7 @@ begin
     raise exception 'no puedes ver el alcance de este anuncio';
   end if;
 
-  return (select count(*)::integer from public.anuncio_alcance where anuncio_id = p_anuncio_id
-    and publicacion = (select medicion_desde from public.tutor_anuncios where id = p_anuncio_id));
+  return (select count(*)::integer from public.anuncio_alcance where anuncio_id = p_anuncio_id);
 end;
 $$;
 
@@ -1011,7 +943,6 @@ begin
   select a.canal, count(*)::integer
   from public.anuncio_alcance a
   where a.anuncio_id = p_anuncio_id
-    and a.publicacion = (select medicion_desde from public.tutor_anuncios where id = p_anuncio_id)
   group by a.canal;
 end;
 $$;
@@ -1035,7 +966,8 @@ begin
   delete from public.anuncio_alcance as a
    using public.tutor_anuncios as t
    where t.id = a.anuncio_id
-     and coalesce(a.vence_publicacion, t.vence_at) < now() - make_interval(days => p_dias);
+     and t.vence_at is not null
+     and t.vence_at < now() - make_interval(days => p_dias);
   get diagnostics filas = row_count;
   return filas;
 end;
@@ -1128,28 +1060,6 @@ create table if not exists public.anuncio_interacciones (
   dia         date not null default current_date,
   primary key (anuncio_id, user_id, tipo)
 );
--- Identidad de la publicación. -infinity conserva el conjunto heredado.
-alter table public.anuncio_interacciones add column if not exists publicacion timestamptz not null default '-infinity';
-alter table public.anuncio_interacciones add column if not exists vence_publicacion timestamptz;
--- Reaplicar no reconstruye la llave ni pierde filas. Una forma desconocida
--- aborta la transacción: no se destruyen constraints que no conocemos.
-do $$
-declare llave text;
-begin
-  select pg_get_constraintdef(oid) into llave from pg_constraint
-    where conrelid = 'public.anuncio_interacciones'::regclass and contype = 'p';
-  if llave = 'PRIMARY KEY (anuncio_id, user_id, tipo)' then
-    alter table public.anuncio_interacciones drop constraint anuncio_interacciones_pkey;
-    alter table public.anuncio_interacciones add primary key (anuncio_id, user_id, tipo, publicacion);
-  elsif llave is distinct from 'PRIMARY KEY (anuncio_id, user_id, tipo, publicacion)' then
-    raise exception 'llave inesperada en anuncio_interacciones: %', llave;
-  end if;
-end;
-$$;
-update public.anuncio_interacciones i set vence_publicacion = t.vence_at
-from public.tutor_anuncios t
-where t.id = i.anuncio_id and i.publicacion = '-infinity' and i.vence_publicacion is null and t.vence_at is not null;
-
 alter table public.anuncio_interacciones enable row level security;
 revoke all on public.anuncio_interacciones from public, anon, authenticated;
 
@@ -1165,44 +1075,6 @@ as $$
   end;
 $$;
 
--- Intervalos no visibles por suspensión del profesor. No contienen alumnos.
-create table if not exists public.tutor_suspensiones (
-  id bigint generated always as identity primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  desde timestamptz not null,
-  hasta timestamptz,
-  check (hasta is null or hasta >= desde)
-);
-create unique index if not exists tutor_suspension_abierta on public.tutor_suspensiones(user_id) where hasta is null;
-alter table public.tutor_suspensiones enable row level security;
-revoke all on public.tutor_suspensiones from public, anon, authenticated;
-
--- Para quienes ya estaban suspendidos, se congela desde la instalación.
--- No hay evidencia para recalcular días anteriores: esos importes se revisan a mano.
-insert into public.tutor_suspensiones(user_id, desde)
-select p.user_id, now() from public.tutor_perfiles p
-where p.estado = 'suspendido' and exists (
-  select 1 from public.tutor_anuncios a where a.autor_id = p.user_id and a.publicado_at is not null
-)
-on conflict (user_id) where hasta is null do nothing;
-
-create or replace function public.registrar_suspension_profesor()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  if new.estado = 'suspendido' and old.estado = 'aprobado' then
-    insert into public.tutor_suspensiones(user_id, desde) values(new.user_id, now())
-    on conflict (user_id) where hasta is null do nothing;
-  elsif old.estado = 'suspendido' and new.estado <> 'suspendido' then
-    update public.tutor_suspensiones set hasta = now() where user_id = new.user_id and hasta is null;
-  end if;
-  return new;
-end;
-$$;
-revoke all on function public.registrar_suspension_profesor() from public, anon, authenticated;
-drop trigger if exists tutor_perfiles_suspension on public.tutor_perfiles;
-create trigger tutor_perfiles_suspension after update of estado on public.tutor_perfiles
-for each row execute function public.registrar_suspension_profesor();
-
 -- Lo que lleva una campaña. Uso interno: no tiene grant.
 create or replace function public.costo_campana(p_anuncio_id uuid)
 returns table (dias integer, inicio date, tope_clp integer, dias_cobrados integer,
@@ -1215,8 +1087,7 @@ as $$
 declare
   a public.tutor_anuncios%rowtype;
   c public.anuncio_campanas%rowtype;
-  hasta_cobro timestamptz;
-  segundos_suspendidos numeric := 0;
+  hasta timestamptz;
 begin
   select * into a from public.tutor_anuncios where id = p_anuncio_id;
   if not found then return; end if;
@@ -1228,18 +1099,14 @@ begin
   tope_clp := c.tope_clp;
   dias_cobrados := 0;
   if a.publicado_at is not null and a.publicado_at <= now() then
-    hasta_cobro := least(now(), coalesce(a.vence_at, 'infinity'), coalesce(c.detenido_at, 'infinity'));
-    select coalesce(sum(greatest(0, extract(epoch from
-      (least(hasta_cobro, coalesce(s.hasta, hasta_cobro)) - greatest(a.publicado_at, s.desde))))), 0)
-      into segundos_suspendidos from public.tutor_suspensiones s
-      where s.user_id = a.autor_id and s.desde < hasta_cobro and (s.hasta is null or s.hasta > a.publicado_at);
-    dias_cobrados := greatest(0, ceil((extract(epoch from (hasta_cobro - a.publicado_at)) - segundos_suspendidos) / 86400)::integer);
+    hasta := least(now(), coalesce(a.vence_at, 'infinity'), coalesce(c.detenido_at, 'infinity'));
+    dias_cobrados := greatest(0, ceil(extract(epoch from (hasta - a.publicado_at)) / 86400)::integer);
     if dias is not null then dias_cobrados := least(dias_cobrados, dias); end if;
   end if;
-  select count(*)::integer into vistas from public.anuncio_alcance where anuncio_id = p_anuncio_id and publicacion = a.medicion_desde;
+  select count(*)::integer into vistas from public.anuncio_alcance where anuncio_id = p_anuncio_id;
   select count(*) filter (where tipo = 'apertura')::integer, count(*) filter (where tipo = 'contacto')::integer
     into aperturas, contactos
-    from public.anuncio_interacciones where anuncio_id = p_anuncio_id and publicacion = a.medicion_desde;
+    from public.anuncio_interacciones where anuncio_id = p_anuncio_id;
   costo_bruto := dias_cobrados * public.tarifa_campana_clp('dia')
                + vistas * public.tarifa_campana_clp('vista')
                + aperturas * public.tarifa_campana_clp('apertura')
@@ -1324,12 +1191,11 @@ begin
   if p_tipo not in ('apertura', 'contacto') then
     raise exception 'tipo inválido';
   end if;
-  perform 1 from public.tutor_anuncios where id = p_anuncio_id for update;
   if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
     return false;
   end if;
-  insert into public.anuncio_interacciones (anuncio_id, user_id, tipo, publicacion, vence_publicacion)
-  select id, auth.uid(), p_tipo, medicion_desde, vence_at from public.tutor_anuncios where id = p_anuncio_id
+  insert into public.anuncio_interacciones (anuncio_id, user_id, tipo)
+  values (p_anuncio_id, auth.uid(), p_tipo)
   on conflict do nothing;
   get diagnostics filas = row_count;
   return filas = 1;
@@ -1408,7 +1274,8 @@ begin
   delete from public.anuncio_interacciones as i
    using public.tutor_anuncios as t
    where t.id = i.anuncio_id
-     and coalesce(i.vence_publicacion, t.vence_at) < now() - make_interval(days => p_dias);
+     and t.vence_at is not null
+     and t.vence_at < now() - make_interval(days => p_dias);
   get diagnostics filas = row_count;
   return filas;
 end;
@@ -1416,30 +1283,507 @@ $$;
 revoke all on function public.limpiar_interacciones_anuncios(integer) from public, anon, authenticated;
 
 
--- Solo un envío NUEVO a revisión exige campaña. No bloquea anuncios ya
--- publicados ni revisiones anteriores a la migración.
--- La marca interna solo cambia al comenzar una publicación nueva.
-create or replace function public.preparar_publicacion_clase()
-returns trigger language plpgsql security definer set search_path = public as $$
+-- Aprobar profesores y publicar sus clases, desde el SQL Editor de Supabase.
+--
+-- Hasta ahora aprobar era escribir UPDATE a mano y acertarle a la restricción
+-- `tutor_anuncios_publicado_revisado_pagado`: un anuncio publicado necesita
+-- revisado_at, pagado_at y publicado_at a la vez, y vence_at posterior. Estas
+-- funciones hacen ese paso completo, validan el estado de partida y dejan
+-- registro de cada publicación con lo que se cobró.
+--
+-- DÓNDE VIVEN Y POR QUÉ. En el esquema `admin`, no en `public`. La API de
+-- Supabase expone `public`, y Supabase le concede EXECUTE a anon y
+-- authenticated sobre toda función nueva que se cree ahí. Fuera de ese esquema
+-- no hay endpoint que las llame, y además se revoca todo a mano. Son
+-- `security invoker` (lo normal): corren con los permisos de quien las llama,
+-- así que desde el SQL Editor funcionan y desde el navegador no tendrían con
+-- qué, aunque alguien las alcanzara.
+--
+-- Requiere clases_particulares.sql aplicado antes. Es aditivo: no cambia
+-- ninguna tabla existente ni ninguna política.
+--
+-- USO (SQL Editor):
+--   select * from admin.pendientes();
+--   select admin.revisar_profesor('<user_id>', 'aprobado');   -- o 'rechazado', 'suspendido'
+--   select admin.publicar_anuncio('<anuncio_id>', 0);         -- cargo en pesos; 0 = piloto sin cargo
+--   select admin.publicar_anuncio('<anuncio_id>', 3000, 30);  -- con cargo y días explícitos
+--   select admin.devolver_anuncio('<anuncio_id>');            -- vuelve a borrador para corregir
+--   select admin.aprobar_logo('<user_id>');                   -- o admin.rechazar_logo
+
+create schema if not exists admin;
+revoke all on schema admin from public, anon, authenticated;
+
+-- Una fila por cada vez que se publicó un anuncio. Un anuncio que se pausa, se
+-- edita y se vuelve a aprobar tiene dos filas: el cobro de la primera campaña
+-- no se pisa con el de la segunda. No guarda nada del estudiante ni del
+-- profesor además del anuncio, y se va con él (y el anuncio, con la cuenta).
+create table if not exists admin.anuncio_publicaciones (
+  id            uuid primary key default gen_random_uuid(),
+  anuncio_id    uuid not null references public.tutor_anuncios(id) on delete cascade,
+  cargo_clp     integer not null check (cargo_clp between 0 and 10000000),
+  dias          integer not null check (dias between 1 and 90),
+  publicado_at  timestamptz not null default now(),
+  vence_at      timestamptz not null,
+  check (vence_at > publicado_at)
+);
+create index if not exists anuncio_publicaciones_por_anuncio
+  on admin.anuncio_publicaciones (anuncio_id, publicado_at desc);
+
+-- Cero políticas: fuera del dueño (el equipo en el SQL Editor), nadie la lee.
+alter table admin.anuncio_publicaciones enable row level security;
+revoke all on admin.anuncio_publicaciones from public, anon, authenticated;
+
+-- Lo que está esperando una decisión, con lo necesario para tomarla. Trae el
+-- correo de la cuenta porque aprobar exige comprobar que el contacto sea
+-- plausible; por eso mismo esta función no puede quedar al alcance de nadie más.
+create or replace function admin.pendientes()
+returns table (
+  tipo      text,
+  id        uuid,
+  profesor  text,
+  correo    text,
+  desde     timestamptz,
+  detalle   jsonb
+)
+language sql
+stable
+set search_path = public, admin
+as $$
+  select 'profesor', p.user_id, p.nombre_publico, u.email::text, p.solicitado_at,
+         jsonb_build_object('presentacion', p.presentacion)
+    from public.tutor_perfiles p
+    join auth.users u on u.id = p.user_id
+   where p.estado = 'pendiente'
+  union all
+  select 'anuncio', a.id, p.nombre_publico, u.email::text, a.created_at,
+         jsonb_build_object(
+           'estado_profesor', p.estado,
+           'titulo', a.titulo,
+           'descripcion', a.descripcion,
+           'tenant', a.tenant,
+           'ramos', a.ramos_siglas,
+           'precio_clase_clp', a.precio_clp,
+           'modalidad', coalesce(a.modalidad_otra, a.modalidad),
+           'ubicacion', coalesce(a.ubicacion_otra, a.ubicacion),
+           'detalles', a.detalles,
+           'contacto', a.contacto_tipo || ': ' || a.contacto_valor,
+           'criterios', a.criterios,
+           'tiene_flyer', a.flyer_path is not null,
+           'publicaciones_anteriores',
+             (select count(*) from admin.anuncio_publicaciones x where x.anuncio_id = a.id)
+         )
+    from public.tutor_anuncios a
+    join auth.users u on u.id = a.autor_id
+    left join public.tutor_perfiles p on p.user_id = a.autor_id
+   where a.estado = 'en_revision'
+  union all
+  -- Un logo propuesto que todavía no se muestra. Se revisa abriendo la ruta
+  -- en Storage → tutor-flyers.
+  select 'logo', p.user_id, p.nombre_publico, u.email::text, p.revisado_at,
+         jsonb_build_object('ruta', p.logo_path, 'reemplaza', p.logo_aprobado_path)
+    from public.tutor_perfiles p
+    join auth.users u on u.id = p.user_id
+   where p.logo_path is not null
+     and p.logo_path is distinct from p.logo_aprobado_path
+  order by 5;
+$$;
+
+-- Aprobar, rechazar o suspender una ficha. Suspender oculta de inmediato todos
+-- sus anuncios publicados (la política de lectura exige `tutor_aprobado`) sin
+-- borrarlos ni tocar su estado: al reaprobar vuelven los que no hayan vencido.
+create or replace function admin.revisar_profesor(p_user_id uuid, p_decision text)
+returns text
+language plpgsql
+set search_path = public, admin
+as $$
+declare
+  actual text;
 begin
-  if new.estado = 'en_revision' and (tg_op = 'INSERT' or old.estado <> 'en_revision') then
-    perform 1 from public.anuncio_campanas where anuncio_id = new.id for update;
-    if not found then
-      raise exception 'guarda los días y el tope de la campaña antes de enviarla o publicarla' using errcode = '23514';
-    end if;
+  if p_decision not in ('aprobado', 'rechazado', 'suspendido') then
+    raise exception 'la decisión tiene que ser aprobado, rechazado o suspendido';
   end if;
-  if new.estado = 'publicado' and (tg_op = 'INSERT' or old.estado <> 'publicado' or new.publicado_at is distinct from old.publicado_at) then
-    if new.publicado_at is null or (tg_op = 'UPDATE' and old.publicado_at is not null and new.publicado_at = old.publicado_at) then
-      raise exception 'una nueva publicación necesita su propia fecha de inicio' using errcode = '23514';
-    end if;
-    new.medicion_desde := new.publicado_at;
+
+  select estado into actual from public.tutor_perfiles where user_id = p_user_id for update;
+  if actual is null then
+    raise exception 'no hay ficha de profesor para %', p_user_id;
   end if;
-  return new;
+  if actual = p_decision then
+    return 'sin cambios: ya estaba ' || actual;
+  end if;
+  if p_decision = 'suspendido' and actual <> 'aprobado' then
+    raise exception 'solo se suspende a un profesor aprobado (está %)', actual;
+  end if;
+
+  update public.tutor_perfiles
+     set estado = p_decision, revisado_at = now()
+   where user_id = p_user_id;
+  return actual || ' → ' || p_decision;
 end;
 $$;
-revoke all on function public.preparar_publicacion_clase() from public, anon, authenticated;
-drop trigger if exists tutor_anuncios_publicacion on public.tutor_anuncios;
-create trigger tutor_anuncios_publicacion before insert or update of estado, publicado_at on public.tutor_anuncios
-for each row execute function public.preparar_publicacion_clase();
 
-commit;
+-- Publica un anuncio en revisión. El cargo es obligatorio y explícito —0 es
+-- una decisión, "piloto sin cargo", no un valor por omisión— porque la tarifa
+-- todavía no está decidida y no puede quedar decidida por un default.
+-- Desde CAMPAÑAS (2026-09-25) los días y el inicio los elige el profesor: si
+-- el anuncio tiene campaña, se usan esos y `p_dias` queda de respaldo para los
+-- anuncios de antes. Con inicio futuro queda PROGRAMADO: publicado, pero no se
+-- muestra hasta ese día (medianoche de Chile). La firma cambió su default, y
+-- Postgres no deja cambiarlo con create or replace: por eso el drop.
+drop function if exists admin.publicar_anuncio(uuid, integer, integer);
+create or replace function admin.publicar_anuncio(p_anuncio_id uuid, p_cargo_clp integer, p_dias integer default null)
+returns text
+language plpgsql
+set search_path = public, admin
+as $$
+declare
+  a public.tutor_anuncios%rowtype;
+  ahora timestamptz := now();
+  desde timestamptz;
+  vence timestamptz;
+  c public.anuncio_campanas%rowtype;
+  dias integer;
+begin
+  if p_cargo_clp is null or p_cargo_clp < 0 then
+    raise exception 'el cargo va en pesos y no puede ser negativo (0 si es sin cargo)';
+  end if;
+
+  select * into a from public.tutor_anuncios where id = p_anuncio_id for update;
+  if not found then
+    raise exception 'no existe el anuncio %', p_anuncio_id;
+  end if;
+  if a.estado <> 'en_revision' then
+    raise exception 'solo se publica un anuncio en revisión (está %)', a.estado;
+  end if;
+  if not public.tutor_aprobado(a.autor_id) then
+    raise exception 'el profesor de este anuncio no está aprobado';
+  end if;
+  if a.titulo is null then
+    raise exception 'el anuncio no tiene título';
+  end if;
+
+  select * into c from public.anuncio_campanas where anuncio_id = p_anuncio_id;
+  dias := coalesce(c.dias, p_dias, 30);
+  if dias not between 1 and 90 then
+    raise exception 'la campaña dura entre 1 y 90 días';
+  end if;
+  desde := greatest(ahora, coalesce((c.inicio::timestamp at time zone 'America/Santiago'), ahora));
+  vence := desde + make_interval(days => dias);
+
+  update public.tutor_anuncios
+     set estado = 'publicado',
+         revisado_at = ahora,
+         pagado_at = ahora,
+         publicado_at = desde,
+         vence_at = vence
+   where id = p_anuncio_id;
+
+  insert into admin.anuncio_publicaciones (anuncio_id, cargo_clp, dias, publicado_at, vence_at)
+  values (p_anuncio_id, p_cargo_clp, dias, desde, vence);
+
+  return case when desde > ahora then 'programado desde ' || to_char(desde at time zone 'America/Santiago', 'YYYY-MM-DD HH24:MI') || ' ' else 'publicado ' end
+    || 'hasta ' || to_char(vence at time zone 'America/Santiago', 'YYYY-MM-DD HH24:MI');
+end;
+$$;
+
+-- Devuelve un anuncio en revisión a borrador para que el profesor lo corrija.
+-- No hay columna de motivo todavía: el motivo se le dice por fuera.
+create or replace function admin.devolver_anuncio(p_anuncio_id uuid)
+returns text
+language plpgsql
+set search_path = public, admin
+as $$
+declare
+  actual text;
+begin
+  select estado into actual from public.tutor_anuncios where id = p_anuncio_id for update;
+  if actual is null then
+    raise exception 'no existe el anuncio %', p_anuncio_id;
+  end if;
+  if actual <> 'en_revision' then
+    raise exception 'solo se devuelve un anuncio en revisión (está %)', actual;
+  end if;
+
+  update public.tutor_anuncios set estado = 'borrador' where id = p_anuncio_id;
+  return 'en_revision → borrador';
+end;
+$$;
+
+-- El logo propuesto pasa a ser el que se ve en todos sus anuncios.
+create or replace function admin.aprobar_logo(p_user_id uuid)
+returns text
+language plpgsql
+set search_path = public, admin
+as $$
+declare
+  propuesto text;
+begin
+  select logo_path into propuesto from public.tutor_perfiles where user_id = p_user_id for update;
+  if propuesto is null then
+    raise exception 'ese profesor no tiene un logo propuesto';
+  end if;
+  update public.tutor_perfiles set logo_aprobado_path = propuesto where user_id = p_user_id;
+  return 'logo aprobado: ' || propuesto;
+end;
+$$;
+
+-- Descarta el propuesto: vuelve al que ya se mostraba (o a ninguno).
+create or replace function admin.rechazar_logo(p_user_id uuid)
+returns text
+language plpgsql
+set search_path = public, admin
+as $$
+begin
+  update public.tutor_perfiles set logo_path = logo_aprobado_path where user_id = p_user_id;
+  if not found then
+    raise exception 'no hay ficha de profesor para %', p_user_id;
+  end if;
+  return 'logo propuesto descartado';
+end;
+$$;
+
+revoke all on all functions in schema admin from public, anon, authenticated;
+
+-- ADMINISTRADORES DE GRADEHUB · verificación en dos pasos.
+--
+-- Pedido de Lucas del 2026-09-25: una página para ver y administrar las
+-- campañas de todos los profesores, que aparezca solo en su cuenta. Que la
+-- pestaña se vea solo ahí es cosmético —el repositorio es público—: lo que
+-- protege es esto. Las funciones de la página preguntan en el servidor si
+-- quien llama está en la lista Y entró con su segundo factor (aal2). AGENTS.md
+-- lo exige: con un panel administrativo, la verificación en dos pasos deja de
+-- ser opcional.
+--
+-- Se aplica a mano y es aditivo. Después hay que anotarse en la lista, también
+-- a mano y con el correo propio (nunca queda escrito en el repositorio):
+--
+--   insert into admin.administradores (user_id)
+--   select id from auth.users where email = 'TU CORREO';
+
+create schema if not exists admin;
+revoke all on schema admin from public, anon, authenticated;
+
+-- La lista. Vive en `admin`, que la API no expone: nadie la lee ni la escribe
+-- desde el navegador. Se borra con la cuenta.
+create table if not exists admin.administradores (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  created_at  timestamptz not null default now()
+);
+alter table admin.administradores enable row level security;
+revoke all on admin.administradores from public, anon, authenticated;
+
+-- ¿Esta cuenta es administradora? Solo para decidir si se muestra la pestaña:
+-- no da acceso a nada. Responde por la propia cuenta y nada más.
+create or replace function public.soy_administrador()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, admin
+as $$
+  select auth.uid() is not null
+     and exists (select 1 from admin.administradores where user_id = auth.uid());
+$$;
+revoke all on function public.soy_administrador() from public, anon;
+grant execute on function public.soy_administrador() to authenticated;
+
+-- La llave de verdad: administradora Y con el segundo factor verificado en esta
+-- sesión. Toda función de la página la llama primero. No tiene grant: se usa
+-- desde otras funciones security definer, nunca directo.
+create or replace function public.administrador_verificado()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, admin
+as $$
+  select public.soy_administrador()
+     and coalesce(auth.jwt() ->> 'aal', '') = 'aal2';
+$$;
+revoke all on function public.administrador_verificado() from public, anon, authenticated;
+
+-- ─── LA PÁGINA DE ADMINISTRACIÓN DE CLASES ──────────────────────────────────
+--
+-- Pedido de Lucas del 2026-09-25: ver a todos los profesores con sus anuncios
+-- activos y programados, sus números y lo que llevan gastado; marcar cada
+-- campaña como cobrada o en deuda; pausar un aviso y pausar a un profesor.
+-- Toda función empieza por administrador_verificado(): sin la lista y el
+-- segundo factor, error. Toda acción queda registrada en admin.acciones.
+--
+-- Depende de supabase/clases_particulares.sql (con su sección CAMPAÑAS).
+
+-- Cobrado o en deuda, por campaña: una campaña es un anuncio en una
+-- publicación (anuncio + fecha en que se publicó). "Pendiente" es no tener fila.
+create table if not exists admin.cobros (
+  anuncio_id      uuid not null references public.tutor_anuncios(id) on delete cascade,
+  publicado_at    timestamptz not null,
+  estado          text not null check (estado in ('cobrado', 'deuda')),
+  monto_clp       integer not null check (monto_clp between 0 and 5000000),
+  actualizado_at  timestamptz not null default now(),
+  primary key (anuncio_id, publicado_at)
+);
+alter table admin.cobros enable row level security;
+revoke all on admin.cobros from public, anon, authenticated;
+
+-- Quién hizo qué y cuándo. Si un profesor reclama que le pausaron un aviso,
+-- acá está. Quien actuó queda en null si su cuenta se borra.
+create table if not exists admin.acciones (
+  id          bigint generated always as identity primary key,
+  admin_id    uuid references auth.users(id) on delete set null,
+  accion      text not null,
+  objetivo    uuid,
+  detalle     jsonb,
+  created_at  timestamptz not null default now()
+);
+alter table admin.acciones enable row level security;
+revoke all on admin.acciones from public, anon, authenticated;
+
+create or replace function admin.exigir_administrador()
+returns void
+language plpgsql
+stable
+security definer
+set search_path = public, admin
+as $$
+begin
+  if not public.administrador_verificado() then
+    raise exception 'sin acceso' using errcode = '42501';
+  end if;
+end;
+$$;
+
+-- Todo lo que la página muestra, en una sola lectura. El costo va bruto: la
+-- app aplica el tope con la misma cuenta que ve el profesor.
+create or replace function public.admin_panel_clases()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, admin
+as $$
+begin
+  perform admin.exigir_administrador();
+  return coalesce((
+    select jsonb_agg(prof order by (prof ->> 'estado') = 'pendiente' desc, prof ->> 'nombre')
+    from (
+      select jsonb_build_object(
+        'user_id', p.user_id,
+        'nombre', p.nombre_publico,
+        'estado', p.estado,
+        'correo', u.email,
+        'solicitado_at', p.solicitado_at,
+        'anuncios', coalesce((
+          select jsonb_agg(jsonb_build_object(
+            'id', a.id,
+            'titulo', a.titulo,
+            'estado', a.estado,
+            'ramos_siglas', a.ramos_siglas,
+            'precio_clp', a.precio_clp,
+            'publicado_at', a.publicado_at,
+            'vence_at', a.vence_at,
+            'created_at', a.created_at,
+            'campana', (select to_jsonb(k) from public.costo_campana(a.id) k),
+            'cobro', (select jsonb_build_object('estado', c.estado, 'monto_clp', c.monto_clp, 'actualizado_at', c.actualizado_at)
+                        from admin.cobros c where c.anuncio_id = a.id and c.publicado_at = a.publicado_at)
+          ) order by a.created_at desc)
+          from public.tutor_anuncios a where a.autor_id = p.user_id), '[]'::jsonb)
+      ) as prof
+      from public.tutor_perfiles p
+      left join auth.users u on u.id = p.user_id
+    ) x), '[]'::jsonb);
+end;
+$$;
+
+-- Pausa un aviso publicado o programado. Para volver a mostrarse pasa por
+-- revisión, igual que cuando lo pausa el profesor.
+create or replace function public.admin_pausar_anuncio(p_anuncio_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, admin
+as $$
+declare
+  filas integer := 0;
+begin
+  perform admin.exigir_administrador();
+  update public.tutor_anuncios set estado = 'pausado'
+   where id = p_anuncio_id and estado = 'publicado';
+  get diagnostics filas = row_count;
+  if filas = 1 then
+    insert into admin.acciones (admin_id, accion, objetivo) values (auth.uid(), 'pausar_anuncio', p_anuncio_id);
+  end if;
+  return filas = 1;
+end;
+$$;
+
+-- Pausar a un profesor oculta todos sus avisos de una vez sin borrar nada
+-- (la política de lectura exige profesor aprobado). Se revierte con 'aprobado'.
+create or replace function public.admin_estado_profesor(p_user_id uuid, p_estado text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, admin
+as $$
+declare
+  filas integer := 0;
+begin
+  perform admin.exigir_administrador();
+  if p_estado not in ('aprobado', 'suspendido') then
+    raise exception 'estado inválido';
+  end if;
+  update public.tutor_perfiles set estado = p_estado, revisado_at = now()
+   where user_id = p_user_id and estado in ('aprobado', 'suspendido') and estado <> p_estado;
+  get diagnostics filas = row_count;
+  if filas = 1 then
+    insert into admin.acciones (admin_id, accion, objetivo, detalle)
+    values (auth.uid(), 'estado_profesor', p_user_id, jsonb_build_object('estado', p_estado));
+  end if;
+  return filas = 1;
+end;
+$$;
+
+-- Cobrado, en deuda o pendiente (sin fila), para la publicación actual del
+-- anuncio. El monto lo escribe quien administra: en el piloto no hay cobro
+-- automático.
+create or replace function public.admin_marcar_cobro(p_anuncio_id uuid, p_estado text, p_monto_clp integer)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, admin
+as $$
+declare
+  desde timestamptz;
+begin
+  perform admin.exigir_administrador();
+  if p_estado not in ('cobrado', 'deuda', 'pendiente') then
+    raise exception 'estado de cobro inválido';
+  end if;
+  select publicado_at into desde from public.tutor_anuncios where id = p_anuncio_id;
+  if desde is null then
+    raise exception 'ese anuncio no se ha publicado';
+  end if;
+  if p_estado = 'pendiente' then
+    delete from admin.cobros where anuncio_id = p_anuncio_id and publicado_at = desde;
+  else
+    if p_monto_clp is null or p_monto_clp not between 0 and 5000000 then
+      raise exception 'monto inválido';
+    end if;
+    insert into admin.cobros (anuncio_id, publicado_at, estado, monto_clp)
+    values (p_anuncio_id, desde, p_estado, p_monto_clp)
+    on conflict (anuncio_id, publicado_at) do update
+      set estado = excluded.estado, monto_clp = excluded.monto_clp, actualizado_at = now();
+  end if;
+  insert into admin.acciones (admin_id, accion, objetivo, detalle)
+  values (auth.uid(), 'marcar_cobro', p_anuncio_id, jsonb_build_object('estado', p_estado, 'monto_clp', p_monto_clp));
+  return true;
+end;
+$$;
+
+revoke all on function admin.exigir_administrador() from public, anon, authenticated;
+revoke all on function public.admin_panel_clases() from public, anon;
+revoke all on function public.admin_pausar_anuncio(uuid) from public, anon;
+revoke all on function public.admin_estado_profesor(uuid, text) from public, anon;
+revoke all on function public.admin_marcar_cobro(uuid, text, integer) from public, anon;
+grant execute on function public.admin_panel_clases() to authenticated;
+grant execute on function public.admin_pausar_anuncio(uuid) to authenticated;
+grant execute on function public.admin_estado_profesor(uuid, text) to authenticated;
+grant execute on function public.admin_marcar_cobro(uuid, text, integer) to authenticated;

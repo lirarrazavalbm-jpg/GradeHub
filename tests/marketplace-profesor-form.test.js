@@ -43,8 +43,8 @@ ctx.guardarSimulado=async(datos,id)=>{
   return {ok:true,anuncio:{id:'cccccccc-cccc-4ccc-cccc-cccccccccccc',estado:'borrador',...datos}};
 };
 ctx.enviarSimulado=async()=>{enviados++;return {ok:true};};
-let campanas=0;
-ctx.campanaSimulada=async()=>{campanas++;return {ok:true};};
+let campanas=0,errorCampana=null;
+ctx.campanaSimulada=async()=>{campanas++;return errorCampana||{ok:true};};
 run('guardarBorradorClase=guardarSimulado; enviarBorradorClase=enviarSimulado; guardarCampanaClase=campanaSimulada');
 let n=0;
 function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
@@ -84,5 +84,20 @@ function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
   elements['#pr-tope'].value='$500';
   await events['#pr-guardar:click']();
   check('un tope imposible no guarda nada',guardados===5&&/tope/.test(elements['.profesor-estado'].textContent));
+  elements['#pr-tope'].value='$10.000';
+  for(const fallo of [{ok:false,error:'permiso denegado'}, {ok:false,error:'red caída'}]){
+    errorCampana=fallo;
+    const antes=enviados;
+    await events['#pr-enviar:click']();
+    check('no envía sin campaña persistida: '+JSON.stringify(fallo),enviados===antes&&/Tu clase se guardó, pero/.test(elements['.profesor-estado'].textContent));
+  }
+  ctx.enviarSimulado=async()=>{enviados++;return {ok:true};};
+  run('enviarBorradorClase=enviarSimulado');
+  errorCampana=null;
+  await events['#pr-enviar:click']();
+  check('puede reenviar después de corregir el guardado del tope',enviados===3);
+  errorCampana={ok:false,falta:true};
+  await events['#pr-enviar:click']();
+  check('SQL antiguo permite revisión con aviso sin fingir campaña guardada',enviados===4&&/Los días y el tope todavía no se guardaron/.test(raiz.innerHTML));
   console.log(`Formulario de profesor OK: ${n}`);
 })().catch(e=>{console.error('FAIL:',e.message);process.exitCode=1;});

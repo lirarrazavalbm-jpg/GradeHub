@@ -1,3 +1,25 @@
+-- PR #515 · RESPALDO OBLIGATORIO ANTES DE APLICAR A UNA BASE EXISTENTE.
+-- 1. Ejecutar supabase/respaldo_campanas_515.sql UNA VEZ (schema privado,
+--    RLS y permisos revocados; falla si ya existe para no pisar el respaldo).
+--    Sus consultas incluyen:
+--    create table respaldo_515.anuncio_metricas as select * from public.anuncio_metricas;
+--    create table respaldo_515.anuncio_alcance as select * from public.anuncio_alcance;
+--    create table respaldo_515.anuncio_interacciones as select * from public.anuncio_interacciones;
+-- 2. Aplicar clases_particulares.sql, admin_clases.sql, administradores.sql,
+--    en ese orden. Cada archivo es transaccional y reaplicable.
+-- DESHACER (también si solo se alcanzó a aplicar el primer archivo):
+-- 1. No publicar/renovar campañas durante la reversión.
+-- 2. Ejecutar supabase/revertir_campanas_515.sql completo en SQL Editor.
+--    Bloquea escrituras, archiva TODAS las métricas posteriores, restaura las
+--    llaves antiguas y funciones respaldadas, sin restaurar cuentas ni cobros
+--    a una foto vieja. Las métricas operativas quedan en la publicación actual.
+-- 3. Ejecutar las consultas de docs/marketplace-campanas-seguras.md, sección
+--    Reversión. No reaplicar los SQL antiguos por sí solos: sus ON CONFLICT
+--    necesitan las llaves anteriores. No borrar respaldo_515 hasta verificar.
+-- Ningún deploy ejecuta estos archivos. Solo el SQL Editor de Lucas.
+
+begin;
+
 -- Aprobar profesores y publicar sus clases, desde el SQL Editor de Supabase.
 --
 -- Hasta ahora aprobar era escribir UPDATE a mano y acertarle a la restricción
@@ -139,9 +161,8 @@ $$;
 -- Publica un anuncio en revisión. El cargo es obligatorio y explícito —0 es
 -- una decisión, "piloto sin cargo", no un valor por omisión— porque la tarifa
 -- todavía no está decidida y no puede quedar decidida por un default.
--- Desde CAMPAÑAS (2026-09-25) los días y el inicio los elige el profesor: si
--- el anuncio tiene campaña, se usan esos y `p_dias` queda de respaldo para los
--- anuncios de antes. Con inicio futuro queda PROGRAMADO: publicado, pero no se
+-- Los envíos nuevos guardan días, inicio y tope. Las revisiones heredadas
+-- sin campaña conservan p_dias (o 30 días) como en el SQL anterior. Con inicio futuro queda PROGRAMADO: publicado, pero no se
 -- muestra hasta ese día (medianoche de Chile). La firma cambió su default, y
 -- Postgres no deja cambiarlo con create or replace: por eso el drop.
 drop function if exists admin.publicar_anuncio(uuid, integer, integer);
@@ -176,12 +197,20 @@ begin
     raise exception 'el anuncio no tiene título';
   end if;
 
-  select * into c from public.anuncio_campanas where anuncio_id = p_anuncio_id;
+  select * into c from public.anuncio_campanas where anuncio_id = p_anuncio_id for update;
+  -- Las revisiones heredadas conservan el respaldo anterior. Los envíos
+  -- nuevos ya exigen configuración en el trigger de clases_particulares.sql.
   dias := coalesce(c.dias, p_dias, 30);
   if dias not between 1 and 90 then
     raise exception 'la campaña dura entre 1 y 90 días';
   end if;
   desde := greatest(ahora, coalesce((c.inicio::timestamp at time zone 'America/Santiago'), ahora));
+  -- Permite reprogramar para antes, sin reutilizar la identidad de una campaña.
+  while desde = a.publicado_at or exists (
+    select 1 from admin.anuncio_publicaciones where anuncio_id = a.id and publicado_at = desde
+  ) loop
+    desde := desde + interval '1 microsecond';
+  end loop;
   vence := desde + make_interval(days => dias);
 
   update public.tutor_anuncios
@@ -257,3 +286,5 @@ end;
 $$;
 
 revoke all on all functions in schema admin from public, anon, authenticated;
+
+commit;
