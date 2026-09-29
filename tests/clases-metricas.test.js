@@ -57,7 +57,10 @@ const pintar=async(anuncios,datos)=>{
   chk('y también cuántas la abrieron y contactaron',/La abrieron/.test(html)&&/>15<\/b><small>personas distintas/.test(html)&&/Te contactaron/.test(html)&&/>4<\/b><small>personas distintas/.test(html));
   chk('lo que va costando, contra el tope',/Va costando/.test(html)&&/6\.550/.test(html)&&/de tu tope de \$10\.000/.test(html));
   chk('con cada concepto escrito',/120 personas te vieron \(\$1\.200\)/.test(html)&&/4 te contactaron \(\$4\.000\)/.test(html)&&/6 días publicada \(\$600\)/.test(html));
-  chk('y se aclara que en el piloto no se cobra',/no se cobra/.test(html));
+  // Desde el 2026-09-30 hay anuncios pagados: decir "en el piloto no se cobra"
+  // a quien ya pagó sería falso. Lo que sí vale siempre es el tope.
+  chk('dice que nunca pasa del tope',/nunca pasa de tu tope/.test(html));
+  chk('y ya no promete que es gratis',!/piloto|no se cobra/.test(html));
 
   html=await pintar([anuncio()],{alcance:18,campana:{...campana,vistas:900,dias_cobrados:10,contactos:9}});
   chk('al llegar al tope lo dice y no pasa del tope',/Llegó a tu tope/.test(html)&&/\$10\.000/.test(html)&&!/Va costando<\/span><b>\$15/.test(html));

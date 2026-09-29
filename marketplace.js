@@ -682,7 +682,7 @@ function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.
 // y por PERSONA: $10 si la vio, $50 si la abrió y $1.000 si contactó. Cada
 // persona cuenta una vez por anuncio en cada cosa. El profesor pone un tope: es
 // lo máximo que pagaría, y al llegar la clase deja de mostrarse. Filtrar por
-// nota no cuesta más. En el piloto nada se cobra: se muestra lo que costaría.
+// nota no cuesta más. El cobro es manual: se coordina antes de publicar y nunca pasa del tope.
 //
 // El servidor tiene la misma tarifa (tarifa_campana_clp) y es el que cuenta;
 // esto solo arma la cuenta para mostrarla. Un test exige que coincidan.
@@ -1561,7 +1561,7 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
        <div id="clases-kpis">${g.activos.length?'<p class="clase-sin-datos">Cargando números…</p>'
          :`<p class="clase-sin-datos">${g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
            :'Arma un borrador y mándalo a revisión. Cuando se publique, acá vas a ver cómo le va.'}</p>`}</div>
-       <p class="clase-privacidad">“Personas distintas” cuenta a cada cuenta una sola vez; “veces en total” suma cada vez que pasó. Nunca ves nombres. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
+       <p class="clase-privacidad">“Personas distintas” cuenta a cada cuenta una sola vez; “veces en total” suma cada vez que pasó. Nunca ves nombres. El costo es el de tu campaña y nunca pasa de tu tope.</p>
      </section>
      <div class="clases-acciones"><button type="button" class="btn-confirm" id="clase-nueva">Armar un borrador</button></div>`+
     seccionPanelClases('Publicadas',g.activos,pesos,ahora)+
@@ -1873,7 +1873,7 @@ function renderBorradorProfesor(raiz,anuncio){
         </div>
         <p class="profesor-info">Sin fecha de inicio, parte apenas la aprobemos. Puedes elegir los días o la fecha de término: el otro se ajusta solo.</p>
         <label class="modal-label" for="pr-tope">Tope · lo máximo que pagarías</label><input id="pr-tope" type="text" inputmode="numeric" autocomplete="off" required placeholder="${esc(textoPesosEscrito(TOPE_CAMPANA_POR_OMISION))}" value="${esc(textoPesosEscrito(TOPE_CAMPANA_POR_OMISION))}">
-        <p class="profesor-info">Cuesta ${pesosClase(TARIFA_CAMPANA.dia)} por día publicada y, por persona, ${pesosClase(TARIFA_CAMPANA.vista)} si la ve, ${pesosClase(TARIFA_CAMPANA.apertura)} si la abre y ${pesosClase(TARIFA_CAMPANA.contacto)} si te contacta. Cada persona cuenta una vez. Al llegar al tope deja de mostrarse. Durante el piloto no se cobra: te mostramos lo que costaría.</p>
+        <p class="profesor-info">Cuesta ${pesosClase(TARIFA_CAMPANA.dia)} por día publicada y, por persona, ${pesosClase(TARIFA_CAMPANA.vista)} si la ve, ${pesosClase(TARIFA_CAMPANA.apertura)} si la abre y ${pesosClase(TARIFA_CAMPANA.contacto)} si te contacta. Cada persona cuenta una vez. Al llegar al tope deja de mostrarse: nunca pagas más que eso. El pago se coordina con GradeHub antes de publicar.</p>
         <p class="profesor-campana-resumen" id="pr-campana-resumen" aria-live="polite"></p>
       </div>
       </div></details>
