@@ -752,9 +752,9 @@ function lineaCostoCampanaClase(costo){
 
 // Pide solo el catálogo público de una universidad. No recibe `ramos` como
 // parámetro ni lee S.ramos: esos datos nunca cruzan esta frontera de red.
-async function cargarAnunciosClases(tenant){
+async function cargarAnunciosClases(tenant,{propagarError=false}={}){
   const universidad=String(tenant||'').trim();
-  if(!supabaseClient||!universidad)return [];
+  if(!supabaseClient||!universidad){if(propagarError)throw new Error('Catálogo no disponible');return [];}
   const ahora=new Date().toISOString();
   try{
     const anuncios=[],vistos=new Set(),tamano=60;
@@ -769,7 +769,7 @@ async function cargarAnunciosClases(tenant){
       pagina.forEach(a=>{if(!vistos.has(a.id)){vistos.add(a.id);anuncios.push(a);}});
       if(pagina.length<tamano)return anuncios;
     }
-  }catch(error){console.warn('No se pudieron cargar las clases particulares:',error.message||error);return [];}
+  }catch(error){console.warn('No se pudieron cargar las clases particulares:',error.message||error);if(propagarError)throw error;return [];}
 }
 
 // ─── CATÁLOGO GENERAL PARA ESTUDIANTES ─────────────────────────────────────
@@ -926,14 +926,60 @@ function tarjetaCatalogoClase(a,{sigla,abierta=false}={}){
     </article>${a.flyer_path?`<figure class="catalogo-clase-flyer" data-flyer="${esc(a.flyer_path)}"${abierta?'':' hidden'}><span>Cargando flyer…</span></figure>`:''}</div>`;
 }
 
+// Filtros locales sobre el catálogo público; no modifican campañas ni medición.
+function filtrarPrecioCatalogoClases(anuncios,{desde='',hasta='',gratis=false,ubicacion='',invalido=false}={}){
+  const minimo=desde===''?0:Number(desde),maximo=hasta===''?Infinity:Number(hasta);
+  const error=!gratis&&(invalido||!Number.isSafeInteger(minimo)||minimo<0||
+    !(maximo===Infinity||Number.isSafeInteger(maximo))||maximo<minimo);
+  return {error,anuncios:error?[]:anuncios.filter(a=>{
+    if(ubicacion&&a.ubicacion!==ubicacion)return false;
+    if(gratis)return esClaseGratis(a);
+    if(desde===''&&hasta==='')return true;
+    const precio=Number(a.precio_clp);
+    return a.precio_clp!=null&&a.precio_clp!==''&&Number.isFinite(precio)&&precio>=minimo&&precio<=maximo;
+  })};
+}
+function filtrosCatalogoClases(){
+  const desde=document.getElementById('catalogo-desde'),hasta=document.getElementById('catalogo-hasta');
+  return {desde:desde.value,hasta:hasta.value,gratis:document.getElementById('catalogo-gratis').checked,
+    ubicacion:document.getElementById('catalogo-ubicacion').value,invalido:desde.validity.badInput||hasta.validity.badInput};
+}
+function cabeceraCatalogoClasesHTML(){
+  return `<div class="catalogo-clases catalogo-redisenado">
+    <header class="catalogo-clases-head"><div><p class="catalogo-ceja">CLASES PARTICULARES</p><h1 class="modal-title" id="modal-titulo">Un poco de apoyo. Un gran avance.</h1><p class="catalogo-bajada">Encuentra una clase para ese ramo que necesita un empujón.</p></div><button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button></header>
+    <div class="catalogo-herramientas"><div class="catalogo-buscador"><label for="catalogo-clases-buscar">Buscar clases</label>
+    <div class="catalogo-clases-busqueda"><input id="catalogo-clases-buscar" type="search" autocomplete="off" placeholder="Busca por ramo o sigla" aria-describedby="catalogo-clases-estado"></div></div>
+    <label class="catalogo-filtro">Modalidad<select id="catalogo-ubicacion"><option value="">Todas</option><option value="online">Online</option><option value="presencial">Presencial</option></select></label>
+    <div class="catalogo-precios" role="group" aria-label="Precio por clase en pesos">
+      <label class="catalogo-filtro">Desde $<input id="catalogo-desde" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin mínimo" aria-describedby="catalogo-precio-error"></label>
+      <label class="catalogo-filtro">Hasta $<input id="catalogo-hasta" type="number" min="0" step="1" inputmode="numeric" placeholder="Sin máximo" aria-describedby="catalogo-precio-error"></label>
+      <label class="catalogo-gratis"><input id="catalogo-gratis" type="checkbox">Solo gratis</label>
+      <p id="catalogo-precio-error" role="status"></p>
+    </div></div>
+    <div class="catalogo-lista-cabeza"><h2>Clases en tu universidad</h2><button type="button" id="catalogo-limpiar">Limpiar filtros</button></div>
+    <p class="catalogo-clases-estado" id="catalogo-clases-estado" role="status" aria-live="polite">Buscando clases publicadas…</p>
+    <div class="catalogo-clases-resultados" id="catalogo-clases-resultados" aria-busy="true"></div>
+    <p class="catalogo-privacidad">El catálogo no usa tus notas. Tú eliges qué clase explorar y a quién contactar.</p>
+  </div>`;
+}
+let estadoCargaCatalogo='listo';
 function renderCatalogoClases(busqueda=''){
   const raiz=document.getElementById('catalogo-clases-resultados');
   if(!raiz)return;
-  const anuncios=prepararCatalogoClases(catalogoClasesActual,busqueda,nombresCatalogoClasesActual);
+  const filtros=filtrosCatalogoClases();
+  const {anuncios,error}=filtrarPrecioCatalogoClases(prepararCatalogoClases(catalogoClasesActual,busqueda,nombresCatalogoClasesActual),filtros);
+  document.getElementById('catalogo-precio-error').textContent=error?'Escribe montos válidos; Hasta debe ser igual o mayor que Desde.':'';
+  ['catalogo-desde','catalogo-hasta'].forEach(id=>{const campo=document.getElementById(id);campo.disabled=filtros.gratis;campo.setAttribute('aria-invalid',String(error));});
   const estado=document.getElementById('catalogo-clases-estado');
+  if(estadoCargaCatalogo!=='listo'){
+    estado.textContent=estadoCargaCatalogo==='cargando'?'Buscando clases publicadas…':'No pudimos cargar las clases. Revisa tu conexión e inténtalo de nuevo.';
+    raiz.innerHTML=estadoCargaCatalogo==='error'?'<button type="button" class="catalogo-reintentar">Reintentar</button>':'';
+    const reintentar=raiz.querySelector('.catalogo-reintentar');if(reintentar)reintentar.addEventListener('click',openCatalogoClases);
+    return;
+  }
   if(estado)estado.textContent=anuncios.length
     ?`${anuncios.length} ${anuncios.length===1?'clase encontrada':'clases encontradas'}`
-    :(busqueda?'No encontramos clases para esa búsqueda.':'Todavía no hay clases publicadas en tu universidad.');
+    :(busqueda||filtros.desde||filtros.hasta||filtros.gratis||filtros.ubicacion?'No encontramos clases con esos filtros. Prueba ampliarlos.':'Todavía no hay clases publicadas en tu universidad.');
   raiz.innerHTML=anuncios.map(a=>tarjetaCatalogoClase(a)).join('');
   activarTarjetasClases(raiz);
   observarImpresionesClases(raiz,anuncios,busqueda);
@@ -1008,28 +1054,36 @@ async function openCatalogoClases(){
   impresionesCatalogo=new Set();
   const raiz=document.getElementById('modal-content');
   if(!raiz)return;
-  raiz.innerHTML=`<div class="catalogo-clases">
-    <div class="catalogo-clases-head"><div><div class="modal-title" id="modal-titulo">Clases particulares</div><p>Busca apoyo por ramo o sigla. El catálogo es el mismo para todos los estudiantes de tu universidad: no usa tus notas.</p></div><button type="button" class="settings-cerrar" onclick="closeModal()">Cerrar</button></div>
-    <label class="modal-label" for="catalogo-clases-buscar">Buscar clases</label>
-    <div class="catalogo-clases-busqueda"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="catalogo-clases-buscar" type="search" autocomplete="off" placeholder="Ej. Cálculo II o MAT1620" aria-describedby="catalogo-clases-estado"></div>
-    <p class="catalogo-clases-estado" id="catalogo-clases-estado" role="status" aria-live="polite">Buscando clases publicadas…</p>
-    <div class="catalogo-clases-resultados" id="catalogo-clases-resultados" aria-busy="true"></div>
-  </div>`;
+  estadoCargaCatalogo='cargando';catalogoClasesActual=[];nombresCatalogoClasesActual={};logosCatalogoClases=new Map();
+  raiz.innerHTML=cabeceraCatalogoClasesHTML();
   openModal();
   const input=raiz.querySelector('#catalogo-clases-buscar');
   const sigueAbierto=()=>input.isConnected&&document.getElementById('catalogo-clases-buscar')===input&&
     document.getElementById('modal').classList.contains('open');
   input.addEventListener('input',()=>renderCatalogoClases(input.value));
+  ['catalogo-desde','catalogo-hasta'].forEach(id=>raiz.querySelector('#'+id).addEventListener('input',()=>renderCatalogoClases(input.value)));
+  ['catalogo-gratis','catalogo-ubicacion'].forEach(id=>raiz.querySelector('#'+id).addEventListener('change',()=>renderCatalogoClases(input.value)));
+  raiz.querySelector('#catalogo-limpiar').addEventListener('click',()=>{
+    ['catalogo-desde','catalogo-hasta','catalogo-ubicacion'].forEach(id=>{raiz.querySelector('#'+id).value='';});
+    raiz.querySelector('#catalogo-gratis').checked=false;input.value='';renderCatalogoClases();input.focus();
+  });
   const tenant=S.tenant;
   // En UC los nombres del catálogo completo llegan diferidos. Los avisos y sus
   // siglas aparecen al tiro; cuando carga el archivo, se enriquece la búsqueda
   // por nombre sin volver a pedir anuncios ni tocar datos académicos.
   if(tenant==='uc'&&typeof cargarCursosUC==='function'&&typeof cursosUcExtra==='function'&&!cursosUcExtra())
     cargarCursosUC().then(ok=>{if(ok&&sigueAbierto()){nombresCatalogoClasesActual=nombresRamosParaClases(tenant);renderCatalogoClases(input.value);}}).catch(()=>{});
-  catalogoClasesActual=await cargarAnunciosClases(tenant);
+  let anuncios;
+  try{anuncios=await cargarAnunciosClases(tenant,{propagarError:true});}
+  catch(error){
+    if(!sigueAbierto())return;
+    estadoCargaCatalogo='error';raiz.querySelector('#catalogo-clases-resultados').setAttribute('aria-busy','false');renderCatalogoClases(input.value);return;
+  }
   if(!sigueAbierto())return;
-  logosCatalogoClases=await logosDeAnuncios(catalogoClasesActual.map(a=>a.id));
+  catalogoClasesActual=anuncios;
+  const logos=await logosDeAnuncios(anuncios.map(a=>a.id));
   if(!sigueAbierto())return;
+  logosCatalogoClases=logos;estadoCargaCatalogo='listo';
   nombresCatalogoClasesActual=nombresRamosParaClases(tenant);
   const resultados=raiz.querySelector('#catalogo-clases-resultados');if(resultados)resultados.setAttribute('aria-busy','false');
   renderCatalogoClases(input.value);
