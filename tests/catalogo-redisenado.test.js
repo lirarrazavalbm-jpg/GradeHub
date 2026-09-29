@@ -33,10 +33,14 @@ const ctx={console,URL,Intl,S:{tenant:'uc',get ramos(){throw Error('No leer ramo
 vm.createContext(ctx);const run=s=>vm.runInContext(s,ctx);run(fuente);
 const base={id:'pagado',estado:'publicado',titulo:'Cálculo sintético',descripcion:'Apoyo',ramos_siglas:['MAT1620'],precio_clp:15000,ubicacion:'online',contacto_tipo:'email',contacto_valor:'prueba@example.com',publicado_at:'2026-09-01T00:00:00Z',vence_at:'2099-01-01T00:00:00Z'};
 ctx.fixtures=[base,{...base,id:'gratis',precio_clp:0},{...base,id:'presencial',ubicacion:'presencial',precio_clp:20000},{...base,id:'pausado',estado:'pausado'}];
+// Una clase híbrida no puede desaparecer al elegir Online ni Presencial.
+ctx.hibridas=[...ctx.fixtures,{...base,id:'hibrida',ubicacion:'hibrido',precio_clp:18000}];
 const ids=exp=>Array.from(run(exp).anuncios,a=>a.id).join(',');
 assert.equal(ids("filtrarPrecioCatalogoClases(fixtures,{desde:'15000',hasta:'15000'})"),'pagado,pausado');
 assert.equal(ids("filtrarPrecioCatalogoClases(fixtures,{gratis:true,desde:'-10',hasta:'2'})"),'gratis');
 assert.equal(ids("filtrarPrecioCatalogoClases(fixtures,{ubicacion:'presencial'})"),'presencial');
+assert.equal(ids("filtrarPrecioCatalogoClases(hibridas,{ubicacion:'presencial'})"),'presencial,hibrida');
+assert.ok(ids("filtrarPrecioCatalogoClases(hibridas,{ubicacion:'online'})").split(',').includes('hibrida'));
 for(const f of ["{desde:'2',hasta:'1'}","{desde:'-1'}","{hasta:'1.5'}","{desde:'abc'}","{invalido:true}"])
  assert.equal(run(`filtrarPrecioCatalogoClases(fixtures,${f}).error`),true);
 assert.equal(run("prepararCatalogoClases(fixtures,'').some(a=>a.id==='pausado')"),false);

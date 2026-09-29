@@ -932,7 +932,8 @@ function filtrarPrecioCatalogoClases(anuncios,{desde='',hasta='',gratis=false,ub
   const error=!gratis&&(invalido||!Number.isSafeInteger(minimo)||minimo<0||
     !(maximo===Infinity||Number.isSafeInteger(maximo))||maximo<minimo);
   return {error,anuncios:error?[]:anuncios.filter(a=>{
-    if(ubicacion&&a.ubicacion!==ubicacion)return false;
+    // Una clase híbrida se dicta online y presencial: calza con los dos filtros.
+    if(ubicacion&&a.ubicacion!==ubicacion&&a.ubicacion!=='hibrido')return false;
     if(gratis)return esClaseGratis(a);
     if(desde===''&&hasta==='')return true;
     const precio=Number(a.precio_clp);
