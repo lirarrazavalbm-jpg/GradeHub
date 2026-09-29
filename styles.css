@@ -223,9 +223,13 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
 .ob-icon{width:72px;height:72px;border-radius:20px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:20px;box-shadow:0 8px 24px rgba(37,99,235,.3);}
 .ob-icon-logo{background:#0a0e14;box-shadow:0 10px 28px -6px rgba(10,14,20,.5);overflow:hidden;}
 /* La marca es transparente: la superficie sigue el modo elegido en Ajustes,
-   también cuando contradice al sistema. Los tres colores del logo no cambian. */
+   también cuando contradice al sistema. La marca es negra (logo.svg) y en
+   oscuro se invierte a blanca con el MISMO selector que cambia --card: una
+   media query dentro del SVG solo vería el sistema, no lo elegido en Ajustes. */
 .ob-icon-brand{background:var(--card);box-shadow:inset 0 0 0 1px var(--border);}
 .ob-icon-brand img{padding:11px;}
+@media(prefers-color-scheme:dark){:root:not([data-modo="claro"]) .ob-icon-brand img{filter:invert(1);}}
+:root[data-modo="oscuro"] .ob-icon-brand img{filter:invert(1);}
 .ob-title{font-size:2.125rem;font-weight:800;letter-spacing:-.035em;text-align:center;margin-bottom:8px;line-height:1.05;max-width:360px;}
 .ob-title-accent{background-image:linear-gradient(var(--gradient-accent),var(--primary) 0%,var(--accent) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
 .ob-brand{font-family:var(--font-ui);font-size:0.75rem;font-weight:800;color:var(--primary);text-align:center;letter-spacing:.15em;text-transform:uppercase;margin-bottom:16px;}
@@ -2696,7 +2700,8 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .wrapped-tarjeta{position:relative;overflow:hidden;isolation:isolate;padding:20px 22px 20px;border-radius:28px;background:rgba(6,8,12,.6);-webkit-backdrop-filter:blur(28px) saturate(150%);backdrop-filter:blur(28px) saturate(150%);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.1),0 30px 80px -30px rgba(0,0,0,.85);}
 .wrapped-tarjeta::after{content:"";position:absolute;z-index:-1;width:300px;height:300px;right:-130px;top:-150px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 48%,#000),transparent 68%);background:radial-gradient(circle,oklch(from var(--primary) .58 .16 calc(h + var(--h) + 60)),transparent 68%);}
 .wrapped-tarjeta-marca{display:flex;align-items:center;gap:8px;font-size:.9375rem;font-weight:700;letter-spacing:-.01em;}
-.wrapped-tarjeta-marca img{width:28px;height:28px;border-radius:7px;}
+/* logo.svg es la marca negra: sobre la tarjeta, que siempre es oscura, va invertida. */
+.wrapped-tarjeta-marca img{width:28px;height:28px;filter:invert(1);}
 .wrapped-tarjeta-marca em{margin-left:auto;font-style:normal;font-size:.8125rem;font-weight:600;letter-spacing:.02em;}
 .wrapped-tarjeta-big{display:flex;flex-direction:column;margin:22px 0 18px;font:800 88px/.86 var(--font-cifra);letter-spacing:-.045em;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--accent) 42%,#fff);color:oklch(from var(--primary) .93 .08 calc(h + var(--h) + 20));}
 .wrapped-tarjeta-big small{margin-top:10px;font:600 .9375rem var(--font-ui);letter-spacing:0;color:#fff;-webkit-text-fill-color:#fff;}

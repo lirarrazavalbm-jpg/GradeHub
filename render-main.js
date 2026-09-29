@@ -1224,6 +1224,10 @@ function slidesWrapped(d,comp,label){
   return s;
 }
 
+// La URL SELLADA del logo, la misma que pide index.html (`logo.svg?v=<sha>`).
+// Pedirlo sin versión puede devolver el logo de un deploy anterior: pasó al
+// cambiar el logo, la tarjeta del Wrapped seguía mostrando el viejo.
+function urlLogo(){const im=document.querySelector('.ob-icon-brand img');return (im&&im.getAttribute('src'))||'logo.svg';}
 const ICONO_CERRAR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 // El ícono de compartir de iOS: cuadrado abierto con la flecha hacia arriba.
 const ICONO_COMPARTIR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M8 11H6.5A1.5 1.5 0 0 0 5 12.5v7A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16"/></svg>';
@@ -1316,7 +1320,7 @@ function pintarWrapped(){
   caja.scrollTop=0;
   if(s.tipo==='final'){
     caja.innerHTML=`<div class="wrapped-tarjeta" style="--d:0">
-        <div class="wrapped-tarjeta-marca"><img src="logo.svg" alt="" width="28" height="28"><span>GradeHub</span><em>${s.k}</em></div>
+        <div class="wrapped-tarjeta-marca"><img src="${esc(urlLogo())}" alt="" width="28" height="28"><span>GradeHub</span><em>${s.k}</em></div>
         ${s.big?`<p class="wrapped-tarjeta-big">${s.big}<small>promedio del semestre</small></p>`:''}
         <div class="wrapped-filas">${s.filas.map(([a,b])=>`<div><span>${a}</span><b>${b}</b></div>`).join('')}</div>
         <p class="wrapped-marca">gradehub.cl</p>
@@ -1417,8 +1421,15 @@ async function imagenWrapped(s){
   ctx.fillStyle=g;ctx.fillRect(x,y,w,h);ctx.restore();
   ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(x,y,w,h,64);ctx.stroke();
   const fuente=(peso,px,redonda)=>`${peso} ${px}px ${redonda?'ui-rounded,':''}-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif`;
-  const logo=await new Promise(r=>{const im=new Image();im.onload=()=>r(im);im.onerror=()=>r(null);im.src='logo.svg';});
-  if(logo)ctx.drawImage(logo,x+72,y+72,72,72);
+  const logo=await new Promise(r=>{const im=new Image();im.onload=()=>r(im);im.onerror=()=>r(null);im.src=urlLogo();});
+  // La marca viene en negro: se pinta blanca recortando un relleno con su
+  // silueta. `ctx.filter` haría lo mismo, pero Safari no lo tiene en canvas.
+  if(logo){
+    const m=document.createElement('canvas');m.width=m.height=144;
+    const mc=m.getContext('2d');mc.drawImage(logo,0,0,144,144);
+    mc.globalCompositeOperation='source-in';mc.fillStyle='#fff';mc.fillRect(0,0,144,144);
+    ctx.drawImage(m,x+72,y+72,72,72);
+  }
   ctx.fillStyle='#fff';ctx.textBaseline='alphabetic';
   ctx.font=fuente(700,48);ctx.fillText('GradeHub',x+(logo?168:72),y+126);
   ctx.font=fuente(600,40);ctx.textAlign='right';ctx.fillText(textoPlano(s.k),x+w-72,y+126);ctx.textAlign='left';

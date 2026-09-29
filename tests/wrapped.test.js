@@ -65,6 +65,10 @@ chk('VoiceOver y teclado tienen Anterior y Siguiente',/data-paso="-1">Anterior</
 chk('los números gigantes no crecen con el texto del sistema',/\.wrapped-big\{font-size:clamp\(\d+px,[^;]*\d+px\)/.test(css));
 chk('la pantalla se desplaza si el texto grande no cabe',/\.wrapped-slide\{[^}]*overflow-y:auto/.test(css));
 
+// El deploy sella solo index.html y sw.js: un logo pedido sin versión puede
+// venir de un deploy anterior (pasó al cambiar el logo el 2026-09-29).
+chk('el Wrapped pide el logo con la URL sellada de index.html',/function urlLogo/.test(render)&&!/src="logo\.svg"/.test(render)&&!/\.src='logo\.svg'/.test(render));
+
 const sql=fs.readFileSync(raiz+'supabase/universidad_posicion.sql','utf8');
 chk('SQL: exige sesión',/uid is null/.test(sql));
 chk('SQL: mínimo de cinco personas',/n < 5/.test(sql));
