@@ -1100,6 +1100,13 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .catalogo-clase-datos{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:auto;padding-top:10px;border-top:1px solid var(--border);color:var(--fg2);font-size:.75rem;}
 .catalogo-clase-datos strong{color:var(--fg);font-size:.875rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .catalogo-clase-datos strong small{color:var(--fg3);font-size:.625rem;font-weight:600;}
+/* Pack y descuento por venir de GradeHub. El descuento va en el color de la
+   marca, nunca en verde: el verde es "aprobado" en el semáforo. */
+.catalogo-clase-precio{display:grid;justify-items:end;gap:4px;text-align:right;}
+.catalogo-clase-precio del{color:var(--fg3);font-weight:500;margin-right:2px;}
+.catalogo-clase-descuento{font-size:.6875rem;font-weight:700;letter-spacing:.02em;color:var(--primary);background:var(--primary-light);border-radius:999px;padding:3px 8px;}
+.catalogo-clase-por-clase{font-size:.75rem;color:var(--fg3);font-variant-numeric:tabular-nums;}
+.sr-precio{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 .catalogo-clase-contacto{display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:12px;padding:9px 12px;border-radius:10px;background:var(--primary);color:var(--primary-fg);font-size:.8125rem;font-weight:750;text-decoration:none;transition:filter var(--motion-fast),transform var(--motion-press);}
 .catalogo-clase-contacto:active{transform:scale(.99);}
 .catalogo-clase-ver{display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:12px;padding:9px 12px;border:1px solid var(--primary);border-radius:10px;background:none;color:var(--primary);font:inherit;font-size:.8125rem;font-weight:750;cursor:pointer;}
