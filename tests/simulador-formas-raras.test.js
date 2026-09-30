@@ -50,7 +50,7 @@ run('openSimuladorModal()');
 const html=porId('sim-cats').innerHTML;
 const reales=(html.match(/class="sim-chip real"/g)||[]).length;
 chk('la casilla agendada sin nota no aparece entre las reales',reales===1);
-chk('y la que sí tiene nota sigue apareciendo con su valor',/Laboratorio 2<\/span>|Laboratorio 2: 5\.4/.test(html)||html.includes('5.4'));
+chk('y la que sí tiene nota sigue apareciendo con su valor',/Laboratorio 2<\/span>|Laboratorio 2: 5,4/.test(html)||html.includes('5,4'));
 
 console.log('\n=== El ramo es el título, porque la ventana tapa todo ===');
 // "Simular escenario" servía para cualquiera de los seis ramos del semestre, y
@@ -68,15 +68,15 @@ run("S.ramos[0].seccion=null;");run('openSimuladorModal()');
 chk('sin sección no inventa una',!/Sección/.test(porId('modal-content').innerHTML));
 
 console.log('\n=== Ocupa la pantalla entera, sin tapar los botones ===');
-// Eran 36vh fijos. El 330px restado es el resto de la ventana —antetítulo,
-// ramo, bajada, promedio y botones—, que mide casi lo mismo en cualquier
+// Eran 36vh fijos. El 400px restado es el resto de la ventana —antetítulo,
+// ramo, bajada, promedio, nota necesaria y botones—, que mide casi lo mismo en cualquier
 // teléfono; por eso va en píxeles y el alto de pantalla en dvh.
 const css=leer('styles.css');
 chk('la ventana del simulador se estira a la pantalla completa',
   /\.modal-overlay:has\(\.sim-cats\)\{align-items:stretch;\}/.test(css) &&
   /\.modal-sheet:has\(\.sim-cats\)\{max-height:none;border-radius:0;\}/.test(css));
 chk('la lista se calcula contra el alto de la pantalla, no en un valor fijo',
-  /\.sim-cats\{max-height:max\(150px,calc\(100dvh - 330px\)\)/.test(css));
+  /\.sim-cats\{max-height:max\(150px,calc\(100dvh - 400px\)\)/.test(css));
 chk('y deja un piso para pantallas bajas o con el teclado abierto',/max\(150px,/.test(css));
 
 console.log('\n=== Las pautas reales de Ingeniería UC siguen andando ===');

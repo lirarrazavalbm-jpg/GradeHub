@@ -96,6 +96,6 @@ assert.doesNotMatch(main,/Exacto: \$\{exacto\}/,'el detalle no vuelve a exigir c
 assert.match(agenda,/fmtPromedio\(e\.avg\)/,'la Agenda usa el formato coherente');
 assert.equal(ctx.run('fmtPromedio(simProjectedAvg(exacto))'),'4.0','el simulador parte del mismo resultado oficial');
 ctx.openSimuladorModal();
-assert.equal(ctx.document.getElementById('sim-delta').textContent,'Tu promedio actual: 4.0','el simulador no vuelve a revelar 3,98 como si fuera otro promedio');
+assert.equal(ctx.document.getElementById('sim-delta').textContent,'Tu promedio actual: 4,0','el simulador no vuelve a revelar 3,98 como si fuera otro promedio');
 
 console.log('OK: 3,98 se muestra como 4,0 y GradeHub lo considera aprobado');

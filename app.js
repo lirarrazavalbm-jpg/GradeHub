@@ -7975,6 +7975,7 @@ let simState={}; // { catId: [ {id, valor, slot?} ] } — hipotéticas, no se gu
 // afirmando cuál es la regla de su curso, está preguntando qué le pasaría si
 // fuera esa. Por eso no se guarda en S ni toca gradehub_v1.
 let simAusencias={};
+function simConComa(valor){return String(valor).replace('.',',');}
 
 // ─── SIMULADOR GLOBAL DE SEMESTRE ────────────────────────────────────────────
 // Proyecta el promedio general moviendo la nota final de cada ramo con sliders.
@@ -8158,6 +8159,7 @@ function openSimuladorModal(){
       <div class="sim-proj-label">Promedio proyectado</div>
       <div class="sim-proj-num" id="sim-avg">—</div>
       <div id="sim-delta"></div>
+      <div class="sim-needed" id="sim-needed" aria-live="polite" hidden></div>
     </div>
     <div class="sim-cats" id="sim-cats"></div>
     <div class="modal-btns">
@@ -8183,10 +8185,16 @@ function simCatAvg(c){return avgPond(simCombinadas(c));}
 // Proyección del simulador: mismo motor y mismas compuertas que el promedio real.
 // Mezcla notas reales + hipotéticas y delega en ramoAvg (gate-aware).
 function simProjectedRamo(r){
-  const base={...r,categorias:r.categorias.map(c=>({...c,notas:simCombinadas(c).map((n,i)=>({
-    id:n.id||('sim_'+c.id+'_'+i),nombre:n.nombre||'Nota',valor:n.valor,peso:n.peso||1,
-    ...(Number.isInteger(n.slot)?{slot:n.slot}:{}),
-  }))}))};
+  const base={...r,categorias:r.categorias.map(c=>{
+    // Una nota hipotética ocupa la casilla pendiente; si se deja también su
+    // placeholder sin valor, la meta la contaría dos veces como pendiente.
+    const ocupaCasilla=(simState[c.id]||[]).length&&(c.directNota||c.slots>1);
+    const combinadas=simCombinadas(c).filter(n=>!ocupaCasilla||n.valor!==null&&n.valor!==undefined);
+    return {...c,notas:combinadas.map((n,i)=>({
+      id:n.id||('sim_'+c.id+'_'+i),nombre:n.nombre||'Nota',valor:n.valor,peso:n.peso||1,
+      ...(Number.isInteger(n.slot)?{slot:n.slot}:{}),
+    }))};
+  })};
   // Las ausencias simuladas se inyectan como si fueran una regla del programa y
   // las resuelve el mismo motor: nada de aritmética nueva acá. Se suman a las
   // que el ramo ya tuviera declaradas, porque "y además falto a esta" es
@@ -8232,6 +8240,44 @@ function simSetFalta(catId,valor){
 }
 function simProjectedAvg(r){return ramoAvg(simProjectedRamo(r));}
 
+// La meta del simulador es aprobar: no depende de la calculadora ni se guarda.
+// El número lo resuelve el motor sobre el mismo ramo que pinta el proyectado.
+function simNotaNecesaria(proyectado){
+  const meta=4.0;
+  const peso=(proyectado.categorias||[]).reduce((s,c)=>s+(Number(c.peso)||0),0);
+  if(Math.abs(peso-100)>0.05)return {texto:'Completa la pauta para calcularlo'};
+  const calculo=calculoRamoConCompuertas(proyectado);
+  if(!calculo.res.emptyLeaves.length)return null;
+
+  const necesaria=notaNecesaria(proyectado,meta);
+  const nodos=new Map((calculo.estructura.children||[]).map(c=>[c.id,c]));
+  const compuertas=(proyectado.gates||[]).map(g=>{
+    const activa=gatesActivas({...proyectado,gates:[g]})[0]||null;
+    const ids=g.type==='group_min'?g.catIds:[g.catId];
+    const pendiente=(ids||[]).some(id=>{
+      const nodo=nodos.get(id);
+      return nodo&&gh_hasPendingLeaf(nodo,calculo.notas);
+    });
+    return {g,activa,pendiente};
+  });
+  const bloqueante=compuertas.find(x=>x.activa&&!x.pendiente);
+  if(bloqueante)return {texto:'Con esto ya no alcanzas el 4,0',
+    detalle:`${bloqueante.activa.nombre} está bajo el mínimo de ${simConComa(fmtPromedio(bloqueante.activa.min))} y topa la nota.`};
+  if(necesaria===null)return null;
+  if(!Number.isFinite(necesaria)||necesaria>7)return {texto:'Con esto ya no alcanzas el 4,0'};
+
+  const pendientes=compuertas.filter(x=>x.pendiente);
+  const condiciones=pendientes.map(x=>{
+    const ids=x.g.type==='group_min'?x.g.catIds:[x.g.catId];
+    const nombre=x.g.nombre||(ids||[]).map(id=>(proyectado.categorias||[]).find(c=>c.id===id)?.nombre).filter(Boolean).join(' y ')||'el requisito del ramo';
+    return `Además, ${nombre} debe llegar a ${simConComa(fmtPromedio(x.g.min))} para cumplir su mínimo.`;
+  }).join(' ');
+  if(necesaria<=1)return pendientes.length
+    ?{texto:'El promedio ponderado ya alcanza el 4,0',detalle:condiciones}
+    :{texto:'Ya tienes el 4,0 asegurado'};
+  return {texto:`Para el 4,0 necesitas ${simConComa(nfNecesaria(necesaria))} en lo que queda`,detalle:condiciones};
+}
+
 function renderSimulador(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const real=ramoAvg(r);
@@ -8240,7 +8286,7 @@ function renderSimulador(){
   const hasSim=Object.values(simState).some(arr=>arr&&arr.length);
 
   const avgEl=document.getElementById('sim-avg');
-  avgEl.textContent=proj!==null?fmtPromedio(proj):'—';
+  avgEl.textContent=proj!==null?simConComa(fmtPromedio(proj)):'—';
   avgEl.style.color=proj!==null?getColorRamo(proyectado,proj):'var(--fg3)';
 
   const deltaEl=document.getElementById('sim-delta');
@@ -8248,19 +8294,26 @@ function renderSimulador(){
   const gateHit=(r.gates||[]).find(g=>{if(g.type!=='min_grade_required')return false;const c=r.categorias.find(x=>x.id===g.catId);if(!c)return false;const a=avgPond(simCombinadas(c));return a!==null&&a<g.min;});
   if(gateHit&&proj!==null){
     deltaEl.className='sim-delta down';
-    deltaEl.textContent=`${gateHit.nombre} bajo ${gateHit.min.toFixed(1)}: la nota queda topada en ${gateHit.cap.toFixed(1)}`;
+    deltaEl.textContent=`${gateHit.nombre} bajo ${simConComa(gateHit.min.toFixed(1))}: la nota queda topada en ${simConComa(gateHit.cap.toFixed(1))}`;
     deltaEl.style.display='inline-block';
   } else if(proj!==null&&real!==null&&hasSim){
     const d=r2(notaFinalOficial(proj)-notaFinalOficial(real));
     const cls=d>0?'up':d<0?'down':'flat';
     deltaEl.className='sim-delta '+cls;
-    deltaEl.textContent=`${d>0?'+':''}${d.toFixed(1)} vs tu ${fmtPromedio(real)} actual`;
+    deltaEl.textContent=`${d>0?'+':''}${simConComa(d.toFixed(1))} vs tu ${simConComa(fmtPromedio(real))} actual`;
     deltaEl.style.display='inline-block';
   } else if(real!==null){
     deltaEl.className='sim-delta flat';
-    deltaEl.textContent=`Tu promedio actual: ${fmtPromedio(real)}`;
+    deltaEl.textContent=`Tu promedio actual: ${simConComa(fmtPromedio(real))}`;
     deltaEl.style.display='inline-block';
   } else {deltaEl.style.display='none';}
+
+  const neededEl=document.getElementById('sim-needed');
+  const necesaria=simNotaNecesaria(proyectado);
+  if(neededEl){
+    neededEl.hidden=!necesaria;
+    neededEl.textContent=necesaria?[necesaria.texto,necesaria.detalle].filter(Boolean).join(' '):'';
+  }
 
   const cb=document.getElementById('sim-commit-btn');if(cb)cb.disabled=!hasSim;
 
@@ -8277,13 +8330,13 @@ function renderSimulador(){
     // casilla puede tener su propia fecha existen notas con `valor` en null, y
     // se colaban como una etiqueta vacía ("Laboratorio 1: ").
     const realChips=notasReales.filter(n=>n&&n.valor!==null&&n.valor!==undefined)
-      .map(n=>`<span class="sim-chip real">${esc(nombreNotaCasilla(r,c,n))}: ${textoCalificacionNota(n)}</span>`).join('');
-    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':c.directNota&&!(c.slots>1)?esc(c.nombre)+': ':''}${textoCalificacionNota(s)}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
+      .map(n=>`<span class="sim-chip real">${esc(nombreNotaCasilla(r,c,n))}: ${simConComa(textoCalificacionNota(n))}</span>`).join('');
+    const hypChips=(simState[c.id]||[]).map(s=>`<span class="sim-chip hyp">${Number.isInteger(s.slot)?esc(etiquetaCasilla(r,c,s.slot))+': ':c.directNota&&!(c.slots>1)?esc(c.nombre)+': ':''}${simConComa(textoCalificacionNota(s))}<button class="sim-chip-x" onclick="simRemoveNota('${c.id}','${s.id}')" aria-label="Quitar nota hipotética">✕</button></span>`).join('');
     return `
       <div class="sim-cat">
         <div class="sim-cat-head">
           <div><div class="sim-cat-name">${esc(c.nombre)}</div><div class="sim-cat-meta">${c.peso}% del ramo</div></div>
-          <div class="sim-cat-avg" style="color:${getColor(catAvg)}">${fmtPromedio(catAvg)}</div>
+          <div class="sim-cat-avg" style="color:${getColor(catAvg)}">${simConComa(fmtPromedio(catAvg))}</div>
         </div>
         ${(realChips||hypChips)?`<div class="sim-chips">${realChips}${hypChips}</div>`:''}
         ${falta?`<div class="sim-falta activa">
@@ -8298,7 +8351,7 @@ function renderSimulador(){
           ${falta.tipo==='reemplazo'?'':'<small style="display:block;margin-top:6px;color:var(--fg3);line-height:1.4;">La acumulación tiene un máximo de 75%. El excedente cuenta con nota 1,0.</small>'}
         </div>`:(simPuedeFaltar(c)?`<button type="button" class="sim-falta-btn" onclick="simToggleFalta('${c.id}')">No la voy a dar</button>`:'')}
         ${(simCatLlena(c)||falta)?'':`<div class="sim-add">
-          <input type="text" inputmode="${inputModeNota()}" autocapitalize="characters" id="sim-in-${c.id}" placeholder="${conceptosNota().length?'Nota hipotética (1.0–7.0, D/A/R)':'Nota hipotética (1.0–7.0)'}" onkeydown="if(event.key==='Enter')simAddNota('${c.id}')"/>
+          <input type="text" inputmode="${inputModeNota()}" autocapitalize="characters" id="sim-in-${c.id}" placeholder="${conceptosNota().length?'Nota hipotética (1,0–7,0, D/A/R)':'Nota hipotética (1,0–7,0)'}" onkeydown="if(event.key==='Enter')simAddNota('${c.id}')"/>
           <button onclick="simAddNota('${c.id}')">+ Agregar</button>
         </div>`}
       </div>`;
@@ -8317,7 +8370,7 @@ function simAddNota(catId){
   const inp=document.getElementById('sim-in-'+catId);if(!inp)return;
   const rawNota=inp.value;
   const val=parseNota(rawNota);
-  if(isNaN(val)){showToast('Ingresa una nota entre 1.0 y 7.0',true);return;}
+  if(isNaN(val)){showToast('Ingresa una nota entre 1,0 y 7,0',true);return;}
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r&&(r.categorias||[]).find(c=>c.id===catId);if(!cat)return;
   if(simCatLlena(cat)){showToast(`${cat.nombre} es una sola nota y ya la tiene`,true);return;}
