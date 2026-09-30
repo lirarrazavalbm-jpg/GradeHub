@@ -49,8 +49,8 @@ chk('el preset separa reemplazos de traspasos',
 chk('presetRamo resuelve las reglas a ids de esta pauta',
   p.reglasAusenciaJustificada?.reemplazos?.some(x=>x.desdeId===id(p,'Control 1')&&x.haciaId===id(p,'Solemne'))&&
   p.reglasAusenciaJustificada?.traspasos?.some(x=>x.desdeId===id(p,'Pruebas sorpresa')&&x.haciaId===id(p,'Examen')));
-chk('la ficha permite declarar la ausencia y explica si luego deja de aplicar',
-  /declararAusenciaJustificada/.test(renderMain)&&/Tu declaración se conserva, pero ya no se aplica/.test(renderMain));
+chk('la ficha ofrece justificar desde la evaluación, sin aviso general',
+  /elegirAusenciaDesdeEvaluacion/.test(renderMain)&&!/ausencias-justificadas-warning/.test(renderMain));
 
 console.log('\n=== Reemplazar una nota y mover un peso son operaciones distintas ===');
 const c1=micro({Solemne:6,'Control 2':4,'Control 3':5,'Pruebas sorpresa':4,Examen:2});
@@ -96,8 +96,8 @@ chk('el rezago no mueve peso y sigue pendiente hasta rendirse',
   estadoRezago?.pendientes?.some(x=>x.desdeId==='i1'&&x.tipo==='rezago'&&x.motivo==='espera_rezago')&&
   estadoRezago.estructura.children.find(x=>x.id==='i1')?.weight===20&&
   estadoParaNotaNecesaria(declarada).pendiente>0);
-chk('la ficha distingue la regla declarada por el estudiante y ofrece ambos caminos',
-  /Declarado por ti según el formulario/.test(renderMain)&&/Rendir en rezago/.test(fs.readFileSync(raiz+'app.js','utf8'))&&/Acumular.*porcentaje/s.test(fs.readFileSync(raiz+'app.js','utf8')));
+chk('la elección del estudiante conserva ambos caminos',
+  /Rendir en rezago/.test(fs.readFileSync(raiz+'app.js','utf8'))&&/Acumular.*porcentaje/s.test(fs.readFileSync(raiz+'app.js','utf8')));
 
 const oficial=ramoConAusencias();
 oficial.reglasAusenciaJustificada={traspasos:[{desdeId:'i1',haciaId:'ex'}],reemplazos:[]};
