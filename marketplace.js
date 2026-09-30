@@ -665,14 +665,17 @@ function criteriosClaseValidos(c){
     c.promedioMenorA>1&&c.promedioMenorA<=7&&Number.isFinite(c.avanceMinimo)&&
     c.avanceMinimo>=0&&c.avanceMinimo<100;
 }
-function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.now()}={}){
+function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.now(),turno=0}={}){
   const propios=(Array.isArray(ramos)?ramos:[]).filter(r=>r&&r.origen&&r.origen.tenant===tenant);
   const omitidos=new Set(descartados);
   const disponibles=anunciosParaRamosLocales(anuncios,propios).filter(a=>
     a.tenant===tenant&&a.estado==='publicado'&&!omitidos.has(a.id)&&
     (a.vence_at==null||Date.parse(a.vence_at)>ahora)&&criteriosClaseValidos(a.criterios));
-  // El orden de ramos que eligió la persona manda; el de los avisos desempata.
-  // Se entrega como máximo una tarjeta, sin escribir ninguna preferencia en S.
+  // El orden de ramos que eligió la persona manda. Si varios avisos calzan con
+  // el mismo ramo, se alternan por turno (mañana/tarde): antes ganaba siempre
+  // el publicado último, y un profesor con dos clases del mismo ramo casi no
+  // veía la otra en Inicio (Salva Ramos, 2026-09-30). Se entrega como máximo
+  // una tarjeta, sin escribir ninguna preferencia en S.
   for(const ramo of propios){
     const sigla=siglaRamoParaClases(ramo);
     const candidatos=disponibles.filter(a=>a.siglasCoincidentes.includes(sigla));
@@ -691,8 +694,13 @@ function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.
     const evaluado=100*(avance.total-avance.pending)/avance.total;
     const promedio=ramoAvg(ramo,undefined,ramos);
     if(!Number.isFinite(promedio))continue;
-    const anuncio=candidatos.find(a=>promedio<a.criterios.promedioMenorA&&evaluado+1e-9>=a.criterios.avanceMinimo);
-    if(anuncio)return {anuncio,ramo};
+    // Orden estable por id: la rotación no cambia porque llegue otro aviso a la lista.
+    const calzan=candidatos.filter(a=>promedio<a.criterios.promedioMenorA&&evaluado+1e-9>=a.criterios.avanceMinimo)
+      .sort((x,y)=>String(x.id)<String(y.id)?-1:String(x.id)>String(y.id)?1:0);
+    if(calzan.length){
+      const i=Number.isSafeInteger(turno)?((turno%calzan.length)+calzan.length)%calzan.length:0;
+      return {anuncio:calzan[i],ramo};
+    }
   }
   return null;
 }
@@ -2354,6 +2362,12 @@ function diaLocalClases(ahora=Date.now()){
 }
 // Mañana hasta las 14:00 y tarde desde ahí, en la hora del dispositivo.
 const HORA_TARDE_CLASES=14;
+// Número de turno: sube uno cada mañana y cada tarde. Sirve para alternar entre
+// avisos que calzan con el mismo ramo; es el mismo durante todo el turno.
+function turnoClases(ahora=Date.now()){
+  const [a,m,d]=diaLocalClases(ahora).split('-').map(Number);
+  return Math.floor(Date.UTC(a,m-1,d)/864e5)*2+(new Date(ahora).getHours()<HORA_TARDE_CLASES?0:1);
+}
 function franjaClases(ahora=Date.now()){
   return diaLocalClases(ahora)+(new Date(ahora).getHours()<HORA_TARDE_CLASES?'-manana':'-tarde');
 }
@@ -2372,7 +2386,7 @@ function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now()){
       return {sel,estado:e};
     }
   }
-  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados:definitivasClases(e),ahora});
+  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados:definitivasClases(e),ahora,turno:turnoClases(ahora)});
   // La franja queda tomada solo si se mostró una. Si no calza ninguna, no se
   // anota nada: una clase publicada más tarde tiene que poder aparecer.
   if(!sel)return {sel:null,estado:e};
