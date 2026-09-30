@@ -1163,9 +1163,10 @@ function parseNota(raw,tenant){
   const conceptual=calificacionConceptual(raw,tenant);
   if(conceptual)return conceptual.valor;
   const txt=String(raw==null?'':raw).trim().replace(',','.');
-  if(txt==='')return NaN;
+  // Dígitos y a lo más un separador ("4," sigue valiendo 4). parseFloat corta
+  // en lo que sobra: "5.5.5" o "5,5,5" pasaban como 5,5 y "1e1" como 1,0.
+  if(!/^\d+(\.\d*)?$/.test(txt))return NaN;
   let v=parseFloat(txt);
-  if(isNaN(v))return NaN;
   // Auto-corrección: "65"/"70"/"45" → 6.5/7.0/4.5 (enteros de 2 dígitos sin punto).
   // Solo hasta 70 para evitar ambigüedad — "77" queda como error de input, no 7.7.
   if(!txt.includes('.') && Number.isInteger(v) && v>=10 && v<=70){
@@ -1200,7 +1201,16 @@ function definicionPresetDelRamo(ramo){
 const SINGULARES_CASILLA={controles:'control',pruebas:'prueba',interrogaciones:'interrogación',
   tareas:'tarea',talleres:'taller',informes:'informe',laboratorios:'laboratorio',
   evaluaciones:'evaluación',solemnes:'solemne',trabajos:'trabajo',
-  presentaciones:'presentación',exámenes:'examen',casos:'caso',ensayos:'ensayo'};
+  presentaciones:'presentación',exámenes:'examen',casos:'caso',ensayos:'ensayo',
+  actividades:'actividad',quizzes:'quiz',quices:'quiz',tests:'test',entregas:'entrega',
+  lecturas:'lectura',proyectos:'proyecto',guías:'guía',ayudantías:'ayudantía',
+  cuestionarios:'cuestionario',exposiciones:'exposición',certámenes:'certamen',
+  avances:'avance',hitos:'hito',reportes:'reporte',
+  // Como primera palabra "Prácticas" es el sustantivo; como segunda
+  // ("Controles prácticos") la resuelve ADJETIVOS_CASILLA.
+  prácticas:'práctica',
+  // Sin tilde, como se escribe muchas veces a mano.
+  examenes:'examen',guias:'guia',ayudantias:'ayudantia',certamenes:'certamen',practicas:'practica'};
 const ADJETIVOS_CASILLA={prácticos:'práctico',prácticas:'práctica',teóricos:'teórico',
   teóricas:'teórica',escritos:'escrito',escritas:'escrita',cortos:'corto',cortas:'corta',
   finales:'final',parciales:'parcial',orales:'oral',grupales:'grupal',
