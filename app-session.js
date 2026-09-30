@@ -818,6 +818,9 @@ async function signOut(){
   // La base de la sincronización también: es una copia completa de los datos.
   try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(SYNC_BASE_KEY);localStorage.removeItem(CURSO_SIGLAS_KEY);}catch(e){}
   S=freshState();
+  // Las pestañas de profesor y admin son de la cuenta que salió, no del navegador.
+  if(typeof olvidarSesionMarketplace==='function')olvidarSesionMarketplace();
+  if(typeof recalcularNavTabs==='function')recalcularNavTabs();
   authMode='login';
   document.getElementById('auth-user').value='';
   document.getElementById('auth-pass').value='';
