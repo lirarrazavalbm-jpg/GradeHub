@@ -459,6 +459,12 @@ async function afterLogin(){
   // continuar con estado o DOM a medias sería peor que detenerse con un aviso.
   try{cloud=await loadFromCloud();}catch(e){ok=false;}
   const mismaCache=getCacheOwner()===uid;
+  // La copia previa a importar es de quien importó. Si la caché es de otra
+  // cuenta (navegador compartido, o una sesión que venció sin cerrarse), se va:
+  // con "Deshacer importación" la siguiente persona recibía el nombre y las
+  // notas de la otra, y se subían a su cuenta. El typeof es porque la clave vive
+  // en app.js y hay tests que cargan solo este bloque.
+  if(!mismaCache&&typeof PRE_IMPORT_KEY!=='undefined'){try{localStorage.removeItem(PRE_IMPORT_KEY);}catch(e){}}
   if(ok&&cloud!==null){
     // La nube puede contener ramos creados con versiones anteriores. Pásalos
     // siempre por normalize(): un ramo sin preset necesita categorias:[] para
@@ -824,7 +830,9 @@ async function signOut(){
   // Limpiar la caché local: si no, el siguiente que entre en este navegador
   // podría ver los datos de la sesión anterior.
   // La base de la sincronización también: es una copia completa de los datos.
-  try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(SYNC_BASE_KEY);localStorage.removeItem(CURSO_SIGLAS_KEY);}catch(e){}
+  // Y la copia previa a importar: la siguiente persona podía restaurarla con
+  // "Deshacer importación" y quedarse con los datos de esta cuenta.
+  try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(SYNC_BASE_KEY);localStorage.removeItem(CURSO_SIGLAS_KEY);localStorage.removeItem(PRE_IMPORT_KEY);}catch(e){}
   S=freshState();
   // Las pestañas de profesor y admin son de la cuenta que salió, no del navegador.
   if(typeof olvidarSesionMarketplace==='function')olvidarSesionMarketplace();
