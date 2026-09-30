@@ -677,6 +677,25 @@ revoke all on public.anuncio_metricas from public, anon, authenticated;
 -- Solo se escribe por RPC. El límite es GLOBAL por corte cada 10 segundos:
 -- sin identidad no se puede deduplicar por persona, y preferimos subcontar
 -- antes que empezar a guardar quién vio qué anuncio.
+-- ¿Es administrador de GradeHub? Uso interno: las cuentas admin revisan
+-- anuncios y no cuentan como interacción ni como evento (2026-09-30). Lee
+-- admin.administradores al ejecutarse, así que puede crearse antes que ella.
+create or replace function public.es_administrador(p_user_id uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public, admin
+as $$
+begin
+  -- plpgsql y no sql: una función sql valida la tabla al crearse, y
+  -- clases_particulares.sql se aplica antes que administradores.sql.
+  return p_user_id is not null
+     and exists (select 1 from admin.administradores a where a.user_id = p_user_id);
+end;
+$$;
+revoke all on function public.es_administrador(uuid) from public, anon, authenticated;
+
 create or replace function public.registrar_metrica_anuncio(
   p_anuncio_id uuid,
   p_tipo text,
@@ -697,6 +716,10 @@ begin
   end if;
   if p_tipo not in ('impresion', 'clic', 'contacto') then
     raise exception 'tipo de métrica inválido';
+  end if;
+  -- Un administrador revisando anuncios no suma eventos (2026-09-30).
+  if public.es_administrador(auth.uid()) then
+    return false;
   end if;
   if char_length(sigla) not between 2 and 24 then
     raise exception 'sigla inválida';
@@ -1276,7 +1299,9 @@ revoke all on function public.campana_visible(uuid) from public;
 grant execute on function public.campana_visible(uuid) to anon, authenticated;
 
 -- ¿Cuenta esta persona para la campaña? Solo si se puede mostrar, no es el
--- profesor y tiene ramos guardados. Uso interno de los registros.
+-- profesor, no es administrador de GradeHub y tiene ramos guardados. Uso
+-- interno de los registros. Los administradores revisan los anuncios y no
+-- pueden inflar lo que se cobra (pedido de Lucas del 2026-09-30).
 create or replace function public.cuenta_para_campana(p_anuncio_id uuid, p_user_id uuid)
 returns boolean
 language plpgsql
@@ -1287,6 +1312,9 @@ as $$
 begin
   if p_user_id is null or not public.campana_visible(p_anuncio_id) then return false; end if;
   if exists (select 1 from public.tutor_anuncios where id = p_anuncio_id and autor_id = p_user_id) then
+    return false;
+  end if;
+  if public.es_administrador(p_user_id) then
     return false;
   end if;
   return exists (select 1 from public.user_ramos where user_id = p_user_id);
