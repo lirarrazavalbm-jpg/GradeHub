@@ -2647,6 +2647,51 @@ async function marcarCobroAdmin(args){
   const {p_anuncio_id,p_estado,p_monto_clp}=args;
   return supabaseClient.rpc('admin_marcar_cobro',{p_anuncio_id,p_estado,p_monto_clp});
 }
+// Vistas puras de #522; las decisiones siguen en las RPC protegidas.
+function filasAdminHig(profesores,ahora=Date.now()){
+  return (profesores||[]).flatMap(p=>(p.anuncios||[]).map(a=>{
+    const costo=costoCampanaClase(a.campana),estado=estadoAdminAnuncio(a,costo,ahora);
+    if(p.estado!=='aprobado'&&['publicado','programado'].includes(vigenciaAnuncio(a,ahora)))
+      return {p,a,costo,estado:['Profesor no habilitado','suspendido']};
+    return {p,a,costo,estado};
+  }));
+}
+function filtrarAdminHig(filas,{seccion='campanas',busqueda='',estado=''}={}){
+  const palabras=normalizarBusquedaClase(busqueda).split(' ').filter(Boolean);
+  return filas.filter(f=>(seccion!=='revision'||f.a.estado==='en_revision')&&
+    (seccion!=='cobros'||f.a.publicado_at||(f.a.cobros||[]).length||f.a.cobro)&&
+    (!estado||f.estado[1]===estado)&&palabras.every(t=>normalizarBusquedaClase([f.p.nombre,f.a.titulo,...(f.a.ramos_siglas||[])].join(' ')).includes(t)));
+}
+function filaAdminHigHTML({p,a,costo,estado},ahora){
+  return `<details class="admin-hig-fila" data-admin-fila="${esc(a.id)}"><summary>
+    <span class="admin-hig-identidad"><b>${esc(a.titulo||'Sin título')}</b><small>${esc(p.nombre||'Sin nombre')} · ${esc((a.ramos_siglas||[]).join(' · '))}</small></span>
+    <span class="clase-estado clase-estado-${esc(estado[1])}">${esc(estado[0])}</span>
+    <span class="admin-hig-importe"><b>${costo?pesosClase(costo.total):'—'}</b><small>Costo de campaña</small></span><span aria-hidden="true">⌄</span>
+    </summary><div class="admin-hig-detalle">${a.estado==='en_revision'?'<p class="admin-hig-nota">Este anuncio espera revisión. El contenido completo y las decisiones de aprobar o devolver se revisan en SQL Editor.</p>':''}
+    ${filaAdminAnuncio(a,ahora)}</div></details>`;
+}
+function personaAdminHigHTML(p){
+  return `<section class="admin-hig-persona"><div><h3>${esc(p.nombre||'Sin nombre')}</h3><p>${esc(p.correo||'')}</p><p>${esc({aprobado:'Aprobado',pendiente:'Esperando revisión',suspendido:'Suspendido',rechazado:'Rechazado'}[p.estado]||p.estado)} · ${(p.anuncios||[]).length} anuncios</p></div>
+    ${p.estado==='aprobado'||p.estado==='suspendido'?`<button type="button" class="clase-accion" data-admin-profesor="${esc(p.user_id)}" data-estado="${p.estado==='aprobado'?'suspendido':'aprobado'}">${p.estado==='aprobado'?'Pausar profesor':'Reactivar profesor'}</button>`:''}</section>`;
+}
+function panelAdminHigHTML(profesores,ahora){
+  const filas=filasAdminHig(profesores,ahora),r=resumenAdminClases(profesores,ahora);
+  const kpi=(titulo,valor,detalle)=>`<div><span>${titulo}</span><strong>${valor}</strong><p>${detalle}</p></div>`;
+  return `<div class="admin-hig"><header class="admin-hig-cabecera"><p class="admin-hig-ceja">ADMINISTRACIÓN · CLASES PARTICULARES</p><h1>Todo en orden.</h1><p>Revisa anuncios, acompaña a los profesores y lleva los cobros al día.</p></header>
+    <div class="admin-hig-resumen" aria-label="Resumen de administración">
+    ${kpi('Visibles ahora',filas.filter(f=>f.estado[1]==='publicado').length,'Publicadas y bajo su tope')}
+    ${kpi('Por revisar',r.revision,'Anuncios que esperan una decisión')}
+    ${kpi('Deuda registrada',pesosClase(r.deuda),'Incluye publicaciones anteriores')}
+    ${kpi('Cobrado',pesosClase(r.cobrado),'Historial de pagos registrados')}</div>
+    <p class="admin-hig-nota">Aprobar profesores y aprobar o devolver anuncios sigue en SQL Editor. Esta página permite consultar los datos disponibles, pausar avisos, gestionar profesores y registrar cobros. Cada acción queda registrada.</p>
+    <nav class="admin-hig-pestanas" aria-label="Vistas de administración"><button type="button" data-admin-seccion="campanas" aria-pressed="true">Campañas</button><button type="button" data-admin-seccion="revision" aria-pressed="false">Por revisar · ${r.revision}</button><button type="button" data-admin-seccion="cobros" aria-pressed="false">Cobros e historial</button></nav>
+    <div class="admin-hig-herramientas"><label class="admin-hig-buscar">Buscar<input id="admin-hig-buscar" type="search" placeholder="Profesor, anuncio o ramo" autocomplete="off"></label><label>Estado<select id="admin-hig-estado">${[['','Todos'],['publicado','Publicadas'],['programado','Programadas'],['en_revision','En revisión'],['pausado','Pausadas'],['expirado','Terminadas'],['borrador','Borradores'],['agotado','Tope alcanzado'],['suspendido','Profesor no habilitado']].map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select></label></div>
+    <p class="admin-hig-nota" id="admin-hig-cantidad" role="status" aria-live="polite">${filas.length} anuncios</p>
+    <div class="admin-hig-lista">${filas.map(f=>filaAdminHigHTML(f,ahora)).join('')}</div>
+    <p class="admin-hig-vacio" id="admin-hig-vacio" hidden>No encontramos anuncios. Prueba otro nombre o amplía los filtros.</p>
+    <details class="admin-hig-profesores"><summary>Profesores · ${profesores.length} (${r.pendientes} esperando revisión)</summary>${profesores.map(personaAdminHigHTML).join('')||'<p>Todavía no hay profesores.</p>'}</details></div>`;
+}
+
 async function pintarPanelAdmin(raiz){
   raiz.innerHTML='<p class="profesor-info" role="status">Cargando…</p>';
   let profesores;
@@ -2657,21 +2702,30 @@ async function pintarPanelAdmin(raiz){
     profesores=Array.isArray(data)?data:[];
     if(profesores.some(p=>(p.anuncios||[]).some(a=>!Array.isArray(a.cobros))))compatibilidadSqlClases.cobros=true;
   }catch(e){raiz.innerHTML='<p class="profesor-info" role="alert">No pudimos cargar la administración. Intenta de nuevo.</p>';return;}
-  const ahora=Date.now(),r=resumenAdminClases(profesores,ahora);
-  const kpi=(t,v,d)=>`<div class="clase-num"><span>${t}</span><b>${v}</b><small>${d}</small></div>`;
-  raiz.innerHTML=`${compatibilidadSqlClases.campanas||compatibilidadSqlClases.cobros?`<p class="profesor-info" role="status">${esc(AVISO_SQL_CLASES)}</p>`:''}<div class="clase-nums clases-kpis">
-      ${kpi('Profesores',r.profesores,`${r.pendientes} esperando · ${r.suspendidos} pausados`)}
-      ${kpi('Campañas activas',r.activas,`${r.programadas} programadas · ${r.revision} en revisión`)}
-      ${kpi('Gastado',pesosClase(r.gastado),'lo que costaría')}
-      ${kpi('Cobrado',pesosClase(r.cobrado),`${pesosClase(r.deuda)} en deuda`)}
-    </div>
-    <p class="clase-privacidad">Aprobar profesores y publicar anuncios sigue siendo desde el SQL Editor. Cada acción de esta página queda registrada.</p>
-    ${profesores.length?profesores.map(p=>tarjetaAdminProfesor(p,ahora)).join(''):'<p class="clase-sin-datos">Todavía no hay profesores.</p>'}`;
+  const ahora=Date.now();
+  raiz.innerHTML=(compatibilidadSqlClases.campanas||compatibilidadSqlClases.cobros?`<p class="profesor-info" role="status">${esc(AVISO_SQL_CLASES)}</p>`:'')+panelAdminHigHTML(profesores,ahora);
+  let seccion='campanas';
+  const buscar=raiz.querySelector('#admin-hig-buscar'),filtro=raiz.querySelector('#admin-hig-estado');
+  const filtrar=()=>{
+    const filas=filtrarAdminHig(filasAdminHig(profesores,ahora),{seccion,busqueda:buscar.value,estado:filtro.value}),ids=new Set(filas.map(f=>f.a.id));
+    raiz.querySelectorAll('[data-admin-fila]').forEach(f=>{f.hidden=!ids.has(f.dataset.adminFila);});
+    raiz.querySelector('#admin-hig-cantidad').textContent=`${filas.length} ${filas.length===1?'anuncio':'anuncios'}`;
+    raiz.querySelector('#admin-hig-vacio').hidden=filas.length>0;
+  };
+  buscar.addEventListener('input',filtrar);filtro.addEventListener('change',filtrar);
+  raiz.querySelectorAll('[data-admin-seccion]').forEach(b=>b.addEventListener('click',()=>{
+    seccion=b.dataset.adminSeccion;
+    raiz.querySelectorAll('[data-admin-seccion]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    filtrar();
+  }));
+  filtrar();
   const repintar=()=>pintarPanelAdmin(raiz);
   const llamar=async(fn,args,ok)=>{
-    const {error}=await supabaseClient.rpc(fn,args);
-    if(error){console.warn('Acción de administración rechazada:',error.code||'',error.message||error);showToast('No se pudo: '+(error.message||'error'),true);return;}
-    showToast(ok);repintar();
+    try{
+      const {data,error}=await supabaseClient.rpc(fn,args);
+      if(error||data!==true){showToast(error?.message||'No se aplicó el cambio. Actualiza el panel e intenta de nuevo.',true);return;}
+      showToast(ok);await repintar();
+    }catch(e){showToast('No pudimos completar la acción. Revisa tu conexión e intenta de nuevo.',true);}
   };
   raiz.querySelectorAll('[data-admin-pausar]').forEach(b=>b.addEventListener('click',()=>
     showConfirm('¿Pausar este aviso?','Deja de mostrarse al tiro. Para volver, el profesor lo manda a revisión otra vez.',
@@ -2688,13 +2742,13 @@ async function pintarPanelAdmin(raiz){
     if(monto)campoPesos(monto);
     if(guardar)guardar.addEventListener('click',async()=>{
       const estado=fila.querySelector('[data-cobro-estado]').value,valor=pesosDeTexto(monto.value);
-      if(estado!=='pendiente'&&!Number.isSafeInteger(valor)){showToast('Escribe el monto',true);return;}
+      if(estado!=='pendiente'&&(!Number.isSafeInteger(valor)||valor<0||valor>5000000)){showToast('Escribe un monto entre $0 y $5.000.000.',true);return;}
       if(guardar.disabled)return;
       guardar.disabled=true;
       try{
         const resultado=await marcarCobroAdmin({p_anuncio_id:fila.dataset.adminCobro,p_publicado_at:fila.dataset.publicadoAt,
           p_estado:estado,p_monto_clp:estado==='pendiente'?null:valor});
-        if(resultado.error){showToast(resultado.error.message||'No se pudo guardar el cobro.',true);return;}
+        if(resultado.error||resultado.data!==true){showToast(resultado.error?.message||'No se pudo guardar el cobro.',true);return;}
         showToast('Cobro guardado'+(compatibilidadSqlClases.cobros?' con el SQL anterior':''));await repintar();
       }catch(e){showToast('No pudimos guardar el cobro. Intenta de nuevo.',true);}
       finally{if(guardar.isConnected)guardar.disabled=false;}
