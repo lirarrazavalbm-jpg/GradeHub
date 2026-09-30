@@ -2830,3 +2830,42 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 @media(min-width:1000px){#profesor-body:has(.profesor-hig){max-width:1060px;margin:0 auto;}.profesor-hig-editor .profesor-form{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:start;}.profesor-hig-editor .profesor-form-acciones{grid-column:1/-1;}.profesor-hig-editor .profesor-form-vista{position:sticky;top:24px;}}
 @media(max-width:760px){.profesor-hig-cabecera{align-items:flex-start;flex-direction:column;gap:20px;}.profesor-hig-intro{grid-template-columns:1fr;gap:24px;padding:22px;}.profesor-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;}.profesor-hig-identidad{grid-column:1/-1;}.profesor-hig-importe{grid-column:2;grid-row:2;}.profesor-hig-flecha{display:none;}.profesor-hig .profesor-seccion,.profesor-hig .profesor-form-vista{padding-left:16px;padding-right:16px;}.profesor-hig .vista-cabeza{flex-wrap:wrap;}.profesor-hig .profesor-campana-fechas{grid-template-columns:1fr;}.profesor-hig .profesor-detalle{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}.profesor-hig .profesor-detalle-quitar{grid-column:1/-1;}}
 @media(prefers-reduced-motion:reduce){.profesor-hig *{animation:none;transition:none;}}
+/* Catálogo HIG: presentación de #522, aislada de profesor y administración. */
+.catalogo-redisenado{font-family:var(--font-ui);font-size:1rem;line-height:1.5;color:var(--fg);}
+.catalogo-redisenado .catalogo-clases-head{margin-bottom:28px;gap:16px;}
+.catalogo-redisenado .catalogo-ceja{font-size:.6875rem;font-weight:750;letter-spacing:.12em;color:var(--primary);margin-bottom:12px;}
+.catalogo-redisenado h1{font-size:clamp(1.875rem,4vw,2.75rem);line-height:1.12;letter-spacing:-.045em;font-weight:680;margin:0;}
+.catalogo-redisenado .catalogo-bajada{font-size:1rem;margin-top:12px;}
+.catalogo-herramientas{display:flex;gap:16px;align-items:end;flex-wrap:wrap;margin-bottom:24px;}
+.catalogo-buscador{flex:1;min-width:180px;}
+.catalogo-buscador>label,.catalogo-filtro{font-size:.8125rem;font-weight:600;color:var(--fg2);}
+.catalogo-redisenado .catalogo-clases-busqueda{margin:6px 0 0;}
+.catalogo-filtro{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.catalogo-redisenado select,.catalogo-redisenado input[type=number]{min-height:46px;min-width:0;width:100%;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--fg);font:inherit;font-size:1rem;padding:10px 12px;}
+.catalogo-precios{display:flex;gap:12px;align-items:end;flex-wrap:wrap;flex-basis:100%;}
+.catalogo-precios .catalogo-filtro{flex:1 1 120px;max-width:190px;}
+.catalogo-gratis{display:flex;align-items:center;gap:8px;min-height:46px;cursor:pointer;color:var(--fg2);font-size:.875rem;}
+.catalogo-gratis input{width:20px;height:20px;accent-color:var(--primary);}
+#catalogo-precio-error{flex-basis:100%;font-size:.8125rem;color:var(--red);margin:0;}
+#catalogo-precio-error:empty{display:none;}
+.catalogo-lista-cabeza{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;}
+.catalogo-lista-cabeza h2{font-size:1rem;letter-spacing:-.02em;margin:0;}
+.catalogo-redisenado button,.catalogo-redisenado .catalogo-clase-contacto{min-width:44px;min-height:44px;font-family:inherit;}
+#catalogo-limpiar,.catalogo-reintentar{padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--fg);font:inherit;font-size:.8125rem;cursor:pointer;}
+.catalogo-redisenado :is(button,input:not([type=search]),select,a):focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
+.catalogo-redisenado .catalogo-clases-estado{font-size:.8125rem;color:var(--fg2);}
+.catalogo-redisenado .catalogo-clases-resultados{gap:24px;}
+.catalogo-redisenado .catalogo-clase-card{border-radius:16px;}
+.catalogo-redisenado .catalogo-clase-contenido{padding:20px 22px;}
+.catalogo-redisenado .catalogo-clase-cabeza small{font-size:.6875rem;color:var(--fg2);letter-spacing:.05em;}
+.catalogo-redisenado .catalogo-clase-contenido h3{font-size:1.3125rem;line-height:1.3;font-weight:620;letter-spacing:-.035em;margin-top:9px;}
+.catalogo-redisenado .catalogo-clase-descripcion{font-size:.875rem;line-height:1.65;margin:15px 0;color:var(--fg2);overflow-wrap:anywhere;}
+.catalogo-redisenado .catalogo-clase-card:has(.catalogo-clase-mas:not([hidden])) .catalogo-clase-descripcion{display:block;}
+.catalogo-redisenado .catalogo-clase-datos{padding-top:16px;margin-top:8px;flex-wrap:wrap;}
+.catalogo-redisenado .catalogo-clase-ver,.catalogo-redisenado .catalogo-clase-contacto{width:100%;font-size:.875rem;font-weight:600;}
+.catalogo-redisenado .catalogo-clase-ver{border:1px solid var(--border);border-radius:9px;background:var(--muted);color:var(--fg);margin-top:20px;padding:10px;}
+.catalogo-redisenado .catalogo-clase-detalles{padding-top:18px;}
+.catalogo-redisenado .catalogo-clase-detalles div{flex-wrap:wrap;}
+.catalogo-privacidad{font-size:.8125rem;color:var(--fg2);margin:24px 0 0;}
+@media(max-width:760px){.catalogo-buscador{flex-basis:100%;}.catalogo-redisenado .catalogo-clases-resultados{grid-template-columns:minmax(0,1fr);}.catalogo-redisenado .catalogo-clase-contenido{padding:20px;}}
+@media(prefers-reduced-motion:reduce){.catalogo-redisenado *{animation:none;transition:none;}}
