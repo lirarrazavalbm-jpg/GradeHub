@@ -1666,9 +1666,11 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .hist-gpa{font-family:var(--font-ui);font-size:1.375rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1;}
 /* SIMULADOR */
 .sim-proj{background:var(--primary-light);border-radius:14px;padding:14px 16px;text-align:center;margin-bottom:14px;}
-.sim-proj-label{font-size:0.6875rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);}
-.sim-proj-num{font-size:2.375rem;font-weight:800;letter-spacing:-1.5px;line-height:1.1;margin-top:2px;}
-.sim-delta{display:inline-block;margin-top:4px;font-size:0.75rem;font-weight:600;padding:2px 9px;border-radius:7px;}
+.sim-proj-label{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);}
+.sim-proj-num{font-size:2.375rem;font-weight:800;letter-spacing:-1.5px;line-height:1.1;margin-top:2px;font-variant-numeric:tabular-nums;}
+.sim-needed{margin-top:12px;padding-top:11px;border-top:1px solid var(--border);color:var(--fg2);
+  font-size:0.875rem;font-weight:600;line-height:1.45;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.sim-delta{display:inline-block;margin-top:4px;font-size:0.75rem;font-weight:600;padding:2px 9px;border-radius:7px;font-variant-numeric:tabular-nums;}
 .sim-delta.up{background:var(--green-bg);color:var(--green);}
 .sim-delta.down{background:var(--red-bg);color:var(--red);}
 .sim-delta.flat{background:var(--muted);color:var(--fg3);}
@@ -1688,31 +1690,36 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
    evaluaciones obligaba a scrollear todo el rato en una caja chica. Ahora la
    ventana usa el alto que hay: con dos evaluaciones sigue siendo baja, con
    cinco llena la pantalla.
-   El 330px es lo que ocupa todo lo que NO es la lista —título, ramo, bajada, el
-   número proyectado y los botones—, y por eso va en píxeles y no en vh: ese
+   El 400px es lo que ocupa todo lo que NO es la lista —título, ramo, bajada,
+   promedio, nota necesaria y botones—, y por eso va en píxeles y no en vh: ese
    bloque mide casi lo mismo en cualquier teléfono, mientras que el sheet ahora
    ocupa la pantalla entera. Restarlo deja a la lista todo lo que sobra sin empujar los
    botones fuera de pantalla, que desde que el modal se cierra solo con su
    botón sería dejar a la persona sin salida. El piso de 150px es para una
    pantalla muy baja o el teclado abierto. */
-.sim-cats{max-height:max(150px,calc(100dvh - 330px));overflow-y:auto;margin-bottom:12px;}
+.sim-cats{max-height:max(150px,calc(100dvh - 400px));overflow-y:auto;margin-bottom:12px;}
+/* En escritorio el modal deja 24px arriba y abajo; la lista cede ese espacio
+   para que Cerrar y Guardar queden visibles sin desplazar toda la ventana. */
+@media(min-width:768px){.sim-cats{max-height:max(150px,calc(100dvh - 455px));}}
 .sim-cat{border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:8px;}
 .sim-cat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
 .sim-cat-name{font-size:0.875rem;font-weight:600;color:var(--fg);}
 .sim-cat-meta{font-size:0.6875rem;color:var(--fg3);margin-top:1px;}
-.sim-cat-avg{font-size:0.9375rem;font-weight:700;}
+.sim-cat-avg{font-size:0.9375rem;font-weight:700;font-variant-numeric:tabular-nums;}
 .sim-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px;}
-.sim-chip{display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;font-weight:600;padding:3px 5px 3px 9px;border-radius:7px;}
+.sim-chip{display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;font-weight:600;padding:3px 5px 3px 9px;border-radius:7px;font-variant-numeric:tabular-nums;}
 .sim-chip.real{background:var(--muted);color:var(--fg3);}
 .sim-chip.hyp{background:var(--primary-light);color:var(--primary);}
-.sim-chip-x{background:none;border:none;cursor:pointer;color:inherit;font-size:0.8125rem;padding:0 2px;opacity:.7;}
+.sim-chip-x{background:none;border:none;cursor:pointer;color:inherit;font-size:0.8125rem;min-width:44px;min-height:44px;opacity:.7;}
 .sim-add{display:flex;gap:6px;}
-.sim-add input{flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;font-family:var(--font-ui);color:var(--fg);background:var(--bg2);outline:none;transition:border-color var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
+.sim-add input{flex:1;min-width:0;min-height:44px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;font-family:var(--font-ui);color:var(--fg);background:var(--bg2);outline:none;transition:border-color var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
 /* Era el único `outline:none` del archivo sin nada que lo reemplace: se enfocaba
    y no se notaba. El resto ya resuelve su foco con borde y halo, o con
    :focus-within en el contenedor. */
 .sim-add input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 85%);}
-.sim-add button{padding:7px 14px;background:var(--primary);color:var(--primary-fg);border:none;border-radius:8px;font-size:0.8125rem;font-weight:600;cursor:pointer;}
+.sim-add button{min-height:44px;padding:7px 14px;background:var(--primary);color:var(--primary-fg);border:none;border-radius:8px;font-size:0.8125rem;font-weight:600;cursor:pointer;}
+.modal-sheet:has(.sim-cats) .modal-btns button{min-height:44px;}
+.sim-chip-x:focus-visible,.sim-add button:focus-visible,.sim-falta-btn:focus-visible,.sim-falta-x:focus-visible,.sim-falta select:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
 
 /* ═══ PANTALLAS GRANDES ══════════════════════════════════════════════════
    La app se diseñó como columna de teléfono (430px) y hasta acá no tenía
@@ -2546,13 +2553,13 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 /* Faltar a una evaluación dentro del simulador. Es una hipótesis, no un
    estado del ramo: por eso comparte el gris de lo hipotético y no usa el
    semáforo, que significa aprobado / al borde / reprobado. */
-.sim-falta-btn{width:100%;margin-top:8px;padding:7px 10px;border:1px dashed var(--border2);border-radius:9px;background:transparent;color:var(--fg3);font-size:0.75rem;font-weight:600;cursor:pointer;}
+.sim-falta-btn{width:100%;min-height:44px;margin-top:8px;padding:7px 10px;border:1px dashed var(--border2);border-radius:9px;background:transparent;color:var(--fg2);font-size:0.8125rem;font-weight:600;cursor:pointer;}
 .sim-falta-btn:hover{color:var(--fg2);border-color:var(--fg3);}
 .sim-falta.activa{margin-top:8px;padding:10px;border:1px solid color-mix(in srgb,var(--yellow),transparent 60%);border-radius:9px;background:color-mix(in srgb,var(--yellow),transparent 93%);}
 .sim-falta-hd{display:flex;align-items:center;justify-content:space-between;font-size:0.78125rem;color:var(--fg);}
-.sim-falta-x{border:none;background:transparent;color:var(--fg3);font-size:0.8125rem;line-height:1;cursor:pointer;padding:2px 4px;}
+.sim-falta-x{min-width:44px;min-height:44px;border:none;background:transparent;color:var(--fg2);font-size:0.8125rem;line-height:1;cursor:pointer;padding:2px 4px;}
 .sim-falta-label{display:block;margin:6px 0 4px;font-size:0.71875rem;color:var(--fg3);}
-.sim-falta select{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--fg);font-size:0.78125rem;}
+.sim-falta select{width:100%;min-height:44px;padding:7px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--fg);font-size:0.875rem;}
 
 /* "Después" plegada: tres enteras y la cuarta a medio salir, borrosa.
    Es la fila de verdad con una clase encima —no una copia— para que se entienda
