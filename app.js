@@ -2382,6 +2382,18 @@ function ausenciaDeEvaluacion(r,cat){
   if(oficial&&texto&&!inactiva)texto+=' Según el programa.';
   return {declarada,aplicada:!!aplicada,inactiva:!!inactiva,oficial:!!oficial,texto};
 }
+// "Falté con justificativo" vive dentro de la hoja de la evaluación (la de la
+// fecha), no como botón en la ficha: es una excepción, y en cada fila pendiente
+// ocupaba más que la propia nota (pedido de Lucas del 2026-09-30). En una
+// casilla de un grupo se declara la evaluación completa, como exige el modelo.
+function opcionAusenciaHojaHTML(r,cat,{casilla=false}={}){
+  const a=ausenciaDeEvaluacion(r,cat);
+  if(!a||a.declarada)return '';
+  return `<div class="hoja-ausencia">
+      <button type="button" class="ausencia-hoja" onclick="elegirAusenciaDesdeEvaluacion('${esc(cat.id)}')">Falté con justificativo</button>
+      <p class="hoja-ausencia-ayuda">${casilla?`Aplica a toda la evaluación ${esc(cat.nombre)}. `:''}Te decimos a dónde va su ${porcentajeAusencia(cat.peso)}%.</p>
+    </div>`;
+}
 function elegirAusenciaDesdeEvaluacion(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const cat=r?.categorias.find(c=>c.id===catId);
@@ -7773,6 +7785,7 @@ function openEditCatModal(catId){
       <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
       Agregar a Google Calendar
     </a>`:''}
+    ${opcionAusenciaHojaHTML(r,cat)}
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" onclick="confirmEditCat('${catId}')">Guardar</button>
@@ -7848,6 +7861,7 @@ function openEditNotaModal(catId,notaId){
       <label class="modal-label">Peso de esta nota: <span id="m-nota-peso-val">${n.peso}</span>%</label>
       <input type="range" min="1" max="100" value="${n.peso}" id="m-nota-peso" oninput="document.getElementById('m-nota-peso-val').textContent=this.value"/>
     </div>
+    ${Number.isInteger(n.slot)?opcionAusenciaHojaHTML(r,cat,{casilla:true}):''}
     <div class="modal-btns" style="margin-top:14px;">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-confirm" id="m-edit-nota-btn" onclick="confirmEditNota('${catId}','${notaId}')">Guardar</button>

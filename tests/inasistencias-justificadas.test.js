@@ -49,8 +49,9 @@ chk('el preset separa reemplazos de traspasos',
 chk('presetRamo resuelve las reglas a ids de esta pauta',
   p.reglasAusenciaJustificada?.reemplazos?.some(x=>x.desdeId===id(p,'Control 1')&&x.haciaId===id(p,'Solemne'))&&
   p.reglasAusenciaJustificada?.traspasos?.some(x=>x.desdeId===id(p,'Pruebas sorpresa')&&x.haciaId===id(p,'Examen')));
-chk('la ficha ofrece justificar desde la evaluación, sin aviso general',
-  /elegirAusenciaDesdeEvaluacion/.test(renderMain)&&!/ausencias-justificadas-warning/.test(renderMain));
+chk('se justifica desde la hoja de la evaluación, sin aviso general ni botón en la ficha',
+  /opcionAusenciaHojaHTML\(r,cat\)/.test(fs.readFileSync(__dirname+'/../app.js','utf8'))&&
+  !/elegirAusenciaDesdeEvaluacion/.test(renderMain)&&!/ausencias-justificadas-warning/.test(renderMain));
 
 console.log('\n=== Reemplazar una nota y mover un peso son operaciones distintas ===');
 const c1=micro({Solemne:6,'Control 2':4,'Control 3':5,'Pruebas sorpresa':4,Examen:2});

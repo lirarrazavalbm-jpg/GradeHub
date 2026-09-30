@@ -130,15 +130,21 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
 .eval-row-input{width:66px;min-height:44px;padding:10px 6px;border:1.5px solid var(--border2);border-radius:11px;background:var(--bg2);font-family:var(--font-ui);font-size:1.1875rem;font-weight:700;text-align:center;outline:none;transition:border var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard),color var(--motion-fast) var(--ease-standard);}
 .eval-row-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 85%);}
 .eval-row-input::placeholder{color:var(--fg3);font-weight:400;}
-.eval-row:has(.ausencia-elegir),.eval-row:has(.ausencia-estado){flex-wrap:wrap;}
-.ausencia-elegir,.ausencia-estado{display:flex;align-items:center;min-height:44px;padding:10px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--fg2);font:inherit;font-size:.875rem;text-align:left;cursor:pointer;}
-.ausencia-elegir:hover,.ausencia-estado:hover{background:var(--muted);}
-.ausencia-elegir:focus-visible,.ausencia-estado:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
-.eval-row>.ausencia-elegir,.eval-row>.ausencia-estado{flex-basis:100%;}
+.eval-row:has(.ausencia-estado){flex-wrap:wrap;}
+.ausencia-estado{display:flex;align-items:center;min-height:44px;padding:10px 12px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);color:var(--fg2);font:inherit;font-size:.875rem;text-align:left;cursor:pointer;}
+.ausencia-estado:hover{background:var(--muted);}
+.ausencia-estado:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+/* "Falté con justificativo" dentro de la hoja de la evaluación: secundaria,
+   separada de lo principal (nombre, peso, fecha) y de Guardar. */
+.hoja-ausencia{margin:6px 0 14px;padding-top:14px;border-top:1px solid var(--border);}
+.ausencia-hoja{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--border2);border-radius:10px;background:transparent;color:var(--fg);font:inherit;font-size:.9375rem;font-weight:600;cursor:pointer;}
+.ausencia-hoja:hover{background:var(--muted);}
+.ausencia-hoja:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+.hoja-ausencia-ayuda{margin:6px 0 0;font-size:.8125rem;line-height:1.45;color:var(--fg3);}
+.eval-row>.ausencia-estado{flex-basis:100%;}
 .ausencia-estado{flex-direction:column;align-items:flex-start;gap:3px;width:100%;line-height:1.4;}
 .ausencia-estado strong{color:var(--fg);font-weight:650;}
 .ausencia-estado span{color:var(--fg2);font-variant-numeric:tabular-nums;}
-.eval-group-body>.ausencia-elegir,.cat-body>.ausencia-elegir{margin-top:8px;}
 .ausencia-modal-detalle{margin:0 0 16px;color:var(--fg2);line-height:1.5;font-variant-numeric:tabular-nums;}
 /* Acciones del ramo: Simular (primario) y Nota mínima (secundario) */
 .ramo-action{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border:none;border-radius:11px;font-size:0.8125rem;font-weight:700;cursor:pointer;font-family:var(--font-ui);background:var(--primary-light);color:var(--primary);transition:transform var(--motion-press),box-shadow var(--motion-fast);}

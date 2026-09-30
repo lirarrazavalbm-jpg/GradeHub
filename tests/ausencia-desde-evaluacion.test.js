@@ -39,7 +39,12 @@ check('al tocarla aparece Deshacer justificación con el destino',/Deshacer just
 run('confirmarCorreccionAusenciaJustificada("control")');
 check('deshacer solicita confirmación antes de cambiar el dato',run('S.ramos[0].ausenciasJustificadas.length')===1&&/Deshacer/.test(ctx.confirmacion.titulo));
 ctx.confirmacion.fn();
-check('confirmar deshacer elimina la declaración y restaura la nota pendiente',run('S.ramos[0].ausenciasJustificadas.length')===0&&/Falté con justificativo/.test(html()));
+// Desde el 2026-09-30 la opción vive en la hoja de la evaluación (la de la
+// fecha), no como botón en la ficha.
+check('confirmar deshacer elimina la declaración y restaura la nota pendiente',run('S.ramos[0].ausenciasJustificadas.length')===0&&!/Justificada/.test(html()));
+check('la ficha ya no muestra el botón "Falté con justificativo"',!/Falté con justificativo/.test(html()));
+run('openEditCatModal("control")');
+check('al tocar la evaluación pendiente, su hoja ofrece justificar',/Falté con justificativo/.test(byId('modal-content').innerHTML)&&/Te decimos a dónde va su 20%/.test(byId('modal-content').innerHTML));
 run('elegirAusenciaDesdeEvaluacion("control")');
 check('la regla oficial se explica antes de declarar',/Su 20% pasa al Examen\. Según el programa/.test(byId('modal-content').innerHTML));
 run('declararAusenciaJustificada("control")');
@@ -57,6 +62,8 @@ check('tras recargar conserva Justificada y el destino',/Justificada/.test(html(
 run('confirmarCorreccionAusenciaJustificada("control")');ctx.confirmacion.fn();
 check('deshacer limpia ausencia y regla elegida sin cambiar la pauta',run('S.ramos[0].ausenciasJustificadas.length')===0&&run('S.ramos[0].reglasAusenciaJustificadaUsuario')===null&&run('S.ramos[0].categorias[0].peso')===20);
 run('setDirectNota("control","5,5")');
+run('openEditCatModal("control")');
+check('con nota, su hoja tampoco ofrece justificar',!/Falté con justificativo/.test(byId('modal-content').innerHTML));
 check('con nota, la evaluación no ofrece justificar',!/Falté con justificativo/.test(byId('cat-list').children[0].innerHTML)&&/5,5|5\.5/.test(byId('cat-list').children[0].innerHTML));
 
 console.log('\n=== Rezago, reemplazo y casillas múltiples ===');
@@ -70,9 +77,15 @@ setRamo(reemplazo);
 check('reemplazo oficial explica qué nota calcula el porcentaje',/Su 20% se calcula con la nota del Examen/.test(html()));
 const casillas=JSON.parse(JSON.stringify(fixture));casillas.categorias[0]={...casillas.categorias[0],slots:2,notas:[]};
 setRamo(casillas);
+{const libre=JSON.parse(JSON.stringify(casillas));libre.ausenciasJustificadas=[];delete libre.reglasAusenciaJustificada;setRamo(libre);html();
+run('abrirCasilla("control",0)');
+check('en un grupo sin notas, la hoja de una casilla ofrece justificar la evaluación completa',/Falté con justificativo/.test(byId('modal-content').innerHTML)&&/Aplica a toda la evaluación/.test(byId('modal-content').innerHTML));
+setRamo(casillas);}
 check('grupo de casillas declarado muestra estado en vez de entradas de nota',/Justificada/.test(html())&&!/setSlotNota/.test(byId('cat-list').children[0].innerHTML));
 casillas.ausenciasJustificadas=[];casillas.categorias[0].notas=[{id:'uno',nombre:'Primera casilla',slot:0,valor:5.5,peso:1}];
 setRamo(casillas);
+run('abrirCasilla("control",1)');
+check('en un grupo con una casilla calificada, la hoja de otra casilla tampoco la ofrece',!/Falté con justificativo/.test(byId('modal-content').innerHTML));
 check('un grupo con una casilla ya calificada no ofrece ausencia para toda la evaluación',!/Falté con justificativo/.test(byId('cat-list').children[0].innerHTML));
 casillas.ausenciasJustificadas=['control'];setRamo(casillas);
 check('si una declaración antigua quedó inactiva por una nota, no esconde esa nota',/Declaración no aplicada/.test(html())&&/value="5\.5"/.test(byId('cat-list').children[0].innerHTML));
