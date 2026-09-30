@@ -132,7 +132,8 @@ console.log('\n=== Si el servidor todavía no tiene las columnas nuevas ===');
   run('capasColumnasClase=CAPAS_CAMPOS_CLASE.length');pedidas.length=0;
   ctx.__hacer=async campos=>{pedidas.push(campos);return campos.includes('linea_datos')?{data:null,error:{code:'PGRST204',message:"Could not find the 'linea_datos' column"}}:{data:[1],error:null};};
   await run('consultaCamposClase(__hacer,"id")');
-  chk('sin linea_datos se siguen pidiendo los detalles',pedidas.length===2&&pedidas[1]==='id,modalidad_otra,ubicacion_otra,detalles');
+  // Se baja primero la capa del pack (la más nueva) y después linea_datos.
+  chk('sin linea_datos se siguen pidiendo los detalles',pedidas.length===3&&pedidas[2]==='id,modalidad_otra,ubicacion_otra,detalles');
   run('capasColumnasClase=CAPAS_CAMPOS_CLASE.length');
   ctx.__hacer=async()=>({data:null,error:{code:'42501',message:'permission denied'}});
   const otro=await run('consultaCamposClase(__hacer,"id")');

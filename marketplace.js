@@ -17,7 +17,9 @@ const CAMPOS_BORRADOR_CLASE = 'id,tenant,ramos_siglas,criterios,modalidad,ubicac
 // si el servidor dice que falta una columna, la consulta se repite sin la
 // última capa y el catálogo, el panel y los borradores siguen andando. Se
 // recuerda para no pedirlas de nuevo en cada consulta.
-const CAPAS_CAMPOS_CLASE=[',modalidad_otra,ubicacion_otra,detalles',',linea_datos'];
+// La tercera capa (2026-09-30): pack de clases, que escribe el profesor, y el
+// descuento por venir de GradeHub, que solo fija GradeHub al aprobar.
+const CAPAS_CAMPOS_CLASE=[',modalidad_otra,ubicacion_otra,detalles',',linea_datos',',pack_clases,descuento_gradehub_pct'];
 let capasColumnasClase=CAPAS_CAMPOS_CLASE.length;
 function faltaColumnaClase(error){
   return !!error&&(error.code==='42703'||error.code==='PGRST204'||/column|columna/i.test(String(error.message||'')));
@@ -35,6 +37,7 @@ async function consultaCamposClase(hacer,base){
 // misma clase puede servir a dos siglas, como Dinámica ICE1514 y FIS1514.
 const MAX_RAMOS_POR_ANUNCIO=2;
 const MAX_DETALLES_CLASE=4,MAX_ETIQUETA_DETALLE=30,MAX_VALOR_DETALLE=80;
+const MIN_PACK_CLASES=2,MAX_PACK_CLASES=20;
 // Bajo el título de la recomendación caben pocos datos: el profesor elige
 // hasta tres. Sin elección son los de siempre.
 const MAX_LINEA_CLASE=3,LINEA_CLASE_POR_OMISION=['modalidad','ubicacion','precio'];
@@ -108,6 +111,16 @@ function validarBorradorClase(entrada,nombresPorSigla){
       return {ok:false,campo:'linea_datos',error:`Elige de 1 a ${MAX_LINEA_CLASE} datos para mostrar bajo el título.`};
     linea_datos=claves;
   }
+  // Pack: el precio sigue siendo POR CLASE y el pack solo dice cuántas trae.
+  // Vacío = sin pack. Una clase gratis no se vende en pack.
+  let pack_clases=null;
+  if(entrada.pack_clases!==null&&entrada.pack_clases!==undefined&&entrada.pack_clases!==''){
+    const n=Number(entrada.pack_clases);
+    if(!Number.isSafeInteger(n)||n<MIN_PACK_CLASES||n>MAX_PACK_CLASES)
+      return {ok:false,campo:'pack_clases',error:`Un pack trae entre ${MIN_PACK_CLASES} y ${MAX_PACK_CLASES} clases. Déjalo vacío si cobras por clase.`};
+    if(entrada.precio_clp===0)return {ok:false,campo:'pack_clases',error:'Una clase gratis no se vende en pack. Deja vacío el pack.'};
+    pack_clases=n;
+  }
   // $0 es una clase gratis (pedido de Lucas del 2026-09-25). Entre $1 y $999
   // no hay clase que valga eso: casi siempre es un precio a medio escribir.
   if(!Number.isSafeInteger(entrada.precio_clp)||!(entrada.precio_clp===0||(entrada.precio_clp>=1000&&entrada.precio_clp<=500000)))
@@ -131,7 +144,7 @@ function validarBorradorClase(entrada,nombresPorSigla){
   return {ok:true,datos:{tenant,ramos_siglas:siglas,
     criterios:{promedioMenorA:entrada.criterios.promedioMenorA,avanceMinimo:entrada.criterios.avanceMinimo},
     modalidad,ubicacion,modalidad_otra:mod.otra,ubicacion_otra:ubi.otra,detalles:detalles.length?detalles:null,linea_datos,
-    precio_clp:entrada.precio_clp,titulo,descripcion,contacto_tipo,contacto_valor}};
+    precio_clp:entrada.precio_clp,pack_clases,titulo,descripcion,contacto_tipo,contacto_valor}};
 }
 
 const ERROR_CONTACTO_CLASE={
@@ -313,6 +326,10 @@ async function guardarBorradorClase(entrada,id){
   try{
     const escribir=async campos=>{
       const datos={...valido.datos};
+      if(!campos.includes('pack_clases')){
+        if(datos.pack_clases)return {data:null,error:{message:'sin-pack'}};
+        delete datos.pack_clases;
+      }
       if(!campos.includes('linea_datos')){
         if(datos.linea_datos)return {data:null,error:{message:'sin-linea-datos'}};
         delete datos.linea_datos;
@@ -333,6 +350,7 @@ async function guardarBorradorClase(entrada,id){
     // Sin el SQL que acepta $0, el servidor rechaza la clase gratis por su
     // restricción de precio: se dice eso y no "revisa tu conexión".
     if(error&&error.code==='23514'&&valido.datos.precio_clp===0)return {ok:false,campo:'precio_clp',error:'Todavía no podemos guardar clases gratis. Pon un precio por ahora.'};
+    if(error&&error.message==='sin-pack')return {ok:false,campo:'pack_clases',error:'Todavía no podemos guardar packs. Deja vacío el pack y pon el precio por clase por ahora.'};
     if(error&&error.message==='sin-linea-datos')return {ok:false,campo:'linea_datos',error:'Todavía no podemos guardar qué datos van bajo el título. Deja formato, dónde y precio por ahora.'};
     if(error&&error.message==='sin-columnas-nuevas')return {ok:false,campo:'detalles',error:'Todavía no podemos guardar "Otra", un formato vacío ni detalles a medida. Usa las opciones de la lista por ahora.'};
     if(error||!data||data.estado!=='borrador'){
@@ -878,8 +896,37 @@ function detallesClase(anuncio){
 function esClaseGratis(anuncio){
   return !!anuncio&&anuncio.precio_clp!==null&&anuncio.precio_clp!==''&&Number(anuncio.precio_clp)===0;
 }
+// Pack y descuento. El precio guardado es SIEMPRE por clase: el pack solo lo
+// multiplica, y el descuento por venir de GradeHub lo fija GradeHub al aprobar
+// (el profesor no puede escribirlo). Nada de esto toca la medición ni la tarifa.
+function preciosClase(a){
+  const base=Number(a&&a.precio_clp);
+  if(esClaseGratis(a))return {gratis:true};
+  if(!a||a.precio_clp===null||a.precio_clp===''||!Number.isFinite(base)||base<=0)return {gratis:false,porClase:null};
+  const n=Number.isInteger(a.pack_clases)&&a.pack_clases>=MIN_PACK_CLASES&&a.pack_clases<=MAX_PACK_CLASES?a.pack_clases:null;
+  const d=Number.isInteger(a.descuento_gradehub_pct)&&a.descuento_gradehub_pct>=1&&a.descuento_gradehub_pct<=50?a.descuento_gradehub_pct:null;
+  const conDescuento=x=>d?Math.round(x*(100-d)/100):x;
+  return {gratis:false,pack:n,descuento:d,porClase:base,porClaseFinal:conDescuento(base),
+    packTotal:n?base*n:null,packFinal:n?conDescuento(base*n):null};
+}
+// Corto, para la línea bajo el título: "$45.000 pack de 4" o "$11.250".
 function precioClase(anuncio){
-  return esClaseGratis(anuncio)?'Gratis':pesosClase(anuncio&&anuncio.precio_clp);
+  const p=preciosClase(anuncio);
+  if(p.gratis)return 'Gratis';
+  if(p.porClase==null)return pesosClase(anuncio&&anuncio.precio_clp);
+  return p.pack?`${pesosClase(p.packFinal)} pack de ${p.pack}`:pesosClase(p.porClaseFinal);
+}
+// El bloque de precio de la tarjeta. El precio anterior va tachado con texto
+// oculto ("antes") para lectores de pantalla, y el descuento en el color de la
+// marca: nunca en verde, que en GradeHub significa "aprobado".
+function precioCatalogoHTML(a){
+  const p=preciosClase(a);
+  if(p.gratis)return '<strong>Gratis</strong>';
+  if(p.porClase==null)return '';
+  const antes=x=>p.descuento?`<del><span class="sr-precio">antes </span>${pesosClase(x)}</del> `:'';
+  const chip=p.descuento?`<span class="catalogo-clase-descuento">−${p.descuento}% por venir de GradeHub</span>`:'';
+  if(p.pack)return `<div class="catalogo-clase-precio"><strong>${antes(p.packTotal)}${pesosClase(p.packFinal)} <small>pack de ${p.pack}</small></strong>${chip}<span class="catalogo-clase-por-clase">${antes(p.porClase)}${pesosClase(p.porClaseFinal)} por clase</span></div>`;
+  return `<div class="catalogo-clase-precio"><strong>${antes(p.porClase)}${pesosClase(p.porClaseFinal)} <small>por clase</small></strong>${chip}</div>`;
 }
 function pesosClase(valor){
   // Nunca un precio negativo. El formulario ya exige entre 1.000 y 500.000, así
@@ -915,7 +962,7 @@ function tarjetaCatalogoClase(a,{sigla,abierta=false}={}){
         <h3>${esc(a.titulo||'Clase particular')}</h3></div>${logosCatalogoClases.get(a.id)?`<div class="catalogo-clase-logo" data-logo="${esc(logosCatalogoClases.get(a.id))}"></div>`:''}</div>
         <p class="catalogo-clase-ramos"><strong>${esc(siglas)}</strong>${nombres?`<span>${esc(nombres)}</span>`:''}</p>
         <p class="catalogo-clase-descripcion">${esc(a.descripcion||'')}</p>
-        <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span><strong>${esClaseGratis(a)?'Gratis':`${pesosClase(a.precio_clp)} <small>por clase</small>`}</strong></div>
+        <div class="catalogo-clase-datos"><span>${esc(formatoClase(a))}</span>${precioCatalogoHTML(a)}</div>
         ${abierta?'':`<button type="button" class="catalogo-clase-ver" data-abrir="${esc(a.id)}" data-sigla="${esc(siglaMetrica)}" aria-expanded="false">Ver clase</button>`}
         <div class="catalogo-clase-mas"${abierta?'':' hidden'}>
         ${detallesClase(a).length?`<dl class="catalogo-clase-detalles">${detallesClase(a).map(d=>`<div><dt>${esc(d.etiqueta)}</dt><dd>${esc(d.valor)}</dd></div>`).join('')}</dl>`:''}
@@ -936,7 +983,8 @@ function filtrarPrecioCatalogoClases(anuncios,{desde='',hasta='',gratis=false,ub
     if(ubicacion&&a.ubicacion!==ubicacion&&a.ubicacion!=='hibrido')return false;
     if(gratis)return esClaseGratis(a);
     if(desde===''&&hasta==='')return true;
-    const precio=Number(a.precio_clp);
+    // Se filtra por lo que paga el estudiante por clase, con el descuento aplicado.
+    const precio=Number(preciosClase(a).porClaseFinal??a.precio_clp);
     return a.precio_clp!=null&&a.precio_clp!==''&&Number.isFinite(precio)&&precio>=minimo&&precio<=maximo;
   })};
 }
@@ -1597,7 +1645,7 @@ function tarjetaPanelClase(a,pesos,ahora){
       <strong>${esc(a.titulo||'Sin título')}</strong>
       <span class="clase-estado clase-estado-${esc(vig)}">${esc(etiqueta)}</span>
     </div>
-    <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${esClaseGratis(a)?' · Gratis':a.precio_clp?' · '+pesos(a.precio_clp)+' por clase':''}</p>
+    <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${esClaseGratis(a)?' · Gratis':a.precio_clp?' · '+(preciosClase(a).pack?precioClase(a):pesos(preciosClase(a).porClaseFinal)+' por clase'):''}</p>
     ${dias!==null?`<div class="clase-vigencia"><span>${dias===0?'Termina hoy':dias===1?'Queda 1 día':`Quedan ${dias} días`}</span>${avance!==null?`<div class="clase-riel"><i style="transform:scaleX(${avance.toFixed(3)})"></i></div>`:''}</div>`
       :`<p class="clase-card-detalle">${esc(empieza?`Empieza el ${empieza}.`:detalle)}</p>`}
     <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
@@ -1932,6 +1980,7 @@ function renderBorradorProfesor(raiz,anuncio){
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
       <label class="modal-label" for="pr-descripcion">Descripción</label><textarea id="pr-descripcion" minlength="20" maxlength="1500" required placeholder="Qué van a trabajar, cómo son tus clases y tu experiencia con el ramo.">${valor('descripcion')}</textarea>
       <label class="modal-label" for="pr-precio">Precio por clase</label><input id="pr-precio" type="text" inputmode="numeric" autocomplete="off" required placeholder="$15.000" aria-describedby="pr-precio-ayuda" value="${esc(textoPesosEscrito(anuncio&&anuncio.precio_clp))}"><p class="profesor-info" id="pr-precio-ayuda">Si la clase es gratis, pon $0: se mostrará como "Gratis".</p>
+      <label class="modal-label" for="pr-pack">Clases por pack · opcional</label><input id="pr-pack" type="number" inputmode="numeric" min="${MIN_PACK_CLASES}" max="${MAX_PACK_CLASES}" step="1" placeholder="Ej. 4" aria-describedby="pr-pack-ayuda" value="${valor('pack_clases')}"><p class="profesor-info" id="pr-pack-ayuda">Si vendes un pack, pon cuántas clases trae. El precio de arriba sigue siendo por clase: mostramos el total del pack.</p>
       <label class="modal-label" for="pr-modalidad">Formato · opcional</label><select id="pr-modalidad">${elegir([['','No indicar'],...MODALIDADES_CLASE,['otra','Otra…']],anuncio&&anuncio.modalidad||'')}</select>
       <input id="pr-modalidad-otra" type="text" maxlength="40" aria-label="Escribe el formato" placeholder="Ej. grupos de hasta 3" value="${valor('modalidad_otra')}" ${anuncio&&anuncio.modalidad==='otra'?'':'hidden'}>
       <label class="modal-label" for="pr-ubicacion">Dónde · opcional</label><select id="pr-ubicacion">${elegir([['','No indicar'],...UBICACIONES_CLASE,['otra','Otra…']],anuncio&&anuncio.ubicacion||'')}</select>
@@ -2018,7 +2067,7 @@ function renderBorradorProfesor(raiz,anuncio){
   // que ya existían.
   const lineaElegida=new Set(Array.isArray(anuncio&&anuncio.linea_datos)?anuncio.linea_datos:LINEA_CLASE_POR_OMISION);
   const cajaLinea=campo('linea');let firmaLinea='';
-  const borradorEnVivo=()=>({titulo:valorCampo('titulo').trim(),precio_clp:pesosDeTexto(valorCampo('precio')),
+  const borradorEnVivo=()=>({titulo:valorCampo('titulo').trim(),precio_clp:pesosDeTexto(valorCampo('precio')),pack_clases:valorCampo('pack').trim(),
     modalidad:valorCampo('modalidad'),modalidad_otra:valorCampo('modalidad-otra').trim(),
     ubicacion:valorCampo('ubicacion'),ubicacion_otra:valorCampo('ubicacion-otra').trim(),
     detalles:leerDetalles(),linea_datos:[...lineaElegida]});
@@ -2233,6 +2282,7 @@ function renderBorradorProfesor(raiz,anuncio){
     const datos={tenant:campo('tenant').value,ramos_siglas:campo('siglas').value.split(',').map(s=>s.trim()),
       criterios:{promedioMenorA:Number(campo('promedio').value),avanceMinimo:Number(campo('avance').value)},
       titulo:campo('titulo').value,descripcion:campo('descripcion').value,precio_clp:pesosDeTexto(campo('precio').value),
+      pack_clases:campo('pack')?campo('pack').value.trim():'',
       modalidad:campo('modalidad').value,ubicacion:campo('ubicacion').value,
       modalidad_otra:campo('modalidad-otra')?campo('modalidad-otra').value:'',ubicacion_otra:campo('ubicacion-otra')?campo('ubicacion-otra').value:'',
       detalles:leerDetalles(),linea_datos:lineaParaGuardar(borradorEnVivo()),
@@ -2242,7 +2292,7 @@ function renderBorradorProfesor(raiz,anuncio){
     estado.textContent='Guardando borrador…';
     try{
       const guardado=await guardarBorradorClase(datos,id);
-      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo==='contacto_valor'){marcarContacto(guardado.error);return;}if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
+      if(!guardado.ok){estado.textContent=guardado.error;if(guardado.campo==='contacto_valor'){marcarContacto(guardado.error);return;}if(guardado.campo){const mapa={ramos_siglas:'siglas-buscar',criterios:'promedio',precio_clp:'precio',pack_clases:'pack',contacto_tipo:'contacto-tipo',contacto_valor:'contacto',modalidad_otra:'modalidad-otra',ubicacion_otra:'ubicacion-otra',detalles:'agregar-detalle'};enfocar(campo(mapa[guardado.campo]||guardado.campo));}return;}
       id=guardado.anuncio.id;
       const guardadaCampana=await guardarCampanaClase(id,campana.datos);
       if(!guardadaCampana.ok&&!guardadaCampana.falta){estado.textContent='Tu clase se guardó, pero '+(guardadaCampana.error||'no se guardaron los días y el tope. No se envió a revisión.');return;}

@@ -7,7 +7,10 @@
 // porque simulan Supabase. Este lee los grants reales del SQL.
 const fs=require('fs'),path=require('path'),vm=require('vm');
 const raiz=path.join(__dirname,'..');
-const sql=fs.readFileSync(path.join(raiz,'supabase/clases_particulares.sql'),'utf8').split('\n').map(l=>l.replace(/--.*$/,'')).join('\n');
+// Los grants de tutor_anuncios viven en más de un archivo: el pack de clases
+// llegó en su propio SQL (2026-09-30).
+const sql=['supabase/clases_particulares.sql','supabase/clases_pack_descuento.sql']
+  .map(f=>fs.readFileSync(path.join(raiz,f),'utf8')).join('\n').split('\n').map(l=>l.replace(/--.*$/,'')).join('\n');
 const ctx={console};vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(raiz,'marketplace.js'),'utf8'),ctx);
 let ok=0,fail=0;
@@ -31,5 +34,7 @@ chk('crear: cada campo del formulario tiene INSERT'+(faltaInsert.length?' (falta
 chk('editar: cada campo del formulario tiene UPDATE'+(faltaUpdate.length?' (falta '+faltaUpdate+')':''),!faltaUpdate.length);
 chk('y nunca se concede escribir el estado de pago o revisión',
   !['pagado_at','revisado_at','publicado_at','vence_at','autor_id'].some(c=>update.has(c)));
+// El descuento por venir de GradeHub lo fija GradeHub al aprobar, no el profesor.
+chk('ni el descuento de GradeHub',!insert.has('descuento_gradehub_pct')&&!update.has('descuento_gradehub_pct'));
 console.log('\nPASS: '+ok+'   FAIL: '+fail);
 process.exit(fail?1:0);
