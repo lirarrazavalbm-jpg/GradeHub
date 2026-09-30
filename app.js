@@ -8231,24 +8231,16 @@ function simCommit(){
 // Recolecta todas las categorías con fecha ingresada, las ordena y agrupa por
 // proximidad. La ingesta de fechas se agrega en el modal de categoría (próximo batch).
 // ─── INSIGHT HELPERS (cards inteligentes del home) ─────────────────────────
+// Sale de la misma lista que la Agenda y con su mismo criterio de "por venir".
+// Tenía su propia cuenta: solo miraba la fecha de la categoría, ignoraba las
+// fechas por casilla y daba por rendida una categoría con casillas solo
+// fechadas (notas sin valor). Inicio decía "Solemne 1 en 5 días" mientras la
+// Agenda ponía primero "Control 1" en 2.
 function nextExam(){
-  const today=new Date();today.setHours(0,0,0,0);
-  const day=86400000;
-  let best=null;
-  S.ramos.forEach(r=>{
-    r.categorias.forEach(c=>{
-      if(categoriaEximida(r,c))return;
-      if(!c.fecha)return;
-      const target=c.slots||1;
-      if((c.notas||[]).length>=target)return; // ya evaluado
-      const d=new Date(c.fecha+'T00:00:00');
-      if(d<today)return; // vencido
-      if(!best || d<best.date) best={ramo:r,cat:c,date:d};
-    });
-  });
-  if(!best)return null;
-  const daysUntil=Math.round((best.date-today)/day);
-  return {ramo:best.ramo,cat:best.cat,date:best.date,daysUntil};
+  // agendaEvents ya viene ordenada por fecha y hora, sin eximidas.
+  const e=agendaEvents().find(e=>estadoEventoAgenda(e)==='por_venir');
+  if(!e)return null;
+  return {ramo:e.ramo,cat:e.cat,nombre:nombreEventoAgenda(e),date:new Date(e.fecha+'T00:00:00'),daysUntil:diasHasta(e.fecha)};
 }
 
 function latestGrade(){

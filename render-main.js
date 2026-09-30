@@ -189,7 +189,7 @@ function renderHome(){
           <div class="insight-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></div>
           <div class="insight-body">
             <div class="insight-label">Próxima evaluación</div>
-            <div class="insight-title">${esc(ne.cat.nombre)} · ${esc(ne.ramo.nombre)}</div>
+            <div class="insight-title">${esc(ne.nombre)} · ${esc(ne.ramo.nombre)}</div>
             <div class="insight-meta"><span class="strong">${daysLabel}</span></div>
           </div>
           <span class="chevron-r">›</span>
