@@ -10,8 +10,14 @@ const draft={id,estado:'borrador',criterios:{promedioMenorA:5,avanceMinimo:20},t
   descripcion:'Descripción de una clase completamente ficticia.',precio_clp:10000,modalidad:'individual',ubicacion:'online',
   contacto_tipo:'whatsapp',contacto_valor:'+56 9 0000 0000'};
 ctx.abrir=async()=>({ok:true,anuncio:draft});run('abrirBorradorClase=abrir');
-ctx.supabaseClient={from(table){return {select(){return this},eq(){return this},
-  maybeSingle:async()=>({data:campaign,error:schemaError}),upsert:async()=>({error:schemaError}),
+ctx.supabaseClient={from(table){
+  // anuncio_campanas se guarda con update y, si no había fila, insert (sin upsert).
+  if(table==='anuncio_campanas')return {select(){return this},eq(){return this},
+    maybeSingle:async()=>({data:campaign,error:schemaError}),
+    update(){return {eq(){return {select:async()=>({data:schemaError?null:[],error:schemaError})}}}},
+    insert:async()=>({error:schemaError})};
+  return {select(){return this},eq(){return this},
+  maybeSingle:async()=>({data:campaign,error:schemaError}),
   update(){assert.equal(table,'tutor_anuncios');writes++;return this},single:async()=>({data:{id,estado:'en_revision'}})}}};
 (async()=>{
   for(const code of codes){
