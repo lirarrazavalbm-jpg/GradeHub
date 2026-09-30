@@ -7222,6 +7222,7 @@ async function eliminarCuenta(){
     // Recién acá se limpia lo local: si el borrado en la nube falló, el
     // estudiante conserva sus notas en el dispositivo y puede reintentar.
     try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(PRE_IMPORT_KEY);}catch(e){}
+    if(typeof borrarCacheApartada==='function')borrarCacheApartada(currentUser.id);
     try{await supabaseClient.auth.signOut();}catch(e){}
     showToast('Tu cuenta fue eliminada');
     setTimeout(()=>location.reload(),1400);
@@ -7239,6 +7240,7 @@ function confirmResetApp(){
   showConfirm('Reiniciar app',desc,async()=>{
     track('app_reset');
     localStorage.removeItem(STORAGE_KEY);
+    if(typeof borrarCacheApartada==='function')borrarCacheApartada(conCuenta?currentUser.id:null);
     if(conCuenta){try{await supabaseClient.auth.signOut();}catch(e){}}
     location.reload();
   },{label:'Reiniciar'});
