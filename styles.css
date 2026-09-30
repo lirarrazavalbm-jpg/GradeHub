@@ -2769,9 +2769,11 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .profesor-hig-lista-cabeza h2{font-size:1.125rem;letter-spacing:-.02em;margin:0;}
 .profesor-hig-lista-cabeza>span{font-size:.8125rem;color:var(--fg2);}
 .profesor-hig .clases-seccion>h3{font-size:.8125rem;color:var(--fg2);}
-.profesor-hig .clase-lista{display:block;border-top:1px solid var(--border);}
-.profesor-hig-fila{border-bottom:1px solid var(--border);}
-.profesor-hig-fila>summary{display:grid;grid-template-columns:minmax(0,1fr) 120px 150px 16px;gap:22px;align-items:center;padding:22px 4px;list-style:none;cursor:pointer;}
+/* Cada anuncio es una tarjeta, con el mismo borde, radio y fondo que la de
+   "Enseña a tu manera" (.profesor-hig-intro). */
+.profesor-hig .clase-lista{display:grid;gap:12px;}
+.profesor-hig-fila{border:1px solid var(--border);border-radius:16px;background:var(--card);overflow:hidden;}
+.profesor-hig-fila>summary{display:grid;grid-template-columns:minmax(0,1fr) 120px 150px 16px;gap:22px;align-items:center;padding:22px 24px;list-style:none;cursor:pointer;}
 .profesor-hig-fila>summary::-webkit-details-marker{display:none;}
 .profesor-hig-fila>summary:hover{background:var(--muted);}
 .profesor-hig-identidad{min-width:0;overflow-wrap:anywhere;}
@@ -2781,7 +2783,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .profesor-hig-importe{text-align:right;font-variant-numeric:tabular-nums;font-size:.9375rem;}
 .profesor-hig-flecha{font-size:1.25rem;color:var(--fg2);}
 .profesor-hig-fila[open] .profesor-hig-flecha{transform:rotate(180deg);}
-.profesor-hig-detalle{padding:0 0 24px;}
+.profesor-hig-detalle{padding:0 24px 24px;}
 .profesor-hig-detalle .clase-card{border:0;background:transparent;padding:0;}
 .profesor-hig-detalle .clase-card-top{display:none;}
 .profesor-hig-detalle .clase-card-meta{margin:0 0 16px;}
@@ -2818,7 +2820,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .profesor-hig .profesor-form-acciones{padding:20px 0 calc(20px + env(safe-area-inset-bottom));border-top:1px solid var(--border);}
 .profesor-hig .profesor-form-acciones .modal-btns{margin:0;}
 @media(min-width:1000px){#profesor-body:has(.profesor-hig){max-width:1060px;margin:0 auto;}.profesor-hig-editor .profesor-form{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:start;}.profesor-hig-editor .profesor-form-acciones{grid-column:1/-1;}.profesor-hig-editor .profesor-form-vista{position:sticky;top:24px;}}
-@media(max-width:760px){.profesor-hig-cabecera{align-items:flex-start;flex-direction:column;gap:20px;}.profesor-hig-intro{grid-template-columns:1fr;gap:24px;padding:22px;}.profesor-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;}.profesor-hig-identidad{grid-column:1/-1;}.profesor-hig-importe{grid-column:2;grid-row:2;}.profesor-hig-flecha{display:none;}.profesor-hig .profesor-seccion,.profesor-hig .profesor-form-vista{padding-left:16px;padding-right:16px;}.profesor-hig .vista-cabeza{flex-wrap:wrap;}.profesor-hig .profesor-campana-fechas{grid-template-columns:1fr;}.profesor-hig .profesor-detalle{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}.profesor-hig .profesor-detalle-quitar{grid-column:1/-1;}}
+@media(max-width:760px){.profesor-hig-cabecera{align-items:flex-start;flex-direction:column;gap:20px;}.profesor-hig-intro{grid-template-columns:1fr;gap:24px;padding:22px;}.profesor-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:18px;}.profesor-hig-detalle{padding:0 18px 18px;}.profesor-hig-identidad{grid-column:1/-1;}.profesor-hig-importe{grid-column:2;grid-row:2;}.profesor-hig-flecha{display:none;}.profesor-hig .profesor-seccion,.profesor-hig .profesor-form-vista{padding-left:16px;padding-right:16px;}.profesor-hig .vista-cabeza{flex-wrap:wrap;}.profesor-hig .profesor-campana-fechas{grid-template-columns:1fr;}.profesor-hig .profesor-detalle{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}.profesor-hig .profesor-detalle-quitar{grid-column:1/-1;}}
 @media(prefers-reduced-motion:reduce){.profesor-hig *{animation:none;transition:none;}}
 /* Catálogo HIG: presentación de #522, aislada de profesor y administración. */
 .catalogo-redisenado{font-family:var(--font-ui);font-size:1rem;line-height:1.5;color:var(--fg);}
