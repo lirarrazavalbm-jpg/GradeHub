@@ -100,6 +100,16 @@ $$;
 -- "por sobre el 44%": cierto, pero se leía como que la mitad le ganaba, y nadie
 -- le ganaba. La columna conserva el nombre para no cambiar el tipo de retorno.
 --
+-- SOLO CUENTAN LAS FILAS AL DÍA (2026-09-29). Hasta ese arreglo el cliente no
+-- mandaba el null de un ramo borrado ni de un semestre archivado, y esas filas
+-- quedaron congeladas para siempre: el cliente ya no las conoce, así que nunca
+-- las va a sacar. Cada vez que alguien abre Estadísticas se reescriben sus
+-- filas vigentes (`updated_at = now()`); una fila que lleva 30 días sin
+-- tocarse es de un ramo que ya no está o de alguien que dejó de mirar, y en
+-- los dos casos no representa al curso de hoy. No se borra nada: si esa
+-- persona vuelve, su fila revive sola.
+-- ponytail: ventana fija de 30 días; si hace falta, bajarla o volverla parámetro.
+--
 -- REAPLICAR: el tipo de retorno no cambió, así que `create or replace` basta.
 create or replace function public.curso_posicion(
   p_tenant text,
@@ -123,13 +133,15 @@ begin
   end if;
 
   select promedio into mi from public.curso_notas
-    where user_id = uid and tenant = v_tenant and ramo_sigla = v_sigla;
+    where user_id = uid and tenant = v_tenant and ramo_sigla = v_sigla
+      and updated_at > now() - interval '30 days';
   if mi is null then
     return;   -- no participa de este ramo: no hay con qué ubicarlo
   end if;
 
   select count(*) into n from public.curso_notas
-    where tenant = v_tenant and ramo_sigla = v_sigla;
+    where tenant = v_tenant and ramo_sigla = v_sigla
+      and updated_at > now() - interval '30 days';
 
   -- Cinco contándose a sí mismo: cuatro compañeros no alcanzan para que el
   -- agregado sea anónimo.
@@ -140,6 +152,7 @@ begin
   -- `<=` incluye a quien pregunta: por eso se le resta uno.
   select count(*) - 1 into debajo_o_igual from public.curso_notas
     where tenant = v_tenant and ramo_sigla = v_sigla
+      and updated_at > now() - interval '30 days'
       and promedio <= mi;
 
   total := n;
