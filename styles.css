@@ -2772,10 +2772,13 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 /* Cada anuncio es una tarjeta, con el mismo borde, radio y fondo que la de
    "Enseña a tu manera" (.profesor-hig-intro). */
 .profesor-hig .clase-lista{display:grid;gap:12px;}
-.profesor-hig-fila{border:1px solid var(--border);border-radius:16px;background:var(--card);overflow:hidden;}
+.profesor-hig-fila{border:1px solid var(--border);border-radius:16px;background:transparent;overflow:hidden;transition:background-color var(--motion-fast);}
+/* Del fondo de la página hasta que el cursor pasa por encima; abierta queda gris
+   para que su detalle se lea como un bloque. En táctil no hay hover. */
+@media(hover:hover){.profesor-hig-fila:hover{background:var(--card);}}
+.profesor-hig-fila[open]{background:var(--card);}
 .profesor-hig-fila>summary{display:grid;grid-template-columns:minmax(0,1fr) 120px 150px 16px;gap:22px;align-items:center;padding:22px 24px;list-style:none;cursor:pointer;}
 .profesor-hig-fila>summary::-webkit-details-marker{display:none;}
-.profesor-hig-fila>summary:hover{background:var(--muted);}
 .profesor-hig-identidad{min-width:0;overflow-wrap:anywhere;}
 .profesor-hig-identidad>b{font-size:.9375rem;font-weight:600;display:block;}
 .profesor-hig-fila>summary>.clase-estado{justify-self:start;}
