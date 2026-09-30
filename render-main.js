@@ -553,38 +553,6 @@ function renderRamo(){
     }else{ew.style.display='none';ew.innerHTML='';}
   }else if(ew){ew.style.display='none';ew.innerHTML='';}
 
-  const aw=document.getElementById('ausencias-justificadas-warning');
-  if(aw){
-    const reglaOficial=r.reglasAusenciaJustificada;
-    const reglaUsuario=!reglaOficial&&r.reglasAusenciaJustificadaUsuario?.declaradaPor==='estudiante'
-      ?r.reglasAusenciaJustificadaUsuario:null;
-    const regla=reglaOficial||reglaUsuario;
-    const ausencias=calculo.ausencias||{activas:[],pendientes:[],inactivas:[]};
-    const porId=new Map((r.categorias||[]).map(c=>[c.id,c.nombre]));
-    const etiqueta=x=>{
-      if(x.tipo==='rezago')return `<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> mantiene su porcentaje y queda pendiente hasta que rindas el rezago.`;
-      if(x.tipo==='traspaso'){
-        const base=`<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b>: su ${r2((r.categorias.find(c=>c.id===x.desdeId)||{}).peso||0)}% pasa a <b>${esc(porId.get(x.haciaId)||'otra evaluación')}</b>.`;
-        return x.pesoExcedente>0?`${base} El destino queda topado en ${r2(x.topePesoDestino)}% y el ${r2(x.pesoExcedente)}% excedente cuenta con nota ${nf(x.notaExceso)}.`:base;
-      }
-      return `<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> se reemplaza por <b>${esc(porId.get(x.haciaId)||'otra evaluación')}</b>.`;
-    };
-    const declaradas=new Set(r.ausenciasJustificadas||[]);
-    const reglas=[...(regla?.reemplazos||[]).map(x=>({...x,tipo:'reemplazo'})),...(regla?.traspasos||[]).map(x=>({...x,tipo:'traspaso'})),...(regla?.rezagos||[]).map(x=>({...x,tipo:'rezago'}))];
-    const disponibles=reglas.filter(x=>!declaradas.has(x.desdeId)&&avgPond((r.categorias.find(c=>c.id===x.desdeId)||{}).notas||[])===null);
-    const configurables=reglaOficial?[]:(r.categorias||[]).filter(c=>Number(c.peso)>0&&avgPond(c.notas||[])===null&&!declaradas.has(c.id));
-    const bloques=[];
-    if(reglaUsuario)bloques.push('<b>Declarado por ti según el formulario de tu curso.</b><br>Esto no viene de la pauta del catálogo. Puedes cambiarlo si elegiste mal.');
-    const corregir=x=>reglaUsuario?` <button type="button" onclick="corregirAusenciaJustificada('${esc(x.desdeId)}')">Cambiar decisión</button>`:'';
-    if(ausencias.activas.length)bloques.push(`<b>Ausencia justificada aplicada.</b><br>${ausencias.activas.map(x=>etiqueta(x)+corregir(x)).join('<br>')}`);
-    if(ausencias.pendientes.length)bloques.push(`<b>La ausencia quedó anotada.</b><br>${ausencias.pendientes.map(x=>(x.motivo==='espera_rezago'?etiqueta(x):`Falta la nota de <b>${esc(porId.get(x.haciaId)||'la evaluación de reemplazo')}</b>.`)+corregir(x)).join('<br>')}`);
-    if(ausencias.inactivas.length)bloques.push(`<b>Tu declaración se conserva, pero ya no se aplica.</b><br>${ausencias.inactivas.map(x=>(x.motivo==='tiene_nota'?`<b>${esc(porId.get(x.desdeId)||'Esta evaluación')}</b> ahora tiene una nota.`:'La pauta cambió y ya no podemos ubicar esa evaluación.')+` <button type="button" onclick="corregirAusenciaJustificada('${esc(x.desdeId)}')">Corregir declaración</button>`).join('<br>')}`);
-    if(disponibles.length)bloques.push(`<b>¿Faltaste con justificativo aprobado?</b><br>${disponibles.map(x=>`<button type="button" onclick="declararAusenciaJustificada('${esc(x.desdeId)}')">${esc(porId.get(x.desdeId)||'Marcar ausencia')}</button>`).join(' <span aria-hidden="true">·</span> ')}`);
-    if(configurables.length)bloques.push(`<b>¿Faltaste con justificativo aprobado?</b><br>Indica qué dispone el formulario de tu curso:${configurables.map(c=>` <button type="button" onclick="openAusenciaJustificadaModal('${esc(c.id)}')">${esc(c.nombre)}</button>`).join(' <span aria-hidden="true">·</span> ')}`);
-    if(bloques.length){aw.style.display='flex';aw.className='weight-setup-nudge';aw.style.width='auto';aw.style.margin='12px 20px';aw.innerHTML=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".7" fill="currentColor"/></svg><div>${bloques.join('<div style="height:10px;"></div>')}</div>`;}
-    else{aw.style.display='none';aw.innerHTML='';}
-  }
-
   // Contador de faltas: solo si el estudiante lo encendió en Editar ramo. Es
   // su registro, no una regla del programa, así que no toca el promedio.
   const fw=document.getElementById('faltas-contador');
@@ -693,6 +661,10 @@ function renderRamo(){
     // evaluación vacía —no borrar visualmente toda la pauta— hasta que se
     // pueda corregir el dato.
     const notas=Array.isArray(cat.notas)?cat.notas:[];
+    const ausencia=ausenciaDeEvaluacion(r,cat);
+    const justificada=ausencia?.declarada&&!ausencia.inactiva;
+    const detalleAusencia=ausencia?.declarada?`<button type="button" class="ausencia-estado" onclick="openDetalleAusenciaJustificada('${esc(cat.id)}');event.stopPropagation()"><strong>${ausencia.inactiva?'Declaración no aplicada':'Justificada'}</strong><span>${esc(ausencia.texto)}</span></button>`:'';
+    const declararAusencia=ausencia&&!ausencia.declarada?`<button type="button" class="ausencia-elegir" onclick="elegirAusenciaDesdeEvaluacion('${esc(cat.id)}');event.stopPropagation()">Falté con justificativo</button>`:'';
     const fechaChip=cat.fecha?`<span class="cat-fecha-chip">${esc(fechaHoraCorta(cat.fecha,cat.hora))}</span>`:'';
     const exenta=categoriaEximida(r,cat);
     // La categoría sigue guardada intacta. Solo se oculta mientras la
@@ -724,7 +696,7 @@ function renderRamo(){
         // pauta oficial: quedan a la vista para que su dueño decida.
         const slotMax=notas.reduce((m,n)=>Number.isInteger(n.slot)?Math.max(m,n.slot):m,-1);
         const casillas=Math.max(cat.slots,slotMax+1);
-        for(let i=0;i<casillas;i++){
+        for(let i=0;!justificada&&i<casillas;i++){
           const sobra=i>=cat.slots;
           const nota=notas.find(n=>n.slot===i);const v=(nota&&nota.valor!=null)?nota.valor:null;
           const etiqueta=etiquetaCasilla(r,cat,i);
@@ -761,10 +733,10 @@ function renderRamo(){
               <div class="eval-row-name">${esc(cat.nombre)}</div>
               <div class="eval-row-weight">${r2(cat.peso)}% · promedio de ${cat.slots}${notasCount?` · ${notasCount}/${cat.slots} ingresadas`:''}${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}</div>
             </div>
-            <div class="ramo-nota ${colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:1.1875rem;">${fmtPromedio(av)}</div>
+            <div class="ramo-nota ${justificada?'':colorClass(av)}" style="--grade-color:${getColor(av)};min-width:auto;font-size:${justificada?'.8125':'1.1875'}rem;">${justificada?'Justificada':fmtPromedio(av)}</div>
             <span aria-hidden="true" style="color:var(--fg3);font-size:0.6875rem;margin-left:6px;">${isOpen?'▲':'▼'}</span>
           </div>
-          <div class="eval-group-body${isOpen?' open':''}">${rows}</div>`;
+          <div class="eval-group-body${isOpen||justificada?' open':''}">${justificada?detalleAusencia:rows+detalleAusencia}${declararAusencia}</div>`;
         cl.appendChild(wrap);
         return;
       }
@@ -778,7 +750,8 @@ function renderRamo(){
           <div class="eval-row-name">${esc(cat.nombre)}</div>
           <div class="eval-row-weight">${r2(cat.peso)}% de la nota final${fechaChip?' · '+fechaChip:''}${exenta?' · exento/a':''}${recorreccion?` <span class="recorreccion-chip">Falta mandar${textoRecorreccion!=='sin plazo calculable'?` · ${esc(textoRecorreccion)}`:''}</span>`:''}</div>
         </div>
-        <input class="eval-row-input" inputmode="${inputModeNota()}" autocapitalize="characters" maxlength="3" placeholder="—" value="${g!=null?textoCalificacionNota(notas[0]):''}" style="color:${g!=null?getColor(g):'var(--fg)'}" onchange="setDirectNota('${cat.id}',this.value)" onclick="event.stopPropagation();" aria-label="Nota de ${esc(cat.nombre)}"/>`;
+        ${justificada?'':`<input class="eval-row-input" inputmode="${inputModeNota()}" autocapitalize="characters" maxlength="3" placeholder="—" value="${g!=null?textoCalificacionNota(notas[0]):''}" style="color:${g!=null?getColor(g):'var(--fg)'}" onchange="setDirectNota('${cat.id}',this.value)" onclick="event.stopPropagation();" aria-label="Nota de ${esc(cat.nombre)}"/>`}
+        ${detalleAusencia||declararAusencia}`;
       cl.appendChild(row);
       return;
     }
@@ -833,14 +806,14 @@ function renderRamo(){
           <div class="cat-name">${esc(cat.nombre)}</div>
           <div class="cat-peso-tag">${cat.peso}% del ramo · ${notas.length} nota${notas.length!==1?'s':''}${fechaChip?' · '+fechaChip:''}</div>
         </div>
-        <span style="font-size:1rem;font-weight:700;color:${getColor(catAvg)}">${fmtPromedio(catAvg)}</span>
+        <span style="font-size:1rem;font-weight:700;color:${justificada?'var(--fg2)':getColor(catAvg)}">${justificada?'Justificada':fmtPromedio(catAvg)}</span>
         ${puedeEliminar?`<button aria-label="Eliminar evaluación ${esc(cat.nombre)}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:44px;min-height:44px;background:var(--red-bg);border:none;border-radius:8px;padding:0;cursor:pointer;color:var(--red);font-size:0.8125rem;" onclick="confirmDeleteCat('${cat.id}');event.stopPropagation();"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`:''}
         <button aria-label="${isOpen?'Colapsar':'Expandir'} ${esc(cat.nombre)}" aria-expanded="${isOpen?'true':'false'}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:44px;min-height:44px;background:var(--muted);border:none;border-radius:8px;padding:0;cursor:pointer;color:var(--fg2);font-size:0.6875rem;" onclick="toggleCat('${cat.id}');event.stopPropagation();">${isOpen?'▲':'▼'}</button>
       </div>
       <div class="cat-body${isOpen?' open':''}">
         ${explicacionDescarte}
-        ${notasHTML}
-        <button class="add-nota-btn" onclick="openAddNotaModal('${cat.id}');event.stopPropagation();">+ Agregar nota</button>
+        ${justificada?detalleAusencia:notasHTML+detalleAusencia}
+        ${justificada?'':`<button class="add-nota-btn" onclick="openAddNotaModal('${cat.id}');event.stopPropagation();">+ Agregar nota</button>${declararAusencia}`}
       </div>`;
     cl.appendChild(card);
   });

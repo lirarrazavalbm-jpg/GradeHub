@@ -2339,20 +2339,86 @@ function corregirEximicionActual(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r||r.eximicionConfirmada!==true)return;
   delete r.eximicionConfirmada;save();renderRamo();
 }
+function evaluacionSinNota(cat){return !(cat?.notas||[]).some(n=>n&&n.valor!=null);}
+function porcentajeAusencia(valor){return String(r2(Number(valor)||0)).replace('.',',');}
 function declararAusenciaJustificada(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   const regla=r.reglasAusenciaJustificada;
-  const declarable=[...(regla&&regla.reemplazos||[]),...(regla&&regla.traspasos||[])].some(x=>x.desdeId===catId);
+  const declarable=[...(regla&&regla.reemplazos||[]),...(regla&&regla.traspasos||[]),...(regla&&regla.rezagos||[])].some(x=>x.desdeId===catId);
   const cat=(r.categorias||[]).find(c=>c.id===catId);
-  if(!declarable||!cat||avgPond(cat.notas)!==null){showToast('Esa ausencia ya no se puede aplicar a tu pauta',true);return;}
+  if(!declarable||!cat||!evaluacionSinNota(cat)){showToast('Esa ausencia ya no se puede aplicar a tu pauta',true);return;}
   if(!Array.isArray(r.ausenciasJustificadas))r.ausenciasJustificadas=[];
   if(!r.ausenciasJustificadas.includes(catId))r.ausenciasJustificadas.push(catId);
   save();track('declarar_ausencia_justificada');renderRamo();
 }
+function ausenciaDeEvaluacion(r,cat){
+  if(!r||!cat)return null;
+  const declarada=(r.ausenciasJustificadas||[]).includes(cat.id);
+  const oficial=r.reglasAusenciaJustificada;
+  const regla=oficial||(r.reglasAusenciaJustificadaUsuario?.declaradaPor==='estudiante'?r.reglasAusenciaJustificadaUsuario:null);
+  const entradas=[...(regla?.reemplazos||[]).map(x=>({...x,tipo:'reemplazo'})),
+    ...(regla?.traspasos||[]).map(x=>({...x,tipo:'traspaso'})),
+    ...(regla?.rezagos||[]).map(x=>({...x,tipo:'rezago'}))];
+  const entrada=entradas.find(x=>x.desdeId===cat.id);
+  const pendiente=evaluacionSinNota(cat);
+  if(!declarada&&(!pendiente||!(Number(cat.peso)>0)||!!oficial&&!entrada))return null;
+  const estado=declarada?estadoAusenciasJustificadas(r):null;
+  const aplicada=[...(estado?.activas||[]),...(estado?.pendientes||[])].find(x=>x.desdeId===cat.id);
+  const inactiva=(estado?.inactivas||[]).find(x=>x.desdeId===cat.id)||
+    (declarada&&!aplicada?{motivo:'pauta_cambio'}:null);
+  const detalle=aplicada||inactiva||entrada;
+  const destino=(r.categorias||[]).find(c=>c.id===detalle?.haciaId);
+  const peso=porcentajeAusencia(cat.peso);
+  let texto='';
+  if(inactiva)texto=inactiva.motivo==='tiene_nota'
+    ?'La declaración se conserva, pero no se aplica porque esta evaluación tiene nota.'
+    :'La declaración se conserva, pero no se aplica porque cambió la pauta.';
+  else if(detalle?.tipo==='rezago')texto=`Su ${peso}% queda pendiente para rendir en rezago.`;
+  else if(detalle?.tipo==='reemplazo')texto=`Su ${peso}% se calcula con la nota ${/^Examen\b/i.test(destino?.nombre||'')?'del ':'de '}${destino?.nombre||'la evaluación de reemplazo'}.`;
+  else if(detalle?.tipo==='traspaso'){
+    texto=`Su ${peso}% pasa ${/^Examen\b/i.test(destino?.nombre||'')?'al ':'a '}${destino?.nombre||'otra evaluación'}.`;
+    if(aplicada?.pesoExcedente>0)texto+=` El destino queda topado en ${porcentajeAusencia(aplicada.topePesoDestino)}%; el ${porcentajeAusencia(aplicada.pesoExcedente)}% excedente cuenta con nota ${nf(aplicada.notaExceso)}.`;
+  }
+  if(oficial&&texto&&!inactiva)texto+=' Según el programa.';
+  return {declarada,aplicada:!!aplicada,inactiva:!!inactiva,oficial:!!oficial,texto};
+}
+function elegirAusenciaDesdeEvaluacion(catId){
+  const r=S.ramos.find(x=>x.id===currentRamoId);
+  const cat=r?.categorias.find(c=>c.id===catId);
+  const ausencia=ausenciaDeEvaluacion(r,cat);
+  if(!ausencia||ausencia.declarada){showToast('Esa ausencia ya no se puede declarar',true);return;}
+  if(!ausencia.oficial){openAusenciaJustificadaModal(catId);return;}
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">Justificar ${esc(cat.nombre)}</div>
+    <p class="ausencia-modal-detalle">${esc(ausencia.texto)}</p>
+    <div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button type="button" class="btn-confirm" onclick="declararAusenciaJustificada('${esc(catId)}');closeModal()">Marcar justificada</button></div>`;
+  openModal();
+}
+function openDetalleAusenciaJustificada(catId){
+  const r=S.ramos.find(x=>x.id===currentRamoId);
+  const cat=r?.categorias.find(c=>c.id===catId);
+  const ausencia=ausenciaDeEvaluacion(r,cat);
+  if(!ausencia?.declarada)return;
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">${ausencia.inactiva?'Declaración no aplicada':'Justificada'} · ${esc(cat.nombre)}</div>
+    <p class="ausencia-modal-detalle">${esc(ausencia.texto)}</p>
+    <div class="modal-btns"><button type="button" class="btn-cancel" onclick="closeModal()">Cerrar</button>
+      <button type="button" class="btn-danger" onclick="confirmarCorreccionAusenciaJustificada('${esc(catId)}')">Deshacer justificación</button></div>`;
+  openModal();
+}
+function confirmarCorreccionAusenciaJustificada(catId){
+  const r=S.ramos.find(x=>x.id===currentRamoId);
+  const cat=r?.categorias.find(c=>c.id===catId);
+  if(!cat||(r.ausenciasJustificadas||[]).includes(catId)===false)return;
+  closeModal();
+  showConfirm('¿Deshacer la justificación?',`Se restaurará el porcentaje de ${cat.nombre} y podrás ingresar su nota.`,
+    ()=>corregirAusenciaJustificada(catId),{label:'Deshacer justificación',focusCancel:true});
+}
 function configurarAusenciaJustificadaEstudiante(r,desdeId,tipo,haciaId){
   if(!r||r.reglasAusenciaJustificada)return false;
   const desde=(r.categorias||[]).find(c=>c.id===desdeId);
-  if(!desde||!(Number(desde.peso)>0)||avgPond(desde.notas||[])!==null)return false;
+  if(!desde||!(Number(desde.peso)>0)||!evaluacionSinNota(desde))return false;
   if(!['rezago','traspaso'].includes(tipo))return false;
   if(tipo==='traspaso'){
     const hacia=(r.categorias||[]).find(c=>c.id===haciaId);
@@ -2373,17 +2439,17 @@ function configurarAusenciaJustificadaEstudiante(r,desdeId,tipo,haciaId){
 function openAusenciaJustificadaModal(catId){
   const r=S.ramos.find(x=>x.id===currentRamoId);
   const desde=r&&(r.categorias||[]).find(c=>c.id===catId);
-  if(!r||r.reglasAusenciaJustificada||!desde||avgPond(desde.notas||[])!==null){
+  if(!r||r.reglasAusenciaJustificada||!desde||!evaluacionSinNota(desde)){
     showToast('Esa ausencia ya no se puede configurar',true);return;
   }
   const destinos=(r.categorias||[]).filter(c=>c.id!==catId&&Number(c.peso)>0);
   document.getElementById('modal-content').innerHTML=`
     <div class="modal-title">Inasistencia justificada</div>
-    <p style="margin:-2px 0 16px;color:var(--fg2);line-height:1.5;">Según el formulario de <b>${esc(r.nombre)}</b>, ¿qué pasa con el ${r2(desde.peso)}% de <b>${esc(desde.nombre)}</b>?</p>
-    <button type="button" class="btn-confirm" style="width:100%;margin-bottom:8px;" onclick="declararAusenciaJustificadaEstudiante('${esc(catId)}','rezago')">Rendir en rezago</button>
+    <p style="margin:-2px 0 16px;color:var(--fg2);line-height:1.5;">Según el formulario de <b>${esc(r.nombre)}</b>, ¿qué pasa con el ${porcentajeAusencia(desde.peso)}% de <b>${esc(desde.nombre)}</b>?</p>
+    <button type="button" class="btn-cancel" style="width:100%;margin-bottom:8px;" onclick="declararAusenciaJustificadaEstudiante('${esc(catId)}','rezago')">Rendir en rezago</button>
     <p style="margin:0 0 18px;color:var(--fg3);font-size:.82rem;line-height:1.45;">Mantiene su porcentaje. La evaluación seguirá pendiente hasta que ingreses la nota del rezago.</p>
     ${destinos.length?`<label class="modal-label" for="m-ausencia-destino">Acumular porcentaje en</label>
-      <select id="m-ausencia-destino" class="feedback-select" style="width:100%;margin-bottom:10px;">${destinos.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)} · ${r2(c.peso)}%</option>`).join('')}</select>
+      <select id="m-ausencia-destino" class="feedback-select" style="width:100%;margin-bottom:10px;">${destinos.map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)} · ${porcentajeAusencia(c.peso)}%</option>`).join('')}</select>
       <button type="button" class="btn-confirm" style="width:100%;" onclick="declararAusenciaJustificadaEstudiante('${esc(catId)}','traspaso')">Acumular porcentaje</button>
       <p style="margin:8px 0 0;color:var(--fg3);font-size:.82rem;line-height:1.45;">La evaluación de destino no puede superar 75%. Lo que exceda ese tope cuenta con nota 1,0.</p>`:''}
     <div class="modal-btns"><button class="btn-cancel" onclick="closeModal()">Cancelar</button></div>`;
