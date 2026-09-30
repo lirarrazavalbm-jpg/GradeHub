@@ -816,7 +816,7 @@ async function signOut(){
   // Limpiar la caché local: si no, el siguiente que entre en este navegador
   // podría ver los datos de la sesión anterior.
   // La base de la sincronización también: es una copia completa de los datos.
-  try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(SYNC_BASE_KEY);}catch(e){}
+  try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(SYNC_BASE_KEY);localStorage.removeItem(CURSO_SIGLAS_KEY);}catch(e){}
   S=freshState();
   authMode='login';
   document.getElementById('auth-user').value='';

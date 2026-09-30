@@ -4245,6 +4245,24 @@ function siglaParaCurso(r){
   const s=(r&&r.sigla)||siglaDeRamo(r);
   return typeof s==='string'&&s.trim()?s.trim():null;
 }
+// Qué siglas mandó esta cuenta desde este dispositivo, como [tenant, sigla].
+// Hasta el 2026-09-29 solo se recorrían los ramos de AHORA: uno borrado, o
+// todos al archivar el semestre, nunca recibían el null que los saca, y su
+// último promedio quedaba para siempre en `curso_notas` contando en la
+// posición de los demás. Lleva dueño para no mezclar cuentas en un navegador
+// compartido, y se borra al cerrar sesión.
+const CURSO_SIGLAS_KEY='gradehub_curso_siglas';
+// La llave de la fila en el servidor: curso_nota_set normaliza igual.
+const claveCurso=(tenant,sigla)=>String(tenant).trim().toLowerCase()+'|'+String(sigla).trim().toUpperCase();
+function siglasCursoSubidas(){
+  try{
+    const d=JSON.parse(localStorage.getItem(CURSO_SIGLAS_KEY)||'null');
+    return d&&d.owner===currentUser.id&&Array.isArray(d.siglas)?d.siglas.filter(x=>Array.isArray(x)&&x.length===2):[];
+  }catch(e){return [];}
+}
+function guardarSiglasCurso(siglas){
+  try{localStorage.setItem(CURSO_SIGLAS_KEY,JSON.stringify({owner:currentUser.id,siglas}));}catch(e){}
+}
 // Lo último que se subió, por cuenta. Si cambió un promedio (o es otra cuenta),
 // la comparación guardada ya no vale y se vuelve a pedir; si no cambió nada,
 // no se repiten las llamadas cada vez que se abre Estadísticas.
@@ -4255,9 +4273,11 @@ async function subirNotasCurso(){
   if(firma===_firmaNotasCurso)return;
   invalidarPosicionesCurso();
   let fallos=0;
+  const vigentes=new Map();
   for(const r of (S.ramos||[])){
     const sigla=siglaParaCurso(r);
     if(!sigla)continue;
+    vigentes.set(claveCurso(S.tenant,sigla),[S.tenant,sigla]);
     const avg=ramoAvg(r,undefined,S.ramos);
     try{
       const {error}=await supabaseClient.rpc('curso_nota_set',{
@@ -4272,6 +4292,19 @@ async function subirNotasCurso(){
       if(error)throw error;
     }catch(e){fallos++;}
   }
+  // Lo que se mandó antes y ya no es de ningún ramo (se borró, se archivó el
+  // semestre, cambió la sigla o la universidad) sale del curso. Una sigla que
+  // otro ramo vigente comparte no se toca. Si el null falla, se sigue
+  // recordando para reintentarlo.
+  const quedan=[];
+  for(const [tenant,sigla] of siglasCursoSubidas()){
+    if(vigentes.has(claveCurso(tenant,sigla)))continue;
+    try{
+      const {error}=await supabaseClient.rpc('curso_nota_set',{p_tenant:tenant,p_sigla:sigla,p_promedio:null});
+      if(error)throw error;
+    }catch(e){fallos++;quedan.push([tenant,sigla]);}
+  }
+  guardarSiglasCurso([...vigentes.values(),...quedan]);
   // Que falle no puede romper Estadisticas, pero tampoco puede desaparecer: un
   // catch mudo aca fue la razon de que esto llevara dias sin funcionar.
   if(fallos)console.warn('No se pudieron subir '+fallos+' promedios al curso');
