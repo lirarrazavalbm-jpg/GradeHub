@@ -8166,8 +8166,8 @@ function openSimuladorModal(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r)return;
   simState={};simAusencias={};
   document.getElementById('modal-content').innerHTML=`
+    <p class="sim-kicker">Simulador</p>
     <div class="modal-title sim-ramo">${esc(r.nombre)}${r.seccion?` · Sección ${r.seccion}`:''}</div>
-    <p class="sim-kicker"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg> Simular escenario</p>
     <p class="sim-intro">Agrega notas hipotéticas y mira cómo quedaría tu promedio. No se guardan hasta que confirmes.</p>
     <div class="sim-proj">
       <div class="sim-proj-label">Promedio proyectado</div>
@@ -8175,6 +8175,7 @@ function openSimuladorModal(){
       <div id="sim-delta"></div>
       <div class="sim-needed" id="sim-needed" aria-live="polite" hidden></div>
     </div>
+    <div class="sim-section-label">Evaluaciones</div>
     <div class="sim-cats" id="sim-cats"></div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal()">Cerrar</button>
@@ -8354,7 +8355,7 @@ function renderSimulador(){
         </div>
         ${(realChips||hypChips)?`<div class="sim-chips">${realChips}${hypChips}</div>`:''}
         ${falta?`<div class="sim-falta activa">
-          <div class="sim-falta-hd"><b>Faltas a esta</b><button type="button" class="sim-falta-x" onclick="simToggleFalta('${c.id}')" aria-label="Ya no faltar a ${esc(c.nombre)}">✕</button></div>
+          <div class="sim-falta-hd"><b>Ausencia simulada</b><button type="button" class="sim-falta-x" onclick="simToggleFalta('${c.id}')" aria-label="Ya no faltar a ${esc(c.nombre)}">✕</button></div>
           <label class="sim-falta-label" for="sim-falta-${c.id}">¿Qué pasa con su ${r2(c.peso)}%?</label>
           <select id="sim-falta-${c.id}" onchange="simSetFalta('${c.id}',this.value)">${
             (r.categorias||[]).filter(o=>o.id!==c.id).map(o=>{
@@ -8362,8 +8363,8 @@ function renderSimulador(){
               return `<option value="traspaso|${esc(o.id)}"${falta.tipo!=='reemplazo'&&falta.hacia===o.id?' selected':''}>El ${r2(c.peso)}% se suma a ${t}</option>`+
                      `<option value="reemplazo|${esc(o.id)}"${falta.tipo==='reemplazo'&&falta.hacia===o.id?' selected':''}>Me ponen la nota de ${t}</option>`;
             }).join('')}</select>
-          ${falta.tipo==='reemplazo'?'':'<small style="display:block;margin-top:6px;color:var(--fg3);line-height:1.4;">La acumulación tiene un máximo de 75%. El excedente cuenta con nota 1,0.</small>'}
-        </div>`:(simPuedeFaltar(c)?`<button type="button" class="sim-falta-btn" onclick="simToggleFalta('${c.id}')">No la voy a dar</button>`:'')}
+          ${falta.tipo==='reemplazo'?'':'<small class="sim-falta-hint">La acumulación tiene un máximo de 75%. El excedente cuenta con nota 1,0.</small>'}
+        </div>`:(simPuedeFaltar(c)?`<button type="button" class="sim-falta-btn" onclick="simToggleFalta('${c.id}')">Falto con justificativo</button>`:'')}
         ${(simCatLlena(c)||falta)?'':`<div class="sim-add">
           <input type="text" inputmode="${inputModeNota()}" autocapitalize="characters" id="sim-in-${c.id}" placeholder="${conceptosNota().length?'Nota hipotética (1,0–7,0, D/A/R)':'Nota hipotética (1,0–7,0)'}" onkeydown="if(event.key==='Enter')simAddNota('${c.id}')"/>
           <button onclick="simAddNota('${c.id}')">+ Agregar</button>
