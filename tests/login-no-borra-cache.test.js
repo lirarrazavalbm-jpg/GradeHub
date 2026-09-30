@@ -23,6 +23,7 @@ function arnes({owner='usuario-a',upsertError=null}={}){
     localStorage:{getItem:k=>guardado.get(k)||null,setItem:(k,v)=>guardado.set(k,v),removeItem:k=>guardado.delete(k)},
     getCacheOwner:()=>guardado.get('gradehub_cache_owner')||null,
     setCacheOwner:uid=>{setOwner++;guardado.set('gradehub_cache_owner',uid);},
+    restaurarCacheApartada:()=>false,
     supabaseClient:{from:()=>({
       select:()=>({eq:()=>({maybeSingle:async()=>({data:null,error:null})})}),
       upsert:async fila=>{subidas.push(fila);return {data:null,error:upsertError};}

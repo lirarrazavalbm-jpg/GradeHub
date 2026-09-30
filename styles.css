@@ -1565,6 +1565,7 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .confirm-title{font-size:1rem;font-weight:700;color:var(--fg);margin-bottom:6px;}
 .confirm-desc{font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin-bottom:18px;}
 .confirm-btns{display:flex;gap:8px;}
+.confirm-btns button{min-height:44px;}
 .btn-cancel-sm{flex:1;padding:11px;background:var(--muted);color:var(--fg2);border:none;border-radius:10px;font-size:0.875rem;font-weight:600;cursor:pointer;}
 .btn-danger{flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:10px;font-size:0.875rem;font-weight:700;cursor:pointer;}
 /* FOOTER */
