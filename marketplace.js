@@ -1893,8 +1893,22 @@ async function leerCampanaClase(anuncioId,{diagnostico=false,estricto=false}={})
 }
 async function guardarCampanaClase(anuncioId,datos){
   if(!supabaseClient||!anuncioId)return {ok:false,error:'no pudimos guardar la campaña.'};
+  // No se usa upsert: PostgREST lo traduce a ON CONFLICT DO UPDATE SET
+  // anuncio_id=…, y el cliente no tiene UPDATE sobre anuncio_id (a propósito:
+  // una campaña no se muda de anuncio). Postgres exige ese permiso aunque no
+  // haya conflicto, así que fallaba SIEMPRE con 42501 y el anuncio no se podía
+  // enviar a revisión. Primero se actualiza; si no había fila, se inserta.
   try{
-    const {error}=await supabaseClient.from('anuncio_campanas').upsert({anuncio_id:anuncioId,...datos},{onConflict:'anuncio_id'});
+    const tabla=()=>supabaseClient.from('anuncio_campanas');
+    let {data,error}=await tabla().update(datos).eq('anuncio_id',anuncioId).select('anuncio_id');
+    if(!error&&!(Array.isArray(data)&&data.length)){
+      ({error}=await tabla().insert({anuncio_id:anuncioId,...datos}));
+      // Otra pestaña la creó entre medio: ahora sí hay fila que actualizar.
+      if(error&&error.code==='23505'){
+        ({data,error}=await tabla().update(datos).eq('anuncio_id',anuncioId).select('anuncio_id'));
+        if(!error&&!(Array.isArray(data)&&data.length))error={code:'SIN_FILA',message:'la campaña no quedó guardada'};
+      }
+    }
     if(!error){compatibilidadSqlClases.campanas=false;return {ok:true};}
     if(faltaTablaCampana(error)){compatibilidadSqlClases.campanas=true;return {ok:false,falta:true,error:'el servidor aún no guarda los días y el tope; se usará el proceso de revisión anterior.'};}
     console.warn('No se guardó la campaña:',error.code||'',error.message||error);
