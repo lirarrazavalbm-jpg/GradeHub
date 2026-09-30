@@ -1670,62 +1670,55 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .hist-accion-del{color:var(--red);}
 .hist-accion-del:hover{border-color:var(--red);background:var(--red-bg);color:var(--red);}
 .hist-gpa{font-family:var(--font-ui);font-size:1.375rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1;}
-/* SIMULADOR */
-.sim-proj{background:var(--primary-light);border-radius:14px;padding:14px 16px;text-align:center;margin-bottom:14px;}
-.sim-proj-label{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--fg3);}
-.sim-proj-num{font-size:2.375rem;font-weight:800;letter-spacing:-1.5px;line-height:1.1;margin-top:2px;font-variant-numeric:tabular-nums;}
-.sim-needed{margin-top:12px;padding-top:11px;border-top:1px solid var(--border);color:var(--fg2);
-  font-size:0.875rem;font-weight:600;line-height:1.45;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
-.sim-delta{display:inline-block;margin-top:4px;font-size:0.75rem;font-weight:600;padding:2px 9px;border-radius:7px;font-variant-numeric:tabular-nums;}
-.sim-delta.up{background:var(--green-bg);color:var(--green);}
-.sim-delta.down{background:var(--red-bg);color:var(--red);}
-.sim-delta.flat{background:var(--muted);color:var(--fg3);}
-/* El simulador toma la pantalla entera, y por eso el ramo es el título y no un
-   subtítulo: al cubrirlo todo, la cabecera de la ficha que decía "Cálculo II"
-   deja de verse, así que esta ventana tiene que decir sola de qué ramo habla.
-   Quedó a medias en el primer intento —tapaba el 90% y dejaba una franja
-   inútil del nombre de atrás—; o se cubre todo y se hace cargo, o no se cubre. */
+/* SIMULADOR: superficies neutras; el semáforo queda en los promedios académicos. */
 .modal-overlay:has(.sim-cats){align-items:stretch;}
-.modal-sheet:has(.sim-cats){max-height:none;border-radius:0;}
-.sim-kicker{display:flex;align-items:center;gap:6px;font-size:0.6875rem;font-weight:700;
-  text-transform:uppercase;letter-spacing:.7px;color:var(--fg3);margin:0 0 8px;}
-.sim-kicker .ic{width:15px;height:15px;}
-.sim-ramo{margin-bottom:4px;overflow-wrap:anywhere;}
-.sim-intro{font-size:0.8125rem;color:var(--fg2);margin:0 0 14px;line-height:1.45;}
-/* Eran 36vh fijos: un tercio de la pantalla para la lista, y con cinco
-   evaluaciones obligaba a scrollear todo el rato en una caja chica. Ahora la
-   ventana usa el alto que hay: con dos evaluaciones sigue siendo baja, con
-   cinco llena la pantalla.
-   El 400px es lo que ocupa todo lo que NO es la lista —título, ramo, bajada,
-   promedio, nota necesaria y botones—, y por eso va en píxeles y no en vh: ese
-   bloque mide casi lo mismo en cualquier teléfono, mientras que el sheet ahora
-   ocupa la pantalla entera. Restarlo deja a la lista todo lo que sobra sin empujar los
-   botones fuera de pantalla, que desde que el modal se cierra solo con su
-   botón sería dejar a la persona sin salida. El piso de 150px es para una
-   pantalla muy baja o el teclado abierto. */
-.sim-cats{max-height:max(150px,calc(100dvh - 400px));overflow-y:auto;margin-bottom:12px;}
-/* En escritorio el modal deja 24px arriba y abajo; la lista cede ese espacio
-   para que Cerrar y Guardar queden visibles sin desplazar toda la ventana. */
-@media(min-width:768px){.sim-cats{max-height:max(150px,calc(100dvh - 455px));}}
-.sim-cat{border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:8px;}
-.sim-cat-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
-.sim-cat-name{font-size:0.875rem;font-weight:600;color:var(--fg);}
-.sim-cat-meta{font-size:0.6875rem;color:var(--fg3);margin-top:1px;}
-.sim-cat-avg{font-size:0.9375rem;font-weight:700;font-variant-numeric:tabular-nums;}
-.sim-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px;}
-.sim-chip{display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;font-weight:600;padding:3px 5px 3px 9px;border-radius:7px;font-variant-numeric:tabular-nums;}
-.sim-chip.real{background:var(--muted);color:var(--fg3);}
-.sim-chip.hyp{background:var(--primary-light);color:var(--primary);}
-.sim-chip-x{background:none;border:none;cursor:pointer;color:inherit;font-size:0.8125rem;min-width:44px;min-height:44px;opacity:.7;}
-.sim-add{display:flex;gap:6px;}
-.sim-add input{flex:1;min-width:0;min-height:44px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:1rem;font-family:var(--font-ui);color:var(--fg);background:var(--bg2);outline:none;transition:border-color var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
-/* Era el único `outline:none` del archivo sin nada que lo reemplace: se enfocaba
-   y no se notaba. El resto ya resuelve su foco con borde y halo, o con
-   :focus-within en el contenedor. */
+.modal-sheet:has(.sim-cats){display:flex;flex-direction:column;height:100dvh;max-height:none;overflow:hidden;border-radius:0;
+  padding-top:calc(18px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}
+.modal-sheet:has(.sim-cats) #modal-content{display:flex;flex:1;min-height:0;flex-direction:column;}
+.sim-kicker{margin:0 0 5px;color:var(--fg3);font-size:0.6875rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;}
+.sim-ramo{margin-bottom:5px;overflow-wrap:anywhere;}
+.sim-intro{margin:0 0 16px;color:var(--fg2);font-size:0.875rem;line-height:1.45;}
+.sim-proj{margin-bottom:16px;padding:17px 18px;background:var(--card);border:1px solid var(--border);border-radius:14px;}
+.sim-proj-label,.sim-section-label{color:var(--fg3);font-size:0.6875rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;}
+.sim-proj-num{margin-top:4px;font-size:clamp(2.75rem,9vw,3.25rem);font-weight:750;letter-spacing:-.055em;line-height:1.08;font-variant-numeric:tabular-nums;}
+.sim-delta{display:block;margin-top:5px;color:var(--fg2);font-size:0.8125rem;line-height:1.4;font-variant-numeric:tabular-nums;}
+.sim-delta.up,.sim-delta.down,.sim-delta.flat{color:var(--fg2);}
+.sim-needed{margin-top:14px;padding-top:13px;border-top:1px solid var(--border);color:var(--fg);
+  font-size:0.9375rem;font-weight:600;line-height:1.45;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.sim-needed[hidden]{display:none;}
+.sim-section-label{margin:0 0 8px 2px;}
+.sim-cats{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin-bottom:12px;
+  background:var(--card);border:1px solid var(--border);border-radius:14px;}
+.sim-cat{padding:15px 16px;border-bottom:1px solid var(--border);}
+.sim-cat:last-child{border-bottom:0;}
+.sim-cat-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px;}
+.sim-cat-name{font-size:1rem;font-weight:600;line-height:1.3;color:var(--fg);}
+.sim-cat-meta{font-size:0.75rem;color:var(--fg3);margin-top:3px;}
+.sim-cat-avg{flex:none;font-size:1.125rem;font-weight:700;font-variant-numeric:tabular-nums;}
+.sim-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.sim-chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:5px 8px;
+  border-radius:8px;background:var(--muted);color:var(--fg2);font-size:0.8125rem;font-weight:600;
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.sim-chip.real,.sim-chip.hyp{background:var(--muted);color:var(--fg2);}
+.sim-chip.hyp{border:1px solid var(--border2);}
+.sim-chip-x{min-width:44px;min-height:44px;margin:-8px -8px -8px 0;padding:0;border:0;background:none;color:var(--fg2);
+  font-size:0.875rem;cursor:pointer;}
+.sim-add{display:flex;gap:8px;}
+.sim-add input{flex:1;min-width:0;min-height:44px;padding:9px 11px;border:1px solid var(--border2);border-radius:10px;
+  background:var(--bg2);color:var(--fg);font:1rem var(--font-ui);outline:none;
+  transition:border-color var(--motion-fast) var(--ease-standard),box-shadow var(--motion-fast) var(--ease-standard);}
 .sim-add input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary),transparent 85%);}
-.sim-add button{min-height:44px;padding:7px 14px;background:var(--primary);color:var(--primary-fg);border:none;border-radius:8px;font-size:0.8125rem;font-weight:600;cursor:pointer;}
-.modal-sheet:has(.sim-cats) .modal-btns button{min-height:44px;}
+.sim-add button{min-height:44px;padding:8px 12px;border:1px solid var(--border2);border-radius:10px;
+  background:var(--bg2);color:var(--fg);font:600 0.875rem var(--font-ui);cursor:pointer;}
+.sim-add button:hover,.sim-falta-btn:hover{background:var(--muted);}
+.modal-sheet:has(.sim-cats) .modal-btns{flex:none;margin-top:0;}
+.modal-sheet:has(.sim-cats) .modal-btns button{min-height:48px;}
+.modal-sheet:has(.sim-cats) #sim-commit-btn:not(:disabled){background:var(--primary);color:var(--primary-fg);}
 .sim-chip-x:focus-visible,.sim-add button:focus-visible,.sim-falta-btn:focus-visible,.sim-falta-x:focus-visible,.sim-falta select:focus-visible{outline:2px solid var(--primary);outline-offset:2px;}
+@media(min-width:768px){
+  .modal-overlay:has(.sim-cats){align-items:center;}
+  .modal-sheet:has(.sim-cats){height:min(760px,calc(100dvh - 48px));max-height:calc(100dvh - 48px);border-radius:16px;max-width:600px;}
+}
 
 /* ═══ PANTALLAS GRANDES ══════════════════════════════════════════════════
    La app se diseñó como columna de teléfono (430px) y hasta acá no tenía
@@ -2556,16 +2549,16 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .eval-sub-sobra{background:color-mix(in srgb,var(--yellow),transparent 94%);border-radius:8px;padding-left:6px;padding-right:6px;margin:0 -6px;}
 .eval-sub-aviso{font-size:0.6875rem;color:var(--yellow);font-weight:600;}
 
-/* Faltar a una evaluación dentro del simulador. Es una hipótesis, no un
-   estado del ramo: por eso comparte el gris de lo hipotético y no usa el
-   semáforo, que significa aprobado / al borde / reprobado. */
-.sim-falta-btn{width:100%;min-height:44px;margin-top:8px;padding:7px 10px;border:1px dashed var(--border2);border-radius:9px;background:transparent;color:var(--fg2);font-size:0.8125rem;font-weight:600;cursor:pointer;}
-.sim-falta-btn:hover{color:var(--fg2);border-color:var(--fg3);}
-.sim-falta.activa{margin-top:8px;padding:10px;border:1px solid color-mix(in srgb,var(--yellow),transparent 60%);border-radius:9px;background:color-mix(in srgb,var(--yellow),transparent 93%);}
-.sim-falta-hd{display:flex;align-items:center;justify-content:space-between;font-size:0.78125rem;color:var(--fg);}
-.sim-falta-x{min-width:44px;min-height:44px;border:none;background:transparent;color:var(--fg2);font-size:0.8125rem;line-height:1;cursor:pointer;padding:2px 4px;}
-.sim-falta-label{display:block;margin:6px 0 4px;font-size:0.71875rem;color:var(--fg3);}
-.sim-falta select{width:100%;min-height:44px;padding:7px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--fg);font-size:0.875rem;}
+/* La ausencia es una hipótesis, no un estado académico del semáforo. */
+.sim-falta-btn{width:100%;min-height:44px;margin-top:4px;padding:9px 12px;border:1px solid var(--border2);
+  border-radius:10px;background:var(--bg2);color:var(--fg2);font:600 0.875rem var(--font-ui);cursor:pointer;}
+.sim-falta.activa{margin-top:4px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--muted);}
+.sim-falta-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:0.875rem;color:var(--fg);}
+.sim-falta-x{min-width:44px;min-height:44px;border:0;background:transparent;color:var(--fg2);font-size:0.875rem;line-height:1;cursor:pointer;}
+.sim-falta-label{display:block;margin:4px 0 7px;font-size:0.8125rem;color:var(--fg2);}
+.sim-falta select{width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--border2);border-radius:9px;
+  background:var(--bg2);color:var(--fg);font:0.9375rem var(--font-ui);}
+.sim-falta-hint{display:block;margin-top:8px;color:var(--fg2);font-size:0.8125rem;line-height:1.45;}
 
 /* "Después" plegada: tres enteras y la cuarta a medio salir, borrosa.
    Es la fila de verdad con una clase encima —no una copia— para que se entienda

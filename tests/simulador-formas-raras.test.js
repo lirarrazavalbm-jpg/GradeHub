@@ -52,32 +52,31 @@ const reales=(html.match(/class="sim-chip real"/g)||[]).length;
 chk('la casilla agendada sin nota no aparece entre las reales',reales===1);
 chk('y la que sí tiene nota sigue apareciendo con su valor',/Laboratorio 2<\/span>|Laboratorio 2: 5,4/.test(html)||html.includes('5,4'));
 
-console.log('\n=== El ramo es el título, porque la ventana tapa todo ===');
-// "Simular escenario" servía para cualquiera de los seis ramos del semestre, y
-// al cubrir la pantalla entera la cabecera de la ficha que lo decía deja de
-// verse: esta ventana tiene que decir sola de qué ramo habla.
+console.log('\n=== El ramo se identifica sin perder el contexto del simulador ===');
+// Al cubrir la pantalla entera, la cabecera de la ficha deja de verse.
 montar([{id:'c1',nombre:'Examen',peso:100,directNota:true,notas:[]}]);
 run("S.ramos[0].nombre='Cálculo II';S.ramos[0].seccion=3;");
 run('openSimuladorModal()');
 const cabecera=porId('modal-content').innerHTML;
 chk('el ramo es el título, no un subtítulo',/class="modal-title sim-ramo">Cálculo II/.test(cabecera));
-chk('y "Simular escenario" va debajo del ramo',
-  cabecera.indexOf('sim-ramo')<cabecera.indexOf('sim-kicker')&&/class="sim-kicker"/.test(cabecera));
+chk('el contexto Simulador se lee antes del nombre del ramo',
+  cabecera.indexOf('sim-kicker')<cabecera.indexOf('sim-ramo')&&/class="sim-kicker">Simulador/.test(cabecera));
 chk('y la sección cuando la hay',/Sección 3/.test(cabecera));
 run("S.ramos[0].seccion=null;");run('openSimuladorModal()');
 chk('sin sección no inventa una',!/Sección/.test(porId('modal-content').innerHTML));
 
 console.log('\n=== Ocupa la pantalla entera, sin tapar los botones ===');
-// Eran 36vh fijos. El 400px restado es el resto de la ventana —antetítulo,
-// ramo, bajada, promedio, nota necesaria y botones—, que mide casi lo mismo en cualquier
-// teléfono; por eso va en píxeles y el alto de pantalla en dvh.
+// La lista ocupa el espacio flexible disponible. Cuando crece el texto o se
+// abre el teclado, solo la lista se desplaza y Cerrar permanece a la vista.
 const css=leer('styles.css');
 chk('la ventana del simulador se estira a la pantalla completa',
   /\.modal-overlay:has\(\.sim-cats\)\{align-items:stretch;\}/.test(css) &&
-  /\.modal-sheet:has\(\.sim-cats\)\{max-height:none;border-radius:0;\}/.test(css));
-chk('la lista se calcula contra el alto de la pantalla, no en un valor fijo',
-  /\.sim-cats\{max-height:max\(150px,calc\(100dvh - 400px\)\)/.test(css));
-chk('y deja un piso para pantallas bajas o con el teclado abierto',/max\(150px,/.test(css));
+  /\.modal-sheet:has\(\.sim-cats\)[^{]*\{[^}]*height:100dvh;[^}]*overflow:hidden/.test(css));
+chk('la lista ocupa el espacio que sobra, sin alto fijo',
+  /\.sim-cats\{[^}]*flex:1;min-height:0;overflow-y:auto/.test(css));
+chk('los botones quedan fuera de esa lista desplazable',
+  cabecera.indexOf('id="sim-cats"')<cabecera.indexOf('class="modal-btns"') &&
+  /\.modal-sheet:has\(\.sim-cats\) \.modal-btns\{flex:none/.test(css));
 
 console.log('\n=== Las pautas reales de Ingeniería UC siguen andando ===');
 // Barrido sobre la malla: es el caso que un estudiante tiene de verdad.
