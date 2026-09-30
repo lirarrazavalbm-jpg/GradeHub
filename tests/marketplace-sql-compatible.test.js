@@ -48,7 +48,7 @@ ctx.supabaseClient={from(table){
   error={code:'PGRST202'};fecha='2026-09-02T00:00:00Z';calls=[];
   assert.match((await ctx.marcarCobroAdmin(args)).error.message,/histórica/);assert.equal(calls.length,2,'No redirigir cobro histórico a publicación actual');
   // El aviso permanece visible en el panel, incluso tras repintarlo.
-  const root={innerHTML:'',querySelectorAll:()=>[]};ctx.supabaseClient={rpc:async()=>({data:[]})};
+  const root={innerHTML:'',querySelectorAll:()=>[],querySelector:()=>({value:'',addEventListener(){}})};ctx.supabaseClient={rpc:async()=>({data:[]})};
   await ctx.pintarPanelAdmin(root);assert.match(root.innerHTML,/SQL de campañas pendiente/);assert.match(root.innerHTML,/role="status"/);
   console.log('Compatibilidad SQL: viejo/nuevo, 6 códigos, permisos, red, WhatsApp y cobro histórico OK');
 })().catch(e=>{console.error(e);process.exitCode=1});
