@@ -937,7 +937,7 @@ input[type=range]{width:100%;accent-color:var(--primary);margin-top:8px;}
 .modal-btns{display:flex;gap:10px;margin-top:6px;}
 .profesor-info{font-size:.8125rem;line-height:1.5;color:var(--fg2);margin:0 0 16px;}
 .profesor-form{display:grid;gap:8px;min-width:0;}
-.profesor-form-campos,.profesor-form-vista,.profesor-form-acciones{display:grid;gap:8px;min-width:0;}
+.profesor-form-cuerpo,.profesor-form-campos,.profesor-form-vista,.profesor-form-acciones{display:grid;gap:8px;min-width:0;}
 /* Las secciones del borrador se pliegan: el título es el botón. */
 .profesor-seccion{border-bottom:1px solid var(--border);padding-bottom:10px;}
 .profesor-seccion>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;border-radius:8px;}
@@ -2804,7 +2804,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .profesor-hig-vacio{padding:30px;border:1px dashed var(--border2);border-radius:14px;color:var(--fg2);}
 .profesor-hig :is(button,summary,select,input:not([type=checkbox]):not([type=hidden]),.profesor-linea-opcion,.profesor-logo-subir){min-height:44px;min-width:44px;}
 .profesor-hig :is(button,summary,select,input,textarea,a):focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
-.profesor-hig .profesor-form{gap:24px;}
+.profesor-hig .profesor-form,.profesor-hig .profesor-form-cuerpo{gap:24px;}
 .profesor-hig input[type=date]{color-scheme:light;}
 :root[data-modo="oscuro"] .profesor-hig input[type=date]{color-scheme:dark;}
 @media(prefers-color-scheme:dark){:root:not([data-modo="claro"]) .profesor-hig input[type=date]{color-scheme:dark;}}
@@ -2822,9 +2822,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .profesor-hig .profesor-ramo-chip button{width:44px;height:44px;}
 .profesor-hig .profesor-form-acciones{padding:20px 0 calc(20px + env(safe-area-inset-bottom));border-top:1px solid var(--border);}
 .profesor-hig .profesor-form-acciones .modal-btns{margin:0;}
-@media(min-width:1000px){#profesor-body:has(.profesor-hig){max-width:1060px;margin:0 auto;}.profesor-hig-editor .profesor-form{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:start;}/* Los botones van bajo los campos, no a lo ancho: la vista previa es sticky en
-   la columna derecha y al final del scroll los tapaba. */
-.profesor-hig-editor .profesor-form-acciones{grid-column:1;}.profesor-hig-editor .profesor-form-vista{position:sticky;top:24px;}}
+@media(min-width:1000px){#profesor-body:has(.profesor-hig){max-width:1060px;margin:0 auto;}.profesor-hig-editor .profesor-form-cuerpo{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:start;}.profesor-hig-editor .profesor-form-acciones{grid-column:1/-1;}.profesor-hig-editor .profesor-form-vista{position:sticky;top:24px;}}
 @media(max-width:760px){.profesor-hig-cabecera{align-items:flex-start;flex-direction:column;gap:20px;}.profesor-hig-intro{grid-template-columns:1fr;gap:24px;padding:22px;}.profesor-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:18px;}.profesor-hig-detalle{padding:0 18px 18px;}.profesor-hig-identidad{grid-column:1/-1;}.profesor-hig-importe{grid-column:2;grid-row:2;}.profesor-hig-flecha{display:none;}.profesor-hig .profesor-seccion,.profesor-hig .profesor-form-vista{padding-left:16px;padding-right:16px;}.profesor-hig .vista-cabeza{flex-wrap:wrap;}.profesor-hig .profesor-campana-fechas{grid-template-columns:1fr;}.profesor-hig .profesor-detalle{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}.profesor-hig .profesor-detalle-quitar{grid-column:1/-1;}}
 @media(prefers-reduced-motion:reduce){.profesor-hig *{animation:none;transition:none;}}
 /* Catálogo HIG: presentación de #522, aislada de profesor y administración. */
