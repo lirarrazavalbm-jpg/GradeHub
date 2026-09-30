@@ -2762,6 +2762,74 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
   .wrapped-tarjeta{background:#0c0e12;-webkit-backdrop-filter:none;backdrop-filter:none;}
 }
 
+/* Espacio de profesor de #522, con acciones y métricas reales. */
+.profesor-hig{font-family:var(--font-ui);font-size:1rem;line-height:1.5;color:var(--fg);min-width:0;}
+.profesor-hig-cabecera{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:32px;}
+.profesor-hig-cabecera>div{min-width:0;}
+.profesor-hig-ceja{color:var(--primary);font-size:.6875rem;font-weight:750;letter-spacing:.12em;margin:0 0 12px;}
+.profesor-hig-cabecera h1{font-size:clamp(1.875rem,4vw,2.75rem);line-height:1.12;letter-spacing:-.045em;font-weight:680;margin:0;}
+.profesor-hig-cabecera p:not(.profesor-hig-ceja){color:var(--fg2);font-size:1rem;margin:12px 0 0;max-width:590px;}
+.profesor-hig-cabecera>.btn-confirm{flex:none;width:auto;}
+.profesor-hig-intro{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:28px;border:1px solid var(--border);border-radius:16px;background:var(--card);margin-bottom:32px;}
+.profesor-hig-intro h2{font-size:1.625rem;line-height:1.2;letter-spacing:-.03em;margin:0 0 12px;}
+.profesor-hig-intro p,.profesor-hig-intro li{color:var(--fg2);font-size:.9375rem;}
+.profesor-hig-intro ol{padding-left:22px;margin:0;display:grid;gap:12px;}
+.profesor-hig-intro b{color:var(--fg);}
+.profesor-hig-lista-cabeza{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;}
+.profesor-hig-lista-cabeza h2{font-size:1.125rem;letter-spacing:-.02em;margin:0;}
+.profesor-hig-lista-cabeza>span{font-size:.8125rem;color:var(--fg2);}
+.profesor-hig .clases-seccion>h3{font-size:.8125rem;color:var(--fg2);}
+.profesor-hig .clase-lista{display:block;border-top:1px solid var(--border);}
+.profesor-hig-fila{border-bottom:1px solid var(--border);}
+.profesor-hig-fila>summary{display:grid;grid-template-columns:minmax(0,1fr) 120px 150px 16px;gap:22px;align-items:center;padding:22px 4px;list-style:none;cursor:pointer;}
+.profesor-hig-fila>summary::-webkit-details-marker{display:none;}
+.profesor-hig-fila>summary:hover{background:var(--muted);}
+.profesor-hig-identidad{min-width:0;overflow-wrap:anywhere;}
+.profesor-hig-identidad>b{font-size:.9375rem;font-weight:600;display:block;}
+.profesor-hig-fila>summary>.clase-estado{justify-self:start;}
+.profesor-hig-fila small{display:block;font-size:.8125rem;color:var(--fg2);font-weight:400;margin-top:4px;}
+.profesor-hig-importe{text-align:right;font-variant-numeric:tabular-nums;font-size:.9375rem;}
+.profesor-hig-flecha{font-size:1.25rem;color:var(--fg2);}
+.profesor-hig-fila[open] .profesor-hig-flecha{transform:rotate(180deg);}
+.profesor-hig-detalle{padding:0 0 24px;}
+.profesor-hig-detalle .clase-card{border:0;background:transparent;padding:0;}
+.profesor-hig-detalle .clase-card-top{display:none;}
+.profesor-hig-detalle .clase-card-meta{margin:0 0 16px;}
+.profesor-hig-presupuesto{padding:22px;background:var(--muted);border-radius:12px;margin:20px 0;}
+.profesor-hig-presupuesto>span{font-size:.8125rem;color:var(--fg2);}
+.profesor-hig-presupuesto strong{display:block;font-size:1.8125rem;letter-spacing:-.04em;margin:5px 0 14px;font-variant-numeric:tabular-nums;}
+.profesor-hig-presupuesto strong small{display:inline;font-size:.9375rem;letter-spacing:0;}
+.profesor-hig-presupuesto progress{display:block;width:100%;height:6px;appearance:none;accent-color:var(--primary);border:0;border-radius:4px;background:var(--border);overflow:hidden;}
+.profesor-hig-presupuesto progress::-webkit-progress-bar{background:var(--border);}
+.profesor-hig-presupuesto progress::-webkit-progress-value{background:var(--primary);}
+.profesor-hig-presupuesto progress::-moz-progress-bar{background:var(--primary);}
+.profesor-hig-presupuesto p{font-size:.8125rem;color:var(--fg2);margin:12px 0 0;}
+.profesor-hig-estadisticas>summary,.profesor-hig-resumen>summary{font-size:.9375rem;font-weight:600;cursor:pointer;padding:10px 0;}
+.profesor-hig-resumen{margin-top:28px;}
+.profesor-hig-vacio{padding:30px;border:1px dashed var(--border2);border-radius:14px;color:var(--fg2);}
+.profesor-hig :is(button,summary,select,input:not([type=checkbox]):not([type=hidden]),.profesor-linea-opcion,.profesor-logo-subir){min-height:44px;min-width:44px;}
+.profesor-hig :is(button,summary,select,input,textarea,a):focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
+.profesor-hig .profesor-form{gap:24px;}
+.profesor-hig input[type=date]{color-scheme:light;}
+:root[data-modo="oscuro"] .profesor-hig input[type=date]{color-scheme:dark;}
+@media(prefers-color-scheme:dark){:root:not([data-modo="claro"]) .profesor-hig input[type=date]{color-scheme:dark;}}
+.profesor-hig .profesor-form-campos{gap:20px;}
+.profesor-hig .profesor-seccion{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:0 22px 20px;}
+.profesor-hig .profesor-seccion>summary{padding:16px 0;}
+.profesor-hig .profesor-seccion>summary h3{font-size:1.0625rem;margin:0;}
+.profesor-hig .profesor-seccion>summary::after{margin:0 6px;}
+.profesor-hig .profesor-seccion-cuerpo{gap:12px;}
+.profesor-hig .profesor-campana-fechas{grid-template-columns:repeat(2,minmax(0,1fr));}
+.profesor-hig .profesor-campana-fechas>div:first-child{grid-column:1/-1;}
+.profesor-hig .profesor-form-vista{padding:22px;border:1px solid var(--border);border-radius:14px;background:var(--card);gap:16px;}
+.profesor-hig .profesor-form-vista h3{margin:0;font-size:1.0625rem;}
+.profesor-hig .profesor-info{font-size:.8125rem;line-height:1.55;color:var(--fg2);}
+.profesor-hig .profesor-ramo-chip button{width:44px;height:44px;}
+.profesor-hig .profesor-form-acciones{padding:20px 0 calc(20px + env(safe-area-inset-bottom));border-top:1px solid var(--border);}
+.profesor-hig .profesor-form-acciones .modal-btns{margin:0;}
+@media(min-width:1000px){#profesor-body:has(.profesor-hig){max-width:1060px;margin:0 auto;}.profesor-hig-editor .profesor-form{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:start;}.profesor-hig-editor .profesor-form-acciones{grid-column:1/-1;}.profesor-hig-editor .profesor-form-vista{position:sticky;top:24px;}}
+@media(max-width:760px){.profesor-hig-cabecera{align-items:flex-start;flex-direction:column;gap:20px;}.profesor-hig-intro{grid-template-columns:1fr;gap:24px;padding:22px;}.profesor-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;}.profesor-hig-identidad{grid-column:1/-1;}.profesor-hig-importe{grid-column:2;grid-row:2;}.profesor-hig-flecha{display:none;}.profesor-hig .profesor-seccion,.profesor-hig .profesor-form-vista{padding-left:16px;padding-right:16px;}.profesor-hig .vista-cabeza{flex-wrap:wrap;}.profesor-hig .profesor-campana-fechas{grid-template-columns:1fr;}.profesor-hig .profesor-detalle{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}.profesor-hig .profesor-detalle-quitar{grid-column:1/-1;}}
+@media(prefers-reduced-motion:reduce){.profesor-hig *{animation:none;transition:none;}}
 /* Catálogo HIG: presentación de #522, aislada de profesor y administración. */
 .catalogo-redisenado{font-family:var(--font-ui);font-size:1rem;line-height:1.5;color:var(--fg);}
 .catalogo-redisenado .catalogo-clases-head{margin-bottom:28px;gap:16px;}
