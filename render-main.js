@@ -935,7 +935,7 @@ function renderStats(){
       ? historialPrevio.estado==='sin_notas'
         ? 'Tu semestre archivado todavía no tiene notas para compararlo.'
         : 'Todavía no tienes un semestre archivado con el que compararte.'
-      : Math.abs(diff)<0.05?`Vas igual que en ${previo.label||'el semestre anterior'}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${tendencia} ${previo.label||'el semestre anterior'}.`;
+      : Math.abs(diff)<0.05?`Vas igual que en ${esc(previo.label||'el semestre anterior')}.`:`Vas ${nf(Math.abs(diff),2)} puntos ${tendencia} ${esc(previo.label||'el semestre anterior')}.`;
     const avanceTail=Math.min(14,100-avance.pct);
     const falta=loQueFaltaPorRamo(S.ramos);
     const filaNecesidad=x=>{

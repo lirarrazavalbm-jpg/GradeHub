@@ -390,6 +390,11 @@ function normalize(data) {
   data.historial = (Array.isArray(data.historial) ? data.historial : []).map(h => ({
     ...h,
     id: idSeguro(h.id),
+    // La etiqueta se pinta en Inicio, Estadísticas e Historial. Desde la app
+    // siempre es texto ("2026-1"); un respaldo importado podía traer otra cosa.
+    // Se deja como string sin tocar su contenido: escaparla es trabajo de quien
+    // la dibuja (esc()), no de este saneo.
+    label: typeof h.label === 'string' ? h.label : String(h.label ?? ''),
     ramos: (h.ramos || []).map(r => ({
       ...r,
       id: idSeguro(r.id),
