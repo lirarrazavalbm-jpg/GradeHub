@@ -16,9 +16,12 @@
 -- porcentaje, y el mismo criterio se aplica a todos, la comparación es justa.
 -- ponytail: promedio simple; si hace falta ponderar, subir créditos a curso_notas.
 --
--- EL MÍNIMO DE CINCO Y LOS EMPATES siguen las mismas reglas que
--- curso_posicion, por las mismas razones: bajo cinco el agregado deja de ser
--- anónimo, y un empate cuenta a favor.
+-- EL MÍNIMO DE CINCO, LOS EMPATES Y LA VENTANA DE 30 DÍAS siguen las mismas
+-- reglas que curso_posicion, por las mismas razones: bajo cinco el agregado deja
+-- de ser anónimo, un empate cuenta a favor, y una fila sin tocar en 30 días es
+-- de un ramo que ya no está (ver curso_posicion.sql).
+--
+-- REAPLICAR: el tipo de retorno no cambió, así que `create or replace` basta.
 create or replace function public.universidad_posicion(p_tenant text)
 returns table (total integer, mejor_que integer)
 language plpgsql
@@ -38,7 +41,8 @@ begin
   end if;
 
   select avg(promedio) into mi from public.curso_notas
-    where user_id = uid and tenant = v_tenant;
+    where user_id = uid and tenant = v_tenant
+      and updated_at > now() - interval '30 days';
   if mi is null then
     return;   -- no tiene ramos con sigla en esta universidad
   end if;
@@ -49,6 +53,7 @@ begin
     select avg(promedio) as promedio
     from public.curso_notas
     where tenant = v_tenant
+      and updated_at > now() - interval '30 days'
     group by user_id
   )
   select count(*), count(*) filter (where promedio <= mi) - 1
