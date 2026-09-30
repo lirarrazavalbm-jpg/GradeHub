@@ -463,9 +463,21 @@ async function afterLogin(){
     // La nube puede contener ramos creados con versiones anteriores. Pásalos
     // siempre por normalize(): un ramo sin preset necesita categorias:[] para
     // que el editor de pauta pueda abrirse igual que uno con pauta oficial.
-    S=normalize({...freshState(),...cloud});
+    //
+    // La nube YA NO pisa la copia local a ciegas: si este dispositivo tiene
+    // algo que no alcanzó a subir (una nota anotada sin conexión), se conserva
+    // y se sube. Ver «Sincronización sin pérdidas», más abajo.
+    const nube=normalize({...freshState(),...clonarSync(cloud)});
+    const {estado,subir}=mismaCache?reconciliarAlEntrar(uid,S,nube,cloud):{estado:nube,subir:false};
+    S=estado;
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+    guardarBaseSync(uid,nube);
     setCacheOwner(uid);
+    if(subir){
+      syncNow().then(respaldado=>{
+        if(respaldado)showToast('✓ Guardamos en la nube lo que anotaste en este dispositivo');
+      }).catch(()=>{});
+    }
   }else if(ok&&mismaCache){
     // `null` significa que la consulta no encontró una fila; NO demuestra que
     // esta persona no tenga datos. Si la caché ya tiene el mismo dueño, es la
@@ -557,20 +569,204 @@ if(typeof document!=='undefined'&&typeof document.addEventListener==='function')
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')subirSyncPendiente();});
 if(typeof window!=='undefined'&&typeof window.addEventListener==='function')
   window.addEventListener('pagehide',subirSyncPendiente);
+// Una subida a la vez: si llega otra mientras una va en camino, se repite al
+// terminar con el estado de ese momento. Dos subidas cruzadas partirían de la
+// misma versión y la segunda chocaría con la primera.
+let _subida=null,_otraSubida=false;
 async function syncNow(){
   if(!supabaseClient||!currentUser)return false;
+  if(_subida){_otraSubida=true;return _subida;}
+  _subida=subirConVersion(currentUser.id);
+  try{return await _subida;}
+  finally{
+    _subida=null;
+    if(_otraSubida){_otraSubida=false;syncToCloud();}
+  }
+}
+
+// ─── SINCRONIZACIÓN SIN PÉRDIDAS ─────────────────────────────────────────────
+// Hasta el 2026-09-29, al abrir la app la nube pisaba la copia local, y cada
+// subida reemplazaba el documento entero. Así se perdían notas en dos casos
+// reales, reproducidos con las funciones de verdad:
+//   1. Una nota anotada sin conexión no alcanzaba a subir. Al reabrir con red,
+//      la nube —sin esa nota— reemplazaba la copia local. Abrir la app sin
+//      internet ya lo provocaba: supabase-js viene de un CDN que no se cachea,
+//      así que la app arranca sin sesión y nada de esa visita se sube.
+//   2. Una pestaña abierta desde la mañana subía su copia vieja completa y
+//      borraba lo que se había anotado en el celular entremedio.
+//
+// Ahora cada dispositivo recuerda la última versión de la nube que vio (la
+// BASE, en SYNC_BASE_KEY) y la nube lleva un número de versión, `_rev`, DENTRO
+// del mismo JSON: no hay columna nueva ni migración, y quien lea `data` (la
+// agenda .ics, las estadísticas públicas, los agentes) sigue igual.
+//   · Al entrar: si la nube sigue en la versión de la base, nadie más escribió:
+//     manda lo local y, si difiere, se sube. Si otro dispositivo escribió, se
+//     fusionan las tres copias (base, local, nube).
+//   · Al subir: la escritura es condicional ("solo si la nube sigue en mi
+//     versión"). Si chocó, se baja la nube, se fusiona y se reintenta.
+// La fusión no borra nada que no se haya borrado a propósito: lo agregado en
+// cualquiera de los dos lados se queda; lo que un lado borró se va solo si el
+// otro no lo tocó; si los dos cambiaron el mismo dato, gana este dispositivo,
+// que es lo que la persona tiene en pantalla.
+const SYNC_BASE_KEY='gradehub_v1_base';
+const clonarSync=x=>x==null?x:JSON.parse(JSON.stringify(x));
+const igualSync=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const objetoSync=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+function sinRevSync(x){if(!objetoSync(x))return x;const {_rev,...resto}=x;return resto;}
+function revSync(x){return objetoSync(x)&&Number.isInteger(x._rev)?x._rev:null;}
+
+// La base se guarda con su dueño: en un navegador compartido, la versión que
+// vio otra cuenta no sirve para nada y no debe mezclarse.
+function leerBaseSync(uid){
   try{
-    const {error}=await supabaseClient.from('user_ramos').upsert({user_id:currentUser.id,data:S},{onConflict:'user_id'});
-    // Supabase normalmente resuelve la promesa y entrega el fallo acá; el
-    // catch por sí solo no lo ve. Marcar la caché como alineada en ese caso
-    // deja a la app creyendo que existe un respaldo que nunca se escribió.
-    if(error)throw error;
-    setCacheOwner(currentUser.id); // la caché local quedó alineada con esta cuenta
-    return true;
+    const b=JSON.parse(localStorage.getItem(SYNC_BASE_KEY)||'null');
+    return b&&b.owner===uid&&objetoSync(b.data)?b.data:null;
+  }catch(e){return null;}
+}
+function guardarBaseSync(uid,data){
+  try{
+    if(data&&uid)localStorage.setItem(SYNC_BASE_KEY,JSON.stringify({owner:uid,data}));
+    else localStorage.removeItem(SYNC_BASE_KEY);
+  }catch(e){}
+}
+
+// Al entrar con la caché de la misma cuenta. `nube` ya viene normalizada;
+// `crudo` es la fila tal como llegó, para revisar sus ids.
+function reconciliarAlEntrar(uid,local,nube,crudo){
+  const base=leerBaseSync(uid);
+  const localSinRev=sinRevSync(local),nubeSinRev=sinRevSync(nube);
+  if(igualSync(localSinRev,nubeSinRev))return {estado:nube,subir:false};
+  // Se compara el CONTENIDO y no solo `_rev`: una pestaña con la versión
+  // anterior de la app todavía abierta escribe sin subir el número.
+  if(base&&igualSync(nubeSinRev,sinRevSync(base))){
+    // Nadie escribió desde la última vez: lo distinto es de este dispositivo.
+    return {estado:local,subir:true};
+  }
+  if(!base&&!idsCompletosSync(crudo)){
+    // Primera vez con este código y una copia vieja con elementos sin id:
+    // normalize() les inventa ids distintos en cada lado y fusionar duplicaría
+    // notas. Se hace lo de antes: manda la nube.
+    return {estado:nube,subir:false};
+  }
+  const fusion=normalize({...freshState(),...fusionarSync(base,local,nube)});
+  return {estado:fusion,subir:!igualSync(sinRevSync(fusion),nubeSinRev)};
+}
+function idsCompletosSync(doc){
+  const idOk=x=>x&&typeof x.id==='string'&&/^[A-Za-z0-9_-]{1,64}$/.test(x.id);
+  const lista=v=>Array.isArray(v)?v:[];
+  const ramosOk=rs=>lista(rs).every(r=>idOk(r)&&lista(r.categorias).every(c=>idOk(c)&&lista(c.notas).every(idOk)));
+  return objetoSync(doc)&&ramosOk(doc.ramos)&&lista(doc.historial).every(h=>idOk(h)&&ramosOk(h.ramos));
+}
+
+// Fusión de tres vías. Sin base (el primer arranque de un dispositivo con este
+// código) no se sabe quién cambió qué: se suma lo que exista en cualquiera de
+// las dos y, si un mismo dato difiere, manda la nube, como hacía la app antes.
+function fusionarSync(base,local,nube){
+  return fusionarValorSync(base||undefined,local,nube,base?'local':'nube');
+}
+function fusionarValorSync(b,l,n,gana){
+  if(igualSync(l,n))return l;
+  if(b!==undefined&&igualSync(l,b))return n;     // solo cambió la nube
+  if(b!==undefined&&igualSync(n,b))return l;     // solo cambió este dispositivo
+  if(objetoSync(l)&&objetoSync(n))return fusionarObjetoSync(objetoSync(b)?b:{},l,n,gana);
+  if(Array.isArray(l)&&Array.isArray(n)&&l.concat(n).some(x=>objetoSync(x)&&typeof x.id==='string'))
+    return fusionarListaSync(Array.isArray(b)?b:[],l,n,gana);
+  return gana==='local'?l:n;
+}
+function fusionarObjetoSync(b,l,n,gana){
+  const out={};
+  for(const k of new Set([...Object.keys(l),...Object.keys(n)])){
+    if(k in l&&k in n)out[k]=fusionarValorSync(b[k],l[k],n[k],gana);
+    else if(k in l){if(!(k in b&&igualSync(l[k],b[k])))out[k]=l[k];}  // la nube lo quitó sin que acá se tocara: se va
+    else if(!(k in b&&igualSync(n[k],b[k])))out[k]=n[k];
+  }
+  return out;
+}
+// Ramos, categorías, notas y semestres archivados se emparejan por id. El
+// orden es el de este dispositivo; lo que llegó de otro va al final.
+function fusionarListaSync(b,l,n,gana){
+  const porId=a=>new Map(a.filter(x=>objetoSync(x)&&typeof x.id==='string').map(x=>[x.id,x]));
+  const B=porId(b),N=porId(n),vistos=new Set(),out=[];
+  for(const x of l){
+    if(!objetoSync(x)||typeof x.id!=='string'){out.push(x);continue;}
+    vistos.add(x.id);
+    if(N.has(x.id))out.push(fusionarValorSync(B.get(x.id),x,N.get(x.id),gana));
+    else if(!(B.has(x.id)&&igualSync(x,B.get(x.id))))out.push(x);   // nuevo acá, o editado acá aunque allá se borró
+  }
+  for(const y of n){
+    if(!objetoSync(y)||typeof y.id!=='string'||vistos.has(y.id))continue;
+    if(!(B.has(y.id)&&igualSync(y,B.get(y.id))))out.push(y);         // nuevo en otro dispositivo
+  }
+  return out;
+}
+
+async function subirConVersion(uid){
+  try{
+    for(let intento=0;intento<3;intento++){
+      const base=leerBaseSync(uid);
+      const enviado={...S,_rev:(revSync(base)||0)+1};
+      let escrito;
+      if(!base){
+        // No conocemos ninguna copia en la nube: cuenta nueva o lectura sin fila.
+        const {error}=await supabaseClient.from('user_ramos').upsert({user_id:uid,data:enviado},{onConflict:'user_id'});
+        // Supabase normalmente resuelve la promesa y entrega el fallo acá; el
+        // catch por sí solo no lo ve. Marcar la caché como alineada en ese caso
+        // deja a la app creyendo que existe un respaldo que nunca se escribió.
+        if(error)throw error;
+        escrito=true;
+      }else{
+        // Solo si la nube sigue en la versión que este dispositivo conoce. Una
+        // copia de antes de este cambio no tiene `_rev`: se compara con null.
+        let consulta=supabaseClient.from('user_ramos').update({data:enviado}).eq('user_id',uid);
+        consulta=revSync(base)===null?consulta.is('data->>_rev',null):consulta.eq('data->>_rev',String(revSync(base)));
+        const {data:filas,error}=await consulta.select('user_id');
+        if(error)throw error;
+        escrito=Array.isArray(filas)&&filas.length>0;
+      }
+      if(escrito){
+        guardarBaseSync(uid,enviado);
+        if(currentUser&&currentUser.id===uid)S._rev=enviado._rev;
+        setCacheOwner(uid); // la caché local quedó alineada con esta cuenta
+        return true;
+      }
+      // Otro dispositivo escribió desde la última vez: se fusiona y se reintenta.
+      const cloud=await loadFromCloud();
+      if(cloud===null){guardarBaseSync(uid,null);continue;}
+      if(!fusionarConNube(uid,base,cloud))return false;
+    }
+    return false;
   }catch(e){
     console.warn('No se pudo respaldar la copia local:',(e&&e.code)||'error');
     return false; // localStorage conserva la copia; se reintenta al próximo save
   }
+}
+// Con un modal abierto no se reemplaza S: el formulario quedaría editando
+// objetos que ya no están en el estado y esa edición se perdería al guardar.
+// Se reintenta en un rato; la base no cambia, así que el choque se repite y se
+// resuelve cuando el modal se cierre.
+function fusionarConNube(uid,base,cloud){
+  const modal=typeof document!=='undefined'&&document.getElementById&&document.getElementById('modal');
+  if(modal&&modal.classList&&modal.classList.contains('open')){setTimeout(syncToCloud,1500);return false;}
+  const nube=normalize({...freshState(),...clonarSync(cloud)});
+  S=normalize({...freshState(),...fusionarSync(base,S,nube)});
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+  guardarBaseSync(uid,nube);
+  repintarTrasFusion();
+  showToast('Sumamos lo que anotaste en otro dispositivo');
+  return true;
+}
+function repintarTrasFusion(){
+  try{
+    const activa=typeof document!=='undefined'&&document.querySelector&&document.querySelector('.screen.active');
+    const id=activa&&activa.id;
+    if(typeof renderHome==='function')renderHome();
+    if(id==='screen-ramo'){
+      if(S.ramos.some(r=>r.id===currentRamoId)&&typeof renderRamo==='function')renderRamo();
+      else if(typeof goHome==='function')goHome();
+    }
+    if(id==='screen-stats'&&typeof renderStats==='function')renderStats();
+    if(id==='screen-agenda'&&typeof renderAgenda==='function')renderAgenda();
+  }catch(e){}
 }
 async function syncProfile(){
   if(!supabaseClient||!currentUser)return;
@@ -619,7 +815,8 @@ async function signOut(){
   currentUser=null;closeModal();
   // Limpiar la caché local: si no, el siguiente que entre en este navegador
   // podría ver los datos de la sesión anterior.
-  try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);}catch(e){}
+  // La base de la sincronización también: es una copia completa de los datos.
+  try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(SYNC_BASE_KEY);}catch(e){}
   S=freshState();
   authMode='login';
   document.getElementById('auth-user').value='';
