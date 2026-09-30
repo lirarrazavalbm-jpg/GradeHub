@@ -1910,6 +1910,9 @@ function renderBorradorProfesor(raiz,anuncio){
   raiz.innerHTML='<div class="profesor-hig profesor-hig-editor">'+cabeceraProfesorHTML(id?'Edita tu borrador.':'Prepara tu clase.',
     'Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.','',raiz.id==='modal-content'?'modal-titulo':'profesor-titulo')+`
     <form class="profesor-form" id="profesor-borrador">
+      <!-- Campos y vista previa van juntos para que la vista previa, sticky en
+           computador, se detenga donde termina esta fila y no baje a los botones. -->
+      <div class="profesor-form-cuerpo">
       <div class="profesor-form-campos">
       <details class="profesor-seccion" open><summary><h3>1. Tu clase</h3></summary><div class="profesor-seccion-cuerpo">
       <label class="modal-label" for="pr-titulo">Título del anuncio</label><input id="pr-titulo" type="text" minlength="5" maxlength="90" required value="${valor('titulo')}">
@@ -1983,6 +1986,7 @@ function renderBorradorProfesor(raiz,anuncio){
         <div class="vista-catalogo" aria-hidden="true"></div>
       </div>
       </section>
+      </div>
       <div class="profesor-form-acciones">
       <div class="modal-btns"><button class="btn-cancel" id="pr-guardar" type="button">Guardar borrador</button><button class="btn-confirm" id="pr-enviar" type="button">Enviar a revisión</button></div>
       <p class="profesor-estado" role="status" aria-live="polite">${id?'Borrador recuperado. Puedes seguir editándolo.':'Completa la clase para guardar el primer borrador.'}</p>
