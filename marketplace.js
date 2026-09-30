@@ -1971,14 +1971,12 @@ function renderBorradorProfesor(raiz,anuncio){
       </div></details>
       </div>
       <section class="profesor-form-vista" aria-labelledby="pr-vista-titulo">
-      <div class="vista-cabeza"><h3 id="pr-vista-titulo">4. Así la van a ver</h3>
-        <div class="vista-switch" role="group" aria-label="Ver cómo se ve en">
-          <button type="button" data-vista-modo="pc">Computador</button><button type="button" data-vista-modo="celular">Celular</button>
-        </div></div>
-      <div class="profesor-vista-previa" id="pr-vista">
-        <div class="vista-solo-pc"><p class="profesor-info">En Inicio, en la casilla de al lado del ramo del estudiante:</p>
-        <div class="vista-marco"><div class="vista-grilla">${filaRamoVistaPrevia(' junto-der')}<aside class="clase-apoyo en-casilla a-la-derecha vista-anuncio"></aside></div></div></div>
-        <div class="vista-solo-cel"><p class="profesor-info">En Inicio, bajo el ramo del estudiante:</p>
+      <div class="vista-cabeza"><h3 id="pr-vista-titulo">4. Así la van a ver</h3></div>
+      <!-- Solo la vista de celular. La de computador era la pantalla entera de
+           Inicio achicada a la columna del formulario, y quedaba ilegible; el
+           banner dice lo mismo en los dos, y la mayoría entra desde el iPhone. -->
+      <div class="profesor-vista-previa modo-celular" id="pr-vista">
+        <div class="vista-solo-cel"><p class="profesor-info">En Inicio, junto al ramo del estudiante:</p>
         <div class="vista-celular">${filaRamoVistaPrevia('')}<aside class="clase-apoyo vista-anuncio"></aside></div></div>
         <p class="profesor-info">La nota del ramo es la de cada estudiante: acá va una raya porque cambia para cada uno.</p>
         <p class="profesor-info">Al abrirla, y en el catálogo de clases, con tu flyer si subiste uno:</p>
@@ -2041,9 +2039,6 @@ function renderBorradorProfesor(raiz,anuncio){
     const nombre=sigla?(nombresRamosParaClases(valorCampo('tenant')||S.tenant)[sigla]||sigla):'Tu ramo';
     vista.querySelectorAll('.ramo-name').forEach(el=>{el.textContent=nombre;});
     vista.querySelectorAll('.ramo-sigla').forEach(el=>{el.textContent=sigla||'Sigla';});
-    ajustarMiniatura();
-    const grilla=vista.querySelector('.vista-grilla');
-    if(grilla&&typeof requestAnimationFrame==='function')alinearRecomendacionConRamo(grilla,grilla.querySelector('.ramo-row'),grilla.querySelector('.clase-apoyo'));
   };
   // La tarjeta del catálogo, abierta, con el flyer que eligió (el guardado o el
   // que acaba de escoger, antes de subirlo). El botón no lleva a ninguna parte.
@@ -2062,28 +2057,6 @@ function renderBorradorProfesor(raiz,anuncio){
     if(logoVista){const cabeza=caja.querySelector('.catalogo-clase-cabeza');if(cabeza)cabeza.insertAdjacentHTML('beforeend',`<div class="catalogo-clase-logo">${imgLogoClase(logoVista)}</div>`);}
     caja.querySelectorAll('a').forEach(a=>{a.removeAttribute('href');a.setAttribute('tabindex','-1');});
   };
-  // La versión de computador se dibuja a un ancho real de pantalla y se achica
-  // entera para caber en el formulario: el profesor ve las proporciones que
-  // verá el estudiante, no una versión apretada.
-  const ANCHO_VISTA_PC=904;
-  const ajustarMiniatura=()=>{
-    const g=vista&&typeof vista.querySelector==='function'?vista.querySelector('.vista-grilla'):null;
-    const marco=g&&g.parentElement;
-    if(!g||!marco||!marco.clientWidth)return;
-    g.style.zoom=String(Math.min(1,marco.clientWidth/ANCHO_VISTA_PC));
-  };
-  if(vista&&typeof ResizeObserver==='function')new ResizeObserver(()=>{if(form.isConnected)ajustarMiniatura();}).observe(vista);
-  // Computador o celular: cambia el banner de Inicio y la tarjeta abierta.
-  // Parte en el aparato que está usando el profesor.
-  const ponerModoVista=modo=>{
-    if(!vista||!vista.classList){actualizarVista();return;}
-    vista.classList.toggle('modo-pc',modo==='pc');vista.classList.toggle('modo-celular',modo!=='pc');
-    botonesModo.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.vistaModo===modo)));
-    actualizarVista();
-  };
-  const botonesModo=typeof form.querySelectorAll==='function'?[...form.querySelectorAll('[data-vista-modo]')]:[];
-  botonesModo.forEach(b=>b.addEventListener('click',()=>ponerModoVista(b.dataset.vistaModo)));
-  const modoInicialVista=typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(min-width:768px)').matches?'pc':'celular';
   form.addEventListener('input',actualizarVista);form.addEventListener('change',actualizarVista);
   // El logo vive en la ficha: se pide una vez y se actualiza cuando lo cambian.
   if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('gradehub:logo-profesor',e=>{
@@ -2160,7 +2133,7 @@ function renderBorradorProfesor(raiz,anuncio){
   const leerDetalles=()=>listaDetalles&&typeof listaDetalles.querySelectorAll==='function'
     ?[...listaDetalles.querySelectorAll('.profesor-detalle')].map(f=>({etiqueta:f.querySelector('.detalle-etiqueta').value,valor:f.querySelector('.detalle-valor').value})):[];
   detallesClase(anuncio).forEach(d=>filaDetalle(d));
-  ponerModoVista(modoInicialVista);
+  actualizarVista();
   activarBuscadorRamosClase(form,campo);
   const cajaLogo=campo('logo');
   if(cajaLogo)renderLogoProfesor(cajaLogo);
