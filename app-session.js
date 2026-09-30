@@ -516,6 +516,14 @@ async function afterLogin(){
   // notas— y no bloquea nada. Va después del consenso a propósito: si una pauta
   // acaba de llegar de otros, no tiene sentido devolvérsela.
   if(typeof aportarPautasAlCatalogo==='function')aportarPautasAlCatalogo().catch(()=>{});
+  // Los promedios de la comparación con el curso se renuevan al entrar, no solo
+  // al abrir Estadísticas: curso_posicion y universidad_posicion ignoran filas
+  // sin actualizar en 30 días (para que no cuenten los ramos borrados o
+  // archivados antes del arreglo), y quien usa la app sin abrir Estadísticas
+  // quedaba fuera aunque su promedio fuera real. Una vez por visita: la firma
+  // de subirNotasCurso evita repetir si nada cambió. Va después de afterLogin
+  // entero para que suba el estado ya reconciliado con la nube.
+  if(S.onboardingDone&&typeof subirNotasCurso==='function')subirNotasCurso().catch(()=>{});
   // Si esta persona está aprobada como profesor particular, le aparece una
   // cuarta pestaña. Se pregunta una vez al entrar y no bloquea nada: si el SQL
   // del marketplace todavía no está aplicado, la consulta falla en silencio y
