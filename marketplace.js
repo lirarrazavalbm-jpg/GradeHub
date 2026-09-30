@@ -672,7 +672,7 @@ function seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados=[],ahora=Date.
     a.tenant===tenant&&a.estado==='publicado'&&!omitidos.has(a.id)&&
     (a.vence_at==null||Date.parse(a.vence_at)>ahora)&&criteriosClaseValidos(a.criterios));
   // El orden de ramos que eligió la persona manda. Si varios avisos calzan con
-  // el mismo ramo, se alternan por turno (mañana/tarde): antes ganaba siempre
+  // el mismo ramo, se alternan en cada apertura de la app: antes ganaba siempre
   // el publicado último, y un profesor con dos clases del mismo ramo casi no
   // veía la otra en Inicio (Salva Ramos, 2026-09-30). Se entrega como máximo
   // una tarjeta, sin escribir ninguna preferencia en S.
@@ -2362,35 +2362,33 @@ function diaLocalClases(ahora=Date.now()){
 }
 // Mañana hasta las 14:00 y tarde desde ahí, en la hora del dispositivo.
 const HORA_TARDE_CLASES=14;
-// Número de turno: sube uno cada mañana y cada tarde. Sirve para alternar entre
-// avisos que calzan con el mismo ramo; es el mismo durante todo el turno.
-function turnoClases(ahora=Date.now()){
-  const [a,m,d]=diaLocalClases(ahora).split('-').map(Number);
-  return Math.floor(Date.UTC(a,m-1,d)/864e5)*2+(new Date(ahora).getHours()<HORA_TARDE_CLASES?0:1);
-}
 function franjaClases(ahora=Date.now()){
   return diaLocalClases(ahora)+(new Date(ahora).getHours()<HORA_TARDE_CLASES?'-manana':'-tarde');
 }
 // Pura: recibe anuncios, ramos y el estado guardado, y devuelve la
 // recomendación de esta franja (o null) junto con el estado que hay que guardar.
-function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now()){
+// Una apertura de la app = una carga de la página. Volver a Inicio dentro de la
+// misma apertura no cambia el banner; abrir la app de nuevo muestra la
+// siguiente de las clases que calzan (pedido de Lucas del 2026-09-30).
+const VISITA_CLASES=Date.now().toString(36)+Math.random().toString(36).slice(2);
+function recomendacionDelDia(anuncios,ramos,tenant,estado,ahora=Date.now(),visita=VISITA_CLASES){
   const franja=franjaClases(ahora),e=estado||{};
-  if(e.franja===franja){
-    // Cerrada con la X: hasta la próxima franja.
-    if(e.cerrada)return {sel:null,estado:e};
-    // Recargar o volver a entrar muestra la misma clase, si sigue calzando.
-    // Si subiste una nota y dejó de calzar, desaparece en vez de quedarse
-    // pegada, y no se reemplaza por otra en la misma franja.
-    if(e.anuncioId){
-      const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===e.anuncioId),ramos,tenant,{descartados:definitivasClases(e),ahora});
-      return {sel,estado:e};
-    }
+  // Cerrada con la X: hasta la próxima franja, aunque se vuelva a abrir.
+  if(e.franja===franja&&e.cerrada)return {sel:null,estado:e};
+  // Misma apertura: la misma clase, si sigue calzando. Si subiste una nota y
+  // dejó de calzar, desaparece en vez de quedarse pegada.
+  if(e.visita===visita&&e.anuncioId){
+    const sel=seleccionarClaseApoyo((anuncios||[]).filter(a=>a&&a.id===e.anuncioId),ramos,tenant,{descartados:definitivasClases(e),ahora});
+    return {sel,estado:e};
   }
-  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados:definitivasClases(e),ahora,turno:turnoClases(ahora)});
-  // La franja queda tomada solo si se mostró una. Si no calza ninguna, no se
-  // anota nada: una clase publicada más tarde tiene que poder aparecer.
+  // Apertura nueva: la siguiente en la rotación. `aperturas` cuenta las que ya
+  // mostraron algo, así que la primera vez sale la primera.
+  const aperturas=Number.isSafeInteger(e.aperturas)&&e.aperturas>=0?e.aperturas:0;
+  const sel=seleccionarClaseApoyo(anuncios,ramos,tenant,{descartados:definitivasClases(e),ahora,turno:aperturas});
+  // Si no calza ninguna, no se anota nada: una clase publicada más tarde tiene
+  // que poder aparecer.
   if(!sel)return {sel:null,estado:e};
-  return {sel,estado:{...e,franja,anuncioId:sel.anuncio.id,cerrada:false}};
+  return {sel,estado:{...e,franja,visita,anuncioId:sel.anuncio.id,cerrada:false,aperturas:aperturas+1}};
 }
 
 // Las clases cerradas dos veces. La lista `descartados` de la versión anterior

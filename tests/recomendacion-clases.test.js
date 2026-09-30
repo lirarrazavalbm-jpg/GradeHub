@@ -28,18 +28,17 @@ ctx.__avisos=[aviso('a1'),aviso('a2')];
 const dia=(ramos,estado,t,visita='v1')=>{ctx.__r=ramos;ctx.__e=estado;ctx.__t=t;ctx.__v=visita;return run("recomendacionDelDia(__avisos,__r,'uc',__e,__t,__v)");};
 const complicado=[ramo('r1',[3.5,3.5])],bien=[ramo('r1',[5.5,5.5])];
 
-console.log('=== Una en la mañana y una en la tarde ===');
+console.log('=== Una por apertura de la app ===');
 let r=dia(complicado,{},lunes);
 chk('elige una clase cuando el ramo calza',r.sel&&r.sel.anuncio.id==='a1'&&r.sel.ramo.id==='r1');
 chk('y anota la franja y cuál fue',r.estado.franja==='2026-09-28-manana'&&r.estado.anuncioId==='a1');
 const manana=r.estado;
 chk('en la misma visita se mantiene al volver a Inicio',dia(complicado,manana,lunes+3600e3).sel?.anuncio.id==='a1');
-// Ajuste del 2026-09-26: recargar no gasta la franja, solo la X.
-chk('si recarga o vuelve a entrar esa mañana, sigue la misma clase',dia(complicado,manana,lunes+3600e3,'v2').sel?.anuncio.id==='a1');
-chk('recargar no anota nada nuevo',(r=>r.estado===manana)(dia(complicado,manana,lunes+3600e3,'v2')));
-// Desde el 2026-09-30, dos avisos que calzan con el mismo ramo se alternan
-// por turno: en la tarde aparece el otro.
-chk('en la tarde vuelve a aparecer una, la otra por turno',dia(complicado,manana,lunesTarde,'v2').sel?.anuncio.id==='a2');
+// Desde el 2026-09-30 (pedido de Lucas), cada vez que se abre la app sale la
+// siguiente de las clases que calzan, no una por mañana y tarde.
+chk('al volver a abrir la app, sale la otra',dia(complicado,manana,lunes+3600e3,'v2').sel?.anuncio.id==='a2');
+chk('y anota que ya van dos aperturas',dia(complicado,manana,lunes+3600e3,'v2').estado.aperturas===2);
+chk('abrir en la tarde también rota',dia(complicado,manana,lunesTarde,'v2').sel?.anuncio.id==='a2');
 chk('si sube la nota, desaparece en vez de quedar pegada',dia(bien,manana,lunes).sel===null);
 chk('sin un ramo que calce, no hay nada',dia(bien,{},lunes).sel===null);
 // Pasó en la prueba del 2026-09-25: Inicio se abrió antes de publicar la clase
@@ -49,25 +48,26 @@ ctx.__avisos=[];const vacio=dia(complicado,{},lunes).estado;ctx.__avisos=[aviso(
 chk('si la clase se publica más tarde, aparece',dia(complicado,vacio,lunes+3600e3,'v2').sel?.anuncio.id==='a1');
 chk('un estado de la versión anterior (una sola vez cerrada) no la descarta',dia(complicado,{dia:'2026-09-28',anuncioId:null,cerradaHoy:true,descartados:['a1']},lunes).sel?.anuncio.id==='a1');
 
-console.log('\n=== Dos clases del mismo ramo se alternan por turno ===');
+console.log('\n=== Dos clases del mismo ramo se alternan en cada apertura ===');
 // Antes ganaba siempre la publicada último, y la otra casi no salía en Inicio.
-ctx.__r0=complicado[0];
-const turnos=[lunes,lunesTarde,martes].map(t=>run(`seleccionarClaseApoyo(__avisos,[__r0],'uc',{ahora:${t},turno:turnoClases(${t})})?.anuncio.id`));
-chk('mañana a1, tarde a2, mañana siguiente a1',turnos.join()==='a1,a2,a1');
-chk('dentro del mismo turno siempre la misma',run(`turnoClases(${lunes})===turnoClases(${lunes+3*3600e3})`));
-ctx.__avisosInv=[aviso('a2'),aviso('a1')];
+let est={},seq=[];
+for(const v of ['v1','v2','v3','v4']){const x=dia(complicado,est,lunes,v);seq.push(x.sel?.anuncio.id);est=x.estado;}
+chk('abrir cuatro veces: a1, a2, a1, a2',seq.join()==='a1,a2,a1,a2');
+chk('dentro de una misma apertura, siempre la misma',dia(complicado,est,lunes+3*3600e3,'v4').sel?.anuncio.id==='a2');
+ctx.__r0=complicado[0];ctx.__avisosInv=[aviso('a2'),aviso('a1')];
 chk('el orden en que llegan no cambia a quién le toca',
-  run(`seleccionarClaseApoyo(__avisosInv,[__r0],'uc',{ahora:${lunes},turno:turnoClases(${lunes})})?.anuncio.id`)==='a1');
+  run(`seleccionarClaseApoyo(__avisosInv,[__r0],'uc',{ahora:${lunes},turno:0})?.anuncio.id`)==='a1');
 ctx.__uno=[aviso('solo')];
-chk('con una sola clase, sale en todos los turnos',
-  [lunes,lunesTarde,martes].every(t=>run(`seleccionarClaseApoyo(__uno,[__r0],'uc',{ahora:${t},turno:turnoClases(${t})})?.anuncio.id`)==='solo'));
+chk('con una sola clase, sale en todas las aperturas',
+  [0,1,2].every(n=>run(`seleccionarClaseApoyo(__uno,[__r0],'uc',{ahora:${lunes},turno:${n}})?.anuncio.id`)==='solo'));
 
 console.log('\n=== Cerrarla ===');
 run(`descartarRecomendacionClase('a1',${lunes},'v1')`);
 const tras=JSON.parse(guardado.gradehub_marketplace_v1);
 chk('cerrarla la esconde por esta franja, aun en la misma visita',dia(complicado,tras,lunes).sel===null);
-chk('en la tarde aparece la otra, por turno',dia(complicado,tras,lunesTarde,'v2').sel?.anuncio.id==='a2');
-chk('pero no la descarta para siempre: vuelve en su turno siguiente',dia(complicado,tras,martes,'v2').sel?.anuncio.id==='a1');
+chk('ni al volver a abrir en esa misma franja',dia(complicado,tras,lunes+3600e3,'v2').sel===null);
+chk('en la tarde vuelve a aparecer',dia(complicado,tras,lunesTarde,'v2').sel!==null);
+chk('pero no la descarta para siempre',dia(complicado,tras,martes,'v2').sel?.anuncio.id==='a1');
 chk('y al día siguiente también',dia(complicado,tras,martes,'v3').sel?.anuncio.id==='a1');
 chk('la primera vez no dice "no te la volvemos a mostrar"',run(`descartarRecomendacionClase('a2',${lunes},'v1')`)===false);
 chk('la segunda vez sí, y la descarta para siempre',run(`descartarRecomendacionClase('a1',${lunesTarde},'v2')`)===true);
