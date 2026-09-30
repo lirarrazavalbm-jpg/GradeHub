@@ -2615,6 +2615,15 @@ async function cargarSoyAdministrador(){
   return soyAdministradorCache;
 }
 function esAdministrador(){return soyAdministradorCache;}
+// Al cerrar sesión, lo que se sabía de la cuenta anterior se olvida: si no, quien
+// entra después en el mismo navegador sin recargar hereda sus pestañas de
+// profesor y de administración y su ficha de profesor en pantalla (reportado
+// el 2026-09-30 al crear una cuenta nueva tras usar la de admin).
+function olvidarSesionMarketplace(){
+  soyAdministradorCache=false;
+  olvidarPerfilProfesor();
+  anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
+}
 
 async function renderAdmin(){
   const raiz=document.getElementById('admin-body');
