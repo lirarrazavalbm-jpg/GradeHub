@@ -3468,6 +3468,14 @@ function creditosDe(nombre,tenant,preset,sigla){
 // necesita saber la carrera. Importa donde el nombre no basta: en el plan común
 // hay dos ramos llamados "Dinámica" con códigos distintos, y el estudiante
 // reconoce el suyo por la sigla de su horario, no por el nombre.
+// ¿La pauta encontrada por nombre es de ESTE curso? Si la pauta declara sigla,
+// tiene que coincidir: un homónimo con otra sigla no la recibe (ver
+// crearRamoDesdeCatalogo, que tampoco se la adjunta).
+function pautaCalzaConSigla(nombrePauta,sigla){
+  if(!nombrePauta)return false;
+  const propia=siglaDePreset(nombrePauta);
+  return !propia||!sigla||normName(propia)===normName(sigla);
+}
 function siglaDePreset(nombre){
   if(typeof PRESETS_UC==='undefined'||!nombre)return null;
   const clave=claveCatalogo(nombre,Object.keys(PRESETS_UC),'uc');
@@ -3603,7 +3611,18 @@ function buildCatalog(filas){
     while(parent[i]!==i){const next=parent[i];parent[i]=root;i=next;}
     return root;
   };
-  const unir=(a,b)=>{a=find(a);b=find(b);if(a!==b)parent[b]=a;};
+  // Una pauta que declara su sigla pertenece a ESE curso. Si otro curso se llama
+  // igual pero tiene otra sigla, no se juntan: "Revelación y Fe" es TTF012 (con
+  // pauta) y también TEB110 (sin pauta). Juntos mostraban una sola fila con la
+  // sigla de uno y la pauta del otro, y al agregarla la pauta no se cargaba
+  // (reportado el 2026-09-30). Fuera de ese caso, el mismo nombre con siglas
+  // distintas se sigue deduplicando como antes.
+  const siglaDe=rows.map(r=>normName(r.sigla||'')),siglaPautaDe=rows.map(r=>normName(r.siglaPauta||''));
+  const chocan=(a,b)=>(siglaPautaDe[a]&&siglaDe[b]&&siglaDe[b]!==siglaPautaDe[a])||(siglaPautaDe[b]&&siglaDe[a]&&siglaDe[a]!==siglaPautaDe[b]);
+  const unir=(a,b)=>{
+    a=find(a);b=find(b);if(a===b||chocan(a,b))return;
+    parent[b]=a;siglaDe[a]=siglaDe[a]||siglaDe[b];siglaPautaDe[a]=siglaPautaDe[a]||siglaPautaDe[b];
+  };
   const porNombre=new Map(),porSigla=new Map();
   rows.forEach((r,i)=>{
     const nombre=normName(r.nombre),sigla=normName(r.sigla||'');
@@ -3673,10 +3692,14 @@ function catalogRamosUniversidad(tenant,carreraPropia){
   // van en la malla a propósito, porque son una elección y no un ramo de todos;
   // eso no es razón para esconder su pauta.
   presetsFueraDeMalla(tenant,carreraPropia).forEach(nombre=>{
+    // La sigla de la propia pauta sirve para no juntarla con un homónimo que
+    // tiene otra sigla. No se muestra como sigla de la fila: hay programas que
+    // la declaran pendiente, y al agregar el ramo la app la toma de la pauta.
+    const siglaPauta=tenant==='uc'?siglaDePreset(nombre):null;
     const sigla=tenant==='uc'?siglaCatalogoUC(nombre):null;
     // semestre 0 = fuera de malla. No compite con los del semestre del
     // estudiante en el orden, porque no le corresponde a nadie en particular.
-    out.push({nombre,semestre:0,propio:false,sigla,tienePreset:true});
+    out.push({nombre,semestre:0,propio:false,sigla,siglaPauta,tienePreset:true});
   });
   // Y los cursos que existen sin pertenecer a un semestre ni traer pauta: los
   // optativos y OFG. Entran por el mismo camino que los presets fuera de
@@ -3687,7 +3710,7 @@ function catalogRamosUniversidad(tenant,carreraPropia){
     if(typeof nombre!=='string'||!nombre.trim())return;
     out.push({nombre,semestre:0,propio:false,sigla,creditos:typeof creditos==='number'?creditos:null,
               escuela:escuelaCursoUc(indiceEscuela),fuente:'curso-uc',
-              tienePreset:!!findPresetName(nombre,tenant,carreraPropia)});
+              tienePreset:pautaCalzaConSigla(findPresetName(nombre,tenant,carreraPropia),sigla)});
   });
   // CREDITOS_UC ya viene del catálogo oficial de los 34 majors. No inventa
   // una malla ni dice a qué semestre corresponde: solo evita que Ingeniería
