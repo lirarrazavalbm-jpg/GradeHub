@@ -1153,9 +1153,6 @@ async function renderEspacioProfesor(raiz,{titulo=true}={}){
   }
   const mios=await misAnunciosClase();
   if(!mios.ok){raiz.innerHTML=cabecera('Espacio de profesor')+`<p class="profesor-info" role="alert">${esc(mios.error)}</p>`+salida();return;}
-  // Sin ningún anuncio todavía, no hay panel que mostrar: se entra derecho a
-  // preparar el primero, que es lo único que esa persona puede hacer.
-  if(!mios.anuncios.length){renderBorradorProfesor(raiz,null);return;}
   await renderPanelProfesor(raiz,mios.anuncios,{cabecera,salida});
 }
 
@@ -1553,32 +1550,56 @@ function tarjetaPanelClase(a,pesos,ahora){
   </article>`;
 }
 
+// Presentación pura de la propuesta #522. Las acciones y los números siguen
+// conectados al flujo de producción; no se importan adaptadores de bin/.
+function cabeceraProfesorHTML(titulo,bajada,accion='',idTitulo='profesor-titulo'){
+  return `<header class="profesor-hig-cabecera"><div><p class="profesor-hig-ceja">TU ESPACIO DE PROFESOR</p><h1 class="modal-title" id="${esc(idTitulo)}">${esc(titulo)}</h1><p>${esc(bajada)}</p></div>${accion}</header>`;
+}
+function filaProfesorClaseHTML(a,pesos,ahora){
+  const vig=vigenciaAnuncio(a,ahora),etiqueta=(ESTADOS_ANUNCIO[vig]||[vig])[0];
+  return `<details class="profesor-hig-fila"><summary>
+    <span class="profesor-hig-identidad"><b>${esc(a.titulo||'Sin título')}</b><small>${esc((a.ramos_siglas||[]).join(' · '))}</small></span>
+    <span class="clase-estado clase-estado-${esc(vig)}" data-estado-campana="${esc(a.id)}">${esc(etiqueta)}</span>
+    <span class="profesor-hig-importe"><b data-costo-campana="${esc(a.id)}">${['publicado','pausado','expirado'].includes(vig)?'Cargando…':'—'}</b><small>Costo de campaña</small></span>
+    <span class="profesor-hig-flecha" aria-hidden="true">⌄</span>
+    </summary><div class="profesor-hig-detalle">${tarjetaPanelClase(a,pesos,ahora)}</div></details>`;
+}
+function presupuestoProfesorHTML(costo){
+  if(!costo)return '<p class="clase-sin-datos">No pudimos cargar el costo de la campaña. Vuelve a abrir tu espacio para intentarlo de nuevo.</p>';
+  const porcentaje=costo.tope?Math.min(100,Math.round(costo.total/costo.tope*100)):0;
+  return `<section class="profesor-hig-presupuesto"><span>Costo · publicación actual</span><strong>${pesosClase(costo.total)} <small>de ${pesosClase(costo.tope)}</small></strong><progress max="100" value="${porcentaje}" aria-label="Presupuesto utilizado"></progress><p>${porcentaje}% del tope. La campaña deja de mostrarse al alcanzarlo.</p></section>`;
+}
+
 function seccionPanelClases(titulo,lista,pesos,ahora,vacio){
   if(!lista.length&&!vacio)return '';
   return `<section class="clases-seccion"><h3>${titulo}${lista.length?` <span>${lista.length}</span>`:''}</h3>
-    ${lista.length?`<div class="clase-lista">${lista.map(a=>tarjetaPanelClase(a,pesos,ahora)).join('')}</div>`:`<p class="clase-sin-datos">${vacio}</p>`}</section>`;
+    ${lista.length?`<div class="clase-lista">${lista.map(a=>filaProfesorClaseHTML(a,pesos,ahora)).join('')}</div>`:`<p class="clase-sin-datos">${vacio}</p>`}</section>`;
 }
 
 async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
   const ahora=Date.now(),g=gruposPanelClases(anuncios,ahora);
   const conNumeros=[...g.activos,...g.cerrados];
-  raiz.innerHTML=cabecera('Espacio de profesor')+
-    `<section class="clases-resumen" aria-labelledby="clases-resumen-titulo">
-       <h3 id="clases-resumen-titulo">${g.activos.length?`Tus clases activas`:'Todavía no tienes clases activas'}</h3>
-       <div id="clases-kpis">${g.activos.length?'<p class="clase-sin-datos">Cargando números…</p>'
-         :`<p class="clase-sin-datos">${g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
-           :'Arma un borrador y mándalo a revisión. Cuando se publique, acá vas a ver cómo le va.'}</p>`}</div>
-       <p class="clase-privacidad">“Personas distintas” cuenta a cada cuenta una sola vez; “veces en total” suma cada vez que pasó. Nunca ves nombres. El costo es el de tu campaña y nunca pasa de tu tope.</p>
-     </section>
-     <div class="clases-acciones"><button type="button" class="btn-confirm" id="clase-nueva">Armar un borrador</button></div>`+
+  raiz.innerHTML='<div class="profesor-hig">'+
+    cabeceraProfesorHTML('Tu conocimiento puede ayudar.','Este es tu espacio para publicar clases y ver cómo les va.',
+      '<button type="button" class="btn-confirm" id="clase-nueva">Crear anuncio</button>',raiz.id==='modal-content'?'modal-titulo':'profesor-titulo')+
+    `<section class="profesor-hig-intro"><div><h2>Enseña a tu manera.</h2><p>Elige qué ofrecer, a quién llegar y cuánto destinar a tu campaña. Tú pones el límite.</p></div>
+      <ol><li><b>Prepara tu clase.</b> Cuenta qué van a trabajar.</li><li><b>Define público y presupuesto.</b> Siempre con un tope.</li><li><b>Revisa y envía.</b> Nada se publica sin aprobación.</li></ol></section>
+    <div class="profesor-hig-lista-cabeza"><h2>Tus anuncios</h2><span>${anuncios.length} ${anuncios.length===1?'anuncio':'anuncios'}</span></div>`+
+    (anuncios.length?'':'<p class="profesor-hig-vacio">Todavía no tienes anuncios. Crea el primero y guárdalo como borrador hasta que esté listo.</p>')+
     seccionPanelClases('Publicadas',g.activos,pesos,ahora)+
     seccionPanelClases('Programadas',g.programados,pesos,ahora)+
     seccionPanelClases('En revisión',g.revision,pesos,ahora)+
     seccionPanelClases('Borradores',g.borradores,pesos,ahora)+
     seccionPanelClases('Pausadas y terminadas',g.cerrados,pesos,ahora)+
+    `<details class="clases-resumen profesor-hig-resumen"><summary id="clases-resumen-titulo">Resumen de tus clases activas</summary>
+       <div id="clases-kpis">${g.activos.length?'<p class="clase-sin-datos">Cargando números…</p>'
+         :`<p class="clase-sin-datos">${g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
+           :'Arma un borrador y mándalo a revisión. Cuando se publique, acá vas a ver cómo le va.'}</p>`}</div>
+       <p class="clase-privacidad">“Personas distintas” cuenta a cada cuenta una sola vez; “veces en total” suma cada vez que pasó. Nunca ves nombres. El costo es el de tu campaña y nunca pasa de tu tope.</p>
+     </details>`+
     '<section class="clases-seccion"><h3>Tu perfil</h3><div id="clases-logo"></div></section>'+
-    salida();
+    salida()+'</div>';
   // Al cambiar el estado se vuelve a pedir la lista: el estado, los números y
   // los botones de cada tarjeta dependen de él, y repintar a mano lo que uno
   // cree que cambió es la forma de que una tarjeta quede mintiendo.
@@ -1620,8 +1641,12 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   for(const d of medidas){
     const caja=raiz.querySelector(`[data-metricas="${d.a.id}"]`);
     if(!caja||!caja.isConnected)continue;
-    caja.innerHTML=(d.costo&&d.costo.agotada?'<p class="clase-aviso-tope">Llegó a tu tope: dejó de mostrarse y no suma más costo.</p>':'')+
-      cifrasClase(d,pesos)+graficosClase(d,pesos,ahora)+
+    const importe=raiz.querySelector(`[data-costo-campana="${d.a.id}"]`);
+    if(importe)importe.textContent=d.costo?pesos(d.costo.total):'No disponible';
+    const estado=raiz.querySelector(`[data-estado-campana="${d.a.id}"]`);
+    if(estado&&d.costo&&d.costo.agotada&&vigenciaAnuncio(d.a,ahora)==='publicado')estado.textContent='Tope alcanzado';
+    caja.innerHTML=presupuestoProfesorHTML(d.costo)+(d.costo&&d.costo.agotada?'<p class="clase-aviso-tope">Llegó a tu tope: dejó de mostrarse y no suma más costo.</p>':'')+
+      cifrasClase(d,pesos)+'<details class="profesor-hig-estadisticas"><summary>Más estadísticas</summary>'+graficosClase(d,pesos,ahora)+'</details>'+
       (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró por día aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
       (d.costo?`<p class="clase-sin-datos">${esc(lineaCostoCampanaClase(d.costo))}.</p>`:'');
   }
@@ -1803,13 +1828,13 @@ function sqlClasesDesactualizado(error){
 function faltaTablaCampana(error){return sqlClasesDesactualizado(error);}
 const compatibilidadSqlClases={campanas:false,cobros:false};
 const AVISO_SQL_CLASES='SQL de campañas pendiente. Se usa el modo anterior: los cobros solo se guardan para la publicación actual y los días y el tope pueden no estar guardados. Aplica los tres archivos SQL antes de publicar o renovar campañas.';
-async function leerCampanaClase(anuncioId,{diagnostico=false}={}){
+async function leerCampanaClase(anuncioId,{diagnostico=false,estricto=false}={}){
   if(!supabaseClient||!anuncioId)return null;
   try{
     const {data,error}=await supabaseClient.from('anuncio_campanas').select('dias,inicio,tope_clp').eq('anuncio_id',anuncioId).maybeSingle();
-    if(error){if(faltaTablaCampana(error)){compatibilidadSqlClases.campanas=true;return diagnostico?{sqlAnterior:true}:null;}console.warn('No se pudo leer la campaña:',error.code||'',error.message||error);return null;}
+    if(error){if(estricto)throw error;if(faltaTablaCampana(error)){compatibilidadSqlClases.campanas=true;return diagnostico?{sqlAnterior:true}:null;}console.warn('No se pudo leer la campaña:',error.code||'',error.message||error);return null;}
     compatibilidadSqlClases.campanas=false;return data||null;
-  }catch(e){return null;}
+  }catch(e){if(estricto)throw e;return null;}
 }
 async function guardarCampanaClase(anuncioId,datos){
   if(!supabaseClient||!anuncioId)return {ok:false,error:'no pudimos guardar la campaña.'};
@@ -1827,8 +1852,8 @@ function renderBorradorProfesor(raiz,anuncio){
   const valor=(campo,defecto='')=>esc(anuncio&&anuncio[campo]!=null?anuncio[campo]:defecto);
   const tipoContactoInicial=anuncio&&PREFIJO_CONTACTO_CLASE[anuncio.contacto_tipo]!==undefined?anuncio.contacto_tipo:'whatsapp';
   const elegir=(opciones,actual)=>opciones.map(([clave,texto])=>`<option value="${clave}"${actual===clave?' selected':''}>${texto}</option>`).join('');
-  raiz.innerHTML=`<div class="modal-title" id="modal-titulo">${id?'Edita tu borrador':'Prepara tu clase'}</div>
-    <p class="profesor-info">Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.</p>
+  raiz.innerHTML='<div class="profesor-hig profesor-hig-editor">'+cabeceraProfesorHTML(id?'Edita tu borrador.':'Prepara tu clase.',
+    'Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.','',raiz.id==='modal-content'?'modal-titulo':'profesor-titulo')+`
     <form class="profesor-form" id="profesor-borrador">
       <div class="profesor-form-campos">
       <details class="profesor-seccion" open><summary><h3>1. Tu clase</h3></summary><div class="profesor-seccion-cuerpo">
@@ -1886,7 +1911,7 @@ function renderBorradorProfesor(raiz,anuncio){
         <p class="profesor-info">Sin fecha de inicio, parte apenas la aprobemos. Puedes elegir los días o la fecha de término: el otro se ajusta solo.</p>
         <label class="modal-label" for="pr-tope">Tope · lo máximo que pagarías</label><input id="pr-tope" type="text" inputmode="numeric" autocomplete="off" required placeholder="${esc(textoPesosEscrito(TOPE_CAMPANA_POR_OMISION))}" value="${esc(textoPesosEscrito(TOPE_CAMPANA_POR_OMISION))}">
         <p class="profesor-info">Cuesta ${pesosClase(TARIFA_CAMPANA.dia)} por día publicada y, por persona, ${pesosClase(TARIFA_CAMPANA.vista)} si la ve, ${pesosClase(TARIFA_CAMPANA.apertura)} si la abre y ${pesosClase(TARIFA_CAMPANA.contacto)} si te contacta. Cada persona cuenta una vez. Al llegar al tope deja de mostrarse: nunca pagas más que eso. El pago se coordina con GradeHub antes de publicar.</p>
-        <p class="profesor-campana-resumen" id="pr-campana-resumen" aria-live="polite"></p>
+        <p class="profesor-campana-resumen" id="pr-campana-resumen" aria-live="polite"></p><button type="button" class="btn-cancel" id="pr-reintentar-campana" hidden>Reintentar carga de campaña</button>
       </div>
       </div></details>
       </div>
@@ -1909,9 +1934,9 @@ function renderBorradorProfesor(raiz,anuncio){
       <div class="modal-btns"><button class="btn-cancel" id="pr-guardar" type="button">Guardar borrador</button><button class="btn-confirm" id="pr-enviar" type="button">Enviar a revisión</button></div>
       <p class="profesor-estado" role="status" aria-live="polite">${id?'Borrador recuperado. Puedes seguir editándolo.':'Completa la clase para guardar el primer borrador.'}</p>
       </div>
-    </form>`;
+    </form></div>`;
   const form=raiz.querySelector('#profesor-borrador'),campo=id=>form.querySelector('#pr-'+id),estado=form.querySelector('.profesor-estado');
-  let procesando=false;
+  let procesando=false,campanaLista=!id;
   // Vista previa en vivo: el mismo contenido que verá el estudiante en Inicio,
   // armado con lo que el profesor lleva escrito y su logo.
   const vista=form.querySelector('#pr-vista');
@@ -2031,14 +2056,34 @@ function renderBorradorProfesor(raiz,anuncio){
   if(finC)finC.addEventListener('input',()=>{ajustarDias();resumirCampana();});
   if(topeC)topeC.addEventListener('input',resumirCampana);
   ajustarFin();resumirCampana();
-  // Una campaña guardada se trae para seguir editándola.
-  if(id)leerCampanaClase(id).then(c=>{
-    if(!c||!form.isConnected)return;
-    if(diasC)diasC.value=String(c.dias);
-    if(inicioC)inicioC.value=c.inicio&&c.inicio>=hoyChileClase()?c.inicio:'';
-    if(topeC)topeC.value=textoPesosEscrito(c.tope_clp);
-    ajustarFin();resumirCampana();
-  });
+  // No reemplazar una campaña existente por los valores por omisión si falla
+  // su lectura. El guardado se habilita solo después de recuperarla.
+  const reintentarCampana=campo('reintentar-campana');
+  const cargarCampanaGuardada=async()=>{
+    campanaLista=false;
+    const controles=[diasC,inicioC,finC,topeC,campo('guardar'),campo('enviar')].filter(Boolean);
+    controles.forEach(c=>c.disabled=true);
+    if(reintentarCampana)reintentarCampana.hidden=true;
+    estado.textContent='Recuperando los días y el tope de tu campaña…';
+    try{
+      const c=await leerCampanaClase(id,{estricto:true});
+      if(!form.isConnected)return;
+      if(c){
+        if(diasC)diasC.value=String(c.dias);
+        if(inicioC)inicioC.value=c.inicio&&c.inicio>=hoyChileClase()?c.inicio:'';
+        if(topeC)topeC.value=textoPesosEscrito(c.tope_clp);
+      }
+      ajustarFin();resumirCampana();campanaLista=true;
+      controles.forEach(c=>c.disabled=false);
+      estado.textContent='Borrador recuperado. Puedes seguir editándolo.';
+    }catch(e){
+      if(!form.isConnected)return;
+      estado.textContent='No pudimos recuperar tu campaña. Reintenta antes de guardar para conservar sus días y su tope.';
+      if(reintentarCampana)reintentarCampana.hidden=false;
+    }
+  };
+  if(reintentarCampana)reintentarCampana.addEventListener('click',cargarCampanaGuardada);
+  if(id)cargarCampanaGuardada();
   // "Otra…" abre su casilla de texto; cualquier otra opción la esconde.
   [['modalidad','modalidad-otra'],['ubicacion','ubicacion-otra']].forEach(([sel,texto])=>{
     const selector=campo(sel),caja=campo(texto);
@@ -2132,7 +2177,7 @@ function renderBorradorProfesor(raiz,anuncio){
   };
   if(contacto&&typeof contacto.addEventListener==='function')contacto.addEventListener('input',limpiarContacto);
   const procesar=async enviar=>{
-    if(procesando)return;
+    if(procesando||!campanaLista)return;
     if(typeof form.querySelectorAll==='function')[...form.querySelectorAll(':invalid')].forEach(abrirSeccionDe);
     if(!form.reportValidity())return;
     const file=campo('flyer').files&&campo('flyer').files[0],validacion=validarFlyerClase(file);

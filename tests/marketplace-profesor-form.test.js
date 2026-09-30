@@ -99,5 +99,17 @@ function check(nombre,condicion){if(!condicion)throw Error(nombre);n++;}
   errorCampana={ok:false,falta:true};
   await events['#pr-enviar:click']();
   check('SQL antiguo permite revisión con aviso sin fingir campaña guardada',enviados===4&&/Los días y el tope todavía no se guardaron/.test(raiz.innerHTML));
+  // Un borrador existente no debe reemplazar su campaña por valores por
+  // omisión cuando falla la lectura. El reintento recupera el tope original.
+  element('#pr-reintentar-campana');
+  ctx.leerFallida=async()=>{throw Error('sin red');};
+  run('leerCampanaClase=leerFallida; renderBorradorProfesor(raiz,{id:"cccccccc-cccc-4ccc-cccc-cccccccccccc"})');
+  await new Promise(setImmediate);
+  check('la caída al recuperar campaña bloquea guardar y enviar',elements['#pr-guardar'].disabled&&elements['#pr-enviar'].disabled&&/No pudimos recuperar/.test(elements['.profesor-estado'].textContent));
+  const antesDeRecuperar=guardados;await events['#pr-enviar:click']();
+  check('no pisa una campaña que no logró leer',guardados===antesDeRecuperar);
+  ctx.leerGuardada=async()=>({dias:21,inicio:null,tope_clp:23000});run('leerCampanaClase=leerGuardada');
+  await events['#pr-reintentar-campana:click']();
+  check('reintentar conserva los días y tope existentes',elements['#pr-dias'].value==='21'&&elements['#pr-tope'].value==='$23.000'&&!elements['#pr-enviar'].disabled);
   console.log(`Formulario de profesor OK: ${n}`);
 })().catch(e=>{console.error('FAIL:',e.message);process.exitCode=1;});
