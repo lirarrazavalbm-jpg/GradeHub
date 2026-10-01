@@ -78,6 +78,24 @@ as $$
 $$;
 revoke all on function public.administrador_verificado() from public, anon, authenticated;
 
+-- El flyer de un anuncio pendiente vive en Storage privado. El admin con
+-- segundo factor puede leerlo para revisar el anuncio; los demás conservan
+-- las políticas existentes de flyer visible o propio.
+create or replace function public.flyer_revision_admin_visible(p_path text)
+returns boolean language sql stable security definer set search_path = public, admin as $$
+  select public.administrador_verificado() and exists (
+    select 1 from public.tutor_anuncios a
+    where a.flyer_path = p_path and a.estado = 'en_revision'
+  );
+$$;
+revoke all on function public.flyer_revision_admin_visible(text) from public, anon;
+grant execute on function public.flyer_revision_admin_visible(text) to authenticated;
+drop policy if exists tutor_flyers_select_admin_revision on storage.objects;
+create policy tutor_flyers_select_admin_revision on storage.objects
+for select to authenticated using (
+  bucket_id = 'tutor-flyers' and public.flyer_revision_admin_visible(name)
+);
+
 -- ─── LA PÁGINA DE ADMINISTRACIÓN DE CLASES ──────────────────────────────────
 --
 -- Pedido de Lucas del 2026-09-25: ver a todos los profesores con sus anuncios
@@ -153,8 +171,24 @@ begin
             'id', a.id,
             'titulo', a.titulo,
             'estado', a.estado,
+            'tenant', a.tenant,
             'ramos_siglas', a.ramos_siglas,
             'precio_clp', a.precio_clp,
+            'pack_clases', to_jsonb(a)->'pack_clases',
+            'descuento_gradehub_pct', to_jsonb(a)->'descuento_gradehub_pct',
+            'descripcion', a.descripcion,
+            'modalidad', a.modalidad,
+            'modalidad_otra', a.modalidad_otra,
+            'ubicacion', a.ubicacion,
+            'ubicacion_otra', a.ubicacion_otra,
+            'detalles', a.detalles,
+            'contacto_tipo', a.contacto_tipo,
+            'contacto_valor', a.contacto_valor,
+            'flyer_path', a.flyer_path,
+            'criterios', a.criterios,
+            'configuracion_campana', (select jsonb_build_object('dias', k.dias, 'inicio', k.inicio, 'tope_clp', k.tope_clp)
+                                       from public.anuncio_campanas k where k.anuncio_id = a.id),
+            'publicaciones_anteriores', (select count(*) from admin.anuncio_publicaciones h where h.anuncio_id = a.id),
             'publicado_at', a.publicado_at,
             'vence_at', a.vence_at,
             'created_at', a.created_at,
@@ -281,8 +315,116 @@ begin
 end;
 $$;
 
+-- Las decisiones del panel reutilizan las mismas transiciones del SQL Editor.
+-- Solo una cuenta de la lista con aal2 puede invocarlas; una falla no registra
+-- acción ni deja el anuncio a medio cambiar.
+create or replace function public.admin_publicar_anuncio(p_anuncio_id uuid)
+returns boolean language plpgsql security definer set search_path = public, admin as $$
+begin
+  perform admin.exigir_administrador();
+  if not exists (select 1 from public.anuncio_campanas
+                 where anuncio_id = p_anuncio_id and dias is not null and tope_clp is not null) then
+    raise exception 'el anuncio necesita días y tope de campaña antes de publicarlo desde el panel';
+  end if;
+  -- Cero cargo fijo por publicación; días, alcance e interacciones se cobran
+  -- por la campaña existente y su tope, sin cambiar la medición.
+  perform admin.publicar_anuncio(p_anuncio_id, 0);
+  insert into admin.acciones (admin_id, accion, objetivo)
+  values (auth.uid(), 'publicar_anuncio', p_anuncio_id);
+  return true;
+end;
+$$;
+
+create or replace function public.admin_devolver_anuncio(p_anuncio_id uuid, p_comentario text)
+returns boolean language plpgsql security definer set search_path = public, admin as $$
+declare
+  comentario text := btrim(coalesce(p_comentario, ''));
+begin
+  perform admin.exigir_administrador();
+  if char_length(comentario) not between 10 and 1000 then
+    raise exception 'escribe un comentario de 10 a 1000 caracteres';
+  end if;
+  perform admin.devolver_anuncio(p_anuncio_id);
+  insert into admin.acciones (admin_id, accion, objetivo, detalle)
+  values (auth.uid(), 'devolver_anuncio', p_anuncio_id, jsonb_build_object('comentario', comentario));
+  return true;
+end;
+$$;
+
+create or replace function public.admin_borrar_anuncio_revision(p_anuncio_id uuid)
+returns boolean language plpgsql security definer set search_path = public, admin as $$
+declare
+  actual text;
+begin
+  perform admin.exigir_administrador();
+  select estado into actual from public.tutor_anuncios where id = p_anuncio_id for update;
+  if not found or actual <> 'en_revision' then
+    raise exception 'el anuncio ya no está en revisión; actualiza el panel';
+  end if;
+  -- Baja lógica: las FK con ON DELETE CASCADE borrarían cobros y medición.
+  update public.tutor_anuncios set estado = 'eliminado' where id = p_anuncio_id;
+  insert into admin.acciones (admin_id, accion, objetivo)
+  values (auth.uid(), 'borrar_anuncio_revision', p_anuncio_id);
+  return true;
+end;
+$$;
+
+-- El comentario de una devolución solo se entrega al autor de ese borrador.
+-- Los anuncios públicos y otros profesores nunca pueden consultarlo.
+create or replace function public.comentarios_devolucion_profesor()
+returns table (anuncio_id uuid, comentario text)
+language plpgsql stable security definer set search_path = public, admin as $$
+begin
+  if auth.uid() is null then raise exception 'inicia sesión' using errcode = '42501'; end if;
+  return query
+    select a.id, x.detalle->>'comentario'
+    from public.tutor_anuncios a
+    cross join lateral (
+      select h.detalle from admin.acciones h
+      where h.objetivo = a.id and h.accion = 'devolver_anuncio'
+      order by h.created_at desc, h.id desc limit 1
+    ) x
+    where a.autor_id = auth.uid() and a.estado = 'borrador';
+end;
+$$;
+
+-- Una campaña pausada ya dejó de mostrarse y de sumar días. Cerrarla conserva
+-- su publicación y su costo, y la deja en el estado terminado para cobrarla.
+create or replace function public.admin_terminar_anuncio_pausado(p_anuncio_id uuid, p_publicado_at timestamptz)
+returns boolean language plpgsql security definer set search_path = public, admin as $$
+declare
+  a public.tutor_anuncios%rowtype;
+begin
+  perform admin.exigir_administrador();
+  select * into a from public.tutor_anuncios where id = p_anuncio_id for update;
+  if not found or a.estado <> 'pausado' or a.publicado_at is distinct from p_publicado_at
+     or a.publicado_at is null then
+    raise exception 'la campaña pausada cambió; actualiza el panel';
+  end if;
+  update public.anuncio_campanas set detenido_at = coalesce(detenido_at, now())
+    where anuncio_id = p_anuncio_id;
+  if not found then raise exception 'no se encontró la campaña; revisa el anuncio antes de terminarlo'; end if;
+  update public.tutor_anuncios set estado = 'expirado' where id = p_anuncio_id;
+  insert into admin.acciones (admin_id, accion, objetivo, detalle)
+  values (auth.uid(), 'terminar_anuncio_pausado', p_anuncio_id,
+    jsonb_build_object('publicado_at', p_publicado_at));
+  return true;
+end;
+$$;
+
 revoke all on function public.admin_marcar_cobro_publicacion(uuid, timestamptz, text, integer) from public, anon;
 grant execute on function public.admin_marcar_cobro_publicacion(uuid, timestamptz, text, integer) to authenticated;
+
+revoke all on function public.admin_publicar_anuncio(uuid) from public, anon;
+revoke all on function public.admin_devolver_anuncio(uuid, text) from public, anon;
+revoke all on function public.admin_borrar_anuncio_revision(uuid) from public, anon;
+revoke all on function public.comentarios_devolucion_profesor() from public, anon;
+revoke all on function public.admin_terminar_anuncio_pausado(uuid, timestamptz) from public, anon;
+grant execute on function public.admin_publicar_anuncio(uuid) to authenticated;
+grant execute on function public.admin_devolver_anuncio(uuid, text) to authenticated;
+grant execute on function public.admin_borrar_anuncio_revision(uuid) to authenticated;
+grant execute on function public.comentarios_devolucion_profesor() to authenticated;
+grant execute on function public.admin_terminar_anuncio_pausado(uuid, timestamptz) to authenticated;
 
 revoke all on function admin.exigir_administrador() from public, anon, authenticated;
 revoke all on function public.admin_panel_clases() from public, anon;

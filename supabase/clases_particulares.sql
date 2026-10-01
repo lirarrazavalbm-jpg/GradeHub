@@ -114,7 +114,7 @@ create table if not exists public.tutor_anuncios (
   contacto_tipo   text not null check (contacto_tipo in ('whatsapp', 'instagram', 'email')),
   contacto_valor  text not null check (char_length(btrim(contacto_valor)) between 3 and 160),
   estado          text not null default 'borrador'
-                  check (estado in ('borrador', 'en_revision', 'publicado', 'pausado', 'expirado')),
+                  check (estado in ('borrador', 'en_revision', 'publicado', 'pausado', 'expirado', 'eliminado')),
   revisado_at     timestamptz,
   pagado_at       timestamptz,
   publicado_at    timestamptz,
@@ -127,6 +127,12 @@ create table if not exists public.tutor_anuncios (
     vence_at is null or publicado_at is null or vence_at > publicado_at
   )
 );
+
+-- Borrar desde administración retira la revisión sin perder publicaciones,
+-- métricas ni cobros anteriores. En bases existentes se amplía el CHECK.
+alter table public.tutor_anuncios drop constraint if exists tutor_anuncios_estado_check;
+alter table public.tutor_anuncios add constraint tutor_anuncios_estado_check
+  check (estado in ('borrador', 'en_revision', 'publicado', 'pausado', 'expirado', 'eliminado'));
 
 -- Aditivo: si existía un aviso queda con criterios NULL y sigue siendo general.
 -- No reinterpreta ni rellena campañas anteriores. Sin criterios explícitos el
@@ -359,7 +365,7 @@ create policy tutor_anuncios_update_propio_sin_publicar
 on public.tutor_anuncios
 for update
 to authenticated
-using ((select auth.uid()) = autor_id)
+using ((select auth.uid()) = autor_id and estado <> 'eliminado')
 with check (
   (select auth.uid()) = autor_id
   and public.tutor_aprobado((select auth.uid()))
@@ -1376,7 +1382,7 @@ using (
   (estado = 'publicado' and (vence_at is null or vence_at > now())
     and public.tutor_aprobado(autor_id)
     and public.campana_visible(id))
-  or (select auth.uid()) = autor_id
+  or ((select auth.uid()) = autor_id and estado <> 'eliminado')
 );
 
 -- Abrió la clase o tocó contactar. Devuelve true solo la primera vez que esa

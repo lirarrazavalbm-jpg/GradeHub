@@ -10,9 +10,11 @@ const chk=(n,c)=>{if(c){ok++;console.log('  OK   '+n);}else{fail++;console.log('
 console.log('=== El servidor ===');
 const sql=leer('supabase/administradores.sql').split('\n').map(l=>l.replace(/--.*$/,'')).join('\n');
 const funciones=[...sql.matchAll(/create or replace function public\.(admin_\w+)\s*\([\s\S]*?\$\$;/g)];
-chk('existen las cinco funciones de la página',['admin_panel_clases','admin_pausar_anuncio','admin_estado_profesor','admin_marcar_cobro','admin_marcar_cobro_publicacion']
+const esperadas=['admin_panel_clases','admin_pausar_anuncio','admin_estado_profesor','admin_marcar_cobro','admin_marcar_cobro_publicacion',
+  'admin_publicar_anuncio','admin_devolver_anuncio','admin_borrar_anuncio_revision','admin_terminar_anuncio_pausado'];
+chk('existen las funciones de la página',esperadas
   .every(f=>funciones.some(m=>m[1]===f)));
-chk('cada una exige administración verificada antes de hacer nada',funciones.length===5&&
+chk('cada una exige administración verificada antes de hacer nada',funciones.length===esperadas.length&&
   funciones.every(m=>/\bbegin\s+perform admin\.exigir_administrador\(\);/.test(m[0])));
 chk('y esa exigencia pide la lista y el segundo factor',/function admin\.exigir_administrador[\s\S]*?administrador_verificado\(\)[\s\S]*?raise exception/.test(sql));
 chk('anon no puede llamarlas',funciones.every(m=>new RegExp(`revoke all on function public\\.${m[1]}\\([^)]*\\) from public, anon;`).test(sql)));
