@@ -1,11 +1,15 @@
 -- Pack de clases y descuento por venir de GradeHub. Pedido de Lucas del
 -- 2026-09-30, a partir del pack de 4 clases de Salva Ramos.
 --
--- APLÍCALO UNA VEZ en el SQL Editor de Supabase, DESPUÉS de
--- clases_particulares.sql y admin_clases.sql. Es aditivo: agrega dos columnas
--- que parten vacías y una función de administración. No cambia ningún anuncio
--- existente, ni la medición, ni lo que se cobra. La app funciona con y sin
--- este SQL: si no está, deja de pedir estas columnas y no ofrece el pack.
+-- Aplícalo en el SQL Editor de Supabase DESPUÉS de clases_particulares.sql y
+-- admin_clases.sql. Es aditivo y reaplicable: agrega dos columnas que parten
+-- vacías y una función de administración. No cambia ningún anuncio existente,
+-- ni la medición, ni lo que se cobra. La app funciona con y sin este SQL: si
+-- no está, deja de pedir estas columnas y no ofrece el pack.
+--
+-- Las columnas y sus permisos también están en clases_particulares.sql, para
+-- que reaplicar ese archivo entero no se los quite (tests/pack-reaplicar-sql).
+-- admin.descuento_anuncio vive solo acá: el esquema admin se crea después.
 --
 -- EL PRECIO SIGUE SIENDO POR CLASE. `precio_clp` no cambia de significado:
 -- `pack_clases` solo dice cuántas trae el pack, y la app muestra el total.
