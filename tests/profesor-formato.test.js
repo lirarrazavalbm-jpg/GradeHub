@@ -31,7 +31,9 @@ chk('un 9 de más no pasa',run("whatsappChilenoCompleto('+56 9 9123 45678')")===
 chk('un dígito de menos no pasa',run("whatsappChilenoCompleto('+56 9 1234 567')")===false);
 chk('el celular sin +56 no pasa',run("whatsappChilenoCompleto('9 1234 5678')")===false);
 chk('el número bien escrito pasa',run("whatsappChilenoCompleto('+56 9 1234 5678')")===true);
-chk('un número de otro país pasa como está',run("whatsappChilenoCompleto('+54 9 11 2345 6789')")===true);
+chk('un número de otro país no se puede publicar',run("whatsappChilenoCompleto('+54 9 11 2345 6789')")===false);
+chk('un fijo chileno no se puede publicar',run("whatsappChilenoCompleto('+56 2 1234 5678')")===false);
+chk('un número corto no se puede publicar',run("whatsappChilenoCompleto('12345678')")===false);
 chk('un número de otro país se deja como está',run("textoWhatsappEscrito('+54 11 5555 1234')")==='+54 11 5555 1234');
 
 console.log('\n=== Un prefijo solo no es un contacto ===');

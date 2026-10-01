@@ -260,9 +260,12 @@ vm.runInContext(`
   chk('la RPC exige sesión y descarta su identidad antes de guardar',
     /if auth\.uid\(\) is null/.test(rpc)&&
     /insert into public\.anuncio_metricas \(anuncio_id, dia, tipo, tenant, ramo_sigla, eventos, publicacion, vence_publicacion\)/.test(rpc)&&
-    !/user_id|viewer|device/i.test(rpc.replace(/--[^\n]*/g,'')));
-  chk('la frecuencia se limita en el servidor sin guardar una identidad',
-    /updated_at <= now\(\) - interval '10 seconds'/.test(rpc));
+    !/insert into public\.anuncio_metricas \([^)]*(user_id|viewer|device)/i.test(rpc));
+  chk('el gráfico requiere la fila cobrable de cada estudiante y no tiene throttle global',
+    /update public\.anuncio_alcance set metrica_aux_registrada = true/.test(rpc)&&
+    /user_id = auth\.uid\(\)/.test(rpc)&&
+    /not metrica_aux_registrada/.test(rpc)&&
+    !/updated_at <= now\(\) - interval '10 seconds'/.test(rpc));
   chk('el corte de catorce eventos no se devuelve y el de quince sí',
     /m\.eventos >= 15\b/.test(sql)&&!/m\.eventos >= (?!15\b)\d/.test(sql));
   chk('el corte se aplica dentro de la RPC de lectura, no en la vista',
@@ -281,8 +284,8 @@ vm.runInContext(`
   chk('nadie lee la tabla: ni select para authenticated',
     /revoke all on public\.anuncio_alcance from public, anon, authenticated;/.test(sql)&&
     !/grant [a-z ]*on public\.anuncio_alcance/i.test(sql));
-  chk('el total sale solo por RPC y solo para el autor del aviso',
-    /create or replace function public\.alcance_anuncio[\s\S]*?autor_id = auth\.uid\(\)[\s\S]*?raise exception 'no puedes ver el alcance/.test(sql)&&
+  chk('el total sale solo por RPC para el autor o un administrador verificado',
+    /create or replace function public\.alcance_anuncio[\s\S]*?autor_id = auth\.uid\(\)[\s\S]*?perform admin\.exigir_administrador\(\)/.test(sql)&&
     /grant execute on function public\.alcance_anuncio\(uuid\) to authenticated/.test(sql));
   chk('un aviso que no está publicado o ya venció no suma alcance',
     /registrar_alcance_anuncio[\s\S]*?estado = 'publicado'[\s\S]*?vence_at is null or vence_at > now\(\)[\s\S]*?anuncio no disponible/.test(sql));
@@ -294,7 +297,7 @@ vm.runInContext(`
     /rpc\('registrar_alcance_anuncio',\{p_anuncio_id:anuncioId,p_canal:canal\}\)/.test(src)&&
     /rpc\('alcance_anuncio',\{p_anuncio_id:anuncioId\}\)/.test(src));
   chk('si la llamada falla se puede reintentar, y un alcance desconocido no es cero',
-    /ALCANCE_REGISTRADO\.delete\(clave\)/.test(src)&&
+    /catch\(error\)\{[\s\S]*?return null;[\s\S]*?ALCANCE_EN_CURSO\.delete\(clave\)/.test(src)&&
     /async function alcanceAnuncio\([\s\S]*?return null;[\s\S]*?Number\.isInteger\(data\)\?data:null/.test(src));
 
   ctx.mediciones=[];

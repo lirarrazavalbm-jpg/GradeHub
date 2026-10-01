@@ -195,8 +195,7 @@ function textoWhatsappEscrito(texto){
 const ERROR_WHATSAPP_CHILE='Revisa tu número: después del +56 van 9 dígitos, por ejemplo +56 9 1234 5678.';
 function whatsappChilenoCompleto(valor){
   const d=String(valor||'').replace(/\D/g,'');
-  if(d.startsWith('56'))return d.length===11;
-  return !(d.length===9&&d.startsWith('9'));
+  return /^569\d{8}$/.test(d);
 }
 function contactoListoParaPublicar(datos){
   if(datos&&datos.contacto_tipo==='whatsapp'&&!whatsappChilenoCompleto(datos.contacto_valor))
@@ -1045,9 +1044,24 @@ function renderCatalogoClases(busqueda=''){
 // Contacto medido e imágenes firmadas de las tarjetas dentro de `raiz`. La
 // usan el catálogo y la clase abierta desde la recomendación de Inicio.
 function activarTarjetasClases(raiz){
-  raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',()=>{
-    registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
-    registrarInteraccionAnuncio(link.dataset.contactar,'contacto');
+  raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',async e=>{
+    e.preventDefault();
+    if(link.dataset.contactando==='true')return;
+    link.dataset.contactando='true';link.setAttribute('aria-busy','true');
+    // Abrir una pestaña vacía dentro del gesto del usuario evita el bloqueo
+    // del navegador después del await. La cerramos si no se confirmó el cobro.
+    const ventana=link.target==='_blank'&&typeof window!=='undefined'&&typeof window.open==='function'
+      ?window.open('about:blank','_blank'):null;
+    if(ventana)ventana.opener=null;
+    const cargo=await registrarInteraccionMedida(link.dataset.contactar,'contacto',link.dataset.sigla);
+    link.dataset.contactando='false';link.removeAttribute('aria-busy');
+    if(cargo===null){
+      if(ventana&&!ventana.closed)ventana.close();
+      showToast('No pudimos registrar el contacto. Revisa tu conexión e intenta de nuevo.',true);
+      return;
+    }
+    if(ventana&&!ventana.closed)ventana.location.href=link.href;
+    else if(typeof window!=='undefined')window.location.assign(link.href);
   }));
   raiz.querySelectorAll('[data-abrir]').forEach(boton=>boton.addEventListener('click',()=>{
     const tarjeta=boton.closest('.catalogo-clase-card'),mas=tarjeta&&tarjeta.querySelector('.catalogo-clase-mas');
@@ -1055,8 +1069,7 @@ function activarTarjetasClases(raiz){
     mas.hidden=false;boton.remove();
     const bloque=tarjeta.closest('.catalogo-clase-bloque'),flyer=bloque&&bloque.querySelector('.catalogo-clase-flyer');
     if(flyer)flyer.hidden=false;
-    registrarMetricaAnuncio(boton.dataset.abrir,'clic',boton.dataset.sigla);
-    registrarInteraccionAnuncio(boton.dataset.abrir,'apertura');
+    registrarInteraccionMedida(boton.dataset.abrir,'apertura',boton.dataset.sigla);
     const contacto=mas.querySelector('.catalogo-clase-contacto');if(contacto)contacto.focus();
   }));
   raiz.querySelectorAll('[data-logo]').forEach(async caja=>{
@@ -1088,20 +1101,37 @@ function observarImpresionesClases(raiz,anuncios,busqueda=''){
   if(observadorCatalogo){observadorCatalogo.disconnect();observadorCatalogo=null;}
   if(typeof IntersectionObserver!=='function'||!raiz)return;
   const sigla=new Map((anuncios||[]).map(a=>[a.id,(a.ramos_siglas||[])[0]||'']));
-  const timers=new Map();
+  const timers=new Map(),visibles=new Set();
+  const programar=(card,id,demora=IMPRESION_MS)=>{
+    if(timers.has(id))return;
+    timers.set(id,setTimeout(async()=>{
+      timers.delete(id);
+      const clave=id+':'+canal;
+      if(!card.isConnected||!visibles.has(id)||impresionesCatalogo.has(clave))return;
+      const alcance=await registrarAlcanceAnuncio(id,canal);
+      if(alcance===null){
+        if(card.isConnected&&visibles.has(id))programar(card,id,5000);
+        return;
+      }
+      const metrica=await registrarMetricaAnuncio(id,'impresion',sigla.get(id));
+      if(metrica===null){
+        if(card.isConnected&&visibles.has(id))programar(card,id,5000);
+        return;
+      }
+      impresionesCatalogo.add(clave);
+    },demora));
+  };
   observadorCatalogo=new IntersectionObserver(entradas=>{
     for(const e of entradas){
       const id=e.target.dataset.catalogoAnuncio;
-      if(!id||impresionesCatalogo.has(id+':'+canal))continue;
+      if(!id)continue;
       if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
-        if(!timers.has(id))timers.set(id,setTimeout(()=>{
-          timers.delete(id);
-          if(!e.target.isConnected||impresionesCatalogo.has(id+':'+canal))return;
-          impresionesCatalogo.add(id+':'+canal);
-          registrarMetricaAnuncio(id,'impresion',sigla.get(id));
-          registrarAlcanceAnuncio(id,canal);
-        },IMPRESION_MS));
-      }else if(timers.has(id)){clearTimeout(timers.get(id));timers.delete(id);}
+        visibles.add(id);
+        if(!impresionesCatalogo.has(id+':'+canal))programar(e.target,id);
+      }else{
+        visibles.delete(id);
+        if(timers.has(id)){clearTimeout(timers.get(id));timers.delete(id);}
+      }
     }
   },{threshold:[IMPRESION_VISIBLE]});
   raiz.querySelectorAll('[data-catalogo-anuncio]').forEach(card=>observadorCatalogo.observe(card));
@@ -1159,6 +1189,7 @@ function payloadMetricaAnuncio(anuncioId,tipo,ramoSigla){
 // Abrió la clase o tocó contactar: una vez por persona y anuncio, lo cuenta el
 // servidor con la cuenta de la sesión. El Set solo ahorra llamadas repetidas.
 const INTERACCION_REGISTRADA=new Set();
+const INTERACCION_EN_CURSO=new Map();
 function claveMedicionClase(anuncioId){
   const anuncio=catalogoClasesActual.find(a=>a.id===anuncioId)||
     (anunciosRecomendacion.lista||[]).find(a=>a.id===anuncioId);
@@ -1166,18 +1197,50 @@ function claveMedicionClase(anuncioId){
 }
 async function registrarInteraccionAnuncio(anuncioId,tipo){
   const clave=claveMedicionClase(anuncioId)+':'+tipo;
-  if(!supabaseClient||!currentUser||!anuncioId||!['apertura','contacto'].includes(tipo)||INTERACCION_REGISTRADA.has(clave))return false;
-  INTERACCION_REGISTRADA.add(clave);
-  const {data,error}=await supabaseClient.rpc('registrar_interaccion_anuncio',{p_anuncio_id:anuncioId,p_tipo:tipo});
-  if(error){INTERACCION_REGISTRADA.delete(clave);console.warn('No se pudo registrar la interacción:',error.message||error);return false;}
-  return data===true;
+  if(!supabaseClient||!currentUser||!anuncioId||!['apertura','contacto'].includes(tipo))return null;
+  if(INTERACCION_REGISTRADA.has(clave))return false;
+  if(INTERACCION_EN_CURSO.has(clave))return INTERACCION_EN_CURSO.get(clave);
+  const pendiente=(async()=>{
+    try{
+      const {data,error}=await supabaseClient.rpc('registrar_interaccion_anuncio',{p_anuncio_id:anuncioId,p_tipo:tipo});
+      if(error)throw error;
+      INTERACCION_REGISTRADA.add(clave);
+      return data===true;
+    }catch(error){console.warn('No se pudo registrar la interacción:',error.message||error);return null;}
+    finally{INTERACCION_EN_CURSO.delete(clave);}
+  })();
+  INTERACCION_EN_CURSO.set(clave,pendiente);
+  return pendiente;
 }
 async function registrarMetricaAnuncio(anuncioId,tipo,ramoSigla){
   const payload=payloadMetricaAnuncio(anuncioId,tipo,ramoSigla);
   if(!supabaseClient||!currentUser||!payload)return false;
-  const {data,error}=await supabaseClient.rpc('registrar_metrica_anuncio',payload);
-  if(error){console.warn('No se pudo registrar la métrica del anuncio:',error.message||error);return false;}
-  return data===true;
+  try{
+    const {data,error}=await supabaseClient.rpc('registrar_metrica_anuncio',payload);
+    if(error)throw error;
+    return data===true;
+  }catch(error){console.warn('No se pudo registrar la métrica del anuncio:',error.message||error);return null;}
+}
+
+// El evento auxiliar se intenta solo después de confirmar la fila cobrable.
+// Si falla esa segunda llamada, el servidor conserva la marca pendiente y
+// este reintento no puede inflar el gráfico aunque se repita.
+async function registrarInteraccionMedida(anuncioId,tipo,sigla,{reintentos=2}={}){
+  const usuario=currentUser&&currentUser.id;
+  const cargo=await registrarInteraccionAnuncio(anuncioId,tipo);
+  if(cargo===null){
+    // La apertura ya ocurrió en pantalla y su botón desapareció: reintentarla
+    // sin pedir otro clic. Contacto sí requiere un nuevo gesto para navegar.
+    if(tipo==='apertura'&&reintentos>0)setTimeout(()=>{
+      if(currentUser&&currentUser.id===usuario)registrarInteraccionMedida(anuncioId,tipo,sigla,{reintentos:reintentos-1});
+    },5000);
+    return null;
+  }
+  const metrica=await registrarMetricaAnuncio(anuncioId,tipo==='apertura'?'clic':'contacto',sigla);
+  if(metrica===null&&reintentos>0)setTimeout(()=>{
+    if(currentUser&&currentUser.id===usuario)registrarInteraccionMedida(anuncioId,tipo,sigla,{reintentos:reintentos-1});
+  },5000);
+  return cargo;
 }
 
 // La RPC aplica el mínimo de quince EVENTOS en el servidor. Esta función no
@@ -1206,18 +1269,26 @@ async function resumenMetricasAnuncio(anuncioId){
 // nunca lo baja, así que mandar uno más barato después no descuenta nada.
 const CANALES_ALCANCE=new Set(['recomendacion','busqueda','lista']);
 const ALCANCE_REGISTRADO=new Set();
+const ALCANCE_EN_CURSO=new Map();
 async function registrarAlcanceAnuncio(anuncioId,canal='recomendacion'){
   const clave=claveMedicionClase(anuncioId)+':'+canal;
   if(!supabaseClient||!currentUser||!anuncioId||!CANALES_ALCANCE.has(canal)||ALCANCE_REGISTRADO.has(clave))return false;
-  ALCANCE_REGISTRADO.add(clave);
-  const {data,error}=await supabaseClient.rpc('registrar_alcance_anuncio',{p_anuncio_id:anuncioId,p_canal:canal});
-  if(error){
-    // Si falló, no quedó registrado: se puede reintentar en la próxima vista.
-    ALCANCE_REGISTRADO.delete(clave);
-    console.warn('No se pudo registrar el alcance del anuncio:',error.message||error);
-    return false;
-  }
-  return data===true;
+  if(ALCANCE_EN_CURSO.has(clave))return ALCANCE_EN_CURSO.get(clave);
+  const pendiente=(async()=>{
+    try{
+      const {data,error}=await supabaseClient.rpc('registrar_alcance_anuncio',{p_anuncio_id:anuncioId,p_canal:canal});
+      if(error)throw error;
+      // `false` es una exclusión o deduplicación real del servidor; también
+      // queda resuelta. Solo un error de transporte se reintenta.
+      ALCANCE_REGISTRADO.add(clave);
+      return data===true;
+    }catch(error){
+      console.warn('No se pudo registrar el alcance del anuncio:',error.message||error);
+      return null;
+    }finally{ALCANCE_EN_CURSO.delete(clave);}
+  })();
+  ALCANCE_EN_CURSO.set(clave,pendiente);
+  return pendiente;
 }
 
 // El total de la propia campaña. Devuelve null si no se pudo consultar, para no
@@ -1309,16 +1380,10 @@ function renderPostulacionProfesor(raiz){
   });
 }
 
-// Los anuncios de quien mira. La RLS deja leer los propios en cualquier estado
-// y, de los demás, los publicados: son públicos para el catálogo. No se puede
-// filtrar por autor_id acá (esa columna no tiene SELECT público), así que los
-// publicados se confirman uno por uno con `anuncio_propio`, que corre en el
-// servidor. Sin esto, cada profesor veía en su página las clases de los otros
-// (pasó el 2026-09-26 con la primera clase de un profesor externo).
-async function misAnunciosClase(){
-  const uid=sesionProfesorClase();
-  if(!uid)return {ok:false,error:'Inicia sesión para ver tus clases.'};
-  try{
+// Compatibilidad mientras se aplica el SQL nuevo: la RLS deja leer propios y
+// publicados, pero autor_id no es una columna pública. No usar este camino
+// cuando ya existe la RPC paginada del profesor.
+async function misAnunciosClaseLegado(){
     const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
       .select(campos).order('created_at',{ascending:false}),CAMPOS_PUBLICOS_ANUNCIO);
     if(error)throw error;
@@ -1331,7 +1396,22 @@ async function misAnunciosClase(){
       if(r.error)throw r.error;
       return r.data===true;
     }));
-    return {ok:true,anuncios:todos.filter((_,i)=>propio[i])};
+    return todos.filter((_,i)=>propio[i]);
+}
+async function misAnunciosClase(){
+  if(!sesionProfesorClase())return {ok:false,error:'Inicia sesión para ver tus clases.'};
+  try{
+    const anuncios=[],tamano=60;
+    for(let desde=0;;desde+=tamano){
+      const {data,error}=await supabaseClient.rpc('mis_anuncios_profesor',{p_desde:desde,p_tamano:tamano});
+      if(error){
+        if(desde===0&&sqlClasesDesactualizado(error))return {ok:true,anuncios:await misAnunciosClaseLegado()};
+        throw error;
+      }
+      const pagina=Array.isArray(data)?data:[];
+      anuncios.push(...pagina);
+      if(pagina.length<tamano)return {ok:true,anuncios};
+    }
   }catch(e){return {ok:false,error:'No pudimos consultar tus clases. Intenta de nuevo.'};}
 }
 
@@ -1342,6 +1422,8 @@ const ESTADOS_ANUNCIO={
   programado:['Programado','Empieza el día que elegiste.'],
   pausado:['Pausado','Dejó de mostrarse.'],
   expirado:['Terminado','La campaña llegó a su fin.'],
+  agotado:['Tope alcanzado','Dejó de mostrarse al llegar a tu tope.'],
+  sin_confirmar:['Sin confirmar','No pudimos consultar el estado de la campaña. Vuelve a abrir tu espacio.'],
 };
 
 // Lo que se cobra son PERSONAS DISTINTAS alcanzadas, así que ese es el número
@@ -1357,37 +1439,42 @@ const ANUNCIO_YA_SE_MOSTRO=new Set(['publicado','pausado','expirado']);
 // aplicar): ahí se usa el total de siempre y todo se cobra como segmentado,
 // que es como se cotizaba antes. Nunca se inventa un reparto.
 async function metricasDeAnuncio(anuncio){
-  const salida={alcance:null,porCanal:null,cortes:[],agregados:null,campana:null};
+  const salida={alcance:null,porCanal:null,cortes:[],agregados:null,campana:anuncio&&anuncio.campana||null,error:false};
   if(!anuncio||!ANUNCIO_YA_SE_MOSTRO.has(anuncio.estado))return salida;
   // La campaña: personas que vieron, abrieron y contactaron, y días cobrados.
   // Sin el SQL de campañas no hay costo que mostrar, y no se inventa.
-  try{
+  if(!salida.campana)try{
     const {data,error}=await supabaseClient.rpc('campana_anuncio',{p_anuncio_id:anuncio.id});
+    if(error&&!sqlClasesDesactualizado(error))salida.error=true;
     const fila=!error&&Array.isArray(data)?data[0]:null;
     if(fila&&['vistas','aperturas','contactos','dias_cobrados'].every(k=>Number.isInteger(fila[k])))salida.campana=fila;
-  }catch(e){}
+  }catch(e){salida.error=true;}
   try{
     const {data,error}=await supabaseClient.rpc('alcance_anuncio_por_canal',{p_anuncio_id:anuncio.id});
+    if(error&&!sqlClasesDesactualizado(error))salida.error=true;
     if(!error&&Array.isArray(data)){
       const por={recomendacion:0,busqueda:0,lista:0};
       data.forEach(f=>{if(por[f.canal]!==undefined&&Number.isInteger(f.cuentas))por[f.canal]=f.cuentas;});
       salida.porCanal=por;salida.alcance=por.recomendacion+por.busqueda+por.lista;
     }
-  }catch(e){}
+  }catch(e){salida.error=true;}
   if(salida.alcance===null)try{
     const {data,error}=await supabaseClient.rpc('alcance_anuncio',{p_anuncio_id:anuncio.id});
+    if(error)salida.error=true;
     if(!error&&Number.isInteger(data))salida.alcance=data;
-  }catch(e){}
+  }catch(e){salida.error=true;}
   try{
     const {data,error}=await supabaseClient.rpc('resumen_metricas_anuncio',{p_anuncio_id:anuncio.id});
+    if(error)salida.error=true;
     if(!error&&Array.isArray(data))salida.cortes=data;
-  }catch(e){}
+  }catch(e){salida.error=true;}
   // Totales por una dimensión a la vez, con el mismo umbral de quince. Si el
   // servidor todavía no tiene la función, se arman desde los cortes finos.
   try{
     const {data,error}=await supabaseClient.rpc('totales_metricas_anuncio',{p_anuncio_id:anuncio.id});
+    if(error&&!sqlClasesDesactualizado(error))salida.error=true;
     if(!error&&Array.isArray(data))salida.agregados=agregadosDeFilas(data);
-  }catch(e){}
+  }catch(e){salida.error=true;}
   if(!salida.agregados)salida.agregados=agregadosDeFilas([
     ...salida.cortes.map(c=>({vista:'dia',clave:c.dia,tipo:c.tipo,eventos:c.eventos})),
     ...salida.cortes.map(c=>({vista:'ramo',clave:c.ramo_sigla,tipo:c.tipo,eventos:c.eventos})),
@@ -1460,16 +1547,19 @@ function vigenciaAnuncio(a,ahora=Date.now()){
   if(a.estado==='publicado'){
     const vence=Date.parse(a.vence_at||''),desde=Date.parse(a.publicado_at||'');
     if(Number.isFinite(vence)&&vence<=ahora)return 'expirado';
-    return Number.isFinite(desde)&&desde>ahora?'programado':'publicado';
+    if(Number.isFinite(desde)&&desde>ahora)return 'programado';
+    if(a.campanaError)return 'sin_confirmar';
+    if(a.campana&&costoCampanaClase(a.campana)?.agotada)return 'agotado';
+    return 'publicado';
   }
   return a.estado;
 }
 // La página se ordena por lo que el profesor puede HACER con cada anuncio.
 function gruposPanelClases(anuncios,ahora=Date.now()){
-  const g={activos:[],programados:[],revision:[],borradores:[],cerrados:[]};
+  const g={activos:[],programados:[],revision:[],borradores:[],cerrados:[],sinConfirmar:[]};
   for(const a of anuncios||[]){
     const e=vigenciaAnuncio(a,ahora);
-    (e==='publicado'?g.activos:e==='programado'?g.programados:e==='en_revision'?g.revision:e==='borrador'?g.borradores:g.cerrados).push(a);
+    (e==='publicado'?g.activos:e==='programado'?g.programados:e==='en_revision'?g.revision:e==='borrador'?g.borradores:e==='sin_confirmar'?g.sinConfirmar:g.cerrados).push(a);
   }
   return g;
 }
@@ -1489,7 +1579,7 @@ function avanceCampanaAnuncio(a,ahora=Date.now()){
 // en la tarde). Separados en tarjetas sueltas no se entendía qué medía cada
 // uno. Solo se pinta lo que se sabe: el servidor no devuelve cortes con menos
 // de quince eventos, y "0 veces" ahí sería inventarlo.
-function cifrasClase({alcance,totales,hayCortes,campana,costo},pesos){
+function cifrasClase({alcance,totales,hayCortes,campana,costo},pesos,etiquetaPersonas='personas distintas'){
   const miles=n=>new Intl.NumberFormat('es-CL').format(n);
   const veces=n=>hayCortes&&n?n:null;
   // Con la campaña medida, las personas vienen de ahí: son exactas y son lo
@@ -1502,7 +1592,7 @@ function cifrasClase({alcance,totales,hayCortes,campana,costo},pesos){
   const mitad=(v,d)=>`<div><b>${v}</b><small>${d}</small></div>`;
   const html=etapas.filter(([,p,v,siempre])=>siempre||p!==null&&p!==undefined||v!==null).map(([t,p,v])=>
     `<div class="clase-etapa"><span>${t}</span><div class="clase-par">${
-      [p!==null&&p!==undefined?mitad(miles(p),'personas distintas'):campana||!v?mitad('—','personas distintas'):'',
+      [p!==null&&p!==undefined?mitad(miles(p),etiquetaPersonas):campana||!v?mitad('—',etiquetaPersonas):'',
        v!==null?mitad(miles(v),'veces en total'):''].filter(Boolean).join('<i class="clase-par-sep" aria-hidden="true">/</i>')}</div></div>`).join('');
   const f=[];
   if(costo)f.push(['Va costando',pesos(costo.total),costo.tope!==null?`de tu tope de ${pesos(costo.tope)}`:'hasta ahora']);
@@ -1531,7 +1621,7 @@ const CANALES_VIZ=[['recomendacion','Recomendado en Inicio','viz-c1'],['busqueda
 const milesViz=n=>new Intl.NumberFormat('es-CL').format(n);
 const pctViz=(n,t)=>t?new Intl.NumberFormat('es-CL',{style:'percent',maximumFractionDigits:0}).format(n/t):'—';
 
-function donaCanalesClase(porCanal){
+function donaCanalesClase(porCanal,etiqueta='personas'){
   if(!porCanal)return '';
   const total=porCanal.recomendacion+porCanal.busqueda+porCanal.lista;
   const R=34,C=2*Math.PI*R,GAP=total&&CANALES_VIZ.filter(([k])=>porCanal[k]>0).length>1?2:0;
@@ -1544,7 +1634,7 @@ function donaCanalesClase(porCanal){
   return `<figure class="viz viz-dona" aria-label="Cómo llegaron: ${CANALES_VIZ.map(([k,t])=>t+' '+porCanal[k]).join(', ')}">
     <figcaption>Cómo llegaron</figcaption>
     <div class="viz-dona-cuerpo">
-      <svg viewBox="0 0 90 90" role="img" aria-hidden="true">${arcos}<text x="45" y="44" text-anchor="middle" class="viz-dona-num">${milesViz(total)}</text><text x="45" y="57" text-anchor="middle" class="viz-dona-sub">personas</text></svg>
+      <svg viewBox="0 0 90 90" role="img" aria-hidden="true">${arcos}<text x="45" y="44" text-anchor="middle" class="viz-dona-num">${milesViz(total)}</text><text x="45" y="57" text-anchor="middle" class="viz-dona-sub">${etiqueta}</text></svg>
       <ul class="viz-leyenda">${CANALES_VIZ.map(([k,t,cls])=>`<li><i class="${cls}"></i><span>${t}</span><b>${milesViz(porCanal[k])}</b><small>${pctViz(porCanal[k],total)}</small></li>`).join('')}</ul>
     </div></figure>`;
 }
@@ -1636,6 +1726,18 @@ function graficosClase(d,pesos,ahora){
     embudoClase(d.totales);
 }
 
+function prepararMetricasClase(a,m){
+  const totales=m.agregados?m.agregados.total:totalesDeCortes(m.cortes);
+  return {a,alcance:m.alcance,porCanal:m.porCanal,totales,agregados:m.agregados,campana:m.campana,
+    error:m.error||a.campanaError,hayCortes:Object.values(totales).some(n=>n>0),costo:costoCampanaClase(m.campana)};
+}
+function detalleMetricasClaseHTML(d,pesos,ahora){
+  return presupuestoProfesorHTML(d.costo)+(d.costo&&d.costo.agotada?'<p class="clase-aviso-tope">Llegó a tu tope: dejó de mostrarse y no suma más costo.</p>':'')+
+    cifrasClase(d,pesos)+'<details class="profesor-hig-estadisticas"><summary>Más estadísticas</summary>'+graficosClase(d,pesos,ahora)+'</details>'+
+    (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró por día aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
+    (d.costo?`<p class="clase-sin-datos">${esc(lineaCostoCampanaClase(d.costo))}.</p>`:'');
+}
+
 function tarjetaPanelClase(a,pesos,ahora){
   const vig=vigenciaAnuncio(a,ahora);
   const [etiqueta,detalle]=ESTADOS_ANUNCIO[vig]||[vig,''];
@@ -1647,6 +1749,7 @@ function tarjetaPanelClase(a,pesos,ahora){
     borrador:`<button type="button" class="clase-accion" data-editar="${esc(a.id)}">Seguir editando</button>`,
     pausado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
     expirado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
+    agotado:`<button type="button" class="clase-accion" data-retomar="${esc(a.id)}">Volver a publicar</button>`,
   }[vig]||'';
   return `<article class="clase-card" data-anuncio="${esc(a.id)}">
     <div class="clase-card-top">
@@ -1671,7 +1774,7 @@ function filaProfesorClaseHTML(a,pesos,ahora){
   return `<details class="profesor-hig-fila"><summary>
     <span class="profesor-hig-identidad"><b>${esc(a.titulo||'Sin título')}</b><small>${esc((a.ramos_siglas||[]).join(' · '))}</small></span>
     <span class="clase-estado clase-estado-${esc(vig)}" data-estado-campana="${esc(a.id)}">${esc(etiqueta)}</span>
-    <span class="profesor-hig-importe"><b data-costo-campana="${esc(a.id)}">${['publicado','pausado','expirado'].includes(vig)?'Cargando…':'—'}</b><small>Costo de campaña</small></span>
+    <span class="profesor-hig-importe"><b data-costo-campana="${esc(a.id)}">${['publicado','pausado','expirado','agotado','sin_confirmar'].includes(vig)?'Cargando…':'—'}</b><small>Costo de campaña</small></span>
     <span class="profesor-hig-flecha" aria-hidden="true">⌄</span>
     </summary><div class="profesor-hig-detalle">${tarjetaPanelClase(a,pesos,ahora)}</div></details>`;
 }
@@ -1689,8 +1792,16 @@ function seccionPanelClases(titulo,lista,pesos,ahora,vacio){
 
 async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
+  anuncios=await Promise.all(anuncios.map(async a=>{
+    if(a.estado!=='publicado')return a;
+    try{
+      const {data,error}=await supabaseClient.rpc('campana_anuncio',{p_anuncio_id:a.id});
+      if(error)return sqlClasesDesactualizado(error)?{...a,campana:null}:{...a,campanaError:true};
+      return {...a,campana:Array.isArray(data)?data[0]||null:null};
+    }catch(e){return {...a,campanaError:true};}
+  }));
   const ahora=Date.now(),g=gruposPanelClases(anuncios,ahora);
-  const conNumeros=[...g.activos,...g.cerrados];
+  const conNumeros=[...g.activos,...g.cerrados,...g.sinConfirmar];
   raiz.innerHTML='<div class="profesor-hig">'+
     cabeceraProfesorHTML('Tu conocimiento puede ayudar.','Este es tu espacio para publicar clases y ver cómo les va.',
       '<button type="button" class="btn-confirm" id="clase-nueva">Crear anuncio</button>',raiz.id==='modal-content'?'modal-titulo':'profesor-titulo')+
@@ -1703,11 +1814,13 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
     seccionPanelClases('En revisión',g.revision,pesos,ahora)+
     seccionPanelClases('Borradores',g.borradores,pesos,ahora)+
     seccionPanelClases('Pausadas y terminadas',g.cerrados,pesos,ahora)+
+    seccionPanelClases('Estado sin confirmar',g.sinConfirmar,pesos,ahora)+
     `<details class="clases-resumen profesor-hig-resumen"><summary id="clases-resumen-titulo">Resumen de tus clases activas</summary>
        <div id="clases-kpis">${g.activos.length?'<p class="clase-sin-datos">Cargando números…</p>'
-         :`<p class="clase-sin-datos">${g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
+         :`<p class="clase-sin-datos">${g.sinConfirmar.length?'No pudimos confirmar qué campañas siguen activas. Vuelve a abrir tu espacio para intentarlo de nuevo.'
+           :g.revision.length?'Cuando aprobemos tu clase, acá vas a ver a cuántas personas llega, cuántas te contactan y cuánto va costando.'
            :'Arma un borrador y mándalo a revisión. Cuando se publique, acá vas a ver cómo le va.'}</p>`}</div>
-       <p class="clase-privacidad">“Personas distintas” cuenta a cada cuenta una sola vez; “veces en total” suma cada vez que pasó. Nunca ves nombres. El costo es el de tu campaña y nunca pasa de tu tope.</p>
+       <p class="clase-privacidad">Las personas se cuentan por anuncio; una misma cuenta puede aparecer en más de uno. “Veces en total” suma cada evento. Nunca ves nombres. El costo de cada campaña nunca pasa de su tope.</p>
      </details>`+
     '<section class="clases-seccion"><h3>Tu perfil</h3><div id="clases-logo"></div></section>'+
     salida()+'</div>';
@@ -1745,21 +1858,15 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   // dice y las otras siguen andando.
   const medidas=await Promise.all(conNumeros.map(async a=>{
     const m=await metricasDeAnuncio(a);
-    const totales=m.agregados?m.agregados.total:totalesDeCortes(m.cortes);
-    return {a,alcance:m.alcance,porCanal:m.porCanal,totales,agregados:m.agregados,campana:m.campana,
-      hayCortes:Object.values(totales).some(n=>n>0),costo:costoCampanaClase(m.campana)};
+    return prepararMetricasClase(a,m);
   }));
   for(const d of medidas){
     const caja=raiz.querySelector(`[data-metricas="${d.a.id}"]`);
     if(!caja||!caja.isConnected)continue;
     const importe=raiz.querySelector(`[data-costo-campana="${d.a.id}"]`);
     if(importe)importe.textContent=d.costo?pesos(d.costo.total):'No disponible';
-    const estado=raiz.querySelector(`[data-estado-campana="${d.a.id}"]`);
-    if(estado&&d.costo&&d.costo.agotada&&vigenciaAnuncio(d.a,ahora)==='publicado')estado.textContent='Tope alcanzado';
-    caja.innerHTML=presupuestoProfesorHTML(d.costo)+(d.costo&&d.costo.agotada?'<p class="clase-aviso-tope">Llegó a tu tope: dejó de mostrarse y no suma más costo.</p>':'')+
-      cifrasClase(d,pesos)+'<details class="profesor-hig-estadisticas"><summary>Más estadísticas</summary>'+graficosClase(d,pesos,ahora)+'</details>'+
-      (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró por día aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
-      (d.costo?`<p class="clase-sin-datos">${esc(lineaCostoCampanaClase(d.costo))}.</p>`:'');
+    if(d.error){caja.innerHTML='<p class="clase-sin-datos" role="alert">No pudimos cargar todas las estadísticas. Vuelve a abrir tu espacio para intentarlo de nuevo.</p>';continue;}
+    caja.innerHTML=detalleMetricasClaseHTML(d,pesos,ahora);
   }
 
   // El resumen suma solo las clases activas: es "cómo me va ahora". Suma lo que
@@ -1767,6 +1874,7 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   const kpis=raiz.querySelector('#clases-kpis');
   const activas=medidas.filter(d=>vigenciaAnuncio(d.a,ahora)==='publicado');
   if(kpis&&kpis.isConnected&&activas.length){
+    if(activas.some(d=>d.error)){kpis.innerHTML='<p class="clase-sin-datos" role="alert">No pudimos cargar el resumen de tus clases. Vuelve a abrir tu espacio para intentarlo de nuevo.</p>';return;}
     const conAlcance=activas.filter(d=>d.alcance!==null);
     const totales={impresion:0,clic:0,contacto:0};
     activas.forEach(d=>Object.keys(totales).forEach(k=>totales[k]+=d.totales[k]));
@@ -1778,9 +1886,9 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
     const porCanal=conCanal.length?conCanal.reduce((s,d)=>({recomendacion:s.recomendacion+d.porCanal.recomendacion,
       busqueda:s.busqueda+d.porCanal.busqueda,lista:s.lista+d.porCanal.lista}),{recomendacion:0,busqueda:0,lista:0}):null;
     const alcanceTotal=conAlcance.length?conAlcance.reduce((n,d)=>n+d.alcance,0):null;
-    kpis.innerHTML=cifrasClase({alcance:alcanceTotal,totales,hayCortes:activas.some(d=>d.hayCortes),campana,costo},pesos)
+    kpis.innerHTML=cifrasClase({alcance:alcanceTotal,totales,hayCortes:activas.some(d=>d.hayCortes),campana,costo},pesos,'personas por anuncio')
       .replace('class="clase-etapas"','class="clase-etapas clases-kpis-etapas"').replace('class="clase-nums"','class="clase-nums clases-kpis"')+
-      `<div class="viz-fila">${donaCanalesClase(porCanal)}${costoApiladoClase(costo,pesos)}</div>`+
+      `<div class="viz-fila">${donaCanalesClase(porCanal,'alcances')}${costoApiladoClase(costo,pesos)}</div>`+
       embudoClase(totales);
   }
 }
@@ -1865,6 +1973,8 @@ function activarBuscadorRamosClase(form,campo){
   });
   buscar.addEventListener('blur',()=>setTimeout(cerrar,120));
   if(tenantSel)tenantSel.addEventListener('change',()=>{
+    // Una sigla elegida para otra universidad nunca viaja a este anuncio.
+    buscar.value='';cerrar();escribir([]);
     reindexar();
     if(tenantSel.value==='uc'&&typeof cargarCursosUC==='function')cargarCursosUC().then(ok=>{if(ok&&form.isConnected)reindexar();}).catch(()=>{});
   });
@@ -2407,31 +2517,42 @@ function descartarRecomendacionClase(anuncioId,ahora=Date.now()){
 
 let anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
 function cargarAnunciosRecomendacion(tenant,alTerminar){
-  if(anunciosRecomendacion.pidiendo)return;
-  anunciosRecomendacion={tenant,lista:null,pidiendo:true};
-  cargarAnunciosClases(tenant).then(lista=>{
-    if(anunciosRecomendacion.tenant!==tenant)return;
+  if(anunciosRecomendacion.pidiendo&&anunciosRecomendacion.tenant===tenant)return;
+  const pedido={tenant,lista:null,pidiendo:true};
+  anunciosRecomendacion=pedido;
+  cargarAnunciosClases(tenant,{propagarError:true}).then(lista=>{
+    if(anunciosRecomendacion!==pedido)return;
     anunciosRecomendacion={tenant,lista:Array.isArray(lista)?lista:[],pidiendo:false};
     alTerminar();
-  }).catch(()=>{anunciosRecomendacion={tenant,lista:[],pidiendo:false};});
+  }).catch(()=>{
+    if(anunciosRecomendacion===pedido)anunciosRecomendacion={tenant,lista:null,pidiendo:false};
+    // Sin resultado confirmado no se cachea una lista vacía. La siguiente
+    // entrada a Inicio vuelve a pedir anuncios sin consumir la recomendación.
+  });
 }
 
 const RECOMENDACIONES_VISTAS=new Set();
 function observarRecomendacionClase(banner,anuncio,sigla){
   const clave=claveMedicionClase(anuncio.id);
   if(typeof IntersectionObserver!=='function'||RECOMENDACIONES_VISTAS.has(clave))return;
-  let timer=null;
+  let timer=null,visible=false,registrando=false;
+  const registrar=async()=>{
+    timer=null;
+    if(!banner.isConnected||!visible||registrando||RECOMENDACIONES_VISTAS.has(clave))return;
+    registrando=true;
+    const alcance=await registrarAlcanceAnuncio(anuncio.id,'recomendacion');
+    const metrica=alcance===null?null:await registrarMetricaAnuncio(anuncio.id,'impresion',sigla);
+    registrando=false;
+    if(alcance===null||metrica===null){
+      if(banner.isConnected&&visible)timer=setTimeout(registrar,5000);
+    }else{RECOMENDACIONES_VISTAS.add(clave);obs.disconnect();}
+  };
   const obs=new IntersectionObserver(entradas=>{
     const e=entradas[entradas.length-1];
     if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
-      if(!timer)timer=setTimeout(()=>{
-        timer=null;
-        if(!banner.isConnected||RECOMENDACIONES_VISTAS.has(clave))return;
-        RECOMENDACIONES_VISTAS.add(clave);obs.disconnect();
-        registrarMetricaAnuncio(anuncio.id,'impresion',sigla);
-        registrarAlcanceAnuncio(anuncio.id,'recomendacion');
-      },IMPRESION_MS);
-    }else if(timer){clearTimeout(timer);timer=null;}
+      visible=true;
+      if(!timer&&!registrando)timer=setTimeout(registrar,IMPRESION_MS);
+    }else{visible=false;if(timer){clearTimeout(timer);timer=null;}}
   },{threshold:[IMPRESION_VISIBLE]});
   obs.observe(banner);
 }
@@ -2489,7 +2610,7 @@ function pintarRecomendacionClase(contenedor){
   banner.setAttribute('aria-label','Publicidad: clase particular');
   banner.innerHTML=contenidoRecomendacionClase(anuncio);
   banner.querySelector('.clase-apoyo-abrir').addEventListener('click',()=>{
-    registrarMetricaAnuncio(anuncio.id,'clic',sigla);
+    registrarInteraccionMedida(anuncio.id,'apertura',sigla);
     abrirClaseRecomendada(anuncio,ramo,sigla);
   });
   banner.querySelector('.clase-apoyo-cerrar').addEventListener('click',()=>{
@@ -2589,7 +2710,6 @@ async function abrirClaseRecomendada(anuncio,ramo,sigla){
       <button type="button" class="btn-cancel clase-apoyo-mas" onclick="openCatalogoClases()">Ver todas las clases</button>
     </div>`;
   activarTarjetasClases(raiz);
-  registrarInteraccionAnuncio(anuncio.id,'apertura');
   openModal();
 }
 
@@ -2635,7 +2755,6 @@ async function renderAdmin(){
 // Qué pasa con un anuncio hoy, en palabras de quien administra.
 function estadoAdminAnuncio(a,costo,ahora=Date.now()){
   const vig=vigenciaAnuncio(a,ahora);
-  if(vig==='publicado'&&costo&&costo.agotada)return ['Llegó al tope','agotado'];
   return [(ESTADOS_ANUNCIO[vig]||[vig])[0],vig];
 }
 function resumenAdminClases(profesores,ahora=Date.now()){
@@ -2673,9 +2792,11 @@ function filaAdminAnuncio(a,ahora=Date.now()){
     ${costo?`<p class="admin-anuncio-costo"><b>${pesosClase(costo.total)}</b>${costo.tope!==null?` de ${pesosClase(costo.tope)}`:' · sin tope'}</p>
       <p class="clase-sin-datos">${esc(lineaCostoCampanaClase(costo))}</p>`:''}
     <div class="admin-anuncio-acciones">
+      <button type="button" class="clase-accion" data-admin-estadisticas="${esc(a.id)}" aria-controls="admin-estadisticas-${esc(a.id)}" aria-expanded="false">Ver estadísticas</button>
       ${publicado?editorCobroAdmin(a.id,a.publicado_at,cobro,monto):''}
       ${vig==='publicado'||vig==='programado'?`<button type="button" class="clase-accion" data-admin-pausar="${esc(a.id)}">Pausar aviso</button>`:''}
     </div>
+    <div class="admin-anuncio-estadisticas" id="admin-estadisticas-${esc(a.id)}" data-admin-estadisticas-panel="${esc(a.id)}" hidden></div>
     ${anteriores.length?`<details><summary>Cobros anteriores (${anteriores.length})</summary>${anteriores.map(c=>
       `<div><p class="clase-card-meta">Publicación del ${esc(new Date(c.publicado_at).toLocaleString('es-CL'))} · ${c.estado==='deuda'?'En deuda':'Cobrado'} · ${pesosClase(c.monto_clp)}</p>${editorCobroAdmin(a.id,c.publicado_at,c.estado,c.monto_clp)}</div>`).join('')}</details>`:''}
   </article>`;
@@ -2782,6 +2903,46 @@ async function pintarPanelAdmin(raiz){
   }));
   filtrar();
   const repintar=()=>pintarPanelAdmin(raiz);
+  const anunciosPorId=new Map(profesores.flatMap(p=>p.anuncios||[]).map(a=>[a.id,a]));
+  raiz.querySelectorAll('[data-admin-estadisticas]').forEach(b=>b.addEventListener('click',async()=>{
+    const a=anunciosPorId.get(b.dataset.adminEstadisticas);
+    const caja=raiz.querySelector('#admin-estadisticas-'+b.dataset.adminEstadisticas);
+    if(!a||!caja||b.disabled)return;
+    if(!caja.hidden&&b.dataset.estadisticasEstado==='lista'){
+      caja.hidden=true;b.textContent='Ver estadísticas';b.setAttribute('aria-expanded','false');return;
+    }
+    caja.hidden=false;b.setAttribute('aria-expanded','true');
+    b.disabled=true;caja.innerHTML='<p class="clase-sin-datos" role="status">Cargando estadísticas…</p>';
+    try{
+      // El panel puede llevar rato abierto. Releer la fila evita mezclar una
+      // publicación nueva con fechas o estado de la vista anterior.
+      const {data:panel,error:panelError}=await supabaseClient.rpc('admin_panel_clases');
+      if(panelError)throw panelError;
+      const actual=(Array.isArray(panel)?panel:[]).flatMap(p=>p.anuncios||[]).find(x=>x.id===a.id);
+      if(!actual)throw Error('Aviso no encontrado');
+      if(['estado','publicado_at','vence_at'].some(k=>actual[k]!==a[k])){
+        await pintarPanelAdmin(raiz);
+        showToast('El aviso cambió. Actualicé el panel; abre sus estadísticas de nuevo.');
+        return;
+      }
+      const vig=vigenciaAnuncio(actual,Date.now());
+      if(!ANUNCIO_YA_SE_MOSTRO.has(actual.estado)||vig==='programado'){
+        caja.innerHTML=`<p class="clase-sin-datos">${vig==='programado'?'Todavía no empieza, así que no hay nada que medir ni cobrar.':actual.estado==='en_revision'?'Cuando se apruebe y empiece a mostrarse, sus estadísticas aparecerán acá.':'Todavía no se publica, así que no hay estadísticas.'}</p>`;
+        b.dataset.estadisticasEstado='lista';b.textContent='Ocultar estadísticas';return;
+      }
+      const m=await metricasDeAnuncio({...actual,campana:null});
+      if(caja.isConnected===false)return;
+      if(m.error)throw Error('No pudimos cargar las estadísticas. Revisa tu conexión e intenta de nuevo.');
+      const d=prepararMetricasClase(actual,m);
+      const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
+      caja.innerHTML='<h4>Estadísticas del aviso</h4>'+detalleMetricasClaseHTML(d,pesos,Date.now())+
+        '<p class="clase-privacidad">Solo totales por anuncio. Nunca nombres ni notas de estudiantes.</p>';
+      b.dataset.estadisticasEstado='lista';b.textContent='Ocultar estadísticas';
+    }catch(e){
+      if(caja.isConnected!==false)caja.innerHTML='<p class="clase-sin-datos" role="alert">No pudimos cargar las estadísticas. Revisa tu conexión e intenta de nuevo.</p>';
+      b.dataset.estadisticasEstado='error';b.textContent='Reintentar estadísticas';
+    }finally{if(b.isConnected!==false)b.disabled=false;}
+  }));
   const llamar=async(fn,args,ok)=>{
     try{
       const {data,error}=await supabaseClient.rpc(fn,args);

@@ -9,6 +9,7 @@ class Nodo{
   querySelector(s){return this.querySelectorAll(s)[0]||null;}
   closest(s){return this.matches(s)?this:this.parent?.closest(s);}
   setAttribute(k,v){this.attrs[k]=v;}
+  removeAttribute(k){delete this.attrs[k];}
   addEventListener(k,f){this.listeners[k]=f;}
   focus(){this.focused=true;}
   remove(){this.isConnected=false;this.parent.children=this.parent.children.filter(c=>c!==this);}
@@ -56,25 +57,40 @@ run("logosDeAnuncios=async()=>new Map(); cargarAnunciosClasesOriginal=cargarAnun
  enter(.49);assert.equal(timers.size,0);
  enter(.5);assert.equal([...timers.values()][0].ms,1000);
  enter(.2);assert.equal(timers.size,0);
- enter(.5);for(const[id,t]of timers){timers.delete(id);t.f();}
+ enter(.5);for(const[id,t]of [...timers]){timers.delete(id);await t.f();}
  enter(.8);assert.equal(timers.size,0);
  assert(calls.some(c=>c.n==='registrar_alcance_anuncio'&&c.p.p_canal==='lista'));
  assert(calls.some(c=>c.n==='registrar_metrica_anuncio'&&c.p.p_tipo==='impresion'));
  const abrir=card.querySelector('[data-abrir]');abrir.listeners.click();
+ await new Promise(resolve=>setImmediate(resolve));
  assert.equal(card.querySelector('.catalogo-clase-mas').hidden,false);
- card.querySelector('[data-contactar]').listeners.click();
+ await card.querySelector('[data-contactar]').listeners.click({preventDefault(){}});
  assert(calls.some(c=>c.n==='registrar_interaccion_anuncio'&&c.p.p_tipo==='apertura'));
  assert(calls.some(c=>c.n==='registrar_interaccion_anuncio'&&c.p.p_tipo==='contacto'));
  assert(calls.some(c=>c.n==='registrar_metrica_anuncio'&&c.p.p_tipo==='clic'&&c.p.p_ramo_sigla==='MAT1620'));
  assert(calls.some(c=>c.n==='registrar_metrica_anuncio'&&c.p.p_tipo==='contacto'));
  // Buscar cambia el canal; filtros de precio sin texto siguen siendo lista.
  run("renderCatalogoClases('MAT1620')");const search=observers.at(-1);
- search.cb([{target:search.nodes[0],isIntersecting:true,intersectionRatio:1}]);for(const[id,t]of timers){timers.delete(id);t.f();}
+ search.cb([{target:search.nodes[0],isIntersecting:true,intersectionRatio:1}]);for(const[id,t]of [...timers]){timers.delete(id);await t.f();}
  assert(calls.some(c=>c.n==='registrar_alcance_anuncio'&&c.p.p_canal==='busqueda'));
  root.querySelector('#catalogo-gratis').checked=true;root.querySelector('#catalogo-gratis').listeners.change();
  assert.equal(results.querySelectorAll('[data-catalogo-anuncio]').length,1);
  assert.equal(root.querySelector('#catalogo-desde').disabled,true);
  root.querySelector('#catalogo-limpiar').listeners.click();assert.equal(results.querySelectorAll('[data-catalogo-anuncio]').length,3);
+ // Si la RPC cobrable falla después de un segundo visible, la misma tarjeta
+ // reintenta mientras siga en pantalla; el evento anónimo no se duplica.
+ let fallaAlcance=true;
+ ctx.currentUser={id:'estudiante-reintento'};
+ ctx.supabaseClient.rpc=async(n,p)=>{calls.push({n,p});if(n==='registrar_alcance_anuncio'&&fallaAlcance){fallaAlcance=false;return {data:null,error:{message:'sin red'}};}return {data:true,error:null};};
+ await run('openCatalogoClases()');
+ const reintento=observers.at(-1),visible=reintento.nodes.find(n=>n.dataset.catalogoAnuncio==='pagado');
+ const inicio=calls.length;
+ reintento.cb([{target:visible,isIntersecting:true,intersectionRatio:.5}]);
+ for(const[id,t]of [...timers]){timers.delete(id);await t.f();}
+ assert([...timers.values()].some(t=>t.ms===5000));
+ for(const[id,t]of [...timers]){timers.delete(id);await t.f();}
+ assert.equal(calls.slice(inicio).filter(c=>c.n==='registrar_alcance_anuncio').length,2);
+ assert.equal(calls.slice(inicio).filter(c=>c.n==='registrar_metrica_anuncio'&&c.p.p_tipo==='impresion').length,1);
  run("cargarAnunciosClases=async()=>{throw Error('sin red')}");await run('openCatalogoClases()');
  assert.match(root.querySelector('#catalogo-clases-estado').textContent,/No pudimos cargar/);
  assert(root.querySelector('.catalogo-reintentar'));

@@ -2940,6 +2940,10 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .admin-hig .admin-cobro input{width:100%;}
 .admin-hig .clase-accion{width:auto;padding:10px 14px;margin:0;font:inherit;font-size:.875rem;}
 .admin-hig .admin-anuncio-acciones{gap:16px;}
+.admin-hig .admin-anuncio-estadisticas{min-width:0;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);}
+.admin-hig .admin-anuncio-estadisticas[hidden]{display:none;}
+.admin-hig .admin-anuncio-estadisticas h4{margin:0;font-size:1rem;color:var(--fg);}
+.admin-hig .admin-anuncio-estadisticas :is(.clase-sin-datos,.clase-privacidad){font-size:.875rem;}
 .admin-hig .admin-anuncio details>summary{padding:10px 0;cursor:pointer;}
 .admin-hig-profesores{margin-top:28px;border-top:1px solid var(--border);}
 .admin-hig-profesores>summary{font-weight:600;cursor:pointer;padding:16px 0;}

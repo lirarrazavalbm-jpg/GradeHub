@@ -40,7 +40,7 @@ const profesores=[{user_id:'p1',nombre:'Profe Sintética',estado:'aprobado',corr
   {user_id:'p2',nombre:'Otra Profe',estado:'suspendido',correo:'otra@ejemplo.cl',anuncios:[]}];
 ctx.__p=profesores;
 const r=run('resumenAdminClases(__p,__ahora)');
-chk('el resumen separa activas, programadas y en revisión',r.activas===1&&r.programadas===1&&r.revision===1);
+chk('un anuncio que llegó al tope no aparece entre las activas',r.activas===0&&r.programadas===1&&r.revision===1);
 chk('lo gastado aplica el tope, igual que lo ve el profesor',r.gastado===10000);
 chk('la deuda se suma aparte',r.deuda===10000&&r.cobrado===0);
 ctx.__historicos=[{...profesores[0],anuncios:[{...profesores[0].anuncios[0],
@@ -52,7 +52,7 @@ chk('la deuda anterior sigue en el resumen sin duplicar el cobro actual',histori
 const ficha=run('tarjetaAdminProfesor(__historicos[0],__ahora)');
 chk('la deuda anterior se puede gestionar por su fecha',/Cobros anteriores/.test(ficha)&&ficha.includes('data-publicado-at="'+iso(-40)+'"'));
 const html=run('tarjetaAdminProfesor(__p[0],__ahora)');
-chk('un anuncio sobre su tope dice que llegó',/Llegó al tope/.test(html));
+chk('un anuncio sobre su tope dice que llegó',/Tope alcanzado/.test(html));
 chk('uno programado se ve como programado y se puede pausar',/Programado/.test(html)&&/data-admin-pausar="a2"/.test(html));
 chk('uno en revisión no ofrece cobro ni pausa',!/data-admin-anuncio="a3"[\s\S]*?data-cobro-estado[\s\S]*?data-admin-anuncio/.test(html)&&!/data-admin-pausar="a3"/.test(html));
 chk('el cobro guardado aparece elegido',/<option value="deuda" selected>En deuda/.test(html));
