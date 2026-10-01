@@ -168,6 +168,13 @@ body{font-family:var(--font-ui);background:var(--bg);background-image:radial-gra
    se acaba el plazo para reclamarla. Por eso no reutiliza .bad ni --red-light
    del semáforo académico. */
 .home-recorrecciones{margin:4px 20px 0;padding:12px 14px;border:1px solid color-mix(in srgb,var(--primary),transparent 55%);border-radius:12px;background:var(--primary-light);}
+#home-pautas-propuestas{margin:4px 20px 0;padding:12px 14px;border:1px solid color-mix(in srgb,var(--primary),transparent 55%);border-radius:12px;background:var(--primary-light);}
+.home-propuesta-row{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;padding:8px 0;border:0;background:none;color:var(--fg);font:inherit;text-align:left;cursor:pointer;}
+.home-propuesta-row+.home-propuesta-row{border-top:1px solid var(--border);}
+.home-propuesta-row strong{min-width:0;overflow-wrap:anywhere;font-size:0.84375rem;font-weight:650;}
+.home-propuesta-row span{flex:none;color:var(--primary);font-size:0.8125rem;font-weight:650;}
+.home-propuesta-row:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px;}
+@media(max-width:390px){.home-propuesta-row{align-items:flex-start;flex-direction:column;gap:2px;}}
 .home-recorrecciones.urgente{border-color:color-mix(in srgb,var(--red),transparent 50%);background:color-mix(in srgb,var(--red),transparent 92%);}
 .home-recorrecciones-hd{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .home-recorreccion-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;cursor:pointer;}

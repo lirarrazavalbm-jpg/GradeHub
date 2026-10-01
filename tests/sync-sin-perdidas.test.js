@@ -78,7 +78,7 @@ function dispositivo(nube,almacen=new Map()){
   vm.createContext(ctx);vm.runInContext(fuente,ctx);
   const run=c=>vm.runInContext(c,ctx);
   ctx.__avisos=avisos;
-  run(`showToast=(m)=>__avisos.push(m);enterApp=()=>{};enterOnboarding=()=>{};renderHome=()=>{};aplicarConsensoAuto=async()=>0;`);
+  run(`showToast=(m)=>__avisos.push(m);enterApp=()=>{};enterOnboarding=()=>{};renderHome=()=>{};aplicarConsensoAuto=async()=>0;aportarPautasAlCatalogo=async()=>0;`);
   return {ctx,run,almacen,avisos,setModal:v=>{modalAbierto=v;},
     entrar:async uid=>{run(`supabaseClient=__nube;currentUser={id:${JSON.stringify(uid)}};`);await run('afterLogin()');},
     // Anotar una nota como lo hace la app: se modifica S y se guarda.

@@ -40,6 +40,7 @@ function renderRecorreccionesHome(){
     </article>`).join('')}`;
 }
 function renderHome(){
+  renderPropuestasPautaHome();
   renderRecorreccionesHome();
   renderWrappedHome();
   const g=gpa(S.ramos);
@@ -611,24 +612,18 @@ function renderRamo(){
 
   const rep=document.getElementById('ramo-report');
   if(rep){
-    // Sin evaluaciones no hay nada que enviar: el reporte ES la estructura.
-    if(r.categorias.length){
+    // Reportar catálogo corrige una pauta oficial. Las pautas que la persona
+    // armó por su cuenta ya se aportan al consenso al quedar completas.
+    const oficial=r.origen&&r.origen.tenant&&presetRamo(r.nombre,r.origen.tenant,r.origen.carrera);
+    if(r.categorias.length&&oficial){
       rep.style.display='flex';
       rep.onclick=()=>openReportModal(r.id);
-      // Quien corrigió la pauta oficial ya hizo el trabajo: sabe cuál es la
-      // buena. A esa persona no se le pregunta si algo no calza —ya no calzó—,
-      // se le pide el dato. El resto sigue viendo la pregunta de siempre.
+      // Este formulario sirve para avisar una corrección de la oficial y
+      // agregar contexto; la pauta propia completa ya aporta por sí sola.
       const txt=document.getElementById('ramo-report-text');
-      // Un ramo armado a mano no tiene pauta del catálogo que "no calce":
-      // lo que se le ofrece es compartir la suya.
-      // A quien armó la pauta de un ramo que el catálogo trae vacío ya no se le
-      // pregunta nada: su pauta se aporta sola. El botón se queda para poder
-      // corregirla o mandar una nota, pero afirma en vez de preguntar.
       if(txt)txt.textContent=pautaEditada(r)
-        ?'Corregiste esta pauta · compártela con tu curso'
-        :!r.origen?'¿Armaste esta pauta? Compártela con tu curso'
-        :pautaCatalogoSinOficial(r)?'Tu pauta completa el catálogo de este ramo'
-        :'¿Esta pauta no calza con tu curso? Repórtala';
+        ?'Corregiste la pauta oficial · agrega un reporte'
+        :'¿La pauta oficial no calza con tu curso? Repórtala';
     }else{rep.style.display='none';rep.onclick=null;}
   }
 

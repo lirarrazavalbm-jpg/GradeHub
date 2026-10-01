@@ -989,7 +989,16 @@ function save(){
     }
   }
   syncToCloud();
+  // Una pauta que la persona acaba de terminar también puede sumar al
+  // consenso durante esta visita; no necesita cerrar y volver a entrar.
+  if(!_suspenderAportePautas&&typeof currentUser!=='undefined'&&currentUser&&typeof supabaseClient!=='undefined'&&supabaseClient&&S.onboardingDone){
+    clearTimeout(_aportePautasTimer);
+    _aportePautasTimer=setTimeout(()=>{aportarPautasAlCatalogo().catch(()=>{});},1200);
+  }
 }
+let _aportePautasTimer=null;
+let _suspenderAportePautas=false;
+let _aportePautasEnCurso=null;
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 // Los ids se interpolan dentro de atributos onclick ("toggleCat('<id>')"), así
 // que un id con comillas se sale de la llamada y el resto se ejecuta como JS.
@@ -4170,7 +4179,18 @@ function quitarReporteFila(i){
 // así que sirve también para agrupar sus reportes sin cambiar datos guardados.
 function siglaReporteUC(r){
   const o=r&&r.origen;
-  if(!o||o.tenant!=='uc')return null;
+  if(!r||(o&&o.tenant!=='uc')||(!o&&S.tenant!=='uc'))return null;
+  // Un ramo escrito a mano puede traer la sigla que escribió la persona. Si
+  // solo trae nombre, usamos únicamente una coincidencia inequívoca; el SQL
+  // hace la misma búsqueda en catalogo_uc para los demás nombres.
+  if(!o){
+    const directa=siglaConForma(r.sigla);
+    if(directa)return directa;
+    const encontradas=new Set(Object.entries(CREDITOS_UC||{})
+      .filter(([nombre])=>normName(nombre)===normName(r.nombre))
+      .map(([,fila])=>siglaConForma(fila&&fila[1])).filter(Boolean));
+    return encontradas.size===1?[...encontradas][0]:null;
+  }
   // Solo vale algo con forma de sigla. Los ramos agregados antes de que su
   // sigla estuviera en el catálogo guardaron el NOMBRE como ramoKey, y ese
   // nombre viajaba como si fuera la sigla: los reportes de un mismo ramo
@@ -4198,7 +4218,7 @@ function claveReporte(r){
   const o=r&&r.origen;
   // En UC manda la sigla, aunque el ramoKey guardado sea el nombre: es la
   // misma clave con la que el servidor agrupa los reportes.
-  return siglaReporteUC(r)||(o&&o.ramoKey)||ramoKey(r&&r.nombre,o&&o.tenant,o&&o.carrera);
+  return siglaReporteUC(r)||(o&&o.ramoKey)||ramoKey(r&&r.nombre,S.tenant,S.carrera);
 }
 
 function openReportModal(ramoId,conservarBorrador=false){
@@ -4287,12 +4307,17 @@ async function enviarReporte(ramoId){
     showToast(est.length?textoEstadoReporte(estado):'Vuelve a abrir el reporte',true);return;
   }
   const notaEl=document.getElementById('m-rep-nota');
+  _suspenderAportePautas=true;
+  clearTimeout(_aportePautasTimer);
   // Primero la pauta del estudiante: es suya y no depende de que el reporte
   // llegue. Si la red falla, lo que corrigió igual queda guardado.
   const enRamo=reporteRamoId===ramoId?aplicarReporteAlRamo(r,reporteDraft):'igual';
   if(enRamo==='aplicada'){save();if(currentRamoId===r.id&&typeof renderRamo==='function')renderRamo();}
   if(btn){btn.disabled=true;btn.textContent='Enviando\u2026';}
   try{
+    // Si había un aporte automático en vuelo, el reporte explícito debe ser
+    // el último valor para este ramo, no quedar pisado por una petición vieja.
+    if(_aportePautasEnCurso)await _aportePautasEnCurso;
     const {error}=await supabaseClient.rpc('submit_catalog_report',{
       p_tenant:S.tenant,
       // Se conserva como contexto del reporte, pero no participa del consenso.
@@ -4305,6 +4330,10 @@ async function enviarReporte(ramoId){
       p_nota:reporteComentarioDraft.trim()||((notaEl&&notaEl.value.trim())||null),
     });
     if(error)throw error;
+    // Un reporte explícito puede describir una corrección que no se pudo
+    // aplicar por una compuerta. El aporte automático no debe reemplazarla.
+    r.consensoAportado=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
+    save();
     track('reporte_catalogo',{tenant:S.tenant});
     closeModal();
     reporteDraft=[];reporteRamoId=null;reporteComentarioDraft='';
@@ -4319,7 +4348,7 @@ async function enviarReporte(ramoId){
       : enRamo==='aplicada'?'Tu pauta qued\u00f3 guardada, pero el reporte no se pudo enviar. Revisa tu conexi\u00f3n.'
       : 'No se pudo enviar. Revisa tu conexi\u00f3n.';
     showToast(msg,true);
-  }
+  }finally{_suspenderAportePautas=false;}
 }
 
 // Lee el consenso (solo agregados, sin datos de nadie) y avisa si el cat\u00e1logo
@@ -4591,11 +4620,12 @@ function adoptarConsensoEnRamo(r,hit){
   // le dimos nosotros, así que la pauta adoptada queda distinta de esa y
   // cambioDePauta() la lee como lo que es: una decisión del estudiante, que
   // manda sobre la nuestra. Sin esto, la app le ofrecería volver a la pauta
-  // oficial que acaba de descartar — y de paso pautaEditada() se vuelve cierta,
-  // así que el botón le pide compartirla y suma un respaldo más.
+  // oficial que acaba de descartar. Adoptar la propuesta no crea un voto
+  // independiente: esa estructura ya viene de quienes la reportaron.
   // Queda marcada igual que la que se aplica sola: la ficha tiene que decir que
   // esto lo reportaron estudiantes y no un programa.
   r.consensoRespaldos=hit.respaldos;
+  r.consensoAportado=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
   return true;
 }
 async function adoptarConsenso(ramoId){
@@ -4667,8 +4697,7 @@ function pautaDeConsenso(est){
   return {categorias,gates};
 }
 
-// Rellena las pautas que FALTAN con lo que reportó el resto. Mismo criterio que
-// pautaPendiente(): solo ramos del catálogo que están sin pauta.
+// Rellena las pautas que FALTAN con lo que reportó el resto.
 //
 // Por qué solo esos. Un ramo sin evaluaciones no tiene nada que pisar: no hay
 // notas que perder ni una pauta que el estudiante haya escrito. En cuanto hay
@@ -4678,15 +4707,15 @@ function pautaDeConsenso(est){
 // su versión manda sobre la nuestra. Una pauta reportada por tres personas que
 // no conoce no puede pesar más que esas dos reglas.
 //
-// Queda el hueco: los ramos del catálogo que todavía no tienen programa
-// transcrito. Ahí no hay nada que pisar y el consenso se aplica solo.
+// En un ramo vacío, aunque lo agregaran a mano, no hay nada que pisar.
 async function aplicarConsensoAuto(){
   const cons=await cargarConsenso();
   if(!cons||!cons.length)return 0;
   let puestas=0;
   (S.ramos||[]).forEach(r=>{
-    if(!r.origen||!r.origen.tenant)return;          // ramo a mano: nadie reportó "Electivo de cine"
+    if(r.origen&&r.origen.tenant&&r.origen.tenant!==S.tenant)return;
     if((r.categorias||[]).length||(r.gates||[]).length)return;
+    if(!r.origen&&presetRamo(r.nombre,S.tenant,S.carrera))return; // una oficial existente manda
     if(pautaPendiente(r))return;                    // hay programa oficial esperando: ese manda
     const hit=cons.find(c=>c.ramo_key===claveReporte(r)&&c.respaldos>=CONSENSO_AUTO);
     if(!hit)return;
@@ -4699,46 +4728,57 @@ async function aplicarConsensoAuto(){
     // dice, y el día que transcribamos el programa, cambioDePauta() ofrece el
     // cambio como con cualquier otra pauta vieja.
     r.consensoRespaldos=hit.respaldos;
+    r.consensoAportado=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
     puestas++;
   });
   if(puestas)save();
   return puestas;
 }
 
-// LA OTRA DIRECCIÓN DEL CONSENSO: lo que esta persona sabe y el catálogo no.
-//
-// Quien arma la pauta de un ramo que el catálogo trae SIN pauta es la única
-// persona cuyo dato el consenso puede usar: `aplicarConsensoAuto` solo escribe
-// donde no hay nada que pisar, o sea exactamente en esos ramos. Y era justo a
-// quien no se le pedía: el botón del pie le preguntaba "¿esta pauta no calza
-// con tu curso?" sobre una pauta que GradeHub nunca le dio. Con 3 reportes en
-// dos meses, el problema no era que nadie quisiera reportar.
-//
-// Decisión de Lucas del 2026-09-21: a esa persona no se le pregunta, se aporta
-// solo. Es el mismo camino que ya usa aceptar la pauta de un agente.
-//
-// QUÉ VIAJA: nombre, porcentaje, casillas y compuertas de cada evaluación. Las
-// notas no — `estructuraDe` no las mira y la RPC manda `p_nota` en null. Es la
-// pauta del curso, que el programa del ramo publica.
-//
-// QUÉ NO SE APORTA: un ramo escrito a mano fuera del catálogo (no hay con qué
-// agruparlo: nadie más tiene un "Electivo de cine"), uno con programa oficial
-// transcrito (ese manda) y una pauta a medio armar, que `estadoReporte` filtra.
-//
-// Se manda una vez por versión: `consensoAportado` guarda la huella de lo
-// último enviado, así que editar la pauta vuelve a aportar y abrir la app no.
-// La RPC hace upsert por (persona, ramo), así que reenviar no duplica a nadie.
+// Participan las pautas completas que alguien armó o corrigió, cualquiera sea
+// el camino: editor, ramo manual o propuesta del agente ya aceptada. Una pauta
+// oficial sin editar y una pauta recibida del propio consenso no son votos
+// independientes. El servidor cuenta personas distintas, no envíos.
+function pautaPropiaParaConsenso(r){
+  if(!r||!Array.isArray(r.categorias)||!r.categorias.length)return false;
+  if(r.consensoRespaldos){
+    const huella=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
+    return !!r.consensoAportado&&r.consensoAportado!==huella;
+  }
+  const o=r.origen;
+  if(!o||!o.tenant)return true;
+  const oficial=presetRamo(r.nombre,o.tenant,o.carrera);
+  if(oficial&&huellaPauta(catsDePauta(r.categorias))===huellaPauta(oficial.categorias))return false;
+  if(r.pautaHuella)return pautaEditada(r);
+  return true;
+}
+// Solo viajan evaluaciones y reglas representables; jamás notas. La huella
+// guardada evita reenvíos sin cambios, y un fallo de red deja el aporte pendiente
+// para el siguiente guardado o inicio de sesión.
 async function aportarPautasAlCatalogo(){
   if(!supabaseClient||!currentUser)return 0;
-  let n=0;
-  for(const r of (S.ramos||[])){
-    if(!pautaCatalogoSinOficial(r))continue;
-    const huella=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
-    if(!huella||r.consensoAportado===huella)continue;
-    if(await aportarPropuestaAlCatalogo(r)){r.consensoAportado=huella;n++;}
+  if(_aportePautasEnCurso)return _aportePautasEnCurso;
+  const usuarioId=currentUser.id,estado=S;
+  _aportePautasEnCurso=(async()=>{
+    let n=0;
+    for(const r of (estado.ramos||[])){
+      if(!currentUser||currentUser.id!==usuarioId||S!==estado)break;
+      if(!pautaPropiaParaConsenso(r))continue;
+      if(r.origen&&r.origen.tenant&&r.origen.tenant!==S.tenant)continue;
+      const huella=huellaEstructura(estructuraParaConsenso(estructuraDe(r)));
+      if(!huella||r.consensoAportado===huella)continue;
+      const enviado=await aportarPropuestaAlCatalogo(r);
+      if(!currentUser||currentUser.id!==usuarioId||S!==estado)break;
+      if(enviado){r.consensoAportado=huella;n++;}
+    }
+    if(n&&currentUser&&currentUser.id===usuarioId&&S===estado)save();
+    return n;
+  })();
+  try{return await _aportePautasEnCurso;}
+  finally{
+    _aportePautasEnCurso=null;
+    if(currentUser&&(currentUser.id!==usuarioId||S!==estado))aportarPautasAlCatalogo().catch(()=>{});
   }
-  if(n)save();
-  return n;
 }
 
 // \u00bfEl ramo viene de otro cat\u00e1logo que el actual? (el estudiante se cambi\u00f3 de
@@ -6023,6 +6063,23 @@ function ramoDePropuestaPauta(propuesta){
   return (S.ramos||[]).find(r=>normName((r.origen&&r.origen.ramoKey)||r.nombre)===clave)
     ||(S.ramos||[]).find(r=>normName(r.nombre)===normName(propuesta&&propuesta.ramo))||null;
 }
+// Inicio recuerda las pautas hasta que su dueña las revise. Una propuesta
+// pendiente todavía no cambia el ramo ni participa del consenso.
+function renderPropuestasPautaHome(){
+  const caja=document.getElementById('home-pautas-propuestas');
+  if(!caja)return;
+  if(!propuestasPautaAgente.length){caja.style.display='none';caja.innerHTML='';return;}
+  caja.style.display='block';
+  caja.innerHTML=`
+    <div class="home-recorrecciones-hd">
+      <span class="section-hd-title">Pautas de tu agente por revisar</span>
+      <span class="ag-count">${propuestasPautaAgente.length}</span>
+    </div>
+    ${propuestasPautaAgente.map(p=>`<button type="button" class="home-propuesta-row" onclick="abrirPropuestasPautaAgente()">
+      <strong>${esc((ramoDePropuestaPauta(p)||{}).nombre||p.ramo)}</strong>
+      <span>Revisar pauta propuesta</span>
+    </button>`).join('')}`;
+}
 // ─── RAMOS PROPUESTOS POR UN AGENTE ─────────────────────────────────────────
 //
 // Aparece en Inicio y no en Ajustes: quien pegó su horario en el chat vuelve a
@@ -6108,10 +6165,12 @@ async function aplicarRamosPropuestos(){
 async function cargarPropuestasPautaAgente(opts){
   opts=opts||{};
   if(!currentUser||!supabaseClient)return [];
+  const usuarioId=currentUser.id;
   propuestasPautaCargando=true;
   try{
     const {data,error}=await supabaseClient.rpc('listar_propuestas_pauta_agente');
     if(error)throw error;
+    if(!currentUser||currentUser.id!==usuarioId)return [];
     // `tipo` nace con default 'pauta' en la base, así que una propuesta vieja
     // sin la columna se sigue leyendo como lo que es.
     const filas=Array.isArray(data)?data:[];
@@ -6120,6 +6179,7 @@ async function cargarPropuestasPautaAgente(opts){
     propuestasFechasAgente=filas.filter(f=>f&&f.tipo==='fechas').map(propuestaFechasLimpia).filter(Boolean);
     propuestasRamosAgente=filas.filter(f=>f&&f.tipo==='ramos').map(propuestaRamosLimpia).filter(Boolean);
     pintarRamosPropuestos();
+    renderPropuestasPautaHome();
     if(opts.mostrar&&propuestasPautaAgente.length)abrirPropuestasPautaAgente();
     else if(opts.mostrar&&opts.avisar)showToast('No tienes pautas pendientes');
     return propuestasPautaAgente;
@@ -6177,6 +6237,7 @@ async function resolverPropuestaPauta(id,accion){
   const {error}=await supabaseClient.rpc('resolver_propuesta_pauta_agente',{p_id:id,p_accion:accion});
   if(error)throw error;
   propuestasPautaAgente=propuestasPautaAgente.filter(p=>p.id!==id);
+  renderPropuestasPautaHome();
 }
 async function aportarPropuestaAlCatalogo(r){
   const estructura=estructuraParaConsenso(estructuraDe(r));
@@ -6199,6 +6260,8 @@ async function aplicarPropuestaPauta(id){
     // Primero se marca resuelta en el servidor: si la red cae, no alteramos la
     // pauta local y no dejamos una propuesta que se pueda aplicar dos veces.
     await resolverPropuestaPauta(id,'aplicada');
+    _suspenderAportePautas=true;
+    clearTimeout(_aportePautasTimer);
     const nuevas=propuesta.evaluaciones.map(e=>{
       const anterior=(ramo.categorias||[]).find(c=>normName(c.nombre)===normName(e.nombre));
       const cat={id:anterior?anterior.id:uid(),nombre:e.nombre,peso:e.peso,ponderaNotas:false,directNota:true,notas:[]};
@@ -6209,12 +6272,19 @@ async function aplicarPropuestaPauta(id){
     // El agente leyó ponderaciones, no reglas del programa. Al confirmar su
     // estructura no inventamos ni reemplazamos compuertas, aportes o recuperativos.
     ramo.pautaHuella=null;
+    delete ramo.consensoRespaldos;
     save();track('pauta_agente_confirmada',{evaluaciones:propuesta.evaluaciones.length});
+    if(_aportePautasEnCurso)await _aportePautasEnCurso;
     const reportada=await aportarPropuestaAlCatalogo(ramo);
+    if(reportada){
+      ramo.consensoAportado=huellaEstructura(estructuraParaConsenso(estructuraDe(ramo)));
+      save();
+    }
     closeModal();
     if(currentRamoId===ramo.id)renderRamo();else renderHome();
     showToast(reportada?'Pauta aplicada · también la sumamos al consenso':'Pauta aplicada · no pudimos sumarla al consenso ahora');
   }catch(e){showToast('No pudimos aplicar esta pauta. Intenta de nuevo.',true);}
+  finally{_suspenderAportePautas=false;}
 }
 function confirmarDescartarPropuestaPauta(id){
   const propuesta=propuestasPautaAgente.find(p=>p.id===id);if(!propuesta)return;

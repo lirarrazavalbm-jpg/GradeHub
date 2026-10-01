@@ -1,10 +1,5 @@
-// La pauta que alguien arma para un ramo que el catálogo trae VACÍO se aporta
-// sola al consenso, sin preguntarle.
-//
-// Es la única pauta que el consenso puede usar: aplicarConsensoAuto solo escribe
-// donde no hay nada que pisar, o sea exactamente en esos ramos. Y era a quien no
-// se le pedía: el botón del pie preguntaba "¿esta pauta no calza con tu curso?"
-// sobre una pauta que nunca le dimos.
+// Toda pauta completa hecha por la persona se aporta, incluso si el ramo se
+// agregó a mano. Una oficial intacta o una pauta recibida del consenso no votan.
 const fs = require('fs'), vm = require('vm');
 const raiz = __dirname + '/../';
 const leer = f => fs.readFileSync(raiz + f, 'utf8');
@@ -68,11 +63,11 @@ setTimeout(() => {
 
       console.log('\n=== Lo que NO se aporta ===');
       enviados.length = 0;
-      // Un ramo escrito a mano no tiene con qué agruparse con nadie.
+      // Un ramo escrito a mano también puede coincidir con otros estudiantes.
       val("S.ramos=[" + JSON.stringify(ramo({ origen: null })) + "]");
       (async () => { await val('aportarPautasAlCatalogo')(); })();
       setTimeout(() => {
-        chk('un ramo fuera del catálogo no se aporta', enviados.length === 0);
+        chk('un ramo fuera del catálogo sí se aporta', enviados.length === 1);
         // Una pauta a medio armar: los pesos no suman 100.
         enviados.length = 0;
         val("S.ramos=[" + JSON.stringify(ramo({ categorias: [{ id: 'c1', nombre: 'Prueba 1', peso: 40, notas: [] }] })) + "]");
@@ -86,15 +81,15 @@ setTimeout(() => {
           setTimeout(() => {
             chk('sin sesión no se manda nada', enviados.length === 0);
 
-            console.log('\n=== Y el botón deja de preguntar lo que no corresponde ===');
+            console.log('\n=== Reportar catálogo es para corregir una pauta oficial ===');
             const render = leer('render-main.js');
-            chk('a esa persona se le afirma, no se le pregunta',
-              /pautaCatalogoSinOficial\(r\)\?'Tu pauta completa el catálogo de este ramo'/.test(render));
-            chk('el resto sigue viendo su texto de siempre',
-              /'¿Esta pauta no calza con tu curso\? Repórtala'/.test(render) &&
-              /'Corregiste esta pauta · compártela con tu curso'/.test(render));
+            chk('solo una pauta oficial ofrece el botón de reporte',
+              /if\(r\.categorias\.length&&oficial\)/.test(render));
+            chk('el reporte de la oficial conserva su texto',
+              /'¿La pauta oficial no calza con tu curso\? Repórtala'/.test(render) &&
+              /'Corregiste la pauta oficial · agrega un reporte'/.test(render));
             chk('la política dice que esto pasa y que las notas no viajan',
-              /armas la pauta de un ramo que traemos sin ponderaciones/.test(leer('privacidad.html')) &&
+              /ramo agregado a mano/.test(leer('privacidad.html')) &&
               /tus notas no salen de tu cuenta/.test(leer('privacidad.html')));
 
             console.log('\nPASS: ' + ok + '   FAIL: ' + fail);

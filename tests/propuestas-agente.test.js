@@ -44,7 +44,7 @@ chk('la persona dueña lista y resuelve su propia propuesta',/where user_id = au
 
 console.log('\n=== Confirmar es el único momento que modifica el semestre y reporta ===');
 chk('el MCP guarda por RPC y devuelve el error corregible al agente',/rpc\('proponer_pauta_agente'/.test(endpoint)&&/validarPropuestaPauta\(args\)/.test(endpoint)&&/error\(id, -32602, propuesta\.error\)/.test(endpoint));
-chk('al entrar se muestra la pauta completa pendiente, sin bloquear las notas',/cargarPropuestasPautaAgente\(\{mostrar:true\}\)/.test(session)&&/No se han aplicado/.test(app)&&/Fuente:/.test(app));
+chk('al entrar queda un aviso de revisión sin bloquear las notas',/cargarPropuestasPautaAgente\(\)/.test(session)&&/Pautas de tu agente por revisar/.test(app)&&/No se han aplicado/.test(app)&&/Fuente:/.test(app));
 chk('aplicar exige confirmación y conserva notas por nombre',/showConfirm\(`¿Aplicar la pauta de \$\{ramo\.nombre\}\?`/.test(app)&&/fusionarPauta\(ramo,nuevas\)/.test(app));
 chk('la confirmación, no la propuesta, alimenta catalog_reports',/async function aportarPropuestaAlCatalogo/.test(app)&&/rpc\('submit_catalog_report'/.test(app)&&/await resolverPropuestaPauta\(id,'aplicada'\)/.test(app));
 chk('descartar no toca ramos ni notas',/Se elimina esta propuesta pendiente\. No cambia tus ramos ni tus notas\./.test(app)&&/resolverPropuestaPauta\(id,'descartada'\)/.test(app));

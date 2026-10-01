@@ -73,9 +73,9 @@ console.log('\n=== La ficha pide el dato en vez de preguntar ===');
   const html = fs.readFileSync(raiz + 'index.html', 'utf8');
   chk('el texto del botón es reemplazable', /id="ramo-report-text"/.test(html));
   chk('la ficha decide según pautaEditada', /pautaEditada\(r\)/.test(render));
-  chk('a quien la corrigió se le pide compartirla', /Corregiste esta pauta/.test(render));
-  chk('al resto se le sigue preguntando', /no calza con tu curso/.test(render));
-  chk('el botón sigue apareciendo solo si hay algo que enviar', /if\(r\.categorias\.length\)/.test(render));
+  chk('a quien la corrigió se le ofrece agregar un reporte', /Corregiste la pauta oficial/.test(render));
+  chk('al resto se le sigue preguntando', /pauta oficial no calza con tu curso/.test(render));
+  chk('el botón sigue apareciendo solo para una pauta oficial con evaluaciones', /if\(r\.categorias\.length&&oficial\)/.test(render));
 }
 
 console.log(`\nPASS: ${ok}   FAIL: ${fail}`);

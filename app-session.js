@@ -577,6 +577,13 @@ async function afterSignup(){
 async function afterLogin(){
   track('login');
   const uid=currentUser?currentUser.id:null;
+  // Una sesión anterior pudo terminar por vencimiento, sin pasar por signOut.
+  // Ninguna de sus propuestas debe asomarse en Inicio de la cuenta nueva.
+  if(typeof propuestasPautaAgente!=='undefined')propuestasPautaAgente=[];
+  if(typeof propuestasNotasAgente!=='undefined')propuestasNotasAgente=[];
+  if(typeof propuestasFechasAgente!=='undefined')propuestasFechasAgente=[];
+  if(typeof propuestasRamosAgente!=='undefined')propuestasRamosAgente=[];
+  if(typeof renderPropuestasPautaHome==='function')renderPropuestasPautaHome();
   if(uid)restaurarCacheApartada(uid);
   let cloud,ok=true;
   // Solo la lectura remota es recuperable: si falla, la copia local ya fue
@@ -672,16 +679,23 @@ async function afterLogin(){
       .catch(()=>{});
   }
   // Es una bandeja de revisión, no una sincronización del semestre: se lee
-  // aparte y nunca bloquea entrar. Si llega una propuesta, se muestra completa
-  // para que la persona la aplique o descarte en vez de mover su promedio sola.
+  // aparte y nunca bloquea entrar. Si llega una propuesta, Inicio la recuerda
+  // para que la persona la aplique o descarte cuando quiera.
   // La bandeja de propuestas es opcional y vive en app.js. El guardia no es
   // ceremonia: un ReferenceError acá revienta afterLogin() entero —o sea el
   // login y la sincronización— por una pantalla accesoria. El .catch cubre la
   // promesa rechazada, no la función que no existe.
   if(S.onboardingDone&&typeof cargarPropuestasPautaAgente==='function'){
-    cargarPropuestasPautaAgente({mostrar:true}).catch(()=>{});
+    cargarPropuestasPautaAgente().catch(()=>{});
   }
 }
+
+// La persona suele consultar al agente en otra app y volver a GradeHub. Al
+// regresar, se consulta la bandeja sin obligarla a cerrar sesión ni recargar.
+if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&currentUser&&S.onboardingDone
+    &&typeof cargarPropuestasPautaAgente==='function')cargarPropuestasPautaAgente().catch(()=>{});
+});
 
 async function loadFromCloud(){
   const {data,error}=await supabaseClient.from('user_ramos').select('data').eq('user_id',currentUser.id).maybeSingle();
@@ -953,6 +967,11 @@ async function registrarAceptacionLegal(){
 async function signOut(){
   try{await supabaseClient.auth.signOut();}catch(e){}
   currentUser=null;closeModal();
+  // Las propuestas pertenecen a la cuenta que salió, no al navegador.
+  if(typeof propuestasPautaAgente!=='undefined')propuestasPautaAgente=[];
+  if(typeof propuestasNotasAgente!=='undefined')propuestasNotasAgente=[];
+  if(typeof propuestasFechasAgente!=='undefined')propuestasFechasAgente=[];
+  if(typeof propuestasRamosAgente!=='undefined')propuestasRamosAgente=[];
   // Limpiar la caché local: si no, el siguiente que entre en este navegador
   // podría ver los datos de la sesión anterior.
   // La base de la sincronización también: es una copia completa de los datos.
