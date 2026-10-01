@@ -1641,6 +1641,11 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
 .app.tab-mode #screen-ramo.active{
   position:absolute;top:0;left:0;right:0;bottom:0;z-index:15;background:var(--bg2);
 }
+/* La ficha es un overlay absoluto: top:0 ignora el padding seguro de .app y
+   deja Volver, Editar y Eliminar bajo el notch en la app instalada. */
+.app.tab-mode #screen-ramo.active{top:env(safe-area-inset-top,0px);}
+#screen-ramo .topbar{padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));}
+#screen-ramo .topbar .icon-btn{width:44px;height:44px;flex:none;}
 /* APPROVAL CHIP */
 /* HISTORIAL */
 .hist-card{background:var(--card);border:1px solid var(--border);border-radius:16px;margin:0 20px 10px;overflow:hidden;box-shadow:var(--shadow);transition:transform var(--motion-press),border-color var(--motion-fast);}
