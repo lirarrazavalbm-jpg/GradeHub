@@ -66,6 +66,7 @@ console.log('\n=== Rellena el hueco ===');
     r.gates[0].catId === (r.categorias.find(c => c.nombre === 'Examen') || {}).id);
   chk('respeta slots', (r.categorias.find(c => c.nombre === 'Controles') || {}).slots === 3);
   chk('queda marcada como reportada, no oficial', r.consensoRespaldos === 3);
+  chk('no se devuelve como un voto nuevo', !!r.consensoAportado && val(`pautaPropiaParaConsenso(${JSON.stringify(r)})`) === false);
   chk('no inventa fechas', r.categorias.every(c => !c.fecha));
   chk('deja huella para que cambioDePauta pueda ofrecer la oficial después',
     r.pautaHuella === val(`huellaPauta(${JSON.stringify(r.categorias)})`));
@@ -80,7 +81,14 @@ console.log('\n=== Dónde NO se mete ===');
 {
   const aMano = { id: 'b', nombre: RAMO, origen: null, categorias: [], gates: [] };
   const { puestas } = await correr(consenso(3, EST), [aMano]);
-  chk('un ramo creado a mano no se toca', puestas === 0);
+  chk('un ramo vacío creado a mano también recibe el consenso', puestas === 1);
+}
+{
+  const nombre='Contabilidad';
+  const fila={...consenso(3,EST)[0],ramo:nombre,ramo_key:val(`normName(${JSON.stringify(nombre)})`)};
+  const r={id:'b',nombre,origen:null,categorias:[],gates:[]};
+  const {puestas}=await correr([fila],[r]);
+  chk('un ramo manual con pauta oficial disponible no recibe consenso automático',puestas===0);
 }
 {
   const { puestas } = await correr(consenso(2, EST), [delCatalogo()]);

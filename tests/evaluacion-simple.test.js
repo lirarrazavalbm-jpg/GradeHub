@@ -96,10 +96,10 @@ chk('solo ofrece compartir desde el hito de crear una pauta completa',
 // pauta existe y cambió. Hoy el caso mayoritario es que no la tenemos.
 chk('el texto sirve para una pauta mala y para una que falta',
   /no calza con tu curso/.test(html) && !/Le cambiaron las ponderaciones/.test(src + html));
-// El reporte ES la estructura del ramo: sin evaluaciones no hay qué enviar, y
-// `openReportModal` ya rechaza ese caso con un toast. Mejor no ofrecerlo.
-chk('solo aparece cuando el ramo tiene evaluaciones',
-  /if\(r\.categorias\.length\)\{\s*rep\.style\.display='flex'/.test(src));
+// Reportar catálogo corrige una pauta oficial; una pauta propia completa se
+// aporta al consenso sin abrir este formulario.
+chk('solo aparece con evaluaciones y pauta oficial',
+  /if\(r\.categorias\.length&&oficial\)\{\s*rep\.style\.display='flex'/.test(src));
 
 console.log('\n=== La casilla "son varias notas" decide la forma ===');
 // Se ejercita confirmAddCat de verdad y no por regex: lo que importa no es cómo
