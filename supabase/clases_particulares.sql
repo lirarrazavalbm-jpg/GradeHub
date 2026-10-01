@@ -775,7 +775,7 @@ begin
     select 1 from public.tutor_anuncios
     where id = p_anuncio_id and autor_id = auth.uid()
   ) then
-    raise exception 'no puedes ver las métricas de este anuncio';
+    perform admin.exigir_administrador();
   end if;
 
   return query
@@ -808,7 +808,7 @@ begin
     select 1 from public.tutor_anuncios
     where id = p_anuncio_id and autor_id = auth.uid()
   ) then
-    raise exception 'no puedes ver las métricas de este anuncio';
+    perform admin.exigir_administrador();
   end if;
 
   return query
@@ -1007,7 +1007,7 @@ begin
     select 1 from public.tutor_anuncios
     where id = p_anuncio_id and autor_id = auth.uid()
   ) then
-    raise exception 'no puedes ver el alcance de este anuncio';
+    perform admin.exigir_administrador();
   end if;
 
   return (select count(*)::integer from public.anuncio_alcance where anuncio_id = p_anuncio_id
@@ -1031,7 +1031,7 @@ begin
     select 1 from public.tutor_anuncios
     where id = p_anuncio_id and autor_id = auth.uid()
   ) then
-    raise exception 'no puedes ver el alcance de este anuncio';
+    perform admin.exigir_administrador();
   end if;
 
   return query
@@ -1386,7 +1386,7 @@ begin
     raise exception 'hay que haber iniciado sesión';
   end if;
   if not exists (select 1 from public.tutor_anuncios where id = p_anuncio_id and autor_id = auth.uid()) then
-    raise exception 'no puedes ver esta campaña';
+    perform admin.exigir_administrador();
   end if;
   select * into k from public.costo_campana(p_anuncio_id);
   dias := k.dias; inicio := k.inicio; tope_clp := k.tope_clp; dias_cobrados := k.dias_cobrados;

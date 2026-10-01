@@ -21,7 +21,8 @@ for(const f of ['es_administrador','cuenta_para_campana','registrar_metrica_anun
   const db=new PGlite();const q=async(t,p=[])=>(await db.query(t,p)).rows;
   const sesion=id=>db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);
   await db.exec(leer('bin/supabase-stubs.sql'));
-  await db.exec(`create function auth.jwt() returns jsonb language sql stable as $$ select '{"aal":"aal2"}'::jsonb $$;
+  await db.exec(`create function auth.jwt() returns jsonb language sql stable as $$
+    select jsonb_build_object('aal',coalesce(nullif(current_setting('request.jwt.claim.aal',true),''),'aal2')) $$;
     create table public.user_ramos(user_id uuid);`);
   for(const f of ['supabase/clases_particulares.sql','supabase/admin_clases.sql','supabase/administradores.sql','supabase/admin_no_cuenta.sql'])await db.exec(leer(f));
   await db.query('insert into auth.users(id) values($1),($2),($3),($4),($5)',[prof,alumno,admin,otro,sinRamos]);
@@ -69,6 +70,27 @@ for(const f of ['es_administrador','cuenta_para_campana','registrar_metrica_anun
   check('la campaña llegó al tope',(await q('select campana_visible($1) as visible',[aviso]))[0].visible===false);
   check('agotada no suma eventos',(await q('select registrar_metrica_anuncio($1,$2,$3) as ok',[aviso,'contacto','TEST100']))[0].ok===false);
   check('agotada tampoco suma cobro',(await q('select registrar_alcance_anuncio($1,$2) as ok',[aviso,'lista']))[0].ok===false);
+
+  const lecturas=['campana_anuncio','alcance_anuncio','alcance_anuncio_por_canal','resumen_metricas_anuncio','totales_metricas_anuncio'];
+  await db.exec('set role authenticated');
+  await sesion(admin);
+  for(const nombre of lecturas)
+    check(`admin con segundo factor puede leer ${nombre}`,Array.isArray(await q(`select * from ${nombre}($1)`,[aviso])));
+  check('admin ve las mismas dos vistas cobrables del profesor',(await q('select vistas from campana_anuncio($1)',[aviso]))[0].vistas===2&&
+    (await q('select alcance_anuncio($1) as n',[aviso]))[0].n===2);
+  check('el desglose respeta el mismo corte de privacidad del profesor',(await q('select * from totales_metricas_anuncio($1)',[aviso])).length===0);
+  await db.query("select set_config('request.jwt.claim.aal','aal1',false)");
+  for(const nombre of lecturas){
+    await assert.rejects(()=>q(`select * from ${nombre}($1)`,[aviso]),/sin acceso/);
+    check(`admin sin segundo factor no puede leer ${nombre}`,true);
+  }
+  await sesion(prof);
+  check('el dueño sigue leyendo sus estadísticas sin segundo factor',Array.isArray(await q('select * from totales_metricas_anuncio($1)',[aviso])));
+  await db.query("select set_config('request.jwt.claim.aal','aal2',false)");
+  await sesion(otro);
+  await assert.rejects(()=>q('select * from totales_metricas_anuncio($1)',[aviso]),/sin acceso/);
+  check('otro estudiante no puede leer estadísticas ajenas',true);
+  await db.exec('reset role');
 
   console.log(`Admin no cuenta: ${n} comprobaciones OK`);
 })().catch(e=>{console.error(e);process.exit(1);});

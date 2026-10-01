@@ -282,8 +282,8 @@ vm.runInContext(`
   chk('nadie lee la tabla: ni select para authenticated',
     /revoke all on public\.anuncio_alcance from public, anon, authenticated;/.test(sql)&&
     !/grant [a-z ]*on public\.anuncio_alcance/i.test(sql));
-  chk('el total sale solo por RPC y solo para el autor del aviso',
-    /create or replace function public\.alcance_anuncio[\s\S]*?autor_id = auth\.uid\(\)[\s\S]*?raise exception 'no puedes ver el alcance/.test(sql)&&
+  chk('el total sale solo por RPC para el autor o un administrador verificado',
+    /create or replace function public\.alcance_anuncio[\s\S]*?autor_id = auth\.uid\(\)[\s\S]*?perform admin\.exigir_administrador\(\)/.test(sql)&&
     /grant execute on function public\.alcance_anuncio\(uuid\) to authenticated/.test(sql));
   chk('un aviso que no está publicado o ya venció no suma alcance',
     /registrar_alcance_anuncio[\s\S]*?estado = 'publicado'[\s\S]*?vence_at is null or vence_at > now\(\)[\s\S]*?anuncio no disponible/.test(sql));

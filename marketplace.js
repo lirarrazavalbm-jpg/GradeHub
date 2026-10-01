@@ -1675,6 +1675,18 @@ function graficosClase(d,pesos,ahora){
     embudoClase(d.totales);
 }
 
+function prepararMetricasClase(a,m){
+  const totales=m.agregados?m.agregados.total:totalesDeCortes(m.cortes);
+  return {a,alcance:m.alcance,porCanal:m.porCanal,totales,agregados:m.agregados,campana:m.campana,
+    error:m.error||a.campanaError,hayCortes:Object.values(totales).some(n=>n>0),costo:costoCampanaClase(m.campana)};
+}
+function detalleMetricasClaseHTML(d,pesos,ahora){
+  return presupuestoProfesorHTML(d.costo)+(d.costo&&d.costo.agotada?'<p class="clase-aviso-tope">Llegó a tu tope: dejó de mostrarse y no suma más costo.</p>':'')+
+    cifrasClase(d,pesos)+'<details class="profesor-hig-estadisticas"><summary>Más estadísticas</summary>'+graficosClase(d,pesos,ahora)+'</details>'+
+    (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró por día aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
+    (d.costo?`<p class="clase-sin-datos">${esc(lineaCostoCampanaClase(d.costo))}.</p>`:'');
+}
+
 function tarjetaPanelClase(a,pesos,ahora){
   const vig=vigenciaAnuncio(a,ahora);
   const [etiqueta,detalle]=ESTADOS_ANUNCIO[vig]||[vig,''];
@@ -1795,9 +1807,7 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
   // dice y las otras siguen andando.
   const medidas=await Promise.all(conNumeros.map(async a=>{
     const m=await metricasDeAnuncio(a);
-    const totales=m.agregados?m.agregados.total:totalesDeCortes(m.cortes);
-    return {a,alcance:m.alcance,porCanal:m.porCanal,totales,agregados:m.agregados,campana:m.campana,error:m.error||a.campanaError,
-      hayCortes:Object.values(totales).some(n=>n>0),costo:costoCampanaClase(m.campana)};
+    return prepararMetricasClase(a,m);
   }));
   for(const d of medidas){
     const caja=raiz.querySelector(`[data-metricas="${d.a.id}"]`);
@@ -1805,10 +1815,7 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
     const importe=raiz.querySelector(`[data-costo-campana="${d.a.id}"]`);
     if(importe)importe.textContent=d.costo?pesos(d.costo.total):'No disponible';
     if(d.error){caja.innerHTML='<p class="clase-sin-datos" role="alert">No pudimos cargar todas las estadísticas. Vuelve a abrir tu espacio para intentarlo de nuevo.</p>';continue;}
-    caja.innerHTML=presupuestoProfesorHTML(d.costo)+(d.costo&&d.costo.agotada?'<p class="clase-aviso-tope">Llegó a tu tope: dejó de mostrarse y no suma más costo.</p>':'')+
-      cifrasClase(d,pesos)+'<details class="profesor-hig-estadisticas"><summary>Más estadísticas</summary>'+graficosClase(d,pesos,ahora)+'</details>'+
-      (d.hayCortes?'':'<p class="clase-sin-datos">Las veces que se mostró por día aparecen cuando hay suficientes datos para que nadie quede identificado.</p>')+
-      (d.costo?`<p class="clase-sin-datos">${esc(lineaCostoCampanaClase(d.costo))}.</p>`:'');
+    caja.innerHTML=detalleMetricasClaseHTML(d,pesos,ahora);
   }
 
   // El resumen suma solo las clases activas: es "cómo me va ahora". Suma lo que
@@ -2733,9 +2740,11 @@ function filaAdminAnuncio(a,ahora=Date.now()){
     ${costo?`<p class="admin-anuncio-costo"><b>${pesosClase(costo.total)}</b>${costo.tope!==null?` de ${pesosClase(costo.tope)}`:' · sin tope'}</p>
       <p class="clase-sin-datos">${esc(lineaCostoCampanaClase(costo))}</p>`:''}
     <div class="admin-anuncio-acciones">
+      <button type="button" class="clase-accion" data-admin-estadisticas="${esc(a.id)}" aria-controls="admin-estadisticas-${esc(a.id)}" aria-expanded="false">Ver estadísticas</button>
       ${publicado?editorCobroAdmin(a.id,a.publicado_at,cobro,monto):''}
       ${vig==='publicado'||vig==='programado'?`<button type="button" class="clase-accion" data-admin-pausar="${esc(a.id)}">Pausar aviso</button>`:''}
     </div>
+    <div class="admin-anuncio-estadisticas" id="admin-estadisticas-${esc(a.id)}" data-admin-estadisticas-panel="${esc(a.id)}" hidden></div>
     ${anteriores.length?`<details><summary>Cobros anteriores (${anteriores.length})</summary>${anteriores.map(c=>
       `<div><p class="clase-card-meta">Publicación del ${esc(new Date(c.publicado_at).toLocaleString('es-CL'))} · ${c.estado==='deuda'?'En deuda':'Cobrado'} · ${pesosClase(c.monto_clp)}</p>${editorCobroAdmin(a.id,c.publicado_at,c.estado,c.monto_clp)}</div>`).join('')}</details>`:''}
   </article>`;
@@ -2842,6 +2851,37 @@ async function pintarPanelAdmin(raiz){
   }));
   filtrar();
   const repintar=()=>pintarPanelAdmin(raiz);
+  const anunciosPorId=new Map(profesores.flatMap(p=>p.anuncios||[]).map(a=>[a.id,a]));
+  raiz.querySelectorAll('[data-admin-estadisticas]').forEach(b=>b.addEventListener('click',async()=>{
+    const a=anunciosPorId.get(b.dataset.adminEstadisticas);
+    const caja=raiz.querySelector('#admin-estadisticas-'+b.dataset.adminEstadisticas);
+    if(!a||!caja||b.disabled)return;
+    if(!caja.hidden&&b.dataset.estadisticasEstado==='lista'){
+      caja.hidden=true;b.textContent='Ver estadísticas';b.setAttribute('aria-expanded','false');return;
+    }
+    caja.hidden=false;b.setAttribute('aria-expanded','true');
+    const vig=vigenciaAnuncio(a,ahora);
+    if(!ANUNCIO_YA_SE_MOSTRO.has(a.estado)||vig==='programado'){
+      caja.innerHTML=`<p class="clase-sin-datos">${vig==='programado'?'Todavía no empieza, así que no hay nada que medir ni cobrar.':a.estado==='en_revision'?'Cuando se apruebe y empiece a mostrarse, sus estadísticas aparecerán acá.':'Todavía no se publica, así que no hay estadísticas.'}</p>`;
+      b.dataset.estadisticasEstado='lista';b.textContent='Ocultar estadísticas';return;
+    }
+    b.disabled=true;caja.innerHTML='<p class="clase-sin-datos" role="status">Cargando estadísticas…</p>';
+    try{
+      // El panel puede llevar rato abierto: vuelve a leer el costo de la
+      // campaña junto con sus métricas, en vez de reutilizar el resumen viejo.
+      const m=await metricasDeAnuncio({...a,campana:null});
+      if(caja.isConnected===false)return;
+      if(m.error)throw Error('No pudimos cargar las estadísticas. Revisa tu conexión e intenta de nuevo.');
+      const d=prepararMetricasClase(a,m);
+      const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
+      caja.innerHTML='<h4>Estadísticas del aviso</h4>'+detalleMetricasClaseHTML(d,pesos,ahora)+
+        '<p class="clase-privacidad">Solo totales por anuncio. Nunca nombres ni notas de estudiantes.</p>';
+      b.dataset.estadisticasEstado='lista';b.textContent='Ocultar estadísticas';
+    }catch(e){
+      if(caja.isConnected!==false)caja.innerHTML='<p class="clase-sin-datos" role="alert">No pudimos cargar las estadísticas. Revisa tu conexión e intenta de nuevo.</p>';
+      b.dataset.estadisticasEstado='error';b.textContent='Reintentar estadísticas';
+    }finally{if(b.isConnected!==false)b.disabled=false;}
+  }));
   const llamar=async(fn,args,ok)=>{
     try{
       const {data,error}=await supabaseClient.rpc(fn,args);

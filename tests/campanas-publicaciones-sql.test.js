@@ -129,7 +129,7 @@ try{
   await sesion(alumno);
   await db.exec('set role authenticated');
   await assert.rejects(db.query('select admin_panel_clases()'),/sin acceso/);
-  await assert.rejects(db.query('select campana_anuncio($1)',[aviso]),/no puedes/);
+  await assert.rejects(db.query('select campana_anuncio($1)',[aviso]),/sin acceso/);
   await assert.rejects(db.query('select * from anuncio_interacciones'),/permission denied/);
   await assert.rejects(db.query('select * from tutor_suspensiones'),/permission denied/);
   check('un alumno no lee admin, métricas ajenas ni tablas privadas',true);

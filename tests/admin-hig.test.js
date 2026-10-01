@@ -28,12 +28,33 @@ const ctx={console,Intl,S:{get ramos(){throw Error('No leer notas');}},profesore
  esc:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])),
  document:{getElementById:()=>root},renderPuertaDosPasos:async(_r,{alPasar})=>{if(pasar)await alPasar();},
  showToast:(text,error)=>toasts.push({text,error}),showConfirm:(_t,_d,fn)=>{confirmacion=fn();},
- supabaseClient:{rpc:async(n,p)=>{calls.push({n,p});if(modo==='throw')throw Error('red caída');if(modo==='denegado')return {error:{code:'42501',message:'sin acceso'}};return {data:n==='admin_panel_clases'?profesores:modo==='false'?false:true,error:null};}}};
+ supabaseClient:{rpc:async(n,p)=>{calls.push({n,p});if(modo==='throw')throw Error('red caída');if(modo==='denegado')return {error:{code:'42501',message:'sin acceso'}};
+  const datos={admin_panel_clases:profesores,campana_anuncio:[anuncio.campana],alcance_anuncio:3,alcance_anuncio_por_canal:[{canal:'lista',cuentas:3}],
+   resumen_metricas_anuncio:[{dia:'2026-09-01',tipo:'impresion',ramo_sigla:'MAT1620',eventos:18}],
+   totales_metricas_anuncio:[{vista:'total',clave:'',tipo:'impresion',eventos:18}]};
+  return {data:modo==='false'?false:n in datos?datos[n]:true,error:null};}}};
 vm.createContext(ctx);const run=s=>vm.runInContext(s,ctx);run(fs.readFileSync(path.join(__dirname,'../marketplace.js'),'utf8'));
 (async()=>{
  await run('renderAdmin()');assert.equal(calls.length,0,'Sin MFA no pide el panel');
  pasar=true;await run('renderAdmin()');assert.match(root.innerHTML,/admin-hig-fila/);assert.match(root.innerHTML,/Clase &lt;sintética&gt;/);
  assert.doesNotMatch(root.innerHTML,/piloto|lo que costaría|data-aprobar|bin\//);
+ assert.equal(root.querySelectorAll('[data-admin-estadisticas]').length,3);
+ const ver=root.querySelectorAll('[data-admin-estadisticas]').find(b=>b.dataset.adminEstadisticas==='a1');
+ const panel=root.querySelector('#admin-estadisticas-a1');
+ const antes=calls.length;await ver.listeners.click();
+ assert.equal(panel.hidden,false);assert.equal(ver.attrs['aria-expanded'],'true');
+ for(const texto of ['Estadísticas del aviso','Presupuesto utilizado','Se mostró','La abrieron','Te contactaron','Más estadísticas','Cómo llegaron'])
+  assert(panel.innerHTML.includes(texto),`Falta ${texto} en las estadísticas del admin`);
+ assert.match(panel.innerHTML,/Solo totales por anuncio/);
+ assert.deepEqual(calls.slice(antes).map(c=>c.n),['campana_anuncio','alcance_anuncio_por_canal','resumen_metricas_anuncio','totales_metricas_anuncio']);
+ assert(calls.slice(antes).every(c=>c.p.p_anuncio_id==='a1'));
+ await ver.listeners.click();assert.equal(panel.hidden,true);
+ modo='throw';await ver.listeners.click();assert.match(panel.innerHTML,/No pudimos cargar las estadísticas/);assert.equal(ver.textContent,'Reintentar estadísticas');
+ modo='ok';await ver.listeners.click();assert.match(panel.innerHTML,/Presupuesto utilizado/);
+ const pausado=root.querySelectorAll('[data-admin-estadisticas]').find(b=>b.dataset.adminEstadisticas==='a2');
+ await pausado.listeners.click();assert.match(root.querySelector('#admin-estadisticas-a2').innerHTML,/Se mostró/);
+ const borrador=root.querySelectorAll('[data-admin-estadisticas]').find(b=>b.dataset.adminEstadisticas==='a3');
+ const sinNumeros=calls.length;await borrador.listeners.click();assert.equal(calls.length,sinNumeros);assert.match(root.querySelector('#admin-estadisticas-a3').innerHTML,/sus estadísticas aparecerán acá/);
  assert.equal(run("filtrarAdminHig(filasAdminHig(profesores),{seccion:'revision'}).length"),1);
  assert.equal(run("filtrarAdminHig(filasAdminHig(profesores),{estado:'pausado',busqueda:'sintetico'}).length"),1);
  assert.equal(run("filtrarAdminHig(filasAdminHig([{...profesores[0],estado:'suspendido'}]),{estado:'publicado'}).length"),0);
