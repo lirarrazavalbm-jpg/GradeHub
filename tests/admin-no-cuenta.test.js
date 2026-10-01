@@ -6,6 +6,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {PGlite}=require('@electric-sql/pglite');
 const raiz=path.join(__dirname,'..'),leer=f=>fs.readFileSync(path.join(raiz,f),'utf8');
 const prof='00000000-0000-0000-0000-000000000011',alumno='00000000-0000-0000-0000-000000000012',admin='00000000-0000-0000-0000-000000000013';
+const otro='00000000-0000-0000-0000-000000000015',sinRamos='00000000-0000-0000-0000-000000000016';
 const aviso='00000000-0000-0000-0000-000000000014';
 let n=0;const check=(nombre,c)=>{assert.ok(c,nombre);n++;console.log('OK '+nombre);};
 
@@ -23,10 +24,10 @@ for(const f of ['es_administrador','cuenta_para_campana','registrar_metrica_anun
   await db.exec(`create function auth.jwt() returns jsonb language sql stable as $$ select '{"aal":"aal2"}'::jsonb $$;
     create table public.user_ramos(user_id uuid);`);
   for(const f of ['supabase/clases_particulares.sql','supabase/admin_clases.sql','supabase/administradores.sql','supabase/admin_no_cuenta.sql'])await db.exec(leer(f));
-  await db.query('insert into auth.users(id) values($1),($2),($3)',[prof,alumno,admin]);
+  await db.query('insert into auth.users(id) values($1),($2),($3),($4),($5)',[prof,alumno,admin,otro,sinRamos]);
   await db.query('insert into admin.administradores(user_id) values($1)',[admin]);
   // El admin TIENE ramos: lo único que lo deja fuera es ser administrador.
-  await db.query('insert into user_ramos values($1),($2)',[alumno,admin]);
+  await db.query('insert into user_ramos values($1),($2),($3)',[alumno,admin,otro]);
   await db.query(`insert into tutor_perfiles(user_id,nombre_publico,presentacion,estado,revisado_at)
     values($1,'Profesor sintético','Experiencia ficticia para probar comportamiento','aprobado',now())`,[prof]);
   await db.query(`insert into tutor_anuncios(id,autor_id,tenant,ramos_siglas,modalidad,ubicacion,precio_clp,descripcion,contacto_tipo,contacto_valor,titulo)
@@ -53,6 +54,21 @@ for(const f of ['es_administrador','cuenta_para_campana','registrar_metrica_anun
   check('un estudiante sigue contando igual',b.vista&&b.apertura&&b.contacto&&b.metrica);
   c=(await q('select * from costo_campana($1)',[aviso]))[0];
   check('una vista, una apertura y un contacto',c.vistas===1&&c.aperturas===1&&c.contactos===1);
+
+  await sesion(prof);
+  check('el profesor no suma eventos de su propio anuncio',!(await q('select registrar_metrica_anuncio($1,$2,$3) as ok',[aviso,'impresion','TEST100']))[0].ok);
+  await sesion(sinRamos);
+  check('una cuenta sin ramos no suma eventos',!(await q('select registrar_metrica_anuncio($1,$2,$3) as ok',[aviso,'impresion','TEST100']))[0].ok);
+  await sesion(alumno);
+  check('la primera impresión entra al gráfico',(await q('select registrar_metrica_anuncio($1,$2,$3) as ok',[aviso,'impresion','TEST100']))[0].ok);
+  await sesion(otro);
+  check('un segundo estudiante simultáneo también entra al gráfico',(await q('select registrar_metrica_anuncio($1,$2,$3) as ok',[aviso,'impresion','TEST100']))[0].ok);
+  check('el gráfico conserva ambas impresiones',(await q("select eventos from anuncio_metricas where anuncio_id=$1 and tipo='impresion'",[aviso]))[0].eventos===2);
+  check('su vista cobrable entra por la misma elegibilidad',(await q('select registrar_alcance_anuncio($1,$2) as ok',[aviso,'lista']))[0].ok);
+  await db.query('update anuncio_campanas set tope_clp=1000 where anuncio_id=$1',[aviso]);
+  check('la campaña llegó al tope',(await q('select campana_visible($1) as visible',[aviso]))[0].visible===false);
+  check('agotada no suma eventos',(await q('select registrar_metrica_anuncio($1,$2,$3) as ok',[aviso,'contacto','TEST100']))[0].ok===false);
+  check('agotada tampoco suma cobro',(await q('select registrar_alcance_anuncio($1,$2) as ok',[aviso,'lista']))[0].ok===false);
 
   console.log(`Admin no cuenta: ${n} comprobaciones OK`);
 })().catch(e=>{console.error(e);process.exit(1);});

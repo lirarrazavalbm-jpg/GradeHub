@@ -75,6 +75,20 @@ run("logosDeAnuncios=async()=>new Map(); cargarAnunciosClasesOriginal=cargarAnun
  assert.equal(results.querySelectorAll('[data-catalogo-anuncio]').length,1);
  assert.equal(root.querySelector('#catalogo-desde').disabled,true);
  root.querySelector('#catalogo-limpiar').listeners.click();assert.equal(results.querySelectorAll('[data-catalogo-anuncio]').length,3);
+ // Si la RPC cobrable falla después de un segundo visible, la misma tarjeta
+ // reintenta mientras siga en pantalla; el evento anónimo no se duplica.
+ let fallaAlcance=true;
+ ctx.currentUser={id:'estudiante-reintento'};
+ ctx.supabaseClient.rpc=async(n,p)=>{calls.push({n,p});if(n==='registrar_alcance_anuncio'&&fallaAlcance){fallaAlcance=false;return {data:null,error:{message:'sin red'}};}return {data:true,error:null};};
+ await run('openCatalogoClases()');
+ const reintento=observers.at(-1),visible=reintento.nodes.find(n=>n.dataset.catalogoAnuncio==='pagado');
+ const inicio=calls.length;
+ reintento.cb([{target:visible,isIntersecting:true,intersectionRatio:.5}]);
+ for(const[id,t]of [...timers]){timers.delete(id);await t.f();}
+ assert([...timers.values()].some(t=>t.ms===5000));
+ for(const[id,t]of [...timers]){timers.delete(id);await t.f();}
+ assert.equal(calls.slice(inicio).filter(c=>c.n==='registrar_alcance_anuncio').length,2);
+ assert.equal(calls.slice(inicio).filter(c=>c.n==='registrar_metrica_anuncio'&&c.p.p_tipo==='impresion').length,1);
  run("cargarAnunciosClases=async()=>{throw Error('sin red')}");await run('openCatalogoClases()');
  assert.match(root.querySelector('#catalogo-clases-estado').textContent,/No pudimos cargar/);
  assert(root.querySelector('.catalogo-reintentar'));

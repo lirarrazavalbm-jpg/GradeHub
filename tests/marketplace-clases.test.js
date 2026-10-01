@@ -261,8 +261,9 @@ vm.runInContext(`
     /if auth\.uid\(\) is null/.test(rpc)&&
     /insert into public\.anuncio_metricas \(anuncio_id, dia, tipo, tenant, ramo_sigla, eventos, publicacion, vence_publicacion\)/.test(rpc)&&
     !/user_id|viewer|device/i.test(rpc.replace(/--[^\n]*/g,'')));
-  chk('la frecuencia se limita en el servidor sin guardar una identidad',
-    /updated_at <= now\(\) - interval '10 seconds'/.test(rpc));
+  chk('el gráfico admite a dos estudiantes simultáneos y aplica elegibilidad de cobro',
+    /cuenta_para_campana\(p_anuncio_id, auth\.uid\(\)\)/.test(rpc)&&
+    !/updated_at <= now\(\) - interval '10 seconds'/.test(rpc));
   chk('el corte de catorce eventos no se devuelve y el de quince sí',
     /m\.eventos >= 15\b/.test(sql)&&!/m\.eventos >= (?!15\b)\d/.test(sql));
   chk('el corte se aplica dentro de la RPC de lectura, no en la vista',
@@ -294,7 +295,7 @@ vm.runInContext(`
     /rpc\('registrar_alcance_anuncio',\{p_anuncio_id:anuncioId,p_canal:canal\}\)/.test(src)&&
     /rpc\('alcance_anuncio',\{p_anuncio_id:anuncioId\}\)/.test(src));
   chk('si la llamada falla se puede reintentar, y un alcance desconocido no es cero',
-    /ALCANCE_REGISTRADO\.delete\(clave\)/.test(src)&&
+    /catch\(error\)\{[\s\S]*?return null;[\s\S]*?ALCANCE_EN_CURSO\.delete\(clave\)/.test(src)&&
     /async function alcanceAnuncio\([\s\S]*?return null;[\s\S]*?Number\.isInteger\(data\)\?data:null/.test(src));
 
   ctx.mediciones=[];

@@ -736,6 +736,11 @@ begin
   if not found then
     raise exception 'anuncio no disponible';
   end if;
+  -- Los eventos de los gráficos siguen la misma elegibilidad que el cobro:
+  -- ni el profesor, ni cuentas sin ramos, ni campañas fuera de vigencia/tope.
+  if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
+    return false;
+  end if;
   if not (sigla = any(anuncio.ramos_siglas)) then
     raise exception 'la sigla no corresponde al anuncio';
   end if;
@@ -746,8 +751,7 @@ begin
   values (anuncio.id, current_date, p_tipo, anuncio.tenant, sigla, 1, anuncio.medicion_desde, anuncio.vence_at)
   on conflict (anuncio_id, dia, tipo, tenant, ramo_sigla, publicacion) do update
     set eventos = public.anuncio_metricas.eventos + 1,
-        updated_at = now()
-    where public.anuncio_metricas.updated_at <= now() - interval '10 seconds';
+        updated_at = now();
 
   get diagnostics filas_escritas = row_count;
   return filas_escritas = 1;

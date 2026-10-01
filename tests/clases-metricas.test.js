@@ -36,9 +36,9 @@ const anuncio=(extra)=>Object.assign({id:'a1',titulo:'Clases de Cálculo II',est
 function montar({alcance=null,cortes=[],porCanal=null,totales=null,campana=null}={}){
   ctx.__alcance=alcance;ctx.__cortes=cortes;ctx.__porCanal=porCanal;ctx.__totales=totales;ctx.__campana=campana;
   run(`supabaseClient={rpc:(n)=>Promise.resolve(
-    n==='campana_anuncio'?(__campana?{data:[__campana],error:null}:{data:null,error:{message:'no existe'}})
-    :n==='alcance_anuncio_por_canal'?(__porCanal?{data:__porCanal,error:null}:{data:null,error:{message:'no existe'}})
-    :n==='totales_metricas_anuncio'?(__totales?{data:__totales,error:null}:{data:null,error:{message:'no existe'}})
+    n==='campana_anuncio'?(__campana?{data:[__campana],error:null}:{data:null,error:{code:'42883',message:'no existe'}})
+    :n==='alcance_anuncio_por_canal'?(__porCanal?{data:__porCanal,error:null}:{data:null,error:{code:'42883',message:'no existe'}})
+    :n==='totales_metricas_anuncio'?(__totales?{data:__totales,error:null}:{data:null,error:{code:'42883',message:'no existe'}})
     :n==='alcance_anuncio'?{data:__alcance,error:null}:{data:__cortes,error:null})};`);
 }
 const pintar=async(anuncios,datos)=>{
@@ -59,8 +59,12 @@ const pintar=async(anuncios,datos)=>{
   chk('con cada concepto escrito',/120 personas te vieron \(\$1\.200\)/.test(html)&&/4 te contactaron \(\$4\.000\)/.test(html)&&/6 días publicada \(\$600\)/.test(html));
   // Desde el 2026-09-30 hay anuncios pagados: decir "en el piloto no se cobra"
   // a quien ya pagó sería falso. Lo que sí vale siempre es el tope.
-  chk('dice que nunca pasa del tope',/nunca pasa de tu tope/.test(html));
+  chk('dice que cada campaña nunca pasa de su tope',/cada campaña nunca pasa de su tope/.test(html));
   chk('y ya no promete que es gratis',!/piloto|no se cobra/.test(html));
+
+  html=await pintar([anuncio({id:'a1'}),anuncio({id:'a2'})],{alcance:18,campana});
+  chk('el resumen de dos anuncios rotula el alcance por anuncio, no como personas únicas',
+    /personas por anuncio/.test(html)&&/una misma cuenta puede aparecer en más de uno/.test(html));
 
   html=await pintar([anuncio()],{alcance:18,campana:{...campana,vistas:900,dias_cobrados:10,contactos:9}});
   chk('al llegar al tope lo dice y no pasa del tope',/Llegó a tu tope/.test(html)&&/\$10\.000/.test(html)&&!/Va costando<\/span><b>\$15/.test(html));
