@@ -254,6 +254,15 @@ $$;
 alter table public.tutor_anuncios add column if not exists linea_datos text[]
   check (public.linea_datos_clase_valida(linea_datos));
 
+-- Pack de clases y descuento por venir de GradeHub. Mismas columnas que
+-- clases_pack_descuento.sql, que sigue sirviendo como delta: con `if not
+-- exists`, aplicar cualquiera de los dos en cualquier orden deja lo mismo.
+-- `precio_clp` sigue siendo por clase; `pack_clases` solo dice cuántas trae.
+alter table public.tutor_anuncios add column if not exists pack_clases integer
+  check (pack_clases is null or pack_clases between 2 and 20);
+alter table public.tutor_anuncios add column if not exists descuento_gradehub_pct integer
+  check (descuento_gradehub_pct is null or descuento_gradehub_pct between 1 and 50);
+
 -- CLASES GRATIS. Pedido de Lucas del 2026-09-25: $0 es una clase gratis y se
 -- muestra como "Gratis". Relaja la restricción; toda fila existente sigue
 -- siendo válida. Si en producción la restricción tiene otro nombre, el drop no
@@ -334,6 +343,13 @@ grant update (modalidad_otra, ubicacion_otra, detalles) on public.tutor_anuncios
 grant select (linea_datos) on public.tutor_anuncios to anon, authenticated;
 grant insert (linea_datos) on public.tutor_anuncios to authenticated;
 grant update (linea_datos) on public.tutor_anuncios to authenticated;
+-- Pack y descuento. Van acá porque el `revoke all` de arriba los borraba al
+-- reaplicar este archivo, y un pack publicado dejaba de mostrar su precio. El
+-- descuento lo fija GradeHub con admin.descuento_anuncio() (definida en
+-- clases_pack_descuento.sql): el cliente lo lee pero no lo escribe.
+grant select (pack_clases, descuento_gradehub_pct) on public.tutor_anuncios to anon, authenticated;
+grant insert (pack_clases) on public.tutor_anuncios to authenticated;
+grant update (pack_clases) on public.tutor_anuncios to authenticated;
 -- El formulario manda la universidad también al editar un borrador. Sin este
 -- grant, TODA edición de un borrador ya guardado fallaba con "permission
 -- denied": Postgres rechaza el UPDATE entero por una sola columna. Encontrado
