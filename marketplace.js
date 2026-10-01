@@ -1424,6 +1424,7 @@ const ESTADOS_ANUNCIO={
   expirado:['Terminado','La campaña llegó a su fin.'],
   agotado:['Tope alcanzado','Dejó de mostrarse al llegar a tu tope.'],
   sin_confirmar:['Sin confirmar','No pudimos consultar el estado de la campaña. Vuelve a abrir tu espacio.'],
+  eliminado:['Borrado','Se retiró de la revisión. Sus cobros anteriores siguen disponibles en administración.'],
 };
 
 // Lo que se cobra son PERSONAS DISTINTAS alcanzadas, así que ese es el número
@@ -1757,6 +1758,7 @@ function tarjetaPanelClase(a,pesos,ahora){
       <span class="clase-estado clase-estado-${esc(vig)}">${esc(etiqueta)}</span>
     </div>
     <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))}${esClaseGratis(a)?' · Gratis':a.precio_clp?' · '+(preciosClase(a).pack?precioClase(a):pesos(preciosClase(a).porClaseFinal)+' por clase'):''}</p>
+    ${a.estado==='borrador'&&a.comentario_revision?`<div class="clase-comentario-revision"><strong>Cambios pedidos en la revisión</strong><p>${esc(a.comentario_revision)}</p></div>`:''}
     ${dias!==null?`<div class="clase-vigencia"><span>${dias===0?'Termina hoy':dias===1?'Queda 1 día':`Quedan ${dias} días`}</span>${avance!==null?`<div class="clase-riel"><i style="transform:scaleX(${avance.toFixed(3)})"></i></div>`:''}</div>`
       :`<p class="clase-card-detalle">${esc(empieza?`Empieza el ${empieza}.`:detalle)}</p>`}
     <div class="clase-numeros" data-metricas="${esc(a.id)}"></div>
@@ -1800,6 +1802,16 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
       return {...a,campana:Array.isArray(data)?data[0]||null:null};
     }catch(e){return {...a,campanaError:true};}
   }));
+  if(anuncios.some(a=>a.estado==='borrador')){
+    try{
+      const {data,error}=await supabaseClient.rpc('comentarios_devolucion_profesor');
+      if(error)throw error;
+      const comentarios=new Map((Array.isArray(data)?data:[]).map(f=>[f.anuncio_id,f.comentario]));
+      anuncios=anuncios.map(a=>a.estado==='borrador'?{...a,comentario_revision:comentarios.get(a.id)||null}:a);
+    }catch(e){
+      anuncios=anuncios.map(a=>a.estado==='borrador'?{...a,comentario_revision_error:true}:a);
+    }
+  }
   const ahora=Date.now(),g=gruposPanelClases(anuncios,ahora);
   const conNumeros=[...g.activos,...g.cerrados,...g.sinConfirmar];
   raiz.innerHTML='<div class="profesor-hig">'+
@@ -1813,6 +1825,7 @@ async function renderPanelProfesor(raiz,anuncios,{cabecera,salida}){
     seccionPanelClases('Programadas',g.programados,pesos,ahora)+
     seccionPanelClases('En revisión',g.revision,pesos,ahora)+
     seccionPanelClases('Borradores',g.borradores,pesos,ahora)+
+    (g.borradores.some(a=>a.comentario_revision_error)?'<p class="clase-sin-datos" role="alert">No pudimos cargar los comentarios de revisión. Vuelve a abrir tu espacio para intentarlo de nuevo.</p>':'')+
     seccionPanelClases('Pausadas y terminadas',g.cerrados,pesos,ahora)+
     seccionPanelClases('Estado sin confirmar',g.sinConfirmar,pesos,ahora)+
     `<details class="clases-resumen profesor-hig-resumen"><summary id="clases-resumen-titulo">Resumen de tus clases activas</summary>
@@ -2089,6 +2102,7 @@ function renderBorradorProfesor(raiz,anuncio){
   const elegir=(opciones,actual)=>opciones.map(([clave,texto])=>`<option value="${clave}"${actual===clave?' selected':''}>${texto}</option>`).join('');
   raiz.innerHTML='<div class="profesor-hig profesor-hig-editor">'+cabeceraProfesorHTML(id?'Edita tu borrador.':'Prepara tu clase.',
     'Nada se publica al guardar. Completa tu clase, revisa el público y luego envíala a revisión.','',raiz.id==='modal-content'?'modal-titulo':'profesor-titulo')+`
+    ${anuncio&&anuncio.comentario_revision?`<div class="clase-comentario-revision"><strong>Cambios pedidos en la revisión</strong><p>${esc(anuncio.comentario_revision)}</p></div>`:''}
     <form class="profesor-form" id="profesor-borrador">
       <!-- Campos y vista previa van juntos para que la vista previa, sticky en
            computador, se detenga donde termina esta fila y no baje a los botones. -->
@@ -2780,6 +2794,33 @@ function editorCobroAdmin(anuncioId,publicadoAt,estado,monto){
     <input type="text" inputmode="numeric" data-cobro-monto aria-label="Monto" value="${esc(textoPesosEscrito(monto))}">
     <button type="button" class="clase-accion" data-cobro-guardar>Guardar</button></div>`;
 }
+function revisionAdminAnuncioHTML(a,profesor){
+  const c=a.configuracion_campana,listaCampana=c&&Number.isInteger(c.dias)&&Number.isInteger(c.tope_clp);
+  const criterios=a.criterios||{},detalles=detallesClase(a);
+  const dato=(nombre,valor)=>`<div><dt>${nombre}</dt><dd>${esc(valor||'No indicado')}</dd></div>`;
+  const contacto=[a.contacto_tipo,a.contacto_valor].filter(Boolean).join(' · ');
+  const inicio=c&&c.inicio?new Date(c.inicio+'T12:00:00').toLocaleDateString('es-CL'):'Al aprobar';
+  return `<section class="admin-revision" aria-label="Revisión de ${esc(a.titulo||'anuncio')}">
+    <h4>Revisa el anuncio completo</h4>
+    <p class="admin-revision-descripcion">${esc(a.descripcion||'Sin descripción')}</p>
+    <dl class="admin-revision-datos">
+      ${dato('Profesor',profesor&&profesor.nombre)}${dato('Universidad',a.tenant&&a.tenant.toUpperCase())}
+      ${dato('Ramos',(a.ramos_siglas||[]).join(' · '))}${dato('Precio',precioClase(a))}
+      ${dato('Formato',formatoClase(a))}${dato('Contacto',contacto)}
+      ${dato('Público',criterios.promedioMenorA!=null&&criterios.avanceMinimo!=null?`Promedio menor a ${Number(criterios.promedioMenorA).toLocaleString('es-CL')} · desde ${criterios.avanceMinimo}% evaluado`:'General')}
+      ${dato('Campaña',listaCampana?`${c.dias} días · parte ${inicio} · tope ${pesosClase(c.tope_clp)}`:'Sin días ni tope configurados')}
+      ${detalles.map(d=>dato(d.etiqueta,d.valor)).join('')}
+    </dl>
+    ${a.flyer_path?`<div class="admin-revision-flyer" data-admin-flyer="${esc(a.flyer_path)}" role="status">Cargando flyer…</div>`:''}
+    ${!listaCampana?'<p class="profesor-info" role="alert">Este anuncio heredado no tiene días ni tope. Configura la campaña antes de publicarlo desde el panel.</p>':''}
+    <div class="admin-revision-acciones">
+      <button type="button" class="btn-confirm" data-admin-publicar="${esc(a.id)}"${listaCampana?'':' disabled'}>Publicar anuncio</button>
+      <label>Comentario para el profesor<textarea data-admin-comentario="${esc(a.id)}" maxlength="1000" placeholder="Qué debe corregir antes de volver a enviarlo"></textarea></label>
+      <button type="button" class="clase-accion" data-admin-devolver="${esc(a.id)}">Devolver con comentario</button>
+      <button type="button" class="clase-accion admin-revision-borrar" data-admin-borrar="${esc(a.id)}">Borrar anuncio</button>
+    </div>
+  </section>`;
+}
 function filaAdminAnuncio(a,ahora=Date.now()){
   const costo=costoCampanaClase(a.campana),[estado,clase]=estadoAdminAnuncio(a,costo,ahora);
   const vig=vigenciaAnuncio(a,ahora),publicado=!!a.publicado_at;
@@ -2791,10 +2832,13 @@ function filaAdminAnuncio(a,ahora=Date.now()){
     <p class="clase-card-meta">${esc((a.ramos_siglas||[]).join(' · '))} · ${esc(precioClase(a))}${publicado?` · ${fecha(a.publicado_at)} → ${fecha(a.vence_at)}`:''}</p>
     ${costo?`<p class="admin-anuncio-costo"><b>${pesosClase(costo.total)}</b>${costo.tope!==null?` de ${pesosClase(costo.tope)}`:' · sin tope'}</p>
       <p class="clase-sin-datos">${esc(lineaCostoCampanaClase(costo))}</p>`:''}
+    ${vig==='expirado'?'<p class="admin-lista-cobro">Campaña terminada · lista para revisar y registrar el cobro.</p>':''}
+    ${vig==='eliminado'&&publicado?'<p class="admin-lista-cobro">Anuncio borrado de la revisión. Esta publicación anterior se conserva para el cobro.</p>':''}
     <div class="admin-anuncio-acciones">
       <button type="button" class="clase-accion" data-admin-estadisticas="${esc(a.id)}" aria-controls="admin-estadisticas-${esc(a.id)}" aria-expanded="false">Ver estadísticas</button>
       ${publicado?editorCobroAdmin(a.id,a.publicado_at,cobro,monto):''}
       ${vig==='publicado'||vig==='programado'?`<button type="button" class="clase-accion" data-admin-pausar="${esc(a.id)}">Pausar aviso</button>`:''}
+      ${vig==='pausado'&&publicado?`<button type="button" class="clase-accion" data-admin-terminar="${esc(a.id)}" data-publicado-at="${esc(a.publicado_at)}">Terminar campaña y dejar lista para cobro</button>`:''}
     </div>
     <div class="admin-anuncio-estadisticas" id="admin-estadisticas-${esc(a.id)}" data-admin-estadisticas-panel="${esc(a.id)}" hidden></div>
     ${anteriores.length?`<details><summary>Cobros anteriores (${anteriores.length})</summary>${anteriores.map(c=>
@@ -2841,7 +2885,8 @@ function filasAdminHig(profesores,ahora=Date.now()){
 }
 function filtrarAdminHig(filas,{seccion='campanas',busqueda='',estado=''}={}){
   const palabras=normalizarBusquedaClase(busqueda).split(' ').filter(Boolean);
-  return filas.filter(f=>(seccion!=='revision'||f.a.estado==='en_revision')&&
+  return filas.filter(f=>(seccion==='cobros'||f.a.estado!=='eliminado')&&
+    (seccion!=='revision'||f.a.estado==='en_revision')&&
     (seccion!=='cobros'||f.a.publicado_at||(f.a.cobros||[]).length||f.a.cobro)&&
     (!estado||f.estado[1]===estado)&&palabras.every(t=>normalizarBusquedaClase([f.p.nombre,f.a.titulo,...(f.a.ramos_siglas||[])].join(' ')).includes(t)));
 }
@@ -2850,7 +2895,7 @@ function filaAdminHigHTML({p,a,costo,estado},ahora){
     <span class="admin-hig-identidad"><b>${esc(a.titulo||'Sin título')}</b><small>${esc(p.nombre||'Sin nombre')} · ${esc((a.ramos_siglas||[]).join(' · '))}</small></span>
     <span class="clase-estado clase-estado-${esc(estado[1])}">${esc(estado[0])}</span>
     <span class="admin-hig-importe"><b>${costo?pesosClase(costo.total):'—'}</b><small>Costo de campaña</small></span><span aria-hidden="true">⌄</span>
-    </summary><div class="admin-hig-detalle">${a.estado==='en_revision'?'<p class="admin-hig-nota">Este anuncio espera revisión. El contenido completo y las decisiones de aprobar o devolver se revisan en SQL Editor.</p>':''}
+    </summary><div class="admin-hig-detalle">${a.estado==='en_revision'?revisionAdminAnuncioHTML(a,p):''}
     ${filaAdminAnuncio(a,ahora)}</div></details>`;
 }
 function personaAdminHigHTML(p){
@@ -2866,9 +2911,9 @@ function panelAdminHigHTML(profesores,ahora){
     ${kpi('Por revisar',r.revision,'Anuncios que esperan una decisión')}
     ${kpi('Deuda registrada',pesosClase(r.deuda),'Incluye publicaciones anteriores')}
     ${kpi('Cobrado',pesosClase(r.cobrado),'Historial de pagos registrados')}</div>
-    <p class="admin-hig-nota">Aprobar profesores y aprobar o devolver anuncios sigue en SQL Editor. Esta página permite consultar los datos disponibles, pausar avisos, gestionar profesores y registrar cobros. Cada acción queda registrada.</p>
+    <p class="admin-hig-nota">Revisa y decide los anuncios desde acá. Aprobar profesores y revisar logos sigue en SQL Editor. Cada acción queda registrada.</p>
     <nav class="admin-hig-pestanas" aria-label="Vistas de administración"><button type="button" data-admin-seccion="campanas" aria-pressed="true">Campañas</button><button type="button" data-admin-seccion="revision" aria-pressed="false">Por revisar · ${r.revision}</button><button type="button" data-admin-seccion="cobros" aria-pressed="false">Cobros e historial</button></nav>
-    <div class="admin-hig-herramientas"><label class="admin-hig-buscar">Buscar<input id="admin-hig-buscar" type="search" placeholder="Profesor, anuncio o ramo" autocomplete="off"></label><label>Estado<select id="admin-hig-estado">${[['','Todos'],['publicado','Publicadas'],['programado','Programadas'],['en_revision','En revisión'],['pausado','Pausadas'],['expirado','Terminadas'],['borrador','Borradores'],['agotado','Tope alcanzado'],['suspendido','Profesor no habilitado']].map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select></label></div>
+    <div class="admin-hig-herramientas"><label class="admin-hig-buscar">Buscar<input id="admin-hig-buscar" type="search" placeholder="Profesor, anuncio o ramo" autocomplete="off"></label><label>Estado<select id="admin-hig-estado">${[['','Todos'],['publicado','Publicadas'],['programado','Programadas'],['en_revision','En revisión'],['pausado','Pausadas'],['expirado','Terminadas'],['borrador','Borradores'],['agotado','Tope alcanzado'],['suspendido','Profesor no habilitado'],['eliminado','Borrados con cobros anteriores']].map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select></label></div>
     <p class="admin-hig-nota" id="admin-hig-cantidad" role="status" aria-live="polite">${filas.length} anuncios</p>
     <div class="admin-hig-lista">${filas.map(f=>filaAdminHigHTML(f,ahora)).join('')}</div>
     <p class="admin-hig-vacio" id="admin-hig-vacio" hidden>No encontramos anuncios. Prueba otro nombre o amplía los filtros.</p>
@@ -2943,6 +2988,12 @@ async function pintarPanelAdmin(raiz){
       b.dataset.estadisticasEstado='error';b.textContent='Reintentar estadísticas';
     }finally{if(b.isConnected!==false)b.disabled=false;}
   }));
+  raiz.querySelectorAll('[data-admin-flyer]').forEach(caja=>{
+    urlFlyerClase(caja.dataset.adminFlyer).then(url=>{
+      if(!caja.isConnected)return;
+      caja.innerHTML=url?`<img src="${esc(url)}" alt="Flyer del anuncio para revisión" loading="lazy">`:'No pudimos cargar el flyer.';
+    }).catch(()=>{if(caja.isConnected)caja.textContent='No pudimos cargar el flyer.';});
+  });
   const llamar=async(fn,args,ok)=>{
     try{
       const {data,error}=await supabaseClient.rpc(fn,args);
@@ -2950,6 +3001,25 @@ async function pintarPanelAdmin(raiz){
       showToast(ok);await repintar();
     }catch(e){showToast('No pudimos completar la acción. Revisa tu conexión e intenta de nuevo.',true);}
   };
+  raiz.querySelectorAll('[data-admin-publicar]').forEach(b=>b.addEventListener('click',()=>
+    showConfirm('¿Publicar este anuncio?','Se mostrará según los días, la fecha y el tope de su campaña. Las vistas, aperturas y contactos se cobran con las tarifas actuales.',
+      ()=>llamar('admin_publicar_anuncio',{p_anuncio_id:b.dataset.adminPublicar},'Anuncio publicado'),{label:'Publicar',danger:false})));
+  raiz.querySelectorAll('[data-admin-devolver]').forEach(b=>b.addEventListener('click',async()=>{
+    const comentario=raiz.querySelector(`[data-admin-comentario="${b.dataset.adminDevolver}"]`);
+    const texto=String(comentario&&comentario.value||'').trim();
+    if(texto.length<10||texto.length>1000){showToast('Escribe un comentario de 10 a 1000 caracteres para el profesor.',true);comentario?.focus();return;}
+    b.disabled=true;
+    await llamar('admin_devolver_anuncio',{p_anuncio_id:b.dataset.adminDevolver,p_comentario:texto},'Anuncio devuelto con comentario');
+    if(b.isConnected)b.disabled=false;
+  }));
+  raiz.querySelectorAll('[data-admin-borrar]').forEach(b=>b.addEventListener('click',()=>
+    showConfirm('¿Borrar este anuncio?','Desaparecerá de la revisión y del espacio del profesor. Si tuvo campañas anteriores, su medición y sus cobros se conservan.',
+      ()=>llamar('admin_borrar_anuncio_revision',{p_anuncio_id:b.dataset.adminBorrar},'Anuncio borrado de la revisión'),
+      {label:'Borrar anuncio',danger:true})));
+  raiz.querySelectorAll('[data-admin-terminar]').forEach(b=>b.addEventListener('click',()=>
+    showConfirm('¿Terminar esta campaña?','El aviso ya está pausado. El cierre conserva sus métricas y el costo acumulado; quedará listo para registrar el cobro.',
+      ()=>llamar('admin_terminar_anuncio_pausado',{p_anuncio_id:b.dataset.adminTerminar,p_publicado_at:b.dataset.publicadoAt},'Campaña terminada y lista para cobro'),
+      {label:'Terminar campaña',danger:false})));
   raiz.querySelectorAll('[data-admin-pausar]').forEach(b=>b.addEventListener('click',()=>
     showConfirm('¿Pausar este aviso?','Deja de mostrarse al tiro. Para volver, el profesor lo manda a revisión otra vez.',
       ()=>llamar('admin_pausar_anuncio',{p_anuncio_id:b.dataset.adminPausar},'Aviso pausado'),{label:'Pausar',danger:false})));

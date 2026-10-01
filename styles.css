@@ -2918,9 +2918,9 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .admin-hig-herramientas{display:flex;gap:16px;align-items:end;flex-wrap:wrap;}
 .admin-hig-herramientas label{display:grid;gap:6px;font-size:.8125rem;color:var(--fg2);}
 .admin-hig-buscar{flex:1;min-width:180px;}
-.admin-hig :is(input,select){width:100%;min-width:0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;color:var(--fg);background:var(--card);font:inherit;font-size:1rem;}
-.admin-hig :is(button,summary,input,select){min-width:44px;min-height:44px;}
-.admin-hig :is(button,summary,input,select,a):focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
+.admin-hig :is(input,select,textarea){width:100%;min-width:0;padding:10px 12px;border:1px solid var(--border);border-radius:10px;color:var(--fg);background:var(--card);font:inherit;font-size:1rem;}
+.admin-hig :is(button,summary,input,select,textarea){min-width:44px;min-height:44px;}
+.admin-hig :is(button,summary,input,select,textarea,a):focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
 .admin-hig-lista{border-top:1px solid var(--border);}
 .admin-hig-fila{border-bottom:1px solid var(--border);}
 .admin-hig-fila[hidden],.admin-hig-vacio[hidden]{display:none;}
@@ -2952,6 +2952,21 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .admin-hig-persona h3{font-size:1rem;margin:0;}
 .admin-hig-persona p{font-size:.8125rem;color:var(--fg2);margin:4px 0 0;}
 .admin-hig-vacio{padding:30px;border:1px dashed var(--border2);border-radius:14px;color:var(--fg2);}
+.admin-revision{padding:18px 0 22px;border-bottom:1px solid var(--border);min-width:0;}
+.admin-revision h4{font-size:1.125rem;margin:0 0 12px;}
+.admin-revision-descripcion{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 18px;}
+.admin-revision-datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px;margin:0 0 18px;}
+.admin-revision-datos>div{min-width:0;overflow-wrap:anywhere;}
+.admin-revision-datos dt{font-size:.8125rem;color:var(--fg2);}
+.admin-revision-datos dd{margin:3px 0 0;font-size:.9375rem;}
+.admin-revision-flyer img{display:block;max-width:min(100%,420px);max-height:440px;object-fit:contain;border-radius:10px;}
+.admin-revision-acciones{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px;}
+.admin-revision-acciones label{display:grid;gap:8px;grid-column:1/-1;font-size:.875rem;color:var(--fg2);}
+.admin-revision-acciones textarea{width:100%;min-height:96px;resize:vertical;}
+.admin-revision-acciones .btn-confirm{min-height:44px;justify-self:start;}
+.admin-revision-acciones .admin-revision-borrar{color:var(--red);border-color:var(--red);}
+.admin-lista-cobro,.clase-comentario-revision{border-left:3px solid var(--border2);padding:10px 14px;margin:12px 0;background:var(--muted);color:var(--fg);overflow-wrap:anywhere;}
+.clase-comentario-revision p{margin:6px 0 0;white-space:pre-wrap;}
 @media(min-width:1000px){#admin-body:has(.admin-hig){max-width:1100px;margin:0 auto;}}
-@media(max-width:760px){.admin-hig-resumen{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px;}.admin-hig-resumen>div+div{padding-left:0;border-left:0;}.admin-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;}.admin-hig-identidad{grid-column:1/-1;}.admin-hig-importe{grid-column:2;grid-row:2;}.admin-hig-fila>summary>span:last-child{display:none;}.admin-hig .admin-cobro{grid-template-columns:repeat(2,minmax(0,1fr));}.admin-hig .admin-cobro>span{grid-column:1/-1;}.admin-hig .admin-cobro button{grid-column:1/-1;}.admin-hig .admin-anuncio{padding:16px;}.admin-hig-persona{align-items:flex-start;flex-direction:column;}.admin-hig-buscar{flex-basis:100%;}}
+@media(max-width:760px){.admin-hig-resumen{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px;}.admin-hig-resumen>div+div{padding-left:0;border-left:0;}.admin-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;}.admin-hig-identidad{grid-column:1/-1;}.admin-hig-importe{grid-column:2;grid-row:2;}.admin-hig-fila>summary>span:last-child{display:none;}.admin-hig .admin-cobro{grid-template-columns:repeat(2,minmax(0,1fr));}.admin-hig .admin-cobro>span{grid-column:1/-1;}.admin-hig .admin-cobro button{grid-column:1/-1;}.admin-hig .admin-anuncio{padding:16px;}.admin-hig-persona{align-items:flex-start;flex-direction:column;}.admin-hig-buscar{flex-basis:100%;}.admin-revision-datos,.admin-revision-acciones{grid-template-columns:minmax(0,1fr);}.admin-revision-acciones label{grid-column:1;}.admin-revision-acciones .btn-confirm{width:100%;}.admin-revision-acciones .clase-accion{width:100%;}}
 @media(prefers-reduced-motion:reduce){.admin-hig *{animation:none;transition:none;}}
