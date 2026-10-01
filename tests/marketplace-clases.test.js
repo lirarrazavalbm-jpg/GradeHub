@@ -260,9 +260,11 @@ vm.runInContext(`
   chk('la RPC exige sesión y descarta su identidad antes de guardar',
     /if auth\.uid\(\) is null/.test(rpc)&&
     /insert into public\.anuncio_metricas \(anuncio_id, dia, tipo, tenant, ramo_sigla, eventos, publicacion, vence_publicacion\)/.test(rpc)&&
-    !/user_id|viewer|device/i.test(rpc.replace(/--[^\n]*/g,'')));
-  chk('el gráfico admite a dos estudiantes simultáneos y aplica elegibilidad de cobro',
-    /cuenta_para_campana\(p_anuncio_id, auth\.uid\(\)\)/.test(rpc)&&
+    !/insert into public\.anuncio_metricas \([^)]*(user_id|viewer|device)/i.test(rpc));
+  chk('el gráfico requiere la fila cobrable de cada estudiante y no tiene throttle global',
+    /update public\.anuncio_alcance set metrica_aux_registrada = true/.test(rpc)&&
+    /user_id = auth\.uid\(\)/.test(rpc)&&
+    /not metrica_aux_registrada/.test(rpc)&&
     !/updated_at <= now\(\) - interval '10 seconds'/.test(rpc));
   chk('el corte de catorce eventos no se devuelve y el de quince sí',
     /m\.eventos >= 15\b/.test(sql)&&!/m\.eventos >= (?!15\b)\d/.test(sql));

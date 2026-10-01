@@ -9,6 +9,7 @@ class Nodo{
   querySelector(s){return this.querySelectorAll(s)[0]||null;}
   closest(s){return this.matches(s)?this:this.parent?.closest(s);}
   setAttribute(k,v){this.attrs[k]=v;}
+  removeAttribute(k){delete this.attrs[k];}
   addEventListener(k,f){this.listeners[k]=f;}
   focus(){this.focused=true;}
   remove(){this.isConnected=false;this.parent.children=this.parent.children.filter(c=>c!==this);}
@@ -56,20 +57,21 @@ run("logosDeAnuncios=async()=>new Map(); cargarAnunciosClasesOriginal=cargarAnun
  enter(.49);assert.equal(timers.size,0);
  enter(.5);assert.equal([...timers.values()][0].ms,1000);
  enter(.2);assert.equal(timers.size,0);
- enter(.5);for(const[id,t]of timers){timers.delete(id);t.f();}
+ enter(.5);for(const[id,t]of [...timers]){timers.delete(id);await t.f();}
  enter(.8);assert.equal(timers.size,0);
  assert(calls.some(c=>c.n==='registrar_alcance_anuncio'&&c.p.p_canal==='lista'));
  assert(calls.some(c=>c.n==='registrar_metrica_anuncio'&&c.p.p_tipo==='impresion'));
  const abrir=card.querySelector('[data-abrir]');abrir.listeners.click();
+ await new Promise(resolve=>setImmediate(resolve));
  assert.equal(card.querySelector('.catalogo-clase-mas').hidden,false);
- card.querySelector('[data-contactar]').listeners.click();
+ await card.querySelector('[data-contactar]').listeners.click({preventDefault(){}});
  assert(calls.some(c=>c.n==='registrar_interaccion_anuncio'&&c.p.p_tipo==='apertura'));
  assert(calls.some(c=>c.n==='registrar_interaccion_anuncio'&&c.p.p_tipo==='contacto'));
  assert(calls.some(c=>c.n==='registrar_metrica_anuncio'&&c.p.p_tipo==='clic'&&c.p.p_ramo_sigla==='MAT1620'));
  assert(calls.some(c=>c.n==='registrar_metrica_anuncio'&&c.p.p_tipo==='contacto'));
  // Buscar cambia el canal; filtros de precio sin texto siguen siendo lista.
  run("renderCatalogoClases('MAT1620')");const search=observers.at(-1);
- search.cb([{target:search.nodes[0],isIntersecting:true,intersectionRatio:1}]);for(const[id,t]of timers){timers.delete(id);t.f();}
+ search.cb([{target:search.nodes[0],isIntersecting:true,intersectionRatio:1}]);for(const[id,t]of [...timers]){timers.delete(id);await t.f();}
  assert(calls.some(c=>c.n==='registrar_alcance_anuncio'&&c.p.p_canal==='busqueda'));
  root.querySelector('#catalogo-gratis').checked=true;root.querySelector('#catalogo-gratis').listeners.change();
  assert.equal(results.querySelectorAll('[data-catalogo-anuncio]').length,1);

@@ -2,15 +2,19 @@
 -- Pedido de Lucas del 2026-09-30: al revisar anuncios publicados, sus vistas,
 -- aperturas y contactos se sumaban a lo que se le cobra al profesor.
 --
--- APLÍCALO UNA VEZ en el SQL Editor de Supabase. Reemplaza dos funciones y no
--- toca ninguna tabla ni ningún dato: lo ya registrado queda igual (para borrar
--- interacciones de un admin ya contadas, se hace aparte y a mano).
+-- Reaplicable en SQL Editor. Las dos marcas auxiliares no modifican importes
+-- ni deduplicación cobrable; las filas anteriores no se vuelven a sumar.
 --
 -- Son copia EXACTA de las definiciones en clases_particulares.sql, que sigue
 -- siendo la fuente: tests/admin-no-cuenta.test.js exige que sean idénticas,
 -- así reaplicar cualquiera de los dos archivos deja lo mismo.
 
 begin;
+
+alter table public.anuncio_alcance add column if not exists metrica_aux_registrada boolean not null default true;
+alter table public.anuncio_alcance alter column metrica_aux_registrada set default false;
+alter table public.anuncio_interacciones add column if not exists metrica_aux_registrada boolean not null default true;
+alter table public.anuncio_interacciones alter column metrica_aux_registrada set default false;
 
 create or replace function public.es_administrador(p_user_id uuid)
 returns boolean
@@ -61,6 +65,7 @@ as $$
 declare
   anuncio public.tutor_anuncios%rowtype;
   filas_escritas integer := 0;
+  dia_evento date;
   sigla text := upper(btrim(coalesce(p_ramo_sigla, '')));
 begin
   if auth.uid() is null then
@@ -79,28 +84,37 @@ begin
 
   select * into anuncio
   from public.tutor_anuncios
-  where id = p_anuncio_id
-    and estado = 'publicado'
-    and (vence_at is null or vence_at > now())
-    and public.tutor_aprobado(autor_id)
-  for update;
+  where id = p_anuncio_id;
 
   if not found then
     raise exception 'anuncio no disponible';
-  end if;
-  -- Los eventos de los gráficos siguen la misma elegibilidad que el cobro:
-  -- ni el profesor, ni cuentas sin ramos, ni campañas fuera de vigencia/tope.
-  if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
-    return false;
   end if;
   if not (sigla = any(anuncio.ramos_siglas)) then
     raise exception 'la sigla no corresponde al anuncio';
   end if;
 
-  -- auth.uid() se descartó arriba: esta inserción no tiene ni puede recibir
-  -- una columna de espectador. Solo queda el contador agregado.
+  -- Solo el primer evento auxiliar de una fila que YA se contó para cobro
+  -- puede sumar al gráfico. La RPC cobrable conserva canal, llave y tarifa.
+  -- También permite terminar el registro si la campaña se pausó o agotó
+  -- inmediatamente después de contar esa fila.
+  if p_tipo = 'impresion' then
+    update public.anuncio_alcance set metrica_aux_registrada = true
+    where anuncio_id = p_anuncio_id and user_id = auth.uid()
+      and publicacion = anuncio.medicion_desde and not metrica_aux_registrada
+    returning dia into dia_evento;
+  else
+    update public.anuncio_interacciones set metrica_aux_registrada = true
+    where anuncio_id = p_anuncio_id and user_id = auth.uid()
+      and publicacion = anuncio.medicion_desde
+      and tipo = case p_tipo when 'clic' then 'apertura' else 'contacto' end
+      and not metrica_aux_registrada
+    returning dia into dia_evento;
+  end if;
+  if dia_evento is null then return false; end if;
+
+  -- El agregado sigue sin identidad, notas, ramos del estudiante ni canal.
   insert into public.anuncio_metricas (anuncio_id, dia, tipo, tenant, ramo_sigla, eventos, publicacion, vence_publicacion)
-  values (anuncio.id, current_date, p_tipo, anuncio.tenant, sigla, 1, anuncio.medicion_desde, anuncio.vence_at)
+  values (anuncio.id, dia_evento, p_tipo, anuncio.tenant, sigla, 1, anuncio.medicion_desde, anuncio.vence_at)
   on conflict (anuncio_id, dia, tipo, tenant, ramo_sigla, publicacion) do update
     set eventos = public.anuncio_metricas.eventos + 1,
         updated_at = now();

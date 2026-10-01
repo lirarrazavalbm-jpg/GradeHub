@@ -11,13 +11,15 @@ let ok=0,fail=0;
 const chk=(n,c)=>{if(c){ok++;console.log('  OK   '+n);}else{fail++;console.log('  FAIL '+n);}};
 
 // Supabase de mentira: la tabla devuelve lo que dejaría pasar la RLS y
-// `anuncio_propio` responde según quién es el autor de verdad.
+// `anuncio_propio` responde según quién es el autor de verdad. La RPC nueva
+// falta explícitamente en este fixture para comprobar compatibilidad SQL.
 function montar(filas,autores,{rpcFalla=false}={}){
   ctx.__filas=filas;ctx.__autores=autores;ctx.__rpcFalla=rpcFalla;ctx.__rpcs=[];
   run(`currentUser={id:'u1'};supabaseClient={
     from(){const q={select(){return q},order(){return Promise.resolve({data:__filas,error:null})}};return q;},
     rpc(n,a){__rpcs.push([n,a]);
       if(__rpcFalla)return Promise.resolve({data:null,error:{message:'red'}});
+      if(n==='mis_anuncios_profesor')return Promise.resolve({data:null,error:{code:'PGRST202',message:'RPC pendiente'}});
       return Promise.resolve({data:__autores[a.p_anuncio_id]==='u1',error:null});}};`);
 }
 
@@ -28,8 +30,9 @@ function montar(filas,autores,{rpcFalla=false}={}){
   let r=await run('misAnunciosClase()');
   chk('el publicado de otro profesor no aparece',r.ok&&!r.anuncios.some(a=>a.id==='ajeno-pub'));
   chk('los propios sí, publicados o no',r.anuncios.map(a=>a.id).join()==='mio-pub,mio-borrador');
-  chk('solo se pregunta por los publicados: lo demás ya es propio por la RLS',
-    ctx.__rpcs.length===2&&ctx.__rpcs.every(([n,a])=>n==='anuncio_propio'&&a.p_editable===false));
+  chk('si falta la RPC nueva, el camino compatible solo confirma publicados',
+    ctx.__rpcs.length===3&&ctx.__rpcs[0][0]==='mis_anuncios_profesor'&&
+    ctx.__rpcs.slice(1).every(([n,a])=>n==='anuncio_propio'&&a.p_editable===false));
 
   console.log('\n=== Si no se puede confirmar, no se adivina ===');
   montar([{id:'mio-pub',estado:'publicado'}],{'mio-pub':'u1'},{rpcFalla:true});

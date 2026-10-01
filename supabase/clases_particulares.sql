@@ -674,9 +674,8 @@ $$;
 alter table public.anuncio_metricas enable row level security;
 revoke all on public.anuncio_metricas from public, anon, authenticated;
 
--- Solo se escribe por RPC. El límite es GLOBAL por corte cada 10 segundos:
--- sin identidad no se puede deduplicar por persona, y preferimos subcontar
--- antes que empezar a guardar quién vio qué anuncio.
+-- Solo se escribe por RPC. La marca en las filas cobrables ya identificadas
+-- evita duplicados por cuenta sin guardar otra lista de espectadores.
 -- ¿Es administrador de GradeHub? Uso interno: las cuentas admin revisan
 -- anuncios y no cuentan como interacción ni como evento (2026-09-30). Lee
 -- admin.administradores al ejecutarse, así que puede crearse antes que ella.
@@ -709,6 +708,7 @@ as $$
 declare
   anuncio public.tutor_anuncios%rowtype;
   filas_escritas integer := 0;
+  dia_evento date;
   sigla text := upper(btrim(coalesce(p_ramo_sigla, '')));
 begin
   if auth.uid() is null then
@@ -727,28 +727,37 @@ begin
 
   select * into anuncio
   from public.tutor_anuncios
-  where id = p_anuncio_id
-    and estado = 'publicado'
-    and (vence_at is null or vence_at > now())
-    and public.tutor_aprobado(autor_id)
-  for update;
+  where id = p_anuncio_id;
 
   if not found then
     raise exception 'anuncio no disponible';
-  end if;
-  -- Los eventos de los gráficos siguen la misma elegibilidad que el cobro:
-  -- ni el profesor, ni cuentas sin ramos, ni campañas fuera de vigencia/tope.
-  if not public.cuenta_para_campana(p_anuncio_id, auth.uid()) then
-    return false;
   end if;
   if not (sigla = any(anuncio.ramos_siglas)) then
     raise exception 'la sigla no corresponde al anuncio';
   end if;
 
-  -- auth.uid() se descartó arriba: esta inserción no tiene ni puede recibir
-  -- una columna de espectador. Solo queda el contador agregado.
+  -- Solo el primer evento auxiliar de una fila que YA se contó para cobro
+  -- puede sumar al gráfico. La RPC cobrable conserva canal, llave y tarifa.
+  -- También permite terminar el registro si la campaña se pausó o agotó
+  -- inmediatamente después de contar esa fila.
+  if p_tipo = 'impresion' then
+    update public.anuncio_alcance set metrica_aux_registrada = true
+    where anuncio_id = p_anuncio_id and user_id = auth.uid()
+      and publicacion = anuncio.medicion_desde and not metrica_aux_registrada
+    returning dia into dia_evento;
+  else
+    update public.anuncio_interacciones set metrica_aux_registrada = true
+    where anuncio_id = p_anuncio_id and user_id = auth.uid()
+      and publicacion = anuncio.medicion_desde
+      and tipo = case p_tipo when 'clic' then 'apertura' else 'contacto' end
+      and not metrica_aux_registrada
+    returning dia into dia_evento;
+  end if;
+  if dia_evento is null then return false; end if;
+
+  -- El agregado sigue sin identidad, notas, ramos del estudiante ni canal.
   insert into public.anuncio_metricas (anuncio_id, dia, tipo, tenant, ramo_sigla, eventos, publicacion, vence_publicacion)
-  values (anuncio.id, current_date, p_tipo, anuncio.tenant, sigla, 1, anuncio.medicion_desde, anuncio.vence_at)
+  values (anuncio.id, dia_evento, p_tipo, anuncio.tenant, sigla, 1, anuncio.medicion_desde, anuncio.vence_at)
   on conflict (anuncio_id, dia, tipo, tenant, ramo_sigla, publicacion) do update
     set eventos = public.anuncio_metricas.eventos + 1,
         updated_at = now();
@@ -932,6 +941,12 @@ revoke all on public.anuncio_alcance from public, anon, authenticated;
 -- camino que existía cuando se diseñó la tabla. No guarda qué se buscó.
 alter table public.anuncio_alcance add column if not exists canal text not null default 'recomendacion'
   check (canal in ('recomendacion', 'busqueda', 'lista'));
+
+-- La identidad ya existe en la fila cobrable. Esta marca solo evita repetir
+-- su evento auxiliar en los gráficos. Las filas previas quedan marcadas para
+-- no volver a sumarlas al aplicar el cambio; las nuevas parten pendientes.
+alter table public.anuncio_alcance add column if not exists metrica_aux_registrada boolean not null default true;
+alter table public.anuncio_alcance alter column metrica_aux_registrada set default false;
 
 create or replace function public.rango_canal_alcance(p_canal text)
 returns integer
@@ -1128,6 +1143,29 @@ $$;
 revoke all on function public.anuncio_propio(uuid, boolean) from public, anon;
 grant execute on function public.anuncio_propio(uuid, boolean) to authenticated;
 
+-- Lista paginada del dueño. El catálogo público no expone autor_id, así que
+-- filtrar desde el navegador obligaba a bajar avisos ajenos y verificar cada
+-- uno. Esta RPC solo devuelve filas propias y nunca recibe un user_id ajeno.
+create or replace function public.mis_anuncios_profesor(p_desde integer default 0, p_tamano integer default 60)
+returns setof public.tutor_anuncios
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'inicia sesión' using errcode = '42501'; end if;
+  if p_desde < 0 or p_tamano not between 1 and 60 then
+    raise exception 'paginación inválida';
+  end if;
+  return query
+    select a.* from public.tutor_anuncios a
+    where a.autor_id = auth.uid()
+    order by a.created_at desc, a.id
+    limit p_tamano offset p_desde;
+end;
+$$;
+revoke all on function public.mis_anuncios_profesor(integer, integer) from public, anon;
+grant execute on function public.mis_anuncios_profesor(integer, integer) to authenticated;
+create index if not exists tutor_anuncios_autor_fecha_idx
+  on public.tutor_anuncios (autor_id, created_at desc, id);
+
 drop policy if exists anuncio_campanas_select_propia on public.anuncio_campanas;
 create policy anuncio_campanas_select_propia on public.anuncio_campanas
 for select to authenticated
@@ -1158,6 +1196,8 @@ create table if not exists public.anuncio_interacciones (
 -- Identidad de la publicación. -infinity conserva el conjunto heredado.
 alter table public.anuncio_interacciones add column if not exists publicacion timestamptz not null default '-infinity';
 alter table public.anuncio_interacciones add column if not exists vence_publicacion timestamptz;
+alter table public.anuncio_interacciones add column if not exists metrica_aux_registrada boolean not null default true;
+alter table public.anuncio_interacciones alter column metrica_aux_registrada set default false;
 -- Reaplicar no reconstruye la llave ni pierde filas. Una forma desconocida
 -- aborta la transacción: no se destruyen constraints que no conocemos.
 do $$

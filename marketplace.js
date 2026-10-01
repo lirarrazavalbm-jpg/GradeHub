@@ -1044,9 +1044,24 @@ function renderCatalogoClases(busqueda=''){
 // Contacto medido e imágenes firmadas de las tarjetas dentro de `raiz`. La
 // usan el catálogo y la clase abierta desde la recomendación de Inicio.
 function activarTarjetasClases(raiz){
-  raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',()=>{
-    registrarMetricaAnuncio(link.dataset.contactar,'contacto',link.dataset.sigla);
-    registrarInteraccionAnuncio(link.dataset.contactar,'contacto');
+  raiz.querySelectorAll('[data-contactar]').forEach(link=>link.addEventListener('click',async e=>{
+    e.preventDefault();
+    if(link.dataset.contactando==='true')return;
+    link.dataset.contactando='true';link.setAttribute('aria-busy','true');
+    // Abrir una pestaña vacía dentro del gesto del usuario evita el bloqueo
+    // del navegador después del await. La cerramos si no se confirmó el cobro.
+    const ventana=link.target==='_blank'&&typeof window!=='undefined'&&typeof window.open==='function'
+      ?window.open('about:blank','_blank'):null;
+    if(ventana)ventana.opener=null;
+    const cargo=await registrarInteraccionMedida(link.dataset.contactar,'contacto',link.dataset.sigla);
+    link.dataset.contactando='false';link.removeAttribute('aria-busy');
+    if(cargo===null){
+      if(ventana&&!ventana.closed)ventana.close();
+      showToast('No pudimos registrar el contacto. Revisa tu conexión e intenta de nuevo.',true);
+      return;
+    }
+    if(ventana&&!ventana.closed)ventana.location.href=link.href;
+    else if(typeof window!=='undefined')window.location.assign(link.href);
   }));
   raiz.querySelectorAll('[data-abrir]').forEach(boton=>boton.addEventListener('click',()=>{
     const tarjeta=boton.closest('.catalogo-clase-card'),mas=tarjeta&&tarjeta.querySelector('.catalogo-clase-mas');
@@ -1054,8 +1069,7 @@ function activarTarjetasClases(raiz){
     mas.hidden=false;boton.remove();
     const bloque=tarjeta.closest('.catalogo-clase-bloque'),flyer=bloque&&bloque.querySelector('.catalogo-clase-flyer');
     if(flyer)flyer.hidden=false;
-    registrarMetricaAnuncio(boton.dataset.abrir,'clic',boton.dataset.sigla);
-    registrarInteraccionAnuncio(boton.dataset.abrir,'apertura');
+    registrarInteraccionMedida(boton.dataset.abrir,'apertura',boton.dataset.sigla);
     const contacto=mas.querySelector('.catalogo-clase-contacto');if(contacto)contacto.focus();
   }));
   raiz.querySelectorAll('[data-logo]').forEach(async caja=>{
@@ -1080,7 +1094,7 @@ function activarTarjetasClases(raiz){
 // catálogo —lo que sí se cobraría, a un precio menor que el segmentado— espera
 // a que el servidor distinga por qué camino llegó cada cuenta.
 const IMPRESION_VISIBLE=0.5,IMPRESION_MS=1000;
-let impresionesCatalogo=new Set(),metricasImpresionCatalogo=new Set(),observadorCatalogo=null,logosCatalogoClases=new Map();
+let impresionesCatalogo=new Set(),observadorCatalogo=null,logosCatalogoClases=new Map();
 function observarImpresionesClases(raiz,anuncios,busqueda=''){
   // Si la persona escribió algo, las tarjetas que ve son resultado de buscar.
   const canal=String(busqueda||'').trim()?'busqueda':'lista';
@@ -1094,18 +1108,17 @@ function observarImpresionesClases(raiz,anuncios,busqueda=''){
       timers.delete(id);
       const clave=id+':'+canal;
       if(!card.isConnected||!visibles.has(id)||impresionesCatalogo.has(clave))return;
-      // El evento anónimo se lanza una sola vez en esta apertura del catálogo.
-      // Si falla el alcance cobrable, reintentarlo no duplica ese evento.
-      if(!metricasImpresionCatalogo.has(clave)){
-        metricasImpresionCatalogo.add(clave);
-        registrarMetricaAnuncio(id,'impresion',sigla.get(id));
-      }
-      impresionesCatalogo.add(clave);
       const alcance=await registrarAlcanceAnuncio(id,canal);
       if(alcance===null){
-        impresionesCatalogo.delete(clave);
         if(card.isConnected&&visibles.has(id))programar(card,id,5000);
+        return;
       }
+      const metrica=await registrarMetricaAnuncio(id,'impresion',sigla.get(id));
+      if(metrica===null){
+        if(card.isConnected&&visibles.has(id))programar(card,id,5000);
+        return;
+      }
+      impresionesCatalogo.add(clave);
     },demora));
   };
   observadorCatalogo=new IntersectionObserver(entradas=>{
@@ -1125,7 +1138,7 @@ function observarImpresionesClases(raiz,anuncios,busqueda=''){
 }
 
 async function openCatalogoClases(){
-  impresionesCatalogo=new Set();metricasImpresionCatalogo=new Set();
+  impresionesCatalogo=new Set();
   const raiz=document.getElementById('modal-content');
   if(!raiz)return;
   estadoCargaCatalogo='cargando';catalogoClasesActual=[];nombresCatalogoClasesActual={};logosCatalogoClases=new Map();
@@ -1176,6 +1189,7 @@ function payloadMetricaAnuncio(anuncioId,tipo,ramoSigla){
 // Abrió la clase o tocó contactar: una vez por persona y anuncio, lo cuenta el
 // servidor con la cuenta de la sesión. El Set solo ahorra llamadas repetidas.
 const INTERACCION_REGISTRADA=new Set();
+const INTERACCION_EN_CURSO=new Map();
 function claveMedicionClase(anuncioId){
   const anuncio=catalogoClasesActual.find(a=>a.id===anuncioId)||
     (anunciosRecomendacion.lista||[]).find(a=>a.id===anuncioId);
@@ -1183,13 +1197,20 @@ function claveMedicionClase(anuncioId){
 }
 async function registrarInteraccionAnuncio(anuncioId,tipo){
   const clave=claveMedicionClase(anuncioId)+':'+tipo;
-  if(!supabaseClient||!currentUser||!anuncioId||!['apertura','contacto'].includes(tipo)||INTERACCION_REGISTRADA.has(clave))return false;
-  INTERACCION_REGISTRADA.add(clave);
-  try{
-    const {data,error}=await supabaseClient.rpc('registrar_interaccion_anuncio',{p_anuncio_id:anuncioId,p_tipo:tipo});
-    if(error)throw error;
-    return data===true;
-  }catch(error){INTERACCION_REGISTRADA.delete(clave);console.warn('No se pudo registrar la interacción:',error.message||error);return false;}
+  if(!supabaseClient||!currentUser||!anuncioId||!['apertura','contacto'].includes(tipo))return null;
+  if(INTERACCION_REGISTRADA.has(clave))return false;
+  if(INTERACCION_EN_CURSO.has(clave))return INTERACCION_EN_CURSO.get(clave);
+  const pendiente=(async()=>{
+    try{
+      const {data,error}=await supabaseClient.rpc('registrar_interaccion_anuncio',{p_anuncio_id:anuncioId,p_tipo:tipo});
+      if(error)throw error;
+      INTERACCION_REGISTRADA.add(clave);
+      return data===true;
+    }catch(error){console.warn('No se pudo registrar la interacción:',error.message||error);return null;}
+    finally{INTERACCION_EN_CURSO.delete(clave);}
+  })();
+  INTERACCION_EN_CURSO.set(clave,pendiente);
+  return pendiente;
 }
 async function registrarMetricaAnuncio(anuncioId,tipo,ramoSigla){
   const payload=payloadMetricaAnuncio(anuncioId,tipo,ramoSigla);
@@ -1198,7 +1219,28 @@ async function registrarMetricaAnuncio(anuncioId,tipo,ramoSigla){
     const {data,error}=await supabaseClient.rpc('registrar_metrica_anuncio',payload);
     if(error)throw error;
     return data===true;
-  }catch(error){console.warn('No se pudo registrar la métrica del anuncio:',error.message||error);return false;}
+  }catch(error){console.warn('No se pudo registrar la métrica del anuncio:',error.message||error);return null;}
+}
+
+// El evento auxiliar se intenta solo después de confirmar la fila cobrable.
+// Si falla esa segunda llamada, el servidor conserva la marca pendiente y
+// este reintento no puede inflar el gráfico aunque se repita.
+async function registrarInteraccionMedida(anuncioId,tipo,sigla,{reintentos=2}={}){
+  const usuario=currentUser&&currentUser.id;
+  const cargo=await registrarInteraccionAnuncio(anuncioId,tipo);
+  if(cargo===null){
+    // La apertura ya ocurrió en pantalla y su botón desapareció: reintentarla
+    // sin pedir otro clic. Contacto sí requiere un nuevo gesto para navegar.
+    if(tipo==='apertura'&&reintentos>0)setTimeout(()=>{
+      if(currentUser&&currentUser.id===usuario)registrarInteraccionMedida(anuncioId,tipo,sigla,{reintentos:reintentos-1});
+    },5000);
+    return null;
+  }
+  const metrica=await registrarMetricaAnuncio(anuncioId,tipo==='apertura'?'clic':'contacto',sigla);
+  if(metrica===null&&reintentos>0)setTimeout(()=>{
+    if(currentUser&&currentUser.id===usuario)registrarInteraccionMedida(anuncioId,tipo,sigla,{reintentos:reintentos-1});
+  },5000);
+  return cargo;
 }
 
 // La RPC aplica el mínimo de quince EVENTOS en el servidor. Esta función no
@@ -1338,16 +1380,10 @@ function renderPostulacionProfesor(raiz){
   });
 }
 
-// Los anuncios de quien mira. La RLS deja leer los propios en cualquier estado
-// y, de los demás, los publicados: son públicos para el catálogo. No se puede
-// filtrar por autor_id acá (esa columna no tiene SELECT público), así que los
-// publicados se confirman uno por uno con `anuncio_propio`, que corre en el
-// servidor. Sin esto, cada profesor veía en su página las clases de los otros
-// (pasó el 2026-09-26 con la primera clase de un profesor externo).
-async function misAnunciosClase(){
-  const uid=sesionProfesorClase();
-  if(!uid)return {ok:false,error:'Inicia sesión para ver tus clases.'};
-  try{
+// Compatibilidad mientras se aplica el SQL nuevo: la RLS deja leer propios y
+// publicados, pero autor_id no es una columna pública. No usar este camino
+// cuando ya existe la RPC paginada del profesor.
+async function misAnunciosClaseLegado(){
     const {data,error}=await consultaCamposClase(campos=>supabaseClient.from('tutor_anuncios')
       .select(campos).order('created_at',{ascending:false}),CAMPOS_PUBLICOS_ANUNCIO);
     if(error)throw error;
@@ -1360,7 +1396,22 @@ async function misAnunciosClase(){
       if(r.error)throw r.error;
       return r.data===true;
     }));
-    return {ok:true,anuncios:todos.filter((_,i)=>propio[i])};
+    return todos.filter((_,i)=>propio[i]);
+}
+async function misAnunciosClase(){
+  if(!sesionProfesorClase())return {ok:false,error:'Inicia sesión para ver tus clases.'};
+  try{
+    const anuncios=[],tamano=60;
+    for(let desde=0;;desde+=tamano){
+      const {data,error}=await supabaseClient.rpc('mis_anuncios_profesor',{p_desde:desde,p_tamano:tamano});
+      if(error){
+        if(desde===0&&sqlClasesDesactualizado(error))return {ok:true,anuncios:await misAnunciosClaseLegado()};
+        throw error;
+      }
+      const pagina=Array.isArray(data)?data:[];
+      anuncios.push(...pagina);
+      if(pagina.length<tamano)return {ok:true,anuncios};
+    }
   }catch(e){return {ok:false,error:'No pudimos consultar tus clases. Intenta de nuevo.'};}
 }
 
@@ -2466,16 +2517,21 @@ function descartarRecomendacionClase(anuncioId,ahora=Date.now()){
 
 let anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
 function cargarAnunciosRecomendacion(tenant,alTerminar){
-  if(anunciosRecomendacion.pidiendo)return;
-  anunciosRecomendacion={tenant,lista:null,pidiendo:true};
-  cargarAnunciosClases(tenant).then(lista=>{
-    if(anunciosRecomendacion.tenant!==tenant)return;
+  if(anunciosRecomendacion.pidiendo&&anunciosRecomendacion.tenant===tenant)return;
+  const pedido={tenant,lista:null,pidiendo:true};
+  anunciosRecomendacion=pedido;
+  cargarAnunciosClases(tenant,{propagarError:true}).then(lista=>{
+    if(anunciosRecomendacion!==pedido)return;
     anunciosRecomendacion={tenant,lista:Array.isArray(lista)?lista:[],pidiendo:false};
     alTerminar();
-  }).catch(()=>{anunciosRecomendacion={tenant,lista:[],pidiendo:false};});
+  }).catch(()=>{
+    if(anunciosRecomendacion===pedido)anunciosRecomendacion={tenant,lista:null,pidiendo:false};
+    // Sin resultado confirmado no se cachea una lista vacía. La siguiente
+    // entrada a Inicio vuelve a pedir anuncios sin consumir la recomendación.
+  });
 }
 
-const RECOMENDACIONES_VISTAS=new Set(),RECOMENDACIONES_METRICAS=new Set();
+const RECOMENDACIONES_VISTAS=new Set();
 function observarRecomendacionClase(banner,anuncio,sigla){
   const clave=claveMedicionClase(anuncio.id);
   if(typeof IntersectionObserver!=='function'||RECOMENDACIONES_VISTAS.has(clave))return;
@@ -2484,13 +2540,10 @@ function observarRecomendacionClase(banner,anuncio,sigla){
     timer=null;
     if(!banner.isConnected||!visible||registrando||RECOMENDACIONES_VISTAS.has(clave))return;
     registrando=true;
-    if(!RECOMENDACIONES_METRICAS.has(clave)){
-      RECOMENDACIONES_METRICAS.add(clave);
-      registrarMetricaAnuncio(anuncio.id,'impresion',sigla);
-    }
     const alcance=await registrarAlcanceAnuncio(anuncio.id,'recomendacion');
+    const metrica=alcance===null?null:await registrarMetricaAnuncio(anuncio.id,'impresion',sigla);
     registrando=false;
-    if(alcance===null){
+    if(alcance===null||metrica===null){
       if(banner.isConnected&&visible)timer=setTimeout(registrar,5000);
     }else{RECOMENDACIONES_VISTAS.add(clave);obs.disconnect();}
   };
@@ -2557,7 +2610,7 @@ function pintarRecomendacionClase(contenedor){
   banner.setAttribute('aria-label','Publicidad: clase particular');
   banner.innerHTML=contenidoRecomendacionClase(anuncio);
   banner.querySelector('.clase-apoyo-abrir').addEventListener('click',()=>{
-    registrarMetricaAnuncio(anuncio.id,'clic',sigla);
+    registrarInteraccionMedida(anuncio.id,'apertura',sigla);
     abrirClaseRecomendada(anuncio,ramo,sigla);
   });
   banner.querySelector('.clase-apoyo-cerrar').addEventListener('click',()=>{
@@ -2657,7 +2710,6 @@ async function abrirClaseRecomendada(anuncio,ramo,sigla){
       <button type="button" class="btn-cancel clase-apoyo-mas" onclick="openCatalogoClases()">Ver todas las clases</button>
     </div>`;
   activarTarjetasClases(raiz);
-  registrarInteraccionAnuncio(anuncio.id,'apertura');
   openModal();
 }
 
@@ -2860,21 +2912,30 @@ async function pintarPanelAdmin(raiz){
       caja.hidden=true;b.textContent='Ver estadísticas';b.setAttribute('aria-expanded','false');return;
     }
     caja.hidden=false;b.setAttribute('aria-expanded','true');
-    const vig=vigenciaAnuncio(a,ahora);
-    if(!ANUNCIO_YA_SE_MOSTRO.has(a.estado)||vig==='programado'){
-      caja.innerHTML=`<p class="clase-sin-datos">${vig==='programado'?'Todavía no empieza, así que no hay nada que medir ni cobrar.':a.estado==='en_revision'?'Cuando se apruebe y empiece a mostrarse, sus estadísticas aparecerán acá.':'Todavía no se publica, así que no hay estadísticas.'}</p>`;
-      b.dataset.estadisticasEstado='lista';b.textContent='Ocultar estadísticas';return;
-    }
     b.disabled=true;caja.innerHTML='<p class="clase-sin-datos" role="status">Cargando estadísticas…</p>';
     try{
-      // El panel puede llevar rato abierto: vuelve a leer el costo de la
-      // campaña junto con sus métricas, en vez de reutilizar el resumen viejo.
-      const m=await metricasDeAnuncio({...a,campana:null});
+      // El panel puede llevar rato abierto. Releer la fila evita mezclar una
+      // publicación nueva con fechas o estado de la vista anterior.
+      const {data:panel,error:panelError}=await supabaseClient.rpc('admin_panel_clases');
+      if(panelError)throw panelError;
+      const actual=(Array.isArray(panel)?panel:[]).flatMap(p=>p.anuncios||[]).find(x=>x.id===a.id);
+      if(!actual)throw Error('Aviso no encontrado');
+      if(['estado','publicado_at','vence_at'].some(k=>actual[k]!==a[k])){
+        await pintarPanelAdmin(raiz);
+        showToast('El aviso cambió. Actualicé el panel; abre sus estadísticas de nuevo.');
+        return;
+      }
+      const vig=vigenciaAnuncio(actual,Date.now());
+      if(!ANUNCIO_YA_SE_MOSTRO.has(actual.estado)||vig==='programado'){
+        caja.innerHTML=`<p class="clase-sin-datos">${vig==='programado'?'Todavía no empieza, así que no hay nada que medir ni cobrar.':actual.estado==='en_revision'?'Cuando se apruebe y empiece a mostrarse, sus estadísticas aparecerán acá.':'Todavía no se publica, así que no hay estadísticas.'}</p>`;
+        b.dataset.estadisticasEstado='lista';b.textContent='Ocultar estadísticas';return;
+      }
+      const m=await metricasDeAnuncio({...actual,campana:null});
       if(caja.isConnected===false)return;
       if(m.error)throw Error('No pudimos cargar las estadísticas. Revisa tu conexión e intenta de nuevo.');
-      const d=prepararMetricasClase(a,m);
+      const d=prepararMetricasClase(actual,m);
       const pesos=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
-      caja.innerHTML='<h4>Estadísticas del aviso</h4>'+detalleMetricasClaseHTML(d,pesos,ahora)+
+      caja.innerHTML='<h4>Estadísticas del aviso</h4>'+detalleMetricasClaseHTML(d,pesos,Date.now())+
         '<p class="clase-privacidad">Solo totales por anuncio. Nunca nombres ni notas de estudiantes.</p>';
       b.dataset.estadisticasEstado='lista';b.textContent='Ocultar estadísticas';
     }catch(e){
