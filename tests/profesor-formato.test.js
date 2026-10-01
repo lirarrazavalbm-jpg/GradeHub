@@ -88,7 +88,7 @@ chk('y nada si no se indicó',run("formatoClase({modalidad:null,ubicacion:null})
 console.log('\n=== El chat parte escrito ===');
 ctx.__a={titulo:'Cálculo II para la I2',contacto_tipo:'whatsapp',contacto_valor:'+56 9 1234 5678'};
 const wa=run('enlaceContactoClase(__a.contacto_tipo,__a.contacto_valor,mensajeContactoClase(__a))');
-chk('abre WhatsApp con el mensaje',wa.startsWith('https://wa.me/56912345678?text=')&&decodeURIComponent(wa.split('text=')[1])==='Hola, vi tu clase «Cálculo II para la I2» en GradeHub.');
+chk('abre WhatsApp con el mensaje',wa.startsWith('https://wa.me/56912345678?text=')&&decodeURIComponent(wa.split('text=')[1])==='Hola, vi tu clase «Cálculo II para la I2» en GradeHub. ¿Me puedes dar más información?');
 ctx.__b={titulo:'A & B ?x=1#y'};
 chk('un título raro no rompe el enlace',!/[&#?]/.test(run("enlaceContactoClase('whatsapp','+56912345678',mensajeContactoClase(__b))").split('?text=')[1]));
 chk('la tarjeta no muestra el número',!/1234/.test(run("tarjetaCatalogoClase({id:'x',titulo:'T',ramos_siglas:['MAT1610'],precio_clp:15000,contacto_tipo:'whatsapp',contacto_valor:'+56 9 1234 5678'}).replace(/href=\"[^\"]*\"/g,'')")));

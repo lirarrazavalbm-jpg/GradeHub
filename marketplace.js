@@ -947,7 +947,7 @@ function pesosClase(valor){
 // dice nada de las notas de quien escribe.
 function mensajeContactoClase(anuncio){
   const titulo=String(anuncio&&anuncio.titulo||'').trim();
-  return titulo?`Hola, vi tu clase «${titulo}» en GradeHub.`:'Hola, vi tu clase en GradeHub.';
+  return (titulo?`Hola, vi tu clase «${titulo}» en GradeHub.`:'Hola, vi tu clase en GradeHub.')+' ¿Me puedes dar más información?';
 }
 function textoContactoClase(tipo){return {whatsapp:'Hablar por WhatsApp',instagram:'Ver Instagram',enlace:'Inscribirme',email:'Enviar correo'}[tipo]||'Contactar';}
 
@@ -2342,7 +2342,7 @@ function renderBorradorProfesor(raiz,anuncio){
   const contacto=campo('contacto'),tipoContacto=campo('contacto-tipo'),cajaTipo=campo('contacto-tipo-caja');
   const tipoActual=()=>{const t=tipoContacto?tipoContacto.value:'whatsapp';return contactosPermitidosClase(pesosDeTexto(valorCampo('precio'))).includes(t)?t:'whatsapp';};
   formatearAlEscribir(contacto,texto=>{const t=tipoActual();return t==='whatsapp'?textoWhatsappEscrito(texto):t==='instagram'?textoInstagramEscrito(texto):texto;});
-  const ayudaContacto={whatsapp:'Tu número no aparece en el anuncio. El estudiante te escribe con un botón y el chat parte con «Hola, vi tu clase … en GradeHub».',
+  const ayudaContacto={whatsapp:'Tu número no aparece en el anuncio. El estudiante te escribe con un botón y el chat parte con «Hola, vi tu clase … en GradeHub. ¿Me puedes dar más información?».',
     instagram:'El botón del anuncio abre tu perfil de Instagram.',enlace:'El botón «Inscribirme» abre este link en una pestaña nueva.'};
   const etiquetaContacto={whatsapp:'Tu WhatsApp',instagram:'Tu Instagram',enlace:'Link de inscripción'};
   let tipoMostrado=null;const escritoPorCanal={};
