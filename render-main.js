@@ -305,6 +305,7 @@ function renderRamo(){
   const r=S.ramos.find(x=>x.id===currentRamoId);if(!r){goHome();return;}
   document.getElementById('grade-gpa-echo')?.remove();
   document.getElementById('ramo-title').textContent=r.nombre;
+  renderDocenteRamo(r);
   const avg=ramoAvg(r);
   const calculo=calculoRamoConCompuertas(r);
   const recuperativo=estadoRecuperativo(r,calculo);
@@ -1440,4 +1441,86 @@ function renderWrappedHome(){
     </div>
     <div class="home-wrapped-pila" aria-hidden="true"><span></span><span></span><span><b>${esc(base.label)}</b></span></div>`;
   document.getElementById('home-wrapped-btn').addEventListener('click',abrirWrapped);
+}
+
+// Docente por sección: adaptación acotada del draft #445. Sin persistencia local.
+function limpiarTextoProfesor(valor,maximo){
+  return [...String(valor==null?'':valor)
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g,'')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g,'')
+    .replace(/\s+/g,' ').trim()].slice(0,maximo).join('');
+}
+
+
+let profesorSolicitud=0;
+function contextoDocente(r){
+  const seccion=Number(r&&r.seccion);
+  if(!currentUser||!r||!S.ramos.includes(r)||!Number.isInteger(seccion)||seccion<1||seccion>999)return null;
+  return {p_ramo_id:r.id,p_seccion:seccion,p_periodo:semester()};
+}
+function errorDocente(error){
+  const mensaje=String(error&&error.message||'');
+  if(/no sincronizados/.test(mensaje))return 'Este ramo o sección aún no está sincronizado. Espera un momento y reintenta.';
+  if(/período no vigente/.test(mensaje))return 'Cambió el semestre. Vuelve a abrir la ficha para informar al profesor.';
+  return 'No pudimos conectar con el registro. Revisa tu conexión y reintenta.';
+}
+async function renderDocenteRamo(r){
+  const raiz=document.getElementById('ramo-docente');if(!raiz)return;
+  const solicitud=++profesorSolicitud,cuenta=currentUser&&currentUser.id,contexto=contextoDocente(r);
+  raiz.innerHTML='';
+  if(!currentUser)return;
+  if(!contexto){
+    raiz.innerHTML='<p>¿Quién te hace clases?</p><button type="button" class="docente-link">Agregar sección para informar</button>';
+    raiz.querySelector('button').onclick=()=>openEditRamoModal();return;
+  }
+  const vigente=()=>solicitud===profesorSolicitud&&currentUser&&currentUser.id===cuenta&&currentRamoId===r.id
+    &&JSON.stringify(contextoDocente(r))===JSON.stringify(contexto);
+  raiz.innerHTML='<p role="status">Consultando profesor…</p>';
+  try{
+    const {data,error}=await supabaseClient.rpc('profesor_docente_estado',contexto);
+    if(error)throw error;
+    if(!vigente())return;
+    const estado=(Array.isArray(data)?data[0]:data)||{};
+    const nombre=limpiarTextoProfesor(estado.nombre_publico,100),mio=limpiarTextoProfesor(estado.mi_nombre,100);
+    raiz.innerHTML=`<div class="docente-resumen"><p>${nombre?'Profesor: <strong>'+esc(nombre)+'</strong>':'¿Quién te hace clases?'}</p>
+      <button type="button" class="docente-link">${nombre?'Informar o corregir':mio?'Corregir mi aporte':'Informar profesor'}</button></div>
+      <p class="docente-ayuda">${mio&&!nombre?'Tu aporte está guardado. Falta coincidencia entre 3 cuentas de esta sección.':nombre?'Confirmado por estudiantes de esta sección.':''}</p>`;
+    raiz.querySelector('button').onclick=()=>{
+      if(!vigente())return;
+      const formulario=document.createElement('form');formulario.className='docente-form';
+      formulario.innerHTML=`<p class="docente-ayuda">Sección ${contexto.p_seccion} · ${esc(contexto.p_periodo)}. El nombre se muestra cuando coinciden 3 cuentas.</p>
+        <label for="docente-nombre">Nombre del profesor</label>
+        <div class="docente-campo"><input id="docente-nombre" type="text" maxlength="100" required minlength="3" autocomplete="off" autocapitalize="words" value="${esc(mio)}" placeholder="Ej.: María José Pérez"><button type="button" class="docente-link" data-limpiar aria-label="Borrar nombre del campo">Borrar</button></div>
+        <p class="docente-error" role="alert"></p>
+        <div class="docente-acciones"><button type="button" class="docente-link" data-cancelar>Cancelar</button><button type="submit" class="docente-guardar">Guardar aporte</button></div>`;
+      raiz.querySelector('.docente-resumen button').hidden=true;
+      raiz.appendChild(formulario);
+      const input=formulario.querySelector('input'),guardar=formulario.querySelector('[type=submit]'),mensaje=formulario.querySelector('[role=alert]');
+      formulario.querySelector('[data-limpiar]').onclick=()=>{input.value='';input.focus();};
+      formulario.querySelector('[data-cancelar]').onclick=()=>{
+        formulario.remove();const abrir=raiz.querySelector('.docente-resumen button');abrir.hidden=false;abrir.focus();
+      };
+      formulario.onsubmit=async e=>{
+        e.preventDefault();if(guardar.disabled||!vigente())return;
+        const nombreAporte=limpiarTextoProfesor(input.value,100);
+        if(nombreAporte.length<3){mensaje.textContent='Escribe el nombre completo del profesor.';input.focus();return;}
+        guardar.disabled=true;guardar.textContent='Guardando…';mensaje.textContent='';
+        try{
+          const {error}=await supabaseClient.rpc('profesor_docente_informar',{...contexto,p_nombre:nombreAporte});
+          if(error)throw error;
+          if(!vigente())return;
+          showToast('Tu aporte quedó guardado');await renderDocenteRamo(r);
+          raiz.querySelector('button')?.focus();
+        }catch(error){
+          if(vigente()&&formulario.isConnected){mensaje.textContent=errorDocente(error);guardar.disabled=false;guardar.textContent='Guardar aporte';}
+        }
+      };
+      input.focus();
+    };
+  }catch(error){
+    if(!vigente())return;
+    raiz.innerHTML='<p class="docente-ayuda" role="status"></p><button type="button" class="docente-link">Reintentar</button>';
+    raiz.querySelector('p').textContent=errorDocente(error);
+    raiz.querySelector('button').onclick=()=>renderDocenteRamo(r);
+  }
 }
