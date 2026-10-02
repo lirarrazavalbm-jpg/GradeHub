@@ -3043,7 +3043,9 @@ function crearRamoDesdeCatalogo(nombre,sigla){
   const presetName=sigla&&siglaPreset&&normName(sigla)!==normName(siglaPreset)?null:candidato;
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const fila=S.tenant==='uc'?cursoUcCompleto(nombre,sigla):null;
-  const creditos=fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
+  // Los créditos de la pauta mandan: buscada sin sigla, la fila del catálogo
+  // puede ser la del homónimo (TEB110 tiene 8; TTF012, 10).
+  const creditos=typeof preset?.creditos==='number'?preset.creditos:fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
   const ramo={
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),sigla:sigla||null,
     creditos,origen:origenActual(presetName||nombre,sigla),
@@ -3592,7 +3594,10 @@ function sellarDatosCatalogo(r,tenant){
     if(s){r.sigla=s;cambio=true;}
   }
   if(r.creditos===null||r.creditos===undefined){
-    const cr=creditosDe(r.nombre,t,null,r.origen.ramoKey);
+    // Con la pauta del ramo, si es de ESTE curso: TTF012 no está en cursos-uc.js
+    // y su crédito vive solo en PRESETS_UC.
+    const def=pautaCalzaConSigla(r.nombre,r.sigla)?definicionPresetDelRamo(r):null;
+    const cr=creditosDe(r.nombre,t,def,r.origen.ramoKey);
     if(typeof cr==='number'){r.creditos=cr;cambio=true;}
   }
   return cambio;
