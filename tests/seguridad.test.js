@@ -103,7 +103,7 @@ chk('signup no usa identities.length para revelar una cuenta existente',
 chk('el mensaje de registro no confirma si el correo existe',
   !/Ese usuario ya existe/.test(src));
 chk('recovery limpia el fragmento antes de mostrar la pantalla',
-  /const esRecovery=location\.hash\.includes\('type=recovery'\);\s*limpiarFragmentoAuth\(\);\s*if\(esRecovery\)/.test(src));
+  /limpiarFragmentoAuth\(\);\s*if\(enRecuperacion\)\{showResetScreen\(\);return;\}/.test(src));
 ctx.location.hash='#access_token=secreto&refresh_token=otro&type=recovery';
 val('limpiarFragmentoAuth')();
 chk('la limpieza conserva path y query, pero elimina todo el fragmento',
