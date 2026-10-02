@@ -333,6 +333,9 @@ function promedioGeneral(ramos, calculo) {
 
 function proximaConFecha(ramo, hoy) {
   return (ramo.categorias || [])
+    .flatMap(c => [c, ...(c.notas || []).map(n => ({
+      nombre: n.nombre || c.nombre, fecha: n.fecha, hora: n.hora, peso: c.peso,
+    }))])
     .filter(c => c.fecha && c.fecha >= hoy)
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
     .map(c => ({ evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso }))[0] || null;
@@ -662,6 +665,11 @@ function despachar(nombre, estado, args) {
     });
     const proximas = [];
     ramos.forEach(r => (r.categorias || []).forEach(c => {
+      (c.notas || []).forEach(n => {
+        if (!n.fecha || n.fecha < hoy || n.fecha > hasta) return;
+        proximas.push({ ramo: r.nombre, evaluacion: n.nombre || c.nombre, fecha: n.fecha,
+          hora: n.hora || null, peso: c.peso, grupo: c.nombre, rendida: typeof n.valor === 'number' });
+      });
       if (c.fecha && c.fecha >= hoy && c.fecha <= hasta) {
         proximas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso });
       }
@@ -684,6 +692,11 @@ function despachar(nombre, estado, args) {
     const calculo = calculoPara(ramos);
     const proximas = [];
     ramos.forEach(r => (r.categorias || []).forEach(c => {
+      (c.notas || []).forEach(n => {
+        if (!n.fecha || n.fecha < hoy || n.fecha > hasta) return;
+        proximas.push({ ramo: r.nombre, evaluacion: n.nombre || c.nombre, fecha: n.fecha,
+          hora: n.hora || null, peso: c.peso, grupo: c.nombre, rendida: typeof n.valor === 'number', esHoy: n.fecha === hoy });
+      });
       if (c.fecha && c.fecha >= hoy && c.fecha <= hasta) {
         proximas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso, esHoy: c.fecha === hoy });
       }
