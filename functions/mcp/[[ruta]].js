@@ -331,6 +331,15 @@ function promedioGeneral(ramos, calculo) {
   };
 }
 
+// Las fechas académicas son días civiles de Chile, también en el servidor UTC.
+function hoyChileMcp() {
+  const partes = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const parte = tipo => partes.find(p => p.type === tipo).value;
+  return `${parte('year')}-${parte('month')}-${parte('day')}`;
+}
+
 function proximaConFecha(ramo, hoy) {
   return (ramo.categorias || [])
     .filter(c => c.fecha && c.fecha >= hoy)
@@ -615,8 +624,8 @@ function despachar(nombre, estado, args) {
 
   if (nombre === 'evaluaciones_proximas') {
     const dias = Number(args.dias) > 0 ? Number(args.dias) : 30;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+    const hoy = hoyChileMcp();
+    const hasta = new Date(Date.parse(hoy + 'T00:00:00Z') + dias * 864e5).toISOString().slice(0, 10);
     const out = [];
     ramos.forEach(r => (r.categorias || []).forEach(c => {
       // Una nota con fecha propia es una evaluación suelta dentro del grupo: el
@@ -640,8 +649,8 @@ function despachar(nombre, estado, args) {
 
   if (nombre === 'estado_semestre') {
     const dias = Number(args.dias) > 0 ? Number(args.dias) : 14;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+    const hoy = hoyChileMcp();
+    const hasta = new Date(Date.parse(hoy + 'T00:00:00Z') + dias * 864e5).toISOString().slice(0, 10);
     const calculo = calculoPara(ramos);
     const filas = ramos.map(r => {
       const promedio = calculo.ramoAvg(r);
@@ -679,8 +688,8 @@ function despachar(nombre, estado, args) {
 
   if (nombre === 'resumen_para_hoy') {
     const dias = Number(args.dias) > 0 ? Number(args.dias) : 7;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+    const hoy = hoyChileMcp();
+    const hasta = new Date(Date.parse(hoy + 'T00:00:00Z') + dias * 864e5).toISOString().slice(0, 10);
     const calculo = calculoPara(ramos);
     const proximas = [];
     ramos.forEach(r => (r.categorias || []).forEach(c => {
