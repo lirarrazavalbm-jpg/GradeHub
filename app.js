@@ -1641,7 +1641,9 @@ function obRamosVisibles(sugeridos,elegidos){
 // carrera. Mirar solo `mallaFor` dejaba a la UAI sin buscador y diciendo que no
 // había malla, cuando sus 23 mallas viven aparte en `mallas-uai.js`.
 function obSinCatalogo(){
-  return Object.keys(mallaFor(selectedTenant)||{}).length===0&&!mallaDeCarrera(selectedTenant,selectedCarrera);
+  // El buscador también ofrece ramos de otras carreras. No tener malla propia
+  // no elimina las mallas diferidas de la universidad (por ejemplo UAI/Otra).
+  return Object.keys(mallaFor(selectedTenant)||{}).length===0&&!mallaDeCarrera(selectedTenant,selectedCarrera)&&!ARCHIVO_MALLAS[selectedTenant];
 }
 function obCoursePickerIntro(sugeridos){
   if(selectedTenant==='uc'&&selectedCarrera==='ING-PC'&&selectedSem>=5){
