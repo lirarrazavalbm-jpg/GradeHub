@@ -240,7 +240,7 @@ function campoPesos(input){formatearAlEscribir(input,textoPesosEscrito);}
 // Tres estados distintos, y confundirlos deja la pantalla mintiendo: todavía no
 // se sabe, no se pudo saber (el SQL del marketplace no está aplicado), o se supo
 // —y ahí puede ser una ficha o ninguna—.
-let perfilProfesorCache=null,perfilProfesorPedido=false,perfilProfesorResuelto=false;
+let perfilProfesorCache=null,perfilProfesorPedido=false,perfilProfesorResuelto=false,perfilProfesorVersion=0;
 function perfilProfesorConocido(){
   if(!perfilProfesorResuelto)return undefined;   // preguntando
   return perfilProfesorCache;                     // ficha, false, o null si no se pudo
@@ -253,15 +253,17 @@ function esProfesorAprobado(){
 // aparece ni la pestaña ni el estado en Ajustes.
 async function cargarPerfilProfesor(){
   if(perfilProfesorPedido)return perfilProfesorCache;
+  const cuenta=sesionProfesorClase(),version=perfilProfesorVersion;
   perfilProfesorPedido=true;
   const r=await perfilProfesorActual();
+  if(cuenta!==sesionProfesorClase()||version!==perfilProfesorVersion)return null;
   perfilProfesorCache=r.ok?(r.perfil||false):null;
   perfilProfesorResuelto=true;
   return perfilProfesorCache;
 }
 // Después de postular o de que cambie el estado, para no dejar la pantalla
 // mostrando lo anterior.
-function olvidarPerfilProfesor(){perfilProfesorCache=null;perfilProfesorPedido=false;perfilProfesorResuelto=false;}
+function olvidarPerfilProfesor(){perfilProfesorVersion++;perfilProfesorCache=null;perfilProfesorPedido=false;perfilProfesorResuelto=false;}
 
 function sesionProfesorClase(){
   return supabaseClient&&currentUser&&currentUser.id?String(currentUser.id):'';
@@ -2739,13 +2741,15 @@ if(typeof document!=='undefined'){
 // acción pasa por funciones del servidor que exigen estar en la lista Y haber
 // entrado con el segundo factor (supabase/administradores.sql). Por eso la
 // página parte por renderPuertaDosPasos.
-let soyAdministradorCache=false;
+let soyAdministradorCache=false,sesionMarketplaceVersion=0;
 async function cargarSoyAdministrador(){
   if(!supabaseClient||!currentUser)return false;
+  const cuenta=sesionProfesorClase(),version=sesionMarketplaceVersion;
   try{
     const {data,error}=await supabaseClient.rpc('soy_administrador');
+    if(cuenta!==sesionProfesorClase()||version!==sesionMarketplaceVersion)return false;
     soyAdministradorCache=!error&&data===true;
-  }catch(e){soyAdministradorCache=false;}
+  }catch(e){if(cuenta===sesionProfesorClase()&&version===sesionMarketplaceVersion)soyAdministradorCache=false;}
   return soyAdministradorCache;
 }
 function esAdministrador(){return soyAdministradorCache;}
@@ -2754,6 +2758,7 @@ function esAdministrador(){return soyAdministradorCache;}
 // profesor y de administración y su ficha de profesor en pantalla (reportado
 // el 2026-09-30 al crear una cuenta nueva tras usar la de admin).
 function olvidarSesionMarketplace(){
+  sesionMarketplaceVersion++;
   soyAdministradorCache=false;
   vistaAdmin={seccion:'campanas',busqueda:'',estado:''};
   olvidarPerfilProfesor();
