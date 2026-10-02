@@ -13,9 +13,12 @@ chk('RLS está activa',/alter table public\.user_feedback enable row level secur
 chk('anon y authenticated pierden privilegios heredados',
   /revoke all on public\.user_feedback from public, anon, authenticated/i.test(sql));
 chk('authenticated solo recibe INSERT',
-  /grant insert\s*\(user_id, categoria, mensaje\)\s+on public\.user_feedback to authenticated/i.test(sql));
+  /grant insert\s*\(user_id, categoria, mensaje, universidad\)\s+on public\.user_feedback to authenticated/i.test(sql));
 chk('INSERT exige que auth.uid sea el user_id',
   /for insert[\s\S]*to authenticated[\s\S]*with check\s*\(\(select auth\.uid\(\)\) = user_id\)/i.test(sql));
+chk('la universidad se guarda como código corto o null',
+  /add column if not exists universidad text\s+check \(universidad is null or universidad ~ '\^\[a-z\]\{2,12\}\$'\)/i.test(sql));
+chk('la app manda la universidad solo si es conocida',/const universidad=TENANTS\[S\.tenant\]\?S\.tenant:null;/.test(app));
 chk('mensaje tiene límite también en la base',
   /char_length\(btrim\(mensaje\)\) between 3 and 2000/i.test(sql));
 
@@ -59,7 +62,7 @@ chk('el mailto escapa el contenido antes de ponerlo en la URL',
 chk('el borrador no expone correo, UID, ramos ni notas',
   !!fnCorreo&&!/currentUser|\.id\b|ramos|categorias|notas|email/i.test(fnCorreo));
 chk('el formulario sigue siendo la vía principal de envío',
-  /from\('user_feedback'\)\.insert\(\{user_id:currentUser\.id,categoria,mensaje\}\)/.test(app));
+  /from\('user_feedback'\)\.insert\(\{user_id:currentUser\.id,categoria,mensaje,universidad\}\)/.test(app));
 
 console.log(fallos?`\nFAIL: ${fallos}`:'\nSugerencias OK');
 process.exit(fallos?1:0);
