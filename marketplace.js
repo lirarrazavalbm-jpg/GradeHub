@@ -2755,6 +2755,7 @@ function esAdministrador(){return soyAdministradorCache;}
 // el 2026-09-30 al crear una cuenta nueva tras usar la de admin).
 function olvidarSesionMarketplace(){
   soyAdministradorCache=false;
+  vistaAdmin={seccion:'campanas',busqueda:'',estado:''};
   olvidarPerfilProfesor();
   anunciosRecomendacion={tenant:null,lista:null,pidiendo:false};
 }
@@ -2920,6 +2921,10 @@ function panelAdminHigHTML(profesores,ahora){
     <details class="admin-hig-profesores"><summary>Profesores · ${profesores.length} (${r.pendientes} esperando revisión)</summary>${profesores.map(personaAdminHigHTML).join('')||'<p>Todavía no hay profesores.</p>'}</details></div>`;
 }
 
+// La vista elegida sobrevive al repintado: cada acción vuelve a pintar el
+// panel, y quien publicaba desde "Por revisar" caía de vuelta en "Campañas"
+// con la búsqueda y el filtro borrados.
+let vistaAdmin={seccion:'campanas',busqueda:'',estado:''};
 async function pintarPanelAdmin(raiz){
   raiz.innerHTML='<p class="profesor-info" role="status">Cargando…</p>';
   let profesores;
@@ -2932,10 +2937,13 @@ async function pintarPanelAdmin(raiz){
   }catch(e){raiz.innerHTML='<p class="profesor-info" role="alert">No pudimos cargar la administración. Intenta de nuevo.</p>';return;}
   const ahora=Date.now();
   raiz.innerHTML=(compatibilidadSqlClases.campanas||compatibilidadSqlClases.cobros?`<p class="profesor-info" role="status">${esc(AVISO_SQL_CLASES)}</p>`:'')+panelAdminHigHTML(profesores,ahora);
-  let seccion='campanas';
+  let seccion=vistaAdmin.seccion;
   const buscar=raiz.querySelector('#admin-hig-buscar'),filtro=raiz.querySelector('#admin-hig-estado');
+  buscar.value=vistaAdmin.busqueda;filtro.value=vistaAdmin.estado;
+  raiz.querySelectorAll('[data-admin-seccion]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.adminSeccion===seccion)));
   const filtrar=()=>{
-    const filas=filtrarAdminHig(filasAdminHig(profesores,ahora),{seccion,busqueda:buscar.value,estado:filtro.value}),ids=new Set(filas.map(f=>f.a.id));
+    vistaAdmin={seccion,busqueda:buscar.value,estado:filtro.value};
+    const filas=filtrarAdminHig(filasAdminHig(profesores,ahora),vistaAdmin),ids=new Set(filas.map(f=>f.a.id));
     raiz.querySelectorAll('[data-admin-fila]').forEach(f=>{f.hidden=!ids.has(f.dataset.adminFila);});
     raiz.querySelector('#admin-hig-cantidad').textContent=`${filas.length} ${filas.length===1?'anuncio':'anuncios'}`;
     raiz.querySelector('#admin-hig-vacio').hidden=filas.length>0;

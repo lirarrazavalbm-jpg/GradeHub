@@ -7315,7 +7315,9 @@ function confirmResetApp(){
     : 'Se borrarán todos tus datos y volverás al inicio. Esta acción no se puede deshacer.';
   showConfirm('Reiniciar app',desc,async()=>{
     track('app_reset');
-    localStorage.removeItem(STORAGE_KEY);
+    // Las mismas claves que borra cerrar sesión: la base de sincronización y la
+    // copia previa a importar son copias completas de las notas.
+    [STORAGE_KEY,CACHE_OWNER_KEY,SYNC_BASE_KEY,CURSO_SIGLAS_KEY,PRE_IMPORT_KEY].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
     if(typeof borrarCacheApartada==='function')borrarCacheApartada(conCuenta?currentUser.id:null);
     if(conCuenta){try{await supabaseClient.auth.signOut();}catch(e){}}
     location.reload();
