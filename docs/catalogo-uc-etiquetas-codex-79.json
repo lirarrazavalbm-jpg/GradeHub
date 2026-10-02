@@ -1,0 +1,555 @@
+[
+  {
+    "courseCode": "AAZ206",
+    "label": "correct_auto_importable",
+    "note": "La sección III confirma una interrogación 35%, una defensa 35% y examen oral 30%, sin reglas adicionales.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ACO216E",
+    "label": "correct_auto_importable",
+    "note": "La evaluación declara dos trabajos escritos de 20% cada uno, participación 20% y trabajo final 40%; el parser conserva la cantidad.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "AGL070",
+    "label": "correct_auto_importable",
+    "note": "Los cinco pesos coinciden con la evaluación; los grupos plurales sin cantidad suman solo 30%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "AGL282",
+    "label": "correct_auto_importable",
+    "note": "Participación, seminario, reporte e informe/presentación final coinciden con los cuatro pesos del programa.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ANT170",
+    "label": "should_be_needs_review",
+    "note": "El peso y las dos pruebas son correctos, pero el parser deja truncado el nombre «Trabajo individual con ponderación de».",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ANT2263",
+    "label": "correct_auto_importable",
+    "note": "Los cuatro pesos de la sección evaluativa coinciden; solo los seminarios 30% carecen de cantidad.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ANT240",
+    "label": "correct_auto_importable",
+    "note": "Declara dos pruebas de 30% y dos ensayos de 20%; ambas cantidades y pesos quedaron capturados.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ANT2532",
+    "label": "correct_auto_importable",
+    "note": "Los dos informes de 30% y el examen escrito de 40% coinciden con la pauta propuesta.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "AQC1123",
+    "label": "correct_auto_importable",
+    "note": "Las dos etapas, el producto gráfico y la asistencia suman 100% con los pesos declarados.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ARO104I",
+    "label": "correct_auto_importable",
+    "note": "La propuesta respeta los cuatro pesos; los foros sin cantidad representan solo 10%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ART049",
+    "label": "should_be_needs_review",
+    "note": "El programa dice «Dos ensayos» por 30%, pero el parser no captura las dos casillas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "AST1016",
+    "label": "correct_auto_importable",
+    "note": "Asistencia 10%, preguntas 10%, control 30% y examen 50% coinciden; solo preguntas carece de cantidad.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "AST1529",
+    "label": "correct_auto_importable",
+    "note": "El parser conserva dos interrogaciones de 20% cada una; trabajos sin cantidad pesan 30% y el examen 30%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "BIO010",
+    "label": "insufficient_information",
+    "note": "Talleres y trabajos prácticos 40% más controles individuales 20% carecen de cantidades: 60% indeterminado.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "BIO352D",
+    "label": "correct_auto_importable",
+    "note": "El trabajo práctico de laboratorio 70% y la presentación oral 30% son singulares y coinciden con la fuente.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "CAR1500",
+    "label": "correct_auto_importable",
+    "note": "Los tres pasos prácticos y la presentación final pesan 20/20/20/40; las unidades I y II no declaran notas separadas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "CCO3320",
+    "label": "correct_auto_importable",
+    "note": "Los cuatro pesos coinciden y solo informes de avance 30% queda sin cantidad declarada.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "COM403",
+    "label": "correct_auto_importable",
+    "note": "Captura dos controles de 20% y tres trabajos de 5%, además del trabajo 20% y examen 25%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "DEC262",
+    "label": "correct_auto_importable",
+    "note": "Control o exposición 25%, trabajo 25% y examen oral 50% coinciden con el sistema de evaluación.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "DEF335",
+    "label": "correct_auto_importable",
+    "note": "Participación 10%, prueba oral 20%, investigación/exposición 20% y examen oral 50% coinciden.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "DEM283",
+    "label": "correct_auto_importable",
+    "note": "El control 25%, trabajo escrito 25% y examen final 50% coinciden con las tres evaluaciones declaradas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "DEM285",
+    "label": "correct_auto_importable",
+    "note": "El programa declara un control 50% y un examen 50%, ambos reflejados en la propuesta.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "DNO016",
+    "label": "correct_auto_importable",
+    "note": "Los encargos 01 a 04 y sus pesos 5/30/30/35 coinciden con la sección evaluativa.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "DPT9350",
+    "label": "correct_auto_importable",
+    "note": "Asistencia 20%, trabajo 40%, reflexiones 20% y entrevista 20% coinciden; solo reflexiones carece de cantidad.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "EAE253B",
+    "label": "correct_auto_importable",
+    "note": "Tareas 20%, prueba 20%, examen 20% y proyecto 40% coinciden; las tareas sin cantidad no llegan al umbral.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "EAE372A",
+    "label": "correct_auto_importable",
+    "note": "La fuente declara dos pruebas de 30% y examen de 40%; el parser conserva ambas casillas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "EAF010",
+    "label": "correct_auto_importable",
+    "note": "Controles sin cantidad pesan 48%, bajo el umbral; informe 12% y examen 40% completan la pauta.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ENF2306",
+    "label": "insufficient_information",
+    "note": "«Promedio de controles» representa 80% y el programa completo no dice cuántos controles lo integran.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ENO1261",
+    "label": "correct_auto_importable",
+    "note": "Pruebas 1 y 2, minitest, trabajo grupal y autoevaluación conservan sus cinco pesos.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ENO2002",
+    "label": "correct_auto_importable",
+    "note": "Las dos pruebas de 35% y las evaluaciones ABP y coevaluación de 15% coinciden con el programa.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ENO2021",
+    "label": "correct_auto_importable",
+    "note": "Los seis componentes y pesos coinciden; las presentaciones orales sin cantidad solo pesan 20%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ENP2412",
+    "label": "correct_auto_importable",
+    "note": "Presentación 40%, informe 30%, asistencia 20% y autoevaluación 10% coinciden con la fuente.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ESO012",
+    "label": "correct_auto_importable",
+    "note": "La fuente declara una disertación 25% y dos trabajos individuales diferenciados de 25% y 50%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ESO2422",
+    "label": "correct_auto_importable",
+    "note": "El ensayo de mitad de semestre y el ensayo final pesan 50% cada uno, tal como propone el parser.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "EST244D",
+    "label": "correct_auto_importable",
+    "note": "La fuente declara dos certámenes de 30% y una actividad de investigación 40%; cantidad capturada.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "FIL185P",
+    "label": "correct_auto_importable",
+    "note": "Dos pruebas integrativas de 25% quedaron capturadas; controles sin cantidad solo pesan 20% y examen 30%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "FON402",
+    "label": "correct_auto_importable",
+    "note": "Captura dos pruebas de 15%; controles, informes y seminarios sin cantidad suman 40%, bajo el umbral.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "GEO2018",
+    "label": "correct_auto_importable",
+    "note": "Primera y segunda prueba, trabajos prácticos, trabajo grupal y examen pesan 20% cada uno.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "GEO601",
+    "label": "correct_auto_importable",
+    "note": "Aunque hay una categoría de 100%, el programa declara dos pruebas de 50% y el parser captura ambas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "GOB2004",
+    "label": "correct_auto_importable",
+    "note": "Los cinco pesos y nombres coinciden; las reacciones semanales sin cantidad solo pesan 10%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "GOB2010",
+    "label": "correct_auto_importable",
+    "note": "Pruebas 20%, anteproyecto 30%, examen 30% y participación/autoevaluación 20% coinciden con la fuente.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "IBM2992",
+    "label": "correct_auto_importable",
+    "note": "Proyecto, presentación, reporte y participación conservan los pesos 40/20/30/10 del programa.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ICP0116",
+    "label": "should_be_needs_review",
+    "note": "El programa declara «Cuatro informes» por 40%, pero el parser no registra cuatro casillas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ICP0132",
+    "label": "insufficient_information",
+    "note": "Controles 20%, foros 20% y reportes de terreno 10% carecen de cantidades: exactamente 50% indeterminado.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ICP0209",
+    "label": "correct_auto_importable",
+    "note": "Controles sin cantidad pesan 40%; trabajo práctico 30% y examen oral 30% completan la pauta.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "IDI2031",
+    "label": "correct_auto_importable",
+    "note": "Trabajo grupal 40%, prueba 30% y examen 30% coinciden con evaluaciones singulares.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "IDI2996",
+    "label": "correct_auto_importable",
+    "note": "Los cinco pesos de 20% coinciden; solo tareas y controles de lectura carecen de cantidad.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "IEU2064",
+    "label": "correct_auto_importable",
+    "note": "Tareas y trabajos prácticos sin cantidad representan 20%; prueba, investigación y examen coinciden.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "IHI0508",
+    "label": "correct_auto_importable",
+    "note": "Los controles 1, 2 y 3 y la monografía son cuatro evaluaciones explícitas de 25%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "IMT2100",
+    "label": "correct_auto_importable",
+    "note": "Captura tres pruebas de 20%; tareas 10%, preinforme 10% e informe final 20% coinciden.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "IMT2270",
+    "label": "correct_auto_importable",
+    "note": "Los cinco pesos coinciden; presentaciones sin cantidad representan 40%, bajo el umbral.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ING2983",
+    "label": "insufficient_information",
+    "note": "La evaluación continua de la evolución del trabajo pesa 75% sin declarar cuántas instancias se califican.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "LET321E",
+    "label": "insufficient_information",
+    "note": "Informes/guías/tareas 40% y trabajo en clases 20% no declaran cantidades: 60% indeterminado.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "MED818B",
+    "label": "correct_auto_importable",
+    "note": "Trabajo escrito 40%, presentación oral 40% y desempeño tutorial 20% coinciden con la fuente.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "ODO302A",
+    "label": "insufficient_information",
+    "note": "«Área teórica» 50% y «Área práctica» 50% son agregados sin cantidad de evaluaciones en todo el programa.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "PSB118",
+    "label": "should_be_needs_review",
+    "note": "«Pruebas de contenido (2)» pesa 30%, pero el parser omitió las dos casillas indicadas entre paréntesis.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "PSI2440",
+    "label": "correct_auto_importable",
+    "note": "Dos pruebas de 30% y trabajo final 40% coinciden; la descripción confirma las tres evaluaciones.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "QIF112",
+    "label": "correct_auto_importable",
+    "note": "Los seis componentes de internado y sus pesos coinciden con la sección IV de evaluación.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "QIM1017",
+    "label": "should_be_needs_review",
+    "note": "La metodología exige 100% de asistencia a seminarios y esa condición queda fuera de la pauta propuesta.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "QIM1030",
+    "label": "correct_auto_importable",
+    "note": "Prueba 30%, controles 25%, participación 15% y proyecto 30% coinciden; solo controles carece de cantidad.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "QIM517",
+    "label": "correct_auto_importable",
+    "note": "Tareas sin cantidad pesan 40%; trabajo final escrito y presentación pesan 30% cada uno.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "QOP3805",
+    "label": "correct_auto_importable",
+    "note": "El parser conserva dos interrogaciones de 25%; controles 20% y examen 30% coinciden.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "RII6001",
+    "label": "correct_auto_importable",
+    "note": "Los cinco pesos coinciden; presentaciones 20% y trabajo remoto 10% carecen de cantidad pero suman menos de 50%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "SOL210",
+    "label": "correct_auto_importable",
+    "note": "Los cuatro pesos coinciden y los reportes de lecturas sin cantidad solo representan 30%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "SUS2210",
+    "label": "correct_auto_importable",
+    "note": "Prueba 33%, ensayo 34% y actividad grupal 33% son singulares y coinciden con el programa.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "SUS2220",
+    "label": "correct_auto_importable",
+    "note": "Controles/informes parciales sin cantidad pesan 25%; el resto de los cuatro componentes coincide.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "TBH041",
+    "label": "correct_auto_importable",
+    "note": "La fuente declara tres pruebas de 20% y examen final de 40%; la cantidad quedó capturada.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "TEO297",
+    "label": "correct_auto_importable",
+    "note": "Los cinco componentes y sus pesos 20/25/25/15/15 coinciden; «dos sujetos» describe la investigación, no dos notas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "TSL584",
+    "label": "insufficient_information",
+    "note": "Análisis de casos 50% y presentación de trabajos grupales 50% no declaran cantidades en el programa.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "TSL587",
+    "label": "correct_auto_importable",
+    "note": "Declara un análisis 20%, dos exposiciones de 25% y un trabajo final 30%; todas las cantidades quedaron capturadas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "TTF048",
+    "label": "correct_auto_importable",
+    "note": "Control 30%, trabajo de investigación 30% y examen oral 40% coinciden con la evaluación.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "TTF049",
+    "label": "should_be_needs_review",
+    "note": "El parser omitió que la nota de presentación pesa 60%, el examen 40% y que hay eximición desde 6,0 con 80% de asistencia.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "VET1400",
+    "label": "correct_auto_importable",
+    "note": "Pruebas 20% e informes 20% sin cantidad suman 40%; control, presentación y examen coinciden.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "VET2000",
+    "label": "correct_auto_importable",
+    "note": "La fuente declara un control 10% y un proyecto singular 90%; son dos evaluaciones completas.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "VET2810",
+    "label": "insufficient_information",
+    "note": "Supervisores 20%, técnicas simuladas 20% e informes 15% implican instancias plurales sin cantidad: 55% indeterminado.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "VET2850",
+    "label": "insufficient_information",
+    "note": "Reportes clínicos 30% y presentaciones de casos 30% no declaran cantidades: 60% indeterminado.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "VIL604M",
+    "label": "correct_auto_importable",
+    "note": "Evaluación en proceso 45%, autoevaluación 10% y evaluación final 45% coinciden; el agregado sin cantidad queda bajo 50%.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "VIL621",
+    "label": "correct_auto_importable",
+    "note": "Exposición 10%, prueba 30%, participación 30% y autoevaluación 30% coinciden con la fuente.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  },
+  {
+    "courseCode": "VIL641G",
+    "label": "correct_auto_importable",
+    "note": "Los cinco pesos coinciden; contenido y comportamiento agregado suman 40%, bajo el umbral.",
+    "reviewer": "codex",
+    "reviewedAt": "2026-10-02T00:31:38Z"
+  }
+]
