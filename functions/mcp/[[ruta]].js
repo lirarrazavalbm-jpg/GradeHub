@@ -97,6 +97,13 @@ function calculoPara(ramos) {
   });
 }
 
+function alcanzaMetaOficial(calculo, ramo, promedio, meta) {
+  const final = calculo.notaFinalOficial(promedio);
+  const objetivo = calculo.notaFinalOficial(meta);
+  return final !== null && final >= objetivo
+    && !(objetivo >= 4 && calculo.gatesActivas(ramo).length);
+}
+
 function queNecesitoParaAprobar(ramos, args) {
   const ramo = buscarRamo(ramos, args.ramo);
   if (!ramo) return { error: 'No encontré ese ramo', ramos: ramos.map(r => r.nombre) };
@@ -114,7 +121,7 @@ function queNecesitoParaAprobar(ramos, args) {
   }));
 
   let estado = 'alcanzable';
-  if (promedioNecesario === null) estado = promedioActual === null ? 'sin_notas' : (promedioActual >= meta ? 'meta_alcanzada' : 'sin_evaluaciones_pendientes');
+  if (promedioNecesario === null) estado = promedioActual === null ? 'sin_notas' : (alcanzaMetaOficial(calculo, ramo, promedioActual, meta) ? 'meta_alcanzada' : 'sin_evaluaciones_pendientes');
   else if (promedioNecesario > 7) estado = 'fuera_de_escala';
   else if (promedioNecesario < 1) estado = 'con_cualquier_nota';
 
@@ -123,7 +130,7 @@ function queNecesitoParaAprobar(ramos, args) {
     meta,
     promedioActual,
     promedioNecesario,
-    factibleEnEscala: promedioNecesario === null ? promedioActual !== null && promedioActual >= meta : promedioNecesario <= 7,
+    factibleEnEscala: promedioNecesario === null ? alcanzaMetaOficial(calculo, ramo, promedioActual, meta) : promedioNecesario <= 7,
     estado,
     // No se esconden detrás del promedio: una compuerta puede impedir aprobar
     // aunque la exigencia ponderada sí quepa dentro de la escala.
@@ -592,7 +599,7 @@ function simular(ramos, args) {
     meta,
     promedioActual: actual,
     promedioSimulado: simulado,
-    alcanzaLaMeta: simulado !== null && simulado >= meta,
+    alcanzaLaMeta: alcanzaMetaOficial(calculo, clon, simulado, meta),
     // Lo que todavía quedaría por rendir después de estas notas: null cuando ya
     // no queda nada pendiente.
     promedioNecesarioEnLoQueQueda: faltaDespues,
