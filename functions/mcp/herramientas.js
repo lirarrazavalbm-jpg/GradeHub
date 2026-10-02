@@ -52,7 +52,7 @@ export const HERRAMIENTAS = [
     // compuertas y ramo vinculado ya se equivocaron adentro de la app.
     nombre: 'simular',
     tipo: 'lectura',
-    resumen: 'Qué pasaría con un ramo si sacara ciertas notas: promedio final, si aprueba y qué compuertas quedan sin cumplir. No guarda nada. Sin notas, responde la otra mitad: cuánto mueve la nota final cada evaluación que queda, para saber dónde conviene poner las horas.',
+    resumen: 'Qué pasaría con un ramo si sacara ciertas notas o faltara CON justificativo a una evaluación pendiente. Permite comparar rendirla con nota X frente a justificarla, solo si la persona tiene justificativo y el ramo ya tiene declarada la regla. Usa la pauta y sus compuertas; no guarda nada. Sin notas ni ausencias, muestra cuánto mueve la final cada evaluación pendiente.',
     args: {
       ramo: 'nombre o sigla',
       notas: {
@@ -67,6 +67,20 @@ export const HERRAMIENTAS = [
             evaluacion: { type: 'string', description: 'Nombre de la evaluación tal como está en el ramo' },
             valor: { type: 'number', description: 'Nota entre 1,0 y 7,0' },
             casilla: { type: 'integer', minimum: 1, maximum: 100, description: 'Cuál de las notas de esa evaluación, si tiene varias' },
+          },
+        },
+      },
+      ausencias: {
+        type: 'array',
+        description: 'Inasistencias hipotéticas CON justificativo. Requieren una regla ya guardada en el ramo; no se declaran ni guardan.',
+        maxItems: 60,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['evaluacion'],
+          properties: {
+            evaluacion: { type: 'string', description: 'Nombre de la evaluación pendiente tal como está en el ramo' },
+            casilla: { type: 'integer', minimum: 1, maximum: 100, description: 'Solo se acepta 1 en una evaluación de una casilla; una ausencia en varias casillas afecta al grupo completo en la app' },
           },
         },
       },
