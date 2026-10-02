@@ -379,6 +379,76 @@ function errorSimulacion(ramo, notas) {
   return null;
 }
 
+function prepararAusenciasSimuladas(ramo, ausencias, notas) {
+  if (!Array.isArray(ausencias)) return { error: 'Las ausencias tienen que venir en una lista.' };
+  if (ausencias.length > 60) return { error: 'Como máximo 60 ausencias por simulación.' };
+  if (!ausencias.length) return { categorias: [] };
+  const oficial = ramo.reglasAusenciaJustificada;
+  const estudiante = ramo.reglasAusenciaJustificadaUsuario?.declaradaPor === 'estudiante'
+    ? ramo.reglasAusenciaJustificadaUsuario : null;
+  const regla = oficial || estudiante;
+  if (!regla) return { error: 'Este ramo no tiene declarada la regla de inasistencia justificada; revisa el programa o declárala en la app.' };
+  const categorias = [], vistas = new Set();
+  for (const ausencia of ausencias) {
+    const nombre = String(ausencia?.evaluacion || '').trim();
+    if (!nombre) return { error: 'Cada ausencia necesita el nombre de su evaluación.' };
+    const encontradas = (ramo.categorias || []).filter(c => norm(c.nombre) === norm(nombre));
+    if (!encontradas.length) return { error: `No encontré "${nombre}" en ${ramo.nombre}.` };
+    if (encontradas.length > 1) return { error: `Hay más de una evaluación llamada "${nombre}". Corrige la pauta en la app antes de simular la ausencia.` };
+    const cat = encontradas[0];
+    if (vistas.has(cat.id)) return { error: `La ausencia de ${cat.nombre} está repetida.` };
+    vistas.add(cat.id);
+    const casilla = ausencia.casilla;
+    if (casilla != null && (!Number.isInteger(casilla) || casilla < 1 || casilla > 100))
+      return { error: 'La casilla debe ser un entero entre 1 y 100.' };
+    if (casilla != null && Number.isInteger(cat.slots) && cat.slots > 1)
+      return { error: `La justificación de ${cat.nombre} se aplica a la evaluación completa, no a una sola casilla. Omite «casilla» para simularla.` };
+    if (casilla != null && casilla !== 1)
+      return { error: `${cat.nombre} tiene una sola casilla; usa 1 u omite «casilla».` };
+    if (!(Number(cat.peso) > 0)) return { error: `${cat.nombre} no tiene un peso válido para justificar.` };
+    if ((cat.notas || []).some(n => n?.valor != null))
+      return { error: `${cat.nombre} ya tiene nota; no se puede simular una inasistencia justificada.` };
+    if (notas.some(n => norm(n?.evaluacion) === norm(cat.nombre)))
+      return { error: `No se puede poner una nota hipotética y justificar ${cat.nombre} en el mismo escenario.` };
+    const entradas = ['rezagos', 'reemplazos', 'traspasos']
+      .flatMap(tipo => Array.isArray(regla[tipo]) ? regla[tipo] : []);
+    if (!entradas.some(x => x.desdeId === cat.id))
+      return { error: `La regla guardada no indica qué ocurre al justificar ${cat.nombre}; revisa el programa o la declaración en la app.` };
+    categorias.push(cat);
+  }
+  return { categorias };
+}
+
+function detalleAusenciasSimuladas(ramo, categorias, estado) {
+  return categorias.map(cat => {
+    const aplicada = (estado.activas || []).find(x => x.desdeId === cat.id);
+    const pendiente = (estado.pendientes || []).find(x => x.desdeId === cat.id);
+    const inactiva = (estado.inactivas || []).find(x => x.desdeId === cat.id);
+    if (inactiva || (!aplicada && !pendiente))
+      return { error: `La ausencia de ${cat.nombre} no se puede aplicar a esta pauta; revisa la regla en la app.` };
+    const movimiento = aplicada || pendiente;
+    const destino = (ramo.categorias || []).find(c => c.id === movimiento.haciaId);
+    const nuevoDestino = (estado.estructura.children || []).find(c => c.id === movimiento.haciaId);
+    return {
+      evaluacion: cat.nombre,
+      tipo: movimiento.tipo,
+      estado: aplicada ? 'aplicada' : 'pendiente',
+      ...(pendiente ? { motivo: pendiente.motivo } : {}),
+      pesoOriginal: cat.peso,
+      destino: destino?.nombre || null,
+      ...(movimiento.tipo === 'traspaso' && aplicada ? {
+        pesoNuevoDestino: nuevoDestino?.weight ?? null,
+        pesoAplicado: aplicada.pesoAplicado,
+        topeAplicado: aplicada.pesoExcedente > 0,
+        pesoExcedenteConNotaUno: aplicada.pesoExcedente,
+        ...(aplicada.pesoExcedente > 0 ? { topePesoDestino: aplicada.topePesoDestino, notaExceso: aplicada.notaExceso } : {}),
+      } : {}),
+      origenRegla: estado.origenRegla,
+      yaDeclarada: (ramo.ausenciasJustificadas || []).includes(cat.id),
+    };
+  });
+}
+
 // Sin notas hipotéticas, la pregunta es la otra: dónde rinde estudiar. Para cada
 // evaluación sin nota se calcula la nota final sacándose un 7 y sacándose un 1,
 // con TODO lo demás pendiente fijo en 4,0 en los dos casos. Ese supuesto es lo
@@ -449,9 +519,12 @@ function simular(ramos, args) {
   const notas = args.notas == null ? [] : args.notas;
   const invalida = errorSimulacion(ramo, notas);
   if (invalida) return { error: invalida };
+  const ausencias = args.ausencias == null ? [] : args.ausencias;
+  const preparadas = prepararAusenciasSimuladas(ramo, ausencias, notas);
+  if (preparadas.error) return { error: preparadas.error };
 
   const actual = calculoPara(ramos).ramoAvg(ramo);
-  if (!Array.isArray(notas) || !notas.length) {
+  if (!notas.length && !preparadas.categorias.length) {
     return {
       ramo: ramo.nombre, meta, promedioActual: actual,
       impacto: impactoPendientes(ramos, ramo, meta),
@@ -461,7 +534,17 @@ function simular(ramos, args) {
   }
 
   const clon = ramoSimulado(ramo, notas);
+  if (preparadas.categorias.length) {
+    clon.ausenciasJustificadas = [...new Set([
+      ...(Array.isArray(ramo.ausenciasJustificadas) ? ramo.ausenciasJustificadas : []),
+      ...preparadas.categorias.map(cat => cat.id),
+    ])];
+  }
   const calculo = calculoPara(ramos.map(x => (x === ramo ? clon : x)));
+  const estadoAusencias = preparadas.categorias.length ? calculo.estadoAusenciasJustificadas(clon) : null;
+  const detalleAusencias = estadoAusencias ? detalleAusenciasSimuladas(ramo, preparadas.categorias, estadoAusencias) : [];
+  const noAplicable = detalleAusencias.find(x => x.error);
+  if (noAplicable) return { error: noAplicable.error };
   const simulado = calculo.ramoAvg(clon);
   const faltaDespues = calculo.notaNecesaria(clon, meta);
   return {
@@ -474,7 +557,10 @@ function simular(ramos, args) {
     // no queda nada pendiente.
     promedioNecesarioEnLoQueQueda: faltaDespues,
     compuertasIncumplidas: calculo.gatesActivas(clon).map(g => ({ nombre: g.nombre, actual: g.actual, minimo: g.min, tope: g.cap })),
-    nota: 'Simulación: no se guardó ninguna nota.',
+    ...(detalleAusencias.length ? { ausenciasSimuladas: detalleAusencias, origenReglaAusencia: estadoAusencias.origenRegla } : {}),
+    nota: detalleAusencias.length
+      ? 'Simulación: no se guardó ninguna nota ni inasistencia.'
+      : 'Simulación: no se guardó ninguna nota.',
   };
 }
 
