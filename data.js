@@ -1775,7 +1775,10 @@ const CREDITOS_FEN={
   'Inglés II':[2,null],
   'Inglés III':[2,null],
   'Introducción a la Economía':[6,null],
-  'Métodos Matemáticos I':[6,null],
+  // Sigla de Docencia Web FEN (Catedra=ENMEM1005), sin el prefijo EN como el
+  // resto de CREDITOS_FEN. Verificada el 2026-10-02 contra ENMEM1505 →
+  // Métodos Matemáticos II = MEM1505.
+  'Métodos Matemáticos I':[6,'MEM1005'],
   'Programación para Analítica de Datos':[6,null],
 
   // ─── Por la regla de créditos de la FEN, no ramo por ramo ───────────────
