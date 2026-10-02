@@ -74,13 +74,20 @@ function buildICS(filas) {
     'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
     'X-PUBLISHED-TTL:PT6H',
   ];
-  filas.forEach((f, i) => {
+  const repetidos = new Map();
+  filas.forEach(f => {
     if (!soloFecha(f.fecha)) return;
     const titulo = `${f.evaluacion} — ${f.ramo}`;
     // El UID tiene que ser estable entre consultas: si cambia, Google borra el
     // evento viejo y crea uno nuevo, y el estudiante pierde lo que le haya
-    // agregado encima. Sale del contenido, no de un azar ni de la posición.
-    const uid = `${compacta(f.fecha)}-${i}-${encodeURIComponent(titulo).replace(/%/g, '')}@gradehub.cl`;
+    // agregado encima. Sale del contenido, no de un azar ni de la posición:
+    // llevaba la posición en la lista, que va ordenada por fecha, así que cada
+    // fecha nueva corría los UID de todo lo que venía después. Solo dos eventos
+    // con la misma fecha y el mismo título se numeran entre ellos.
+    const base = `${compacta(f.fecha)}-${encodeURIComponent(titulo).replace(/%/g, '')}`;
+    const vez = (repetidos.get(base) || 0) + 1;
+    repetidos.set(base, vez);
+    const uid = `${base}${vez > 1 ? '-' + vez : ''}@gradehub.cl`;
     lines.push('BEGIN:VEVENT');
     lines.push(icsFold(`UID:${uid}`));
     lines.push(`DTSTAMP:${stamp}`);
@@ -92,7 +99,9 @@ function buildICS(filas) {
     const hora = HORA_RE.test(f.hora || '') ? f.hora : null;
     if (hora) {
       lines.push(`DTSTART:${compacta(f.fecha)}T${hora.replace(':', '')}00`);
-      lines.push(`DTEND:${compacta(f.fecha)}T${masUnaHora(hora)}00`);
+      // A las 23:xx la hora siguiente es del otro día: con la misma fecha, el
+      // evento terminaba antes de empezar.
+      lines.push(`DTEND:${hora.startsWith('23') ? diaSiguiente(f.fecha) : compacta(f.fecha)}T${masUnaHora(hora)}00`);
     } else {
       lines.push(`DTSTART;VALUE=DATE:${compacta(f.fecha)}`);
       lines.push(`DTEND;VALUE=DATE:${diaSiguiente(f.fecha)}`);
