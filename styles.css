@@ -2970,3 +2970,23 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 @media(min-width:1000px){#admin-body:has(.admin-hig){max-width:1100px;margin:0 auto;}}
 @media(max-width:760px){.admin-hig-resumen{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px;}.admin-hig-resumen>div+div{padding-left:0;border-left:0;}.admin-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;}.admin-hig-identidad{grid-column:1/-1;}.admin-hig-importe{grid-column:2;grid-row:2;}.admin-hig-fila>summary>span:last-child{display:none;}.admin-hig .admin-cobro{grid-template-columns:repeat(2,minmax(0,1fr));}.admin-hig .admin-cobro>span{grid-column:1/-1;}.admin-hig .admin-cobro button{grid-column:1/-1;}.admin-hig .admin-anuncio{padding:16px;}.admin-hig-persona{align-items:flex-start;flex-direction:column;}.admin-hig-buscar{flex-basis:100%;}.admin-revision-datos,.admin-revision-acciones{grid-template-columns:minmax(0,1fr);}.admin-revision-acciones label{grid-column:1;}.admin-revision-acciones .btn-confirm{width:100%;}.admin-revision-acciones .clase-accion{width:100%;}}
 @media(prefers-reduced-motion:reduce){.admin-hig *{animation:none;transition:none;}}
+
+/* Docente de la sección: HIG Text fields y Buttons; controles de 44 px. */
+.ramo-docente{margin:0 20px 16px;color:var(--fg);font-size:1rem;line-height:1.5;overflow-wrap:anywhere;}
+.ramo-docente:empty{display:none;}
+.docente-resumen{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.ramo-docente p{margin:0;}
+.ramo-docente .docente-ayuda{color:var(--fg2);font-size:.875rem;}
+.docente-form{margin-top:12px;}
+.docente-form label{display:block;margin:12px 0 6px;font-weight:600;}
+.docente-campo{display:flex;gap:8px;align-items:center;}
+.docente-campo button{flex-shrink:0;white-space:nowrap;}
+.docente-campo input[type=text]{min-width:0;width:100%;min-height:44px;padding:10px 12px;font:inherit;background:var(--bg2);color:var(--fg);border:1px solid var(--border2);border-radius:10px;}
+.docente-acciones{display:flex;justify-content:flex-end;gap:12px;margin-top:12px;flex-wrap:wrap;}
+.docente-link,.docente-guardar{min-width:44px;min-height:44px;padding:10px 12px;border:0;border-radius:10px;font:inherit;cursor:pointer;}
+.docente-link{background:transparent;color:var(--fg);text-decoration:underline;text-underline-offset:3px;}
+.docente-guardar{background:var(--fg);color:var(--bg);font-weight:600;}
+.docente-link:active,.docente-guardar:active{opacity:.7;}
+.docente-guardar:disabled{opacity:.6;cursor:wait;}
+.docente-link:focus-visible,.docente-guardar:focus-visible{outline:2px solid var(--fg);outline-offset:2px;}
+.ramo-docente .docente-error{margin-top:8px;color:var(--fg);}
