@@ -976,6 +976,8 @@ function save(){
   if(_storageOK){
     try{
       localStorage.setItem(STORAGE_KEY,JSON.stringify(S));
+      // S y la base de esta pestaña viajan juntas (ver leerBaseSync).
+      if(typeof escribirBaseEnDisco==='function')escribirBaseEnDisco();
     }catch(e){
       const lleno = e && (e.name==='QuotaExceededError' || e.code===22 || e.code===1014 || /quota|exceeded/i.test(e.message||''));
       if(lleno){

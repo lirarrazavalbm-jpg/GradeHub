@@ -501,7 +501,7 @@ function aislarCacheEnRegistro(uid){
     if(owner||importable)apartarCacheLocal(owner);
     const vacia=freshState();
     localStorage.setItem(STORAGE_KEY,JSON.stringify(vacia));
-    localStorage.removeItem(SYNC_BASE_KEY);
+    localStorage.removeItem(SYNC_BASE_KEY);if(typeof olvidarBaseSesion==='function')olvidarBaseSesion();
     localStorage.setItem(CACHE_OWNER_KEY,uid);
     S=vacia;
     return {propia:false,importable};
@@ -516,6 +516,7 @@ function aislarCacheEnRegistro(uid){
       if(owner)localStorage.setItem(CACHE_OWNER_KEY,owner);
       else localStorage.removeItem(CACHE_OWNER_KEY);
     }catch(_){}
+    if(typeof olvidarBaseSesion==='function')olvidarBaseSesion();
     return null;
   }
 }
@@ -539,6 +540,7 @@ function restaurarCacheApartada(uid){
     localStorage.setItem(STORAGE_KEY,JSON.stringify(restaurada));
     if(copia.base)localStorage.setItem(SYNC_BASE_KEY,copia.base);
     else localStorage.removeItem(SYNC_BASE_KEY);
+    if(typeof olvidarBaseSesion==='function')olvidarBaseSesion();
     localStorage.setItem(CACHE_OWNER_KEY,uid);
     S=restaurada;
     localStorage.removeItem(key);
@@ -553,6 +555,7 @@ function restaurarCacheApartada(uid){
       if(ownerPrevio)localStorage.setItem(CACHE_OWNER_KEY,ownerPrevio);
       else localStorage.removeItem(CACHE_OWNER_KEY);
     }catch(_){}
+    if(typeof olvidarBaseSesion==='function')olvidarBaseSesion();
     return false;
   }
 }
@@ -796,18 +799,42 @@ function revSync(x){return objetoSync(x)&&Number.isInteger(x._rev)?x._rev:null;}
 
 // La base se guarda con su dueño: en un navegador compartido, la versión que
 // vio otra cuenta no sirve para nada y no debe mezclarse.
+//
+// Y es la de ESTA pestaña. Dos pestañas del mismo navegador comparten
+// localStorage: cuando cada una leía la base de ahí, la que tenía S viejo en
+// memoria tomaba la versión que acababa de subir la otra, la escritura
+// condicional pasaba y su documento entero borraba la nota ajena, también en
+// la nube (issue #579). Ahora cada pestaña recuerda en memoria la versión de
+// la que salió su S, y el disco guarda S junto con SU base: el próximo arranque
+// compara lo que quedó escrito contra la versión de la que salió, aunque otra
+// pestaña haya subido entremedio.
+// undefined = esta pestaña todavía no la conoce y la lee del disco.
+let _baseSesion;
 function leerBaseSync(uid){
+  if(_baseSesion!==undefined)return _baseSesion&&_baseSesion.owner===uid?_baseSesion.data:null;
   try{
     const b=JSON.parse(localStorage.getItem(SYNC_BASE_KEY)||'null');
     return b&&b.owner===uid&&objetoSync(b.data)?b.data:null;
   }catch(e){return null;}
 }
 function guardarBaseSync(uid,data){
+  // Copia profunda: S suele compartir objetos con `data` (la nube recién
+  // leída, o lo que se acaba de subir) y anotar una nota cambiaría la base.
+  _baseSesion=data&&uid?{owner:uid,data:clonarSync(data)}:null;
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}
+  escribirBaseEnDisco();
+}
+// La llama también save(), justo después de escribir S.
+function escribirBaseEnDisco(){
+  if(_baseSesion===undefined)return;
   try{
-    if(data&&uid)localStorage.setItem(SYNC_BASE_KEY,JSON.stringify({owner:uid,data}));
+    if(_baseSesion)localStorage.setItem(SYNC_BASE_KEY,JSON.stringify(_baseSesion));
     else localStorage.removeItem(SYNC_BASE_KEY);
   }catch(e){}
 }
+// Quien escribe la base directo en el disco (registro, restaurar una copia
+// apartada, cerrar sesión) hace que esta pestaña la vuelva a leer de ahí.
+function olvidarBaseSesion(){_baseSesion=undefined;}
 
 // Al entrar con la caché de la misma cuenta. `nube` ya viene normalizada;
 // `crudo` es la fila tal como llegó, para revisar sus ids.
@@ -903,13 +930,19 @@ async function subirConVersion(uid){
         escrito=Array.isArray(filas)&&filas.length>0;
       }
       if(escrito){
+        // Si entretanto se cambió de cuenta, S y el disco ya son de la otra:
+        // la subida quedó hecha, pero no se le anota esta base ni este dueño.
+        if(!currentUser||currentUser.id!==uid)return true;
+        S._rev=enviado._rev;
         guardarBaseSync(uid,enviado);
-        if(currentUser&&currentUser.id===uid)S._rev=enviado._rev;
         setCacheOwner(uid); // la caché local quedó alineada con esta cuenta
         return true;
       }
       // Otro dispositivo escribió desde la última vez: se fusiona y se reintenta.
+      // Nunca sobre la cuenta que entró después: loadFromCloud lee la sesión actual.
+      if(!currentUser||currentUser.id!==uid)return false;
       const cloud=await loadFromCloud();
+      if(!currentUser||currentUser.id!==uid)return false;
       if(cloud===null){guardarBaseSync(uid,null);continue;}
       if(!fusionarConNube(uid,base,cloud))return false;
     }
@@ -1029,6 +1062,7 @@ async function cerrarSesion(){
   // Y la copia previa a importar: la siguiente persona podía restaurarla con
   // "Deshacer importación" y quedarse con los datos de esta cuenta.
   try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(CACHE_OWNER_KEY);localStorage.removeItem(SYNC_BASE_KEY);localStorage.removeItem(CURSO_SIGLAS_KEY);localStorage.removeItem(PRE_IMPORT_KEY);}catch(e){}
+  olvidarBaseSesion();
   S=freshState();
   // Las pestañas de profesor y admin son de la cuenta que salió, no del navegador.
   if(typeof olvidarSesionMarketplace==='function')olvidarSesionMarketplace();
