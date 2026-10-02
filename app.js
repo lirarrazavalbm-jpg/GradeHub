@@ -6764,7 +6764,8 @@ async function enviarSugerencia(){
   }
   if(boton){boton.disabled=true;boton.textContent='Enviando…';}
   try{
-    const {error}=await supabaseClient.from('user_feedback').insert({user_id:currentUser.id,categoria,mensaje});
+    const universidad=TENANTS[S.tenant]?S.tenant:null;
+    const {error}=await supabaseClient.from('user_feedback').insert({user_id:currentUser.id,categoria,mensaje,universidad});
     if(error)throw error;
     track('submit_feedback',{categoria});
     if(campo)campo.value='';
@@ -8885,14 +8886,22 @@ function renderRevisionIcs(){
   document.getElementById('modal-content').innerHTML=[
     '<div class="modal-title">Revisa las fechas</div>',
     '<p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0 0 8px;">Las coincidencias son propuestas. Puedes cambiarlas, dejar una sin importar o asignar manualmente las que no calzaron.</p>',
-    '<div style="max-height:48vh;overflow:auto;border-top:1px solid var(--border);">'+rows+'</div>',
+    '<div id="ics-revision-lista" style="max-height:48vh;overflow:auto;border-top:1px solid var(--border);">'+rows+'</div>',
     '<div class="modal-btns" style="margin-top:14px;"><button class="btn-cancel" type="button" onclick="closeModal()">Cancelar</button><button class="btn-confirm" type="button" onclick="confirmarImportarCalendario()">Agregar fechas elegidas</button></div>'
   ].join('');
 }
 function asignarDestinoIcs(index,target){
   if(!Number.isInteger(index)||!icsImportDraft[index])return;
   icsImportDraft[index].target=target||null;
+  // Se redibuja para deshabilitar el destino recién tomado en las demás filas;
+  // sin esto la lista volvía arriba y el foco se perdía en cada elección.
+  const lista=document.getElementById('ics-revision-lista');
+  const arriba=lista?lista.scrollTop:0;
   renderRevisionIcs();
+  const nueva=document.getElementById('ics-revision-lista');
+  if(nueva)nueva.scrollTop=arriba;
+  const select=nueva&&nueva.querySelectorAll('select')[index];
+  if(select)select.focus({preventScroll:true});
 }
 function confirmarImportarCalendario(){
   let aplicadas=0;
