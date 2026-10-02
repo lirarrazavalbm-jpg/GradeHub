@@ -333,6 +333,7 @@ async function submitAuth(){
     }
   }catch(e){
     authError(traduceAuthError(e));
+  }finally{
     btn.disabled=false;btn.textContent=orig;
   }
 }
@@ -437,6 +438,7 @@ async function submitNewPassword(){
   }catch(e){
     // El mensaje de Supabase viene en inglés ("New password should be different…").
     err.textContent=traduceAuthError(e);err.style.display='block';
+  }finally{
     btn.disabled=false;btn.textContent=orig;
   }
 }
