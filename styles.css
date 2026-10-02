@@ -2619,7 +2619,7 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
    rojo o al verde; si pasa, fijar los tonos por acento en vez de girarlos.
    Materiales (HIG, Materials): la X y Compartir son controles y van en vidrio;
    la tarjeta final es contenido y va en material sólido, nunca en vidrio. */
-.wrapped{--h:0;--font-cifra:ui-rounded,var(--font-ui);position:fixed;inset:0;z-index:400;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;background-color:color-mix(in srgb,var(--primary) 22%,#050608);background-color:oklch(from var(--primary) .21 .07 calc(h + var(--h)));transition:background-color 600ms var(--ease-out);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 10px) 24px calc(env(safe-area-inset-bottom,0px) + 20px);cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;overscroll-behavior:contain;animation:wrappedAbrir var(--motion-screen) var(--ease-out) backwards;}
+.wrapped{--h:0;--font-cifra:ui-rounded,var(--font-ui);position:fixed;inset:0;z-index:400;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;background-color:#050608;background-color:color-mix(in srgb,var(--primary) 22%,#050608);background-color:oklch(from var(--primary) .21 .07 calc(h + var(--h)));transition:background-color 600ms var(--ease-out);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-right,0px) + 24px) calc(env(safe-area-inset-bottom,0px) + 20px) calc(env(safe-area-inset-left,0px) + 24px);cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;overscroll-behavior:contain;animation:wrappedAbrir var(--motion-screen) var(--ease-out) backwards;}
 .wrapped.saliendo{animation:wrappedSalir var(--motion-base) var(--ease-standard) forwards;pointer-events:none;}
 .wrapped[data-tono="1"]{--h:40;}
 .wrapped[data-tono="2"]{--h:80;}
@@ -2674,12 +2674,15 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 }
 .wrapped-sub{font-size:1.1875rem;font-weight:500;line-height:1.35;letter-spacing:-.005em;text-wrap:pretty;}
 .wrapped-pie{font-size:.8125rem;font-weight:600;letter-spacing:.01em;}
-.wrapped-oculto,.wrapped-pasos button{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
+.wrapped-oculto{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}
 /* Anterior/Siguiente: para VoiceOver y teclado. Invisibles hasta recibir el
    foco con teclado, y ahí aparecen abajo como dos botones de verdad. */
-.wrapped-pasos button:focus-visible{position:fixed;z-index:2;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:auto;height:44px;margin:0;padding:0 18px;clip-path:none;border-radius:999px;background:#fff;color:#07080a;font:inherit;font-weight:700;}
-.wrapped-pasos button[data-paso="-1"]:focus-visible{left:24px;}
-.wrapped-pasos button[data-paso="1"]:focus-visible{right:24px;}
+.wrapped-pasos button{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);min-width:44px;height:44px;opacity:0;border:0;}
+.wrapped-pasos button[data-paso="-1"]{left:max(24px,env(safe-area-inset-left,0px));}
+.wrapped-pasos button[data-paso="1"]{right:max(24px,env(safe-area-inset-right,0px));}
+.wrapped-pasos button:focus-visible{opacity:1;position:fixed;z-index:2;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);width:auto;height:44px;margin:0;padding:0 18px;clip-path:none;border-radius:999px;background:#fff;color:#07080a;font:inherit;font-weight:700;}
+.wrapped-pasos button[data-paso="-1"]:focus-visible{left:max(24px,env(safe-area-inset-left,0px));}
+.wrapped-pasos button[data-paso="1"]:focus-visible{right:max(24px,env(safe-area-inset-right,0px));}
 /* Portada: el semestre en grande, en contorno, como un afiche. Decorado. */
 /* Relleno tenue y no contorno: el trazo de una fuente variable dibuja los
    cruces internos de cada número. Ajustado al ancho para no cortarse. */
@@ -2732,10 +2735,10 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 .wrapped-filas b{margin-left:auto;min-width:0;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:break-word;}
 .wrapped-marca{margin-top:18px;font-size:1rem;font-weight:800;letter-spacing:-.01em;}
 .wrapped-acciones{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:6px;}
-.wrapped-compartir{display:inline-flex;align-items:center;gap:8px;min-height:50px;padding:0 24px;border-radius:999px;font:inherit;font-size:1rem;font-weight:700;}
+.wrapped-compartir,.wrapped-descargar{display:inline-flex;align-items:center;gap:8px;min-height:50px;padding:0 24px;border-radius:999px;font:inherit;font-size:1rem;font-weight:700;}
 /* Inicio: la entrada. Una pila de historias a la derecha, con el semestre en
    la de arriba; las tres con los tonos que van a salir adentro. */
-.home-wrapped{--font-cifra:ui-rounded,var(--font-ui);position:relative;overflow:hidden;isolation:isolate;margin:16px 20px 4px;padding:18px 16px 16px 18px;border-radius:20px;grid-template-columns:1fr auto;align-items:center;gap:14px;background-color:color-mix(in srgb,var(--primary) 24%,#06070a);background-color:oklch(from var(--primary) .21 .07 h);color:#fff;}
+.home-wrapped{--font-cifra:ui-rounded,var(--font-ui);position:relative;overflow:hidden;isolation:isolate;margin:16px 20px 4px;padding:18px 16px 16px 18px;border-radius:20px;grid-template-columns:1fr auto;align-items:center;gap:14px;background-color:#06070a;background-color:color-mix(in srgb,var(--primary) 24%,#06070a);background-color:oklch(from var(--primary) .21 .07 h);color:#fff;}
 .home-wrapped::before{content:"";position:absolute;z-index:-1;width:260px;height:260px;right:-60px;top:-120px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 50%,#000),transparent 68%);background:radial-gradient(circle,oklch(from var(--primary) .5 .16 calc(h + 50)),transparent 68%);}
 .home-wrapped::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.12;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");}
 .home-wrapped-texto{display:grid;gap:4px;min-width:0;}
@@ -2761,17 +2764,13 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 @keyframes wrappedBarra{from{transform:scaleX(0);}}
 @keyframes wrappedLlena{to{transform:none;}}
 @keyframes wrappedFundido{from{opacity:0;}to{opacity:1;}}
-@keyframes wrappedFundidoSalir{from{opacity:1;}to{opacity:0;}}
-/* Movimiento reducido: todo pasa a fundido, sin recorrido, zoom ni giro, y
-   las luces no se desplazan (HIG, Accessibility). */
+/* Reducir movimiento: estado final inmediato, sin animación ni transición. */
 @media(prefers-reduced-motion:reduce){
-  .wrapped{animation-name:wrappedFundido;}
-  .wrapped.saliendo{animation-name:wrappedFundidoSalir;}
-  .wrapped[data-dir] .wrapped-slide>*,.wrapped-grilla span,.wrapped-ranking li,.wrapped-regla b,.wrapped-rayos,.wrapped-arco circle{animation-name:wrappedFundido;}
-  .wrapped-arco .valor,.wrapped-ranking i::after,.wrapped-regla .pista i,.wrapped-barras span.ahora::after{animation:none;transform:scaleX(var(--v,1));}
+  .wrapped,.wrapped *,.wrapped *::before,.wrapped *::after{animation:none!important;transition:none!important;}
+  .wrapped-arco .valor{stroke-dasharray:var(--v) 100;transform:none;}
+  .wrapped-ranking i::after{transform:scaleX(var(--v));}
   .wrapped-regla .pista i{transform:scaleX(calc(var(--p) / 100));}
   .wrapped-barras span.ahora::after{transform:none;}
-  .wrapped-luz{transition:none;}
 }
 /* Aumentar contraste y Reducir transparencia (HIG, Color y Materials): fondo
    negro liso, sin luces ni grano, texto blanco macizo y bordes definidos. */

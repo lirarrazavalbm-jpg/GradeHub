@@ -1058,7 +1058,7 @@ function renderStats(){
 // Sale el 20 de diciembre y no antes: para entonces ya están las notas de
 // exámenes y recuperativos, y un resumen con el examen pendiente dice un
 // promedio que todavía puede cambiar. Decisión de Martín del 2026-09-28.
-// `#wrapped` en la URL lo muestra antes de tiempo, para probarlo.
+// Las pruebas fuerzan el reloj: ninguna URL revela la sorpresa antes de fecha.
 const WRAPPED_DESDE='2026-12-20',WRAPPED_HASTA='2027-03-01';
 function wrappedDisponible(hoy){
   const d=hoy||new Date();
@@ -1072,7 +1072,7 @@ function ramosWrapped(){
   const conNota=rs=>ramosDelPromedio(rs||[]).some(r=>ramoAvg(r,undefined,rs)!==null);
   if(conNota(S.ramos))return {ramos:S.ramos,actual:true,label:semester()};
   const h=(S.historial||[])[0];
-  return h&&conNota(h.ramos)?{ramos:h.ramos,actual:false,label:h.label}:null;
+  return h&&conNota(h.ramos)?{ramos:h.ramos,actual:false,label:h.label||'Semestre archivado'}:null;
 }
 
 // Todo sale de `ramoAvg` y `gpa`: son las únicas fórmulas de promedio que hay,
@@ -1102,20 +1102,31 @@ function datosWrapped(ramos){
 
 // Solo para el semestre en curso: es el que tiene promedios en `curso_notas`.
 // Si el servidor no contesta o no llegan a cinco, esas pantallas no aparecen.
+function posicionWrappedValida(f){
+  return f&&Number.isInteger(f.total)&&f.total>=5&&Number.isFinite(f.mejorQue)&&f.mejorQue>=0&&f.mejorQue<=100;
+}
 async function comparacionWrapped(){
   if(!supabaseClient||!currentUser)return null;
-  const out={};
+  const cuenta=currentUser.id,tenant=S.tenant,out={};
+  const vigente=()=>currentUser&&currentUser.id===cuenta&&S.tenant===tenant;
   try{
     await subirNotasCurso();
+    if(!vigente())return null;
+    invalidarPosicionesCurso();
     const pos=await cargarPosicionesCurso()||{};
-    const top=(S.ramos||[]).filter(r=>pos[r.id]).sort((a,b)=>pos[b.id].mejorQue-pos[a.id].mejorQue)[0];
-    if(top)out.curso={ramo:top.nombre,...pos[top.id]};
-    const {data,error}=await supabaseClient.rpc('universidad_posicion',{p_tenant:S.tenant});
-    if(error)throw error;
+    if(!vigente()){invalidarPosicionesCurso();return null;}
+    const top=(S.ramos||[]).filter(r=>posicionWrappedValida(pos[r.id])).sort((a,b)=>pos[b.id].mejorQue-pos[a.id].mejorQue)[0];
+    if(top)out.curso={ramo:top.nombre,total:pos[top.id].total,mejorQue:pos[top.id].mejorQue};
+  }catch(e){} // La comparación es opcional, incluso si esa RPC no está aplicada.
+  if(!vigente())return null;
+  try{
+    const {data,error}=await supabaseClient.rpc('universidad_posicion',{p_tenant:tenant});
+    if(!vigente())return null;
     const f=Array.isArray(data)?data[0]:data;
-    if(f&&typeof f.mejor_que==='number'&&typeof f.total==='number')out.uni={total:f.total,mejorQue:f.mejor_que};
-  }catch(e){console.warn('Wrapped sin comparación',e);}
-  return out;
+    const uni=f&&{total:f.total,mejorQue:f.mejor_que};
+    if(!error&&posicionWrappedValida(uni))out.uni=uni;
+  }catch(e){}
+  return vigente()?out:null;
 }
 
 // ─── Piezas visuales de cada pantalla ───
@@ -1170,9 +1181,9 @@ function slidesWrapped(d,comp,label){
   const nombre=esc((S.userName||'').split(' ')[0]||'');
   s.push({tipo:'portada',k:esc(label),titulo:nombre?`${nombre}, este fue tu semestre`:'Este fue tu semestre',sub:'Tus notas, contadas de otra forma.'});
   s.push({k:'Este semestre ingresaste',big:cifraWrapped(String(d.nNotas)),sub:`nota${pl(d.nNotas)} en ${d.nRamos} ramo${pl(d.nRamos)}`,viz:grillaWrapped(d.notasColores)});
-  if(d.gpa!==null)s.push({k:'Tu promedio',big:cifraWrapped(fmtPromedio(d.gpa),1),sub:`${d.aprobando} de ${d.nRamos} ramo${pl(d.nRamos)} sobre el 4,0`,viz:arcoWrapped(d.gpa)});
+  if(d.gpa!==null)s.push({k:'Tu promedio',big:cifraWrapped(fmtPromedio(d.gpa),1),sub:`${d.aprobando} de ${d.nRamos} ramo${pl(d.nRamos)} con promedio de aprobación`,viz:arcoWrapped(d.gpa)});
   if(d.mejor)s.push({tipo:'destello',k:'Tu mejor nota',big:cifraWrapped(fmt(d.mejor.valor),1),sub:`${d.mejor.valor>=7?'Nada más que decir.<br>':''}${esc(d.mejor.evaluacion)} · ${esc(d.mejor.ramo)}`});
-  s.push({k:'Tu ramo estrella',titulo:esc(d.estrella.r.nombre),sub:`Cerraste con un ${fmtPromedio(d.estrella.avg)}, tu mejor promedio.`,viz:d.ranking.length>1?rankingWrapped(d.ranking):''});
+  s.push({k:'Tu ramo estrella',titulo:esc(d.estrella.r.nombre),sub:`Tu mejor promedio: ${fmtPromedio(d.estrella.avg)}.`,viz:d.ranking.length>1?rankingWrapped(d.ranking):''});
   // "Lo sacaste adelante" solo si de verdad lo aprobó: el resumen no celebra
   // lo que el semáforo pinta rojo.
   if(d.dificil)s.push({k:'El que más pelea dio',titulo:esc(d.dificil.r.nombre),big:cifraWrapped(fmtPromedio(d.dificil.avg),1),
@@ -1182,7 +1193,7 @@ function slidesWrapped(d,comp,label){
   // El servidor compara el promedio simple de los ramos, no el ponderado de
   // Inicio (ver universidad_posicion.sql): por eso la frase dice "tus ramos".
   if(comp&&comp.uni)s.push({k:`En toda ${u}`,big:cifraWrapped(comp.uni.mejorQue+'%'),
-    sub:`Con tus ramos quedas igual o por sobre el ${comp.uni.mejorQue}% de otras ${comp.uni.total-1} personas de ${u} en GradeHub.`,viz:reglaWrapped(comp.uni.mejorQue)});
+    sub:`Con el promedio simple de tus ramos con sigla quedas igual o por sobre el ${comp.uni.mejorQue}% de otras ${comp.uni.total-1} personas de ${u} en GradeHub.`,viz:reglaWrapped(comp.uni.mejorQue)});
   const filas=[];
   if(d.mejor)filas.push(['Mejor nota',fmt(d.mejor.valor)]);
   filas.push(['Ramo estrella',esc(d.estrella.r.nombre)]);
@@ -1195,9 +1206,11 @@ const ICONO_CERRAR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" 
 // El ícono de compartir de iOS: cuadrado abierto con la flecha hacia arriba.
 const ICONO_COMPARTIR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M8 11H6.5A1.5 1.5 0 0 0 5 12.5v7A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16"/></svg>';
 
-let _wrapped=null;
+let _wrapped=null,_wrappedAbriendo=false;
 async function abrirWrapped(){
-  const base=ramosWrapped();if(!base||_wrapped)return;
+  const base=wrappedDisponible()&&ramosWrapped();if(!base||_wrapped||_wrappedAbriendo)return;
+  _wrappedAbriendo=true;
+  const cuenta=currentUser&&currentUser.id,tenant=S.tenant;
   // El foco se guarda ANTES de desactivar el botón: desactivarlo se lo quita,
   // y al cerrar volvía al body en vez de al botón que lo abrió.
   const foco=document.activeElement;
@@ -1206,7 +1219,11 @@ async function abrirWrapped(){
   if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');etiqueta.textContent='Preparando…';}
   const comp=base.actual?await Promise.race([comparacionWrapped(),new Promise(r=>setTimeout(()=>r(null),4000))]):null;
   if(btn){btn.disabled=false;btn.removeAttribute('aria-busy');etiqueta.textContent='Ver mi semestre';}
-  const slides=slidesWrapped(datosWrapped(base.ramos),comp,base.label);
+  _wrappedAbriendo=false;
+  const actual=ramosWrapped();
+  if(!wrappedDisponible()||(currentUser&&currentUser.id)!==cuenta||S.tenant!==tenant||!actual||actual.ramos!==base.ramos)return;
+  const datos=datosWrapped(base.ramos);if(!datos)return;
+  const slides=slidesWrapped(datos,comp,base.label);
   track('wrapped_open',{pantallas:slides.length});
   const ov=document.createElement('div');
   ov.className='wrapped';
@@ -1225,13 +1242,16 @@ async function abrirWrapped(){
   ov.addEventListener('click',e=>{
     if(e.target.closest('.wrapped-cerrar'))return cerrarWrapped();
     if(e.target.closest('.wrapped-compartir'))return compartirWrapped();
+    if(e.target.closest('.wrapped-descargar'))return descargarWrapped();
     const b=e.target.closest('[data-paso]');
     pasarWrapped(b?Number(b.dataset.paso):e.clientX<ov.clientWidth/3?-1:1);
   });
   arrastreWrapped(ov);
   document.addEventListener('keydown',teclaWrapped);
   document.body.appendChild(ov);
-  _wrapped={ov,slides,i:0,foco,imagen:null};
+  const fondo=[...document.body.children].filter(el=>el!==ov).map(el=>({el,inert:el.inert}));
+  fondo.forEach(({el})=>{el.inert=true;});
+  _wrapped={ov,slides,i:0,foco,fondo,imagen:null,archivo:null,imagenTerminada:false};
   pintarWrapped();
   ov.querySelector('.wrapped-cerrar').focus();
 }
@@ -1246,6 +1266,7 @@ function arrastreWrapped(ov){
   let y0=null,dy=0,t0=0,v=0,yPrev=0,tPrev=0;
   const pintar=y=>{
     const k=Math.min(y,400)/400;
+    if(movimientoReducido())return;
     ov.style.transform=y?`translateY(${y}px) scale(${1-k*.08})`:'';
     ov.style.borderRadius=y?`${Math.round(k*36)}px`:'';
   };
@@ -1265,13 +1286,18 @@ function arrastreWrapped(ov){
   ov.addEventListener('touchend',()=>{
     if(y0===null)return;
     y0=null;
+    if(movimientoReducido()){if(dy>120||(dy>24&&v>.6))cerrarWrapped(true);return;}
     ov.style.transition='transform var(--motion-base) var(--ease-out),border-radius var(--motion-base) var(--ease-out)';
     if(dy>120||(dy>24&&v>.6)){ov.style.transform='translateY(100%) scale(.92)';setTimeout(()=>cerrarWrapped(true),220);}
     else pintar(0);
   });
+  ov.addEventListener('touchcancel',()=>{
+    y0=null;dy=0;v=0;ov.style.transform='';ov.style.borderRadius='';ov.style.transition='';
+  });
 }
 
 function pintarWrapped(){
+  if(!wrappedDisponible())return cerrarWrapped(true);
   const {ov,slides,i}=_wrapped,s=slides[i];
   // Las tres luces del fondo cambian de lugar en cada pantalla: es lo que hace
   // sentir que se avanzó, sin mover el texto de su sitio.
@@ -1289,12 +1315,14 @@ function pintarWrapped(){
         <p class="wrapped-marca">gradehub.cl</p>
       </div>
       <div class="wrapped-acciones" style="--d:2">
-        <button class="wrapped-compartir wrapped-vidrio" type="button">${ICONO_COMPARTIR}<span>Compartir</span></button>
+        <button class="wrapped-compartir wrapped-vidrio" type="button" disabled>${ICONO_COMPARTIR}<span>Preparando imagen…</span></button>
+        <button class="wrapped-descargar wrapped-vidrio" type="button" disabled>Descargar imagen</button>
         <p class="wrapped-pie">o saca un pantallazo</p>
       </div>`;
     // La imagen se prepara al llegar, no al tocar: Safari exige que el menú de
     // compartir se abra en el mismo toque, y dibujarla ahí lo haría esperar.
-    if(!_wrapped.imagen)_wrapped.imagen=imagenWrapped(s).catch(()=>null);
+    prepararImagenWrapped(s);
+    actualizarCompartirWrapped();
     return;
   }
   const portada=s.tipo==='portada';
@@ -1340,7 +1368,15 @@ function pasarWrapped(paso){
   pintarWrapped();
 }
 function teclaWrapped(e){
-  if(e.key==='Escape')cerrarWrapped();
+  if(!_wrapped)return;
+  if(e.key==='Tab'){
+    const botones=[..._wrapped.ov.querySelectorAll('button:not(:disabled)')];
+    const indice=botones.indexOf(document.activeElement);
+    if(botones.length&&(indice<0||(e.shiftKey?indice===0:indice===botones.length-1))){
+      e.preventDefault();botones[e.shiftKey?botones.length-1:0].focus();
+    }
+  }else if(e.key==='Escape')cerrarWrapped();
+  else if(e.key===' '&&e.target&&e.target.closest('button'))return; // La barra activa el botón enfocado.
   else if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();pasarWrapped(1);}
   else if(e.key==='ArrowLeft')pasarWrapped(-1);
 }
@@ -1350,9 +1386,9 @@ function cerrarWrapped(yaSalio){
   if(!_wrapped||_wrapped.saliendo)return;
   _wrapped.saliendo=true;
   document.removeEventListener('keydown',teclaWrapped);
-  const {ov,foco}=_wrapped;
-  const fin=()=>{ov.remove();_wrapped=null;if(foco&&foco.focus)foco.focus();};
-  if(yaSalio===true)return fin();
+  const {ov,foco,fondo}=_wrapped;
+  const fin=()=>{ov.remove();fondo.forEach(({el,inert})=>{el.inert=inert;});_wrapped=null;if(foco&&foco.isConnected&&foco.focus)foco.focus();};
+  if(yaSalio===true||movimientoReducido())return fin();
   ov.classList.add('saliendo');
   setTimeout(fin,220);
 }
@@ -1365,6 +1401,14 @@ function textoPlano(html){return new DOMParser().parseFromString(`<p>${html}</p>
 async function imagenWrapped(s){
   const W=1080,H=1920,cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const ctx=cv.getContext('2d');
+  // Safari anterior a roundRect también puede exportar la misma tarjeta.
+  const tarjetaRedonda=(x,y,w,h,r)=>{
+    if(ctx.roundRect){ctx.roundRect(x,y,w,h,r);return;}
+    ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  };
   const color=(sel,prop,resp)=>{
     const el=_wrapped&&_wrapped.ov.querySelector(sel);
     const v=el?getComputedStyle(el)[prop]:'';
@@ -1377,12 +1421,12 @@ async function imagenWrapped(s){
   luz(180,260,900,luzA);luz(980,1700,1000,luzB);
   // La tarjeta: material sólido, esquinas de 64px.
   const x=72,y=360,w=W-144,h=1240;
-  ctx.fillStyle=fondo;ctx.beginPath();ctx.roundRect(x,y,w,h,64);ctx.fill();
+  ctx.fillStyle=fondo;ctx.beginPath();tarjetaRedonda(x,y,w,h,64);ctx.fill();
   // El brillo de la esquina, recortado a la tarjeta, como en pantalla.
   ctx.save();ctx.clip();
   const g=ctx.createRadialGradient(x+w-60,y+40,0,x+w-60,y+40,560);g.addColorStop(0,luzB);g.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=g;ctx.fillRect(x,y,w,h);ctx.restore();
-  ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(x,y,w,h,64);ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=3;ctx.beginPath();tarjetaRedonda(x,y,w,h,64);ctx.stroke();
   const fuente=(peso,px,redonda)=>`${peso} ${px}px ${redonda?'ui-rounded,':''}-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif`;
   const logo=await new Promise(r=>{const im=new Image();im.onload=()=>r(im);im.onerror=()=>r(null);im.src='logo.svg';});
   if(logo)ctx.drawImage(logo,x+72,y+72,72,72);
@@ -1408,29 +1452,49 @@ async function imagenWrapped(s){
   const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
   return blob?new File([blob],'mi-semestre-gradehub.png',{type:'image/png'}):null;
 }
-// El menú de compartir del sistema, con la imagen lista. Donde no se pueden
-// compartir archivos (casi todo escritorio), se descarga.
-async function compartirWrapped(){
+// Preparar fuera del gesto; el toque llama share directamente con un File listo.
+function prepararImagenWrapped(s){
+  if(_wrapped.imagen)return;
+  const estado=_wrapped;
+  estado.imagen=imagenWrapped(s).catch(()=>null).then(archivo=>{
+    if(_wrapped!==estado)return;
+    estado.archivo=archivo;estado.imagenTerminada=true;actualizarCompartirWrapped();
+  });
+}
+function actualizarCompartirWrapped(){
   if(!_wrapped)return;
-  const archivo=_wrapped.imagen&&await _wrapped.imagen;
-  if(!archivo){showToast('No se pudo preparar la imagen. Saca un pantallazo.');return;}
-  track('wrapped_share',{});
-  if(navigator.canShare&&navigator.canShare({files:[archivo]})){
-    try{await navigator.share({files:[archivo],title:'Mi semestre en GradeHub'});}
-    catch(e){if(e&&e.name!=='AbortError')showToast('No se pudo compartir. Saca un pantallazo.');}
-    return;
-  }
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(archivo);a.download=archivo.name;
+  const listo=!!_wrapped.archivo,caja=_wrapped.ov.querySelector('.wrapped-slide');
+  const boton=caja.querySelector('.wrapped-compartir'),descarga=caja.querySelector('.wrapped-descargar');
+  if(!boton)return;
+  boton.disabled=!listo;descarga.disabled=!listo;
+  boton.querySelector('span').textContent=listo?'Compartir':_wrapped.imagenTerminada?'Imagen no disponible':'Preparando imagen…';
+}
+function descargarWrapped(){
+  if(!_wrapped||!_wrapped.archivo||!wrappedDisponible())return;
+  const archivo=_wrapped.archivo,a=document.createElement('a'),url=URL.createObjectURL(archivo);
+  a.href=url;a.download=archivo.name;
   document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function compartirWrapped(){
+  if(!_wrapped||!_wrapped.archivo||!wrappedDisponible())return;
+  const estado=_wrapped,archivo=estado.archivo;
+  track('wrapped_share',{});
+  try{
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[archivo]})){
+      await navigator.share({files:[archivo],title:'Mi semestre en GradeHub'});
+      return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  // Si el navegador rechaza archivos también se puede guardar la historia.
+  if(_wrapped===estado)descargarWrapped();
 }
 
 function renderWrappedHome(){
   const caja=document.getElementById('home-wrapped');
   if(!caja)return;
-  const base=(wrappedDisponible()||location.hash==='#wrapped')&&ramosWrapped();
-  if(!base){caja.style.display='none';caja.innerHTML='';return;}
+  const base=wrappedDisponible()&&ramosWrapped();
+  if(!base){caja.style.display='none';caja.innerHTML='';if(_wrapped)cerrarWrapped(true);return;}
   caja.style.display='grid';
   caja.innerHTML=`<div class="home-wrapped-texto">
       <span class="home-wrapped-k">Ya está listo</span>
