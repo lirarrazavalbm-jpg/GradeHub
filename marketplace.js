@@ -240,7 +240,7 @@ function campoPesos(input){formatearAlEscribir(input,textoPesosEscrito);}
 // Tres estados distintos, y confundirlos deja la pantalla mintiendo: todavía no
 // se sabe, no se pudo saber (el SQL del marketplace no está aplicado), o se supo
 // —y ahí puede ser una ficha o ninguna—.
-let perfilProfesorCache=null,perfilProfesorPedido=false,perfilProfesorResuelto=false;
+let perfilProfesorCache=null,perfilProfesorPedido=false,perfilProfesorResuelto=false,perfilProfesorVersion=0;
 function perfilProfesorConocido(){
   if(!perfilProfesorResuelto)return undefined;   // preguntando
   return perfilProfesorCache;                     // ficha, false, o null si no se pudo
@@ -253,15 +253,17 @@ function esProfesorAprobado(){
 // aparece ni la pestaña ni el estado en Ajustes.
 async function cargarPerfilProfesor(){
   if(perfilProfesorPedido)return perfilProfesorCache;
+  const cuenta=sesionProfesorClase(),version=perfilProfesorVersion;
   perfilProfesorPedido=true;
   const r=await perfilProfesorActual();
+  if(cuenta!==sesionProfesorClase()||version!==perfilProfesorVersion)return null;
   perfilProfesorCache=r.ok?(r.perfil||false):null;
   perfilProfesorResuelto=true;
   return perfilProfesorCache;
 }
 // Después de postular o de que cambie el estado, para no dejar la pantalla
 // mostrando lo anterior.
-function olvidarPerfilProfesor(){perfilProfesorCache=null;perfilProfesorPedido=false;perfilProfesorResuelto=false;}
+function olvidarPerfilProfesor(){perfilProfesorVersion++;perfilProfesorCache=null;perfilProfesorPedido=false;perfilProfesorResuelto=false;}
 
 function sesionProfesorClase(){
   return supabaseClient&&currentUser&&currentUser.id?String(currentUser.id):'';
@@ -1094,20 +1096,21 @@ function activarTarjetasClases(raiz){
 // catálogo —lo que sí se cobraría, a un precio menor que el segmentado— espera
 // a que el servidor distinga por qué camino llegó cada cuenta.
 const IMPRESION_VISIBLE=0.5,IMPRESION_MS=1000;
-let impresionesCatalogo=new Set(),observadorCatalogo=null,logosCatalogoClases=new Map();
+let impresionesCatalogo=new Set(),observadorCatalogo=null,logosCatalogoClases=new Map(),limpiarVisibilidadCatalogo=null;
 function observarImpresionesClases(raiz,anuncios,busqueda=''){
   // Si la persona escribió algo, las tarjetas que ve son resultado de buscar.
   const canal=String(busqueda||'').trim()?'busqueda':'lista';
+  if(limpiarVisibilidadCatalogo){limpiarVisibilidadCatalogo();limpiarVisibilidadCatalogo=null;}
   if(observadorCatalogo){observadorCatalogo.disconnect();observadorCatalogo=null;}
   if(typeof IntersectionObserver!=='function'||!raiz)return;
   const sigla=new Map((anuncios||[]).map(a=>[a.id,(a.ramos_siglas||[])[0]||'']));
-  const timers=new Map(),visibles=new Set();
+  const timers=new Map(),visibles=new Set(),tarjetas=new Map();
   const programar=(card,id,demora=IMPRESION_MS)=>{
     if(timers.has(id))return;
     timers.set(id,setTimeout(async()=>{
       timers.delete(id);
       const clave=id+':'+canal;
-      if(!card.isConnected||!visibles.has(id)||impresionesCatalogo.has(clave))return;
+      if(document.visibilityState==='hidden'||!card.isConnected||!visibles.has(id)||impresionesCatalogo.has(clave))return;
       const alcance=await registrarAlcanceAnuncio(id,canal);
       if(alcance===null){
         if(card.isConnected&&visibles.has(id))programar(card,id,5000);
@@ -1127,14 +1130,24 @@ function observarImpresionesClases(raiz,anuncios,busqueda=''){
       if(!id)continue;
       if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
         visibles.add(id);
-        if(!impresionesCatalogo.has(id+':'+canal))programar(e.target,id);
+        if(document.visibilityState!=='hidden'&&!impresionesCatalogo.has(id+':'+canal))programar(e.target,id);
       }else{
         visibles.delete(id);
         if(timers.has(id)){clearTimeout(timers.get(id));timers.delete(id);}
       }
     }
   },{threshold:[IMPRESION_VISIBLE]});
-  raiz.querySelectorAll('[data-catalogo-anuncio]').forEach(card=>observadorCatalogo.observe(card));
+  const alCambiarVisibilidad=()=>{
+    timers.forEach(clearTimeout);timers.clear();
+    if(document.visibilityState==='hidden')return;
+    visibles.forEach(id=>{const card=tarjetas.get(id);if(card&&card.isConnected&&!impresionesCatalogo.has(id+':'+canal))programar(card,id);});
+  };
+  if(document.addEventListener)document.addEventListener('visibilitychange',alCambiarVisibilidad);
+  limpiarVisibilidadCatalogo=()=>{
+    timers.forEach(clearTimeout);timers.clear();
+    if(document.removeEventListener)document.removeEventListener('visibilitychange',alCambiarVisibilidad);
+  };
+  raiz.querySelectorAll('[data-catalogo-anuncio]').forEach(card=>{tarjetas.set(card.dataset.catalogoAnuncio,card);observadorCatalogo.observe(card);});
 }
 
 async function openCatalogoClases(){
@@ -2547,27 +2560,33 @@ function cargarAnunciosRecomendacion(tenant,alTerminar){
 
 const RECOMENDACIONES_VISTAS=new Set();
 function observarRecomendacionClase(banner,anuncio,sigla){
-  const clave=claveMedicionClase(anuncio.id);
+  const clave=claveMedicionClase(anuncio.id),doc=typeof document==='undefined'?null:document;
   if(typeof IntersectionObserver!=='function'||RECOMENDACIONES_VISTAS.has(clave))return;
   let timer=null,visible=false,registrando=false;
   const registrar=async()=>{
     timer=null;
-    if(!banner.isConnected||!visible||registrando||RECOMENDACIONES_VISTAS.has(clave))return;
+    if(doc&&doc.visibilityState==='hidden'||!banner.isConnected||!visible||registrando||RECOMENDACIONES_VISTAS.has(clave))return;
     registrando=true;
     const alcance=await registrarAlcanceAnuncio(anuncio.id,'recomendacion');
     const metrica=alcance===null?null:await registrarMetricaAnuncio(anuncio.id,'impresion',sigla);
     registrando=false;
     if(alcance===null||metrica===null){
       if(banner.isConnected&&visible)timer=setTimeout(registrar,5000);
-    }else{RECOMENDACIONES_VISTAS.add(clave);obs.disconnect();}
+    }else{RECOMENDACIONES_VISTAS.add(clave);obs.disconnect();if(doc&&doc.removeEventListener)doc.removeEventListener('visibilitychange',alCambiarVisibilidad);}
   };
   const obs=new IntersectionObserver(entradas=>{
     const e=entradas[entradas.length-1];
     if(e.isIntersecting&&e.intersectionRatio>=IMPRESION_VISIBLE){
       visible=true;
-      if(!timer&&!registrando)timer=setTimeout(registrar,IMPRESION_MS);
+      if((!doc||doc.visibilityState!=='hidden')&&!timer&&!registrando)timer=setTimeout(registrar,IMPRESION_MS);
     }else{visible=false;if(timer){clearTimeout(timer);timer=null;}}
   },{threshold:[IMPRESION_VISIBLE]});
+  const alCambiarVisibilidad=()=>{
+    if(timer){clearTimeout(timer);timer=null;}
+    if(!banner.isConnected){obs.disconnect();if(doc&&doc.removeEventListener)doc.removeEventListener('visibilitychange',alCambiarVisibilidad);return;}
+    if((!doc||doc.visibilityState!=='hidden')&&visible&&!registrando&&!RECOMENDACIONES_VISTAS.has(clave))timer=setTimeout(registrar,IMPRESION_MS);
+  };
+  if(doc&&doc.addEventListener)doc.addEventListener('visibilitychange',alCambiarVisibilidad);
   obs.observe(banner);
 }
 
@@ -2739,13 +2758,15 @@ if(typeof document!=='undefined'){
 // acción pasa por funciones del servidor que exigen estar en la lista Y haber
 // entrado con el segundo factor (supabase/administradores.sql). Por eso la
 // página parte por renderPuertaDosPasos.
-let soyAdministradorCache=false;
+let soyAdministradorCache=false,sesionMarketplaceVersion=0;
 async function cargarSoyAdministrador(){
   if(!supabaseClient||!currentUser)return false;
+  const cuenta=sesionProfesorClase(),version=sesionMarketplaceVersion;
   try{
     const {data,error}=await supabaseClient.rpc('soy_administrador');
+    if(cuenta!==sesionProfesorClase()||version!==sesionMarketplaceVersion)return false;
     soyAdministradorCache=!error&&data===true;
-  }catch(e){soyAdministradorCache=false;}
+  }catch(e){if(cuenta===sesionProfesorClase()&&version===sesionMarketplaceVersion)soyAdministradorCache=false;}
   return soyAdministradorCache;
 }
 function esAdministrador(){return soyAdministradorCache;}
@@ -2754,6 +2775,7 @@ function esAdministrador(){return soyAdministradorCache;}
 // profesor y de administración y su ficha de profesor en pantalla (reportado
 // el 2026-09-30 al crear una cuenta nueva tras usar la de admin).
 function olvidarSesionMarketplace(){
+  sesionMarketplaceVersion++;
   soyAdministradorCache=false;
   vistaAdmin={seccion:'campanas',busqueda:'',estado:''};
   olvidarPerfilProfesor();

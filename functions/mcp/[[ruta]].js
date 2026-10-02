@@ -97,6 +97,13 @@ function calculoPara(ramos) {
   });
 }
 
+function alcanzaMetaOficial(calculo, ramo, promedio, meta) {
+  const final = calculo.notaFinalOficial(promedio);
+  const objetivo = calculo.notaFinalOficial(meta);
+  return final !== null && final >= objetivo
+    && !(objetivo >= 4 && calculo.gatesActivas(ramo).length);
+}
+
 function queNecesitoParaAprobar(ramos, args) {
   const ramo = buscarRamo(ramos, args.ramo);
   if (!ramo) return { error: 'No encontré ese ramo', ramos: ramos.map(r => r.nombre) };
@@ -114,7 +121,7 @@ function queNecesitoParaAprobar(ramos, args) {
   }));
 
   let estado = 'alcanzable';
-  if (promedioNecesario === null) estado = promedioActual === null ? 'sin_notas' : (promedioActual >= meta ? 'meta_alcanzada' : 'sin_evaluaciones_pendientes');
+  if (promedioNecesario === null) estado = promedioActual === null ? 'sin_notas' : (alcanzaMetaOficial(calculo, ramo, promedioActual, meta) ? 'meta_alcanzada' : 'sin_evaluaciones_pendientes');
   else if (promedioNecesario > 7) estado = 'fuera_de_escala';
   else if (promedioNecesario < 1) estado = 'con_cualquier_nota';
 
@@ -123,7 +130,7 @@ function queNecesitoParaAprobar(ramos, args) {
     meta,
     promedioActual,
     promedioNecesario,
-    factibleEnEscala: promedioNecesario === null ? promedioActual !== null && promedioActual >= meta : promedioNecesario <= 7,
+    factibleEnEscala: promedioNecesario === null ? alcanzaMetaOficial(calculo, ramo, promedioActual, meta) : promedioNecesario <= 7,
     estado,
     // No se esconden detrás del promedio: una compuerta puede impedir aprobar
     // aunque la exigencia ponderada sí quepa dentro de la escala.
@@ -248,8 +255,12 @@ async function guardarPropuestaRamos(token, estado, args) {
   const invalida = validarPropuestaRamos(args);
   if (invalida) return { error: invalida };
   const actuales = Array.isArray(estado.ramos) ? estado.ramos : [];
-  const yaTiene = r => actuales.some(x =>
-    norm(x.nombre) === norm(r.nombre) || (r.sigla && siglaDeRamo(x) === String(r.sigla).trim().toUpperCase()));
+  // Como ramoPropuestoYaEsta en app.js: si los dos tienen sigla, manda la sigla.
+  // Por nombre se confunden los homónimos (TEB110 y TTF012 se llaman igual).
+  const yaTiene = r => actuales.some(x => {
+    const propia = siglaDeRamo(x), pedida = r.sigla == null ? '' : String(r.sigla).trim().toUpperCase();
+    return propia && pedida ? propia === pedida : norm(x.nombre) === norm(r.nombre);
+  });
   const repetidos = args.ramos.filter(yaTiene).map(r => String(r.nombre).trim());
   const nuevos = args.ramos.filter(r => !yaTiene(r)).map(r => {
     const fila = { nombre: String(r.nombre).trim() };
@@ -311,6 +322,36 @@ function riesgoDeRamo(promedio, necesario) {
 
 // ─── ESTADO DEL SEMESTRE Y SIMULACIÓN ───────────────────────────────────────
 
+// "Hoy" es el de Chile, no el del servidor. Cloudflare corre en UTC: desde las
+// 20:00 o 21:00 de acá allá ya es mañana, y resumen_para_hoy anunciaba como de
+// hoy las pruebas de mañana y daba por pasadas las de esta noche.
+const hoyChile = (ahora = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(ahora);
+const sumarDias = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+// Una ventana absurda (`dias: 1e9`) reventaba el Date con un RangeError.
+const ventanaDias = (dias, porDefecto) => Math.min(366, Number(dias) > 0 ? Math.ceil(Number(dias)) : porDefecto);
+
+// Todas las fechas del semestre: la de cada evaluación y la propia de cada
+// casilla. Una casilla con fecha es una evaluación suelta dentro del grupo —el
+// Control 2 puede ser tres semanas después del Control 1— y la fecha de la
+// categoría vale para el grupo entero. Antes solo evaluaciones_proximas miraba
+// las casillas; estado_semestre y resumen_para_hoy no las veían, igual que le
+// pasaba a "Próxima evaluación" en la app (#534).
+function fechasDeRamos(ramos) {
+  const out = [];
+  ramos.forEach(r => (r.categorias || []).forEach(c => {
+    (c.notas || []).forEach(n => {
+      if (!n.fecha) return;
+      out.push({
+        ramo: r.nombre, evaluacion: n.nombre || c.nombre, fecha: n.fecha,
+        hora: n.hora || null, peso: c.peso, grupo: c.nombre,
+        rendida: typeof n.valor === 'number',
+      });
+    });
+    if (c.fecha) out.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso });
+  }));
+  return out.sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+
 // La regla del promedio general es la de `gpa()` en app.js y tiene que decir lo
 // mismo que la app: se pondera por créditos SOLO si todos los ramos con nota
 // los tienen, y un ramo que aporta su nota a otro (el laboratorio de Dinámica)
@@ -332,10 +373,8 @@ function promedioGeneral(ramos, calculo) {
 }
 
 function proximaConFecha(ramo, hoy) {
-  return (ramo.categorias || [])
-    .filter(c => c.fecha && c.fecha >= hoy)
-    .sort((a, b) => a.fecha.localeCompare(b.fecha))
-    .map(c => ({ evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso }))[0] || null;
+  const f = fechasDeRamos([ramo]).find(x => x.fecha >= hoy && !x.rendida);
+  return f ? { evaluacion: f.evaluacion, fecha: f.fecha, hora: f.hora, peso: f.peso } : null;
 }
 
 // Una copia del ramo con notas hipotéticas puestas encima. No toca el original
@@ -501,11 +540,19 @@ function impactoPendientes(ramos, ramo, meta) {
 // prueba fue hace dos semanas y la casilla sigue vacía, que es justo cuando el
 // promedio que se está mirando ya no es el real.
 function porRegistrar(ramos, hoy, diasAtras = 45) {
-  const desde = new Date(Date.parse(hoy) - diasAtras * 864e5).toISOString().slice(0, 10);
+  const desde = sumarDias(hoy, -diasAtras);
+  const enRango = f => !!f && f < hoy && f >= desde;
   const filas = [];
   ramos.forEach(r => (r.categorias || []).forEach(c => {
-    if (!c.fecha || c.fecha >= hoy || c.fecha < desde) return;
-    const faltan = pendientesDeCategoria(c).length;
+    // Una casilla con fecha propia se cuenta sola; la fecha de la categoría
+    // vale para las casillas que no tienen la suya.
+    const propias = (c.notas || []).filter(n => n.fecha && Number.isInteger(n.slot) && typeof n.valor !== 'number');
+    propias.forEach(n => {
+      if (enRango(n.fecha)) filas.push({ ramo: r.nombre, evaluacion: n.nombre || c.nombre, fecha: n.fecha, casillasSinNota: 1 });
+    });
+    if (!enRango(c.fecha)) return;
+    const conFecha = new Set(propias.map(n => n.slot + 1));
+    const faltan = pendientesDeCategoria(c).filter(casilla => !conFecha.has(casilla)).length;
     if (faltan) filas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, casillasSinNota: faltan });
   }));
   return filas.sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -552,7 +599,7 @@ function simular(ramos, args) {
     meta,
     promedioActual: actual,
     promedioSimulado: simulado,
-    alcanzaLaMeta: simulado !== null && simulado >= meta,
+    alcanzaLaMeta: alcanzaMetaOficial(calculo, clon, simulado, meta),
     // Lo que todavía quedaría por rendir después de estas notas: null cuando ya
     // no queda nada pendiente.
     promedioNecesarioEnLoQueQueda: faltaDespues,
@@ -614,34 +661,13 @@ function despachar(nombre, estado, args) {
   }
 
   if (nombre === 'evaluaciones_proximas') {
-    const dias = Number(args.dias) > 0 ? Number(args.dias) : 30;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
-    const out = [];
-    ramos.forEach(r => (r.categorias || []).forEach(c => {
-      // Una nota con fecha propia es una evaluación suelta dentro del grupo: el
-      // Control 2 puede ser tres semanas después del Control 1. Se listan
-      // aparte porque la fecha de la categoría vale para el grupo entero, y
-      // antes solo se miraba esa —así que las fechas por casilla no llegaban
-      // nunca al agente, aunque la Agenda sí las mostrara.
-      (c.notas || []).forEach(n => {
-        if (!n.fecha || n.fecha < hoy || n.fecha > hasta) return;
-        out.push({
-          ramo: r.nombre, evaluacion: n.nombre || c.nombre, fecha: n.fecha,
-          hora: n.hora || null, peso: c.peso, grupo: c.nombre,
-          rendida: typeof n.valor === 'number',
-        });
-      });
-      const f = c.fecha;
-      if (f && f >= hoy && f <= hasta) out.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: f, hora: c.hora || null, peso: c.peso });
-    }));
-    return out.sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const hoy = hoyChile(), hasta = sumarDias(hoy, ventanaDias(args.dias, 30));
+    return fechasDeRamos(ramos).filter(f => f.fecha >= hoy && f.fecha <= hasta);
   }
 
   if (nombre === 'estado_semestre') {
-    const dias = Number(args.dias) > 0 ? Number(args.dias) : 14;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+    const dias = ventanaDias(args.dias, 14);
+    const hoy = hoyChile(), hasta = sumarDias(hoy, dias);
     const calculo = calculoPara(ramos);
     const filas = ramos.map(r => {
       const promedio = calculo.ramoAvg(r);
@@ -660,16 +686,11 @@ function despachar(nombre, estado, args) {
         proximaEvaluacion: proximaConFecha(r, hoy),
       };
     });
-    const proximas = [];
-    ramos.forEach(r => (r.categorias || []).forEach(c => {
-      if (c.fecha && c.fecha >= hoy && c.fecha <= hasta) {
-        proximas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso });
-      }
-    }));
+    const proximas = fechasDeRamos(ramos).filter(f => f.fecha >= hoy && f.fecha <= hasta);
     return {
       promedioGeneral: promedioGeneral(ramos, calculo),
       ramos: filas,
-      proximas: proximas.sort((a, b) => a.fecha.localeCompare(b.fecha)),
+      proximas,
       // Lo que hay que mirar primero, ya filtrado: un agente que recibe 8 ramos
       // no debería tener que deducir cuáles son los que duelen.
       atencion: filas.filter(f => f.riesgo === 'en_riesgo' || f.riesgo === 'ya_no_alcanza').map(f => f.nombre),
@@ -678,16 +699,10 @@ function despachar(nombre, estado, args) {
   }
 
   if (nombre === 'resumen_para_hoy') {
-    const dias = Number(args.dias) > 0 ? Number(args.dias) : 7;
-    const hoy = new Date().toISOString().slice(0, 10);
-    const hasta = new Date(Date.now() + dias * 864e5).toISOString().slice(0, 10);
+    const dias = ventanaDias(args.dias, 7);
+    const hoy = hoyChile(), hasta = sumarDias(hoy, dias);
     const calculo = calculoPara(ramos);
-    const proximas = [];
-    ramos.forEach(r => (r.categorias || []).forEach(c => {
-      if (c.fecha && c.fecha >= hoy && c.fecha <= hasta) {
-        proximas.push({ ramo: r.nombre, evaluacion: c.nombre, fecha: c.fecha, hora: c.hora || null, peso: c.peso, esHoy: c.fecha === hoy });
-      }
-    }));
+    const proximas = fechasDeRamos(ramos).filter(f => f.fecha >= hoy && f.fecha <= hasta).map(f => ({ ...f, esHoy: f.fecha === hoy }));
     const enRiesgo = ramos.map(r => {
       const promedio = calculo.ramoAvg(r);
       const necesario = calculo.notaNecesaria(r);
@@ -711,7 +726,7 @@ function despachar(nombre, estado, args) {
       ventanaDias: dias,
       promedioGeneral: promedioGeneral(ramos, calculo),
       hoy: proximas.filter(p => p.esHoy),
-      proximas: proximas.sort((a, b) => a.fecha.localeCompare(b.fecha)),
+      proximas,
       enRiesgo,
       porRegistrar: sinRegistrar,
       dondeRinde,

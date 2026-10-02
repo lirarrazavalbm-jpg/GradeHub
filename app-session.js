@@ -57,6 +57,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
 const LLEGA_DE_RECUPERACION=typeof location!=='undefined'&&/(?:^|[#&])type=recovery(?:&|$)/.test(location.hash||'');
 let enRecuperacion=LLEGA_DE_RECUPERACION;
 let supabaseClient=null, currentUser=null, authMode='login';
+let _cerrandoSesion=false;
 try{
   if(window.supabase && SUPABASE_URL.startsWith('http')){
     supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -333,6 +334,7 @@ async function submitAuth(){
     }
   }catch(e){
     authError(traduceAuthError(e));
+  }finally{
     btn.disabled=false;btn.textContent=orig;
   }
 }
@@ -437,6 +439,7 @@ async function submitNewPassword(){
   }catch(e){
     // El mensaje de Supabase viene en inglés ("New password should be different…").
     err.textContent=traduceAuthError(e);err.style.display='block';
+  }finally{
     btn.disabled=false;btn.textContent=orig;
   }
 }
@@ -1012,7 +1015,8 @@ async function signOut(){
   await cerrarSesion();
 }
 async function cerrarSesion(){
-  try{await supabaseClient.auth.signOut();}catch(e){}
+  try{_cerrandoSesion=true;await supabaseClient.auth.signOut();}catch(e){}
+  finally{_cerrandoSesion=false;}
   currentUser=null;closeModal();
   // Las propuestas pertenecen a la cuenta que salió, no al navegador.
   if(typeof propuestasPautaAgente!=='undefined')propuestasPautaAgente=[];
@@ -1046,6 +1050,13 @@ async function boot(){
   // Suscribirse a cambios de auth: el evento PASSWORD_RECOVERY viene cuando
   // el usuario abre el link del correo de "olvidé mi contraseña".
   supabaseClient.auth.onAuthStateChange((event, session)=>{
+    // Otra pestaña puede salir o cambiar de cuenta, y una sesión puede vencer.
+    // Se reinicia la visita para cancelar también las lecturas de la cuenta
+    // anterior. La copia local se conserva; no se borra una edición sin subir.
+    if(!_cerrandoSesion&&currentUser&&(event==='SIGNED_OUT'||
+      (event==='SIGNED_IN'&&session&&session.user.id!==currentUser.id))){
+      currentUser=null;closeModal();showAuthScreen();location.reload();return;
+    }
     if(event==='PASSWORD_RECOVERY'){
       enRecuperacion=true;
       if(session)currentUser=session.user;
