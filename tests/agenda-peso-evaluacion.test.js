@@ -13,8 +13,13 @@ const note=(id,valor,slot)=>({id,nombre:id,valor,peso:1,...(slot===undefined?{}:
 const cat=(id,peso,notas=[],extra={})=>({id,nombre:id,peso,notas,directNota:true,...extra});
 const course=(id,categorias,extra={})=>({id,nombre:id,categorias,creditos:10,origen:null,gates:[],...extra});
 
-const c=sandbox();const n={...note('Informe 0',null,0),fecha:'2026-10-01'};
-c.r=course('Laboratorio',[cat('Informes',70,[n],{slots:6}),cat('Examen',30,[],{fecha:'2026-10-01'})]);c.run('S.ramos=[r]');
+// Ambas evaluaciones quedan cerca y por venir en cualquier zona horaria:
+// una fecha fija pasada cambia su prioridad, y una demasiado lejana redondea
+// la urgencia de ambas a cero antes de comparar los pesos.
+const fechaPrueba=new Date(Date.now()+14*864e5).toISOString().slice(0,10);
+const fechaSiguiente=new Date(Date.now()+15*864e5).toISOString().slice(0,10);
+const c=sandbox();const n={...note('Informe 0',null,0),fecha:fechaPrueba};
+c.r=course('Laboratorio',[cat('Informes',70,[n],{slots:6}),cat('Examen',30,[],{fecha:fechaPrueba})]);c.run('S.ramos=[r]');
 const ev=c.agendaEvents().map(e=>({...e,dias:1,score:0,necesita:4,avg:null,nivel:'baja',estadoAgenda:'por_venir'}));
 const orden=c.ordenarAgenda(ev,'peso');
 assert.equal(orden[0].cat.nombre,'Examen','Informe 0 no puede llevarse el peso de seis informes');
@@ -29,7 +34,7 @@ for(const html of [c.agendaDestacadaHTML(informe,0),c.agendaItemHTML(informe),c.
 assert.ok(c.withPriority(ev[1]).score>c.withPriority(ev[0]).score,'Recomendado también usa el peso individual');
 assert.equal(JSON.stringify(c.r),before,'mostrar la fracción no cambia pesos guardados');
 // Si el grupo conserva fecha, no vuelve a sumar los informes con fecha propia.
-c.r.categorias[0].fecha='2026-10-02';
+c.r.categorias[0].fecha=fechaSiguiente;
 const todos=c.agendaEvents().map(e=>({...e,dias:1}));
 assert.equal(c.resumenSemanaAgenda(todos).peso,100);
 // Una lista abierta o un descarte no permite prometer un porcentaje individual.
