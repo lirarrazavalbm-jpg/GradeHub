@@ -91,6 +91,16 @@ function chk(n,c){if(c){ok++;console.log('  OK   '+n);}else{fail++;console.log('
     run("distinto.sigla==='TEB110' && distinto.categorias.length===0 && distinto.creditos===8 && siglaDeRamo(distinto)==='TEB110'"));
   chk('TTF012 no se toma por duplicado solo porque comparte el nombre',
     run("!ramoPropuestoYaEsta({nombre:'Revelación y Fe',sigla:'TTF012'})"));
+
+  console.log('\n=== Los créditos de TTF012 salen de su pauta, no del homónimo ===');
+  // Como el catálogo real: TTF012 no está en cursos-uc.js, TEB110 sí.
+  run("CURSOS_UC_FULL=[['TEB110','Revelación y Fe',8]];S.ramos=[]");
+  chk('agregada con su sigla tiene 10 créditos',run("crearRamoDesdeCatalogo('Revelación y Fe','TTF012').creditos===10"));
+  chk('agregada solo por nombre no toma los 8 de TEB110',run("crearRamoDesdeCatalogo('Revelación y Fe',null).creditos===10"));
+  chk('un ramo guardado sin créditos los recibe al cargar',
+    run("normalize({tenant:'uc',ramos:[{nombre:'Revelación y Fe',sigla:'TTF012',creditos:null,origen:{tenant:'uc',carrera:'ING-PC',ramoKey:'TTF012'},categorias:[]}]}).ramos[0].creditos===10"));
+  chk('un TEB110 guardado conserva sus créditos',
+    run("normalize({tenant:'uc',ramos:[{nombre:'Revelación y Fe',sigla:'TEB110',creditos:8,origen:{tenant:'uc',carrera:'ING-PC',ramoKey:'TEB110'},categorias:[]}]}).ramos[0].creditos===8"));
   console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
   process.exit(fail?1:0);
 })().catch(e=>{console.error(e);process.exit(1)});

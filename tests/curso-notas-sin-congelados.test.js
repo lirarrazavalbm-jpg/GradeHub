@@ -99,6 +99,9 @@ const confirmar=()=>byId('confirm-action').onclick();
   chk('otra cuenta no manda null por siglas ajenas', ls.length===0);
   vm.runInContext(`currentUser={id:'u-sintetico-1'};`,ctx);
   await vm.runInContext('signOut()',ctx);
+  // Sin base de sincronización esta copia nunca subió: pregunta antes de borrarla.
+  chk('con notas sin respaldar, pregunta antes de salir', 'gradehub_curso_siglas' in guardado);
+  confirmar();await new Promise(r=>setImmediate(r));
   chk('cerrar sesión borra la memoria', !('gradehub_curso_siglas' in guardado));
 
   console.log(`\nPASS: ${ok}   FAIL: ${fail}`);

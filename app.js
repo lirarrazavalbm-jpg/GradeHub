@@ -1641,7 +1641,9 @@ function obRamosVisibles(sugeridos,elegidos){
 // carrera. Mirar solo `mallaFor` dejaba a la UAI sin buscador y diciendo que no
 // había malla, cuando sus 23 mallas viven aparte en `mallas-uai.js`.
 function obSinCatalogo(){
-  return Object.keys(mallaFor(selectedTenant)||{}).length===0&&!mallaDeCarrera(selectedTenant,selectedCarrera);
+  // El buscador también ofrece ramos de otras carreras. No tener malla propia
+  // no elimina las mallas diferidas de la universidad (por ejemplo UAI/Otra).
+  return Object.keys(mallaFor(selectedTenant)||{}).length===0&&!mallaDeCarrera(selectedTenant,selectedCarrera)&&!ARCHIVO_MALLAS[selectedTenant];
 }
 function obCoursePickerIntro(sugeridos){
   if(selectedTenant==='uc'&&selectedCarrera==='ING-PC'&&selectedSem>=5){
@@ -3043,7 +3045,9 @@ function crearRamoDesdeCatalogo(nombre,sigla){
   const presetName=sigla&&siglaPreset&&normName(sigla)!==normName(siglaPreset)?null:candidato;
   const preset=presetName?presetRamo(presetName,S.tenant,S.carrera):null;
   const fila=S.tenant==='uc'?cursoUcCompleto(nombre,sigla):null;
-  const creditos=fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
+  // Los créditos de la pauta mandan: buscada sin sigla, la fila del catálogo
+  // puede ser la del homónimo (TEB110 tiene 8; TTF012, 10).
+  const creditos=typeof preset?.creditos==='number'?preset.creditos:fila&&typeof fila[2]==='number'?fila[2]:creditosDe(nombre,S.tenant,preset,sigla);
   const ramo={
     id:uid(),nombre:presetName||nombre,color:nextRamoColor(presetName||nombre),sigla:sigla||null,
     creditos,origen:origenActual(presetName||nombre,sigla),
@@ -3592,7 +3596,10 @@ function sellarDatosCatalogo(r,tenant){
     if(s){r.sigla=s;cambio=true;}
   }
   if(r.creditos===null||r.creditos===undefined){
-    const cr=creditosDe(r.nombre,t,null,r.origen.ramoKey);
+    // Con la pauta del ramo, si es de ESTE curso: TTF012 no está en cursos-uc.js
+    // y su crédito vive solo en PRESETS_UC.
+    const def=pautaCalzaConSigla(r.nombre,r.sigla)?definicionPresetDelRamo(r):null;
+    const cr=creditosDe(r.nombre,t,def,r.origen.ramoKey);
     if(typeof cr==='number'){r.creditos=cr;cambio=true;}
   }
   return cambio;
@@ -6759,7 +6766,8 @@ async function enviarSugerencia(){
   }
   if(boton){boton.disabled=true;boton.textContent='Enviando…';}
   try{
-    const {error}=await supabaseClient.from('user_feedback').insert({user_id:currentUser.id,categoria,mensaje});
+    const universidad=TENANTS[S.tenant]?S.tenant:null;
+    const {error}=await supabaseClient.from('user_feedback').insert({user_id:currentUser.id,categoria,mensaje,universidad});
     if(error)throw error;
     track('submit_feedback',{categoria});
     if(campo)campo.value='';
@@ -7309,7 +7317,9 @@ function confirmResetApp(){
     : 'Se borrarán todos tus datos y volverás al inicio. Esta acción no se puede deshacer.';
   showConfirm('Reiniciar app',desc,async()=>{
     track('app_reset');
-    localStorage.removeItem(STORAGE_KEY);
+    // Las mismas claves que borra cerrar sesión: la base de sincronización y la
+    // copia previa a importar son copias completas de las notas.
+    [STORAGE_KEY,CACHE_OWNER_KEY,SYNC_BASE_KEY,CURSO_SIGLAS_KEY,PRE_IMPORT_KEY].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
     if(typeof borrarCacheApartada==='function')borrarCacheApartada(conCuenta?currentUser.id:null);
     if(conCuenta){try{await supabaseClient.auth.signOut();}catch(e){}}
     location.reload();
@@ -8880,14 +8890,22 @@ function renderRevisionIcs(){
   document.getElementById('modal-content').innerHTML=[
     '<div class="modal-title">Revisa las fechas</div>',
     '<p style="font-size:0.8125rem;color:var(--fg2);line-height:1.5;margin:0 0 8px;">Las coincidencias son propuestas. Puedes cambiarlas, dejar una sin importar o asignar manualmente las que no calzaron.</p>',
-    '<div style="max-height:48vh;overflow:auto;border-top:1px solid var(--border);">'+rows+'</div>',
+    '<div id="ics-revision-lista" style="max-height:48vh;overflow:auto;border-top:1px solid var(--border);">'+rows+'</div>',
     '<div class="modal-btns" style="margin-top:14px;"><button class="btn-cancel" type="button" onclick="closeModal()">Cancelar</button><button class="btn-confirm" type="button" onclick="confirmarImportarCalendario()">Agregar fechas elegidas</button></div>'
   ].join('');
 }
 function asignarDestinoIcs(index,target){
   if(!Number.isInteger(index)||!icsImportDraft[index])return;
   icsImportDraft[index].target=target||null;
+  // Se redibuja para deshabilitar el destino recién tomado en las demás filas;
+  // sin esto la lista volvía arriba y el foco se perdía en cada elección.
+  const lista=document.getElementById('ics-revision-lista');
+  const arriba=lista?lista.scrollTop:0;
   renderRevisionIcs();
+  const nueva=document.getElementById('ics-revision-lista');
+  if(nueva)nueva.scrollTop=arriba;
+  const select=nueva&&nueva.querySelectorAll('select')[index];
+  if(select)select.focus({preventScroll:true});
 }
 function confirmarImportarCalendario(){
   let aplicadas=0;

@@ -12,12 +12,18 @@ create table if not exists public.user_feedback (
   created_at timestamptz not null default now()
 );
 
+-- Universidad de quien escribe (el `tenant` de la app: fen, uc, uai, uandes),
+-- para revisar los comentarios por universidad. Null en los anteriores.
+alter table public.user_feedback
+  add column if not exists universidad text
+  check (universidad is null or universidad ~ '^[a-z]{2,12}$');
+
 alter table public.user_feedback enable row level security;
 
 -- El cliente solo puede insertar. No puede listar comentarios propios ni
 -- ajenos, editarlos o borrarlos. Lucas y Martín los revisan desde Supabase.
 revoke all on public.user_feedback from public, anon, authenticated;
-grant insert (user_id, categoria, mensaje) on public.user_feedback to authenticated;
+grant insert (user_id, categoria, mensaje, universidad) on public.user_feedback to authenticated;
 
 drop policy if exists user_feedback_insert_own on public.user_feedback;
 create policy user_feedback_insert_own

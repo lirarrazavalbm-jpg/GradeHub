@@ -48,7 +48,16 @@ function resetPasswordVisibility(){
 const SUPABASE_URL      = 'https://lsulsnswzesyekpsvlql.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_JwBMAOR7iHW-gcRdLMGrYw_eCOISwqA';
 
+// auth-js procesa el enlace del correo de recuperación y BORRA el fragmento
+// (`location.hash=''`) antes de que boot() reciba la sesión, y avisa
+// PASSWORD_RECOVERY recién en un setTimeout. Leer `type=recovery` en boot()
+// llegaba tarde: la app entraba directo, showTab('home') escondía la pantalla
+// de nueva contraseña y "¿Olvidaste tu contraseña?" nunca dejaba ponerla. Se
+// lee acá, antes de crear el cliente.
+const LLEGA_DE_RECUPERACION=typeof location!=='undefined'&&/(?:^|[#&])type=recovery(?:&|$)/.test(location.hash||'');
+let enRecuperacion=LLEGA_DE_RECUPERACION;
 let supabaseClient=null, currentUser=null, authMode='login';
+let _cerrandoSesion=false;
 try{
   if(window.supabase && SUPABASE_URL.startsWith('http')){
     supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -221,6 +230,13 @@ function traduceAuthError(e,contexto){
     ?'Ese correo ya está asociado a otra cuenta.'
     :MSG_VERIFICA;
   if(m.includes('invalid login')||m.includes('credentials'))return 'Usuario o contraseña incorrectos.';
+  // Sin esto caían en "revisa tu internet": el correo de recuperación tiene un
+  // límite por hora y quien lo pedía dos veces creía que no tenía conexión.
+  const code=String((e&&e.code)||'');
+  if((e&&e.status===429)||code.includes('rate_limit')||m.includes('rate limit')||m.includes('security purposes'))
+    return 'Hiciste varios intentos seguidos. Espera unos minutos y vuelve a intentarlo.';
+  if(code==='same_password'||m.includes('different from the old'))return 'La nueva contraseña tiene que ser distinta de la anterior.';
+  if(code==='email_address_invalid'||(m.includes('email')&&m.includes('invalid')))return 'Ese correo no es válido. Revísalo e intenta de nuevo.';
   if(m.includes('password'))return 'La contraseña debe tener al menos '+PASS_MIN+' caracteres e incluir letras y números.';
   return 'No se pudo conectar. Revisa tu internet e intenta de nuevo.';
 }
@@ -318,6 +334,7 @@ async function submitAuth(){
     }
   }catch(e){
     authError(traduceAuthError(e));
+  }finally{
     btn.disabled=false;btn.textContent=orig;
   }
 }
@@ -386,11 +403,16 @@ async function forgotPassword(){
   const emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if(!emailRe.test(email)){authError('Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".');return;}
   if(!supabaseClient){authError('Falta configurar Supabase.');return;}
+  // Un segundo toque mientras va el primero gastaba el límite de correos.
+  const boton=document.getElementById('auth-fp');
+  if(boton&&boton.disabled)return;
+  if(boton)boton.disabled=true;
   try{
     const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
     if(error)throw error;
     authError('');showToast('Te enviamos un correo para recuperar tu contraseña');
   }catch(e){authError(traduceAuthError(e));}
+  finally{if(boton)boton.disabled=false;}
 }
 
 // Al volver del correo, Supabase dispara PASSWORD_RECOVERY (ver boot()).
@@ -410,11 +432,14 @@ async function submitNewPassword(){
     const {data,error}=await supabaseClient.auth.updateUser({password:p1});
     if(error)throw error;
     currentUser=data.user;
+    enRecuperacion=false;
     showToast('Contraseña actualizada');
     document.getElementById('screen-reset').classList.remove('active');
     await afterLogin();
   }catch(e){
-    err.textContent=(e&&e.message)||'No se pudo actualizar la contraseña.';err.style.display='block';
+    // El mensaje de Supabase viene en inglés ("New password should be different…").
+    err.textContent=traduceAuthError(e);err.style.display='block';
+  }finally{
     btn.disabled=false;btn.textContent=orig;
   }
 }
@@ -964,8 +989,34 @@ async function registrarAceptacionLegal(){
   });
   if(error)throw error;
 }
+// Lo que no alcanzó a subir vive solo en este dispositivo, y cerrar sesión borra
+// la copia local: una nota anotada sin conexión se perdía sin aviso, aunque la
+// app ya hubiera dicho "No cierres sesión". Antes de salir se intenta subir y,
+// si no se puede, se pregunta.
+async function respaldoAlDia(){
+  if(!supabaseClient||!currentUser)return true;
+  const uid=currentUser.id;
+  const alDia=()=>{
+    const base=leerBaseSync(uid);
+    if(base)return igualSync(sinRevSync(S),sinRevSync(base));
+    return !(S.ramos?.length||S.historial?.length||S.onboardingDone);
+  };
+  if(alDia())return true;
+  clearTimeout(_syncTimer);_syncTimer=null;
+  return (await syncNow())&&alDia();
+}
 async function signOut(){
-  try{await supabaseClient.auth.signOut();}catch(e){}
+  if(!(await respaldoAlDia())){
+    showConfirm('Tienes cambios sin respaldar',
+      'Lo último que anotaste no alcanzó a guardarse en la nube. Si cierras sesión ahora, se borra de este dispositivo. Conéctate a internet y vuelve a intentarlo.',
+      cerrarSesion,{label:'Cerrar sesión igual',focusCancel:true});
+    return;
+  }
+  await cerrarSesion();
+}
+async function cerrarSesion(){
+  try{_cerrandoSesion=true;await supabaseClient.auth.signOut();}catch(e){}
+  finally{_cerrandoSesion=false;}
   currentUser=null;closeModal();
   // Las propuestas pertenecen a la cuenta que salió, no al navegador.
   if(typeof propuestasPautaAgente!=='undefined')propuestasPautaAgente=[];
@@ -999,7 +1050,15 @@ async function boot(){
   // Suscribirse a cambios de auth: el evento PASSWORD_RECOVERY viene cuando
   // el usuario abre el link del correo de "olvidé mi contraseña".
   supabaseClient.auth.onAuthStateChange((event, session)=>{
+    // Otra pestaña puede salir o cambiar de cuenta, y una sesión puede vencer.
+    // Se reinicia la visita para cancelar también las lecturas de la cuenta
+    // anterior. La copia local se conserva; no se borra una edición sin subir.
+    if(!_cerrandoSesion&&currentUser&&(event==='SIGNED_OUT'||
+      (event==='SIGNED_IN'&&session&&session.user.id!==currentUser.id))){
+      currentUser=null;closeModal();showAuthScreen();location.reload();return;
+    }
     if(event==='PASSWORD_RECOVERY'){
+      enRecuperacion=true;
       if(session)currentUser=session.user;
       limpiarFragmentoAuth();
       showResetScreen();
@@ -1017,11 +1076,10 @@ async function boot(){
   if(!session){showAuthScreen();return;}
 
   currentUser=session.user;
-  // Si venimos de un correo de recuperación, la URL trae "type=recovery" en el hash.
-  // Mostrar la pantalla de nueva contraseña en vez de entrar directo a la app.
-  const esRecovery=location.hash.includes('type=recovery');
+  // Si venimos de un correo de recuperación, se muestra la pantalla de nueva
+  // contraseña en vez de entrar directo a la app (ver LLEGA_DE_RECUPERACION).
   limpiarFragmentoAuth();
-  if(esRecovery){showResetScreen();return;}
+  if(enRecuperacion){showResetScreen();return;}
   try{
     await afterLogin();
   }catch(e){
@@ -1087,11 +1145,15 @@ async function renderPuertaDosPasos(raiz,{alPasar,titulo='Verificación en dos p
       <p class="dos-pasos-estado" role="status" aria-live="polite"></p></form></div>`;
     const form=raiz.querySelector('.dos-pasos-form'),estado=raiz.querySelector('.dos-pasos-estado'),campo=raiz.querySelector('#dos-pasos-codigo');
     if(campo&&typeof campo.focus==='function')campo.focus();
+    const boton=form.querySelector('button[type="submit"]');
     form.addEventListener('submit',async ev=>{
       ev.preventDefault();
-      estado.textContent='Revisando…';
+      // Un código TOTP sirve una vez: el segundo envío lo daba por malo y abría
+      // el panel dos veces.
+      if(boton.disabled)return;
+      boton.disabled=true;estado.textContent='Revisando…';
       const r=await verificarCodigoDosPasos(factorId,campo.value);
-      if(!r.ok){estado.textContent=r.error;return;}
+      if(!r.ok){estado.textContent=r.error;boton.disabled=false;return;}
       if(typeof alPasar==='function')alPasar();
     });
   };
@@ -1103,10 +1165,13 @@ async function renderPuertaDosPasos(raiz,{alPasar,titulo='Verificación en dos p
     <p class="profesor-info">Esta página muestra datos de todos los profesores, así que además de tu contraseña pide un código de una app como Google Authenticator o 1Password. Se configura una vez.</p>
     <button type="button" class="btn-confirm" id="dos-pasos-activar">Activar</button>
     <p class="dos-pasos-estado" role="status" aria-live="polite"></p></div>`;
-  raiz.querySelector('#dos-pasos-activar').addEventListener('click',async()=>{
+  const activar=raiz.querySelector('#dos-pasos-activar');
+  activar.addEventListener('click',async()=>{
+    if(activar.disabled)return;
+    activar.disabled=true;
     const estado=raiz.querySelector('.dos-pasos-estado');estado.textContent='Preparando…';
     const r=await iniciarDosPasos();
-    if(!r.ok){estado.textContent=r.error;return;}
+    if(!r.ok){estado.textContent=r.error;activar.disabled=false;return;}
     // El QR viene de Supabase como imagen data:, que la CSP ya permite. Solo se
     // acepta ese formato: nunca una URL que cargue algo de afuera.
     const qr=/^data:image\/svg\+xml/.test(String(r.qr||''))?`<img class="dos-pasos-qr" src="${esc(r.qr)}" alt="Código QR para tu app de verificación">`:'';

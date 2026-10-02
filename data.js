@@ -1398,6 +1398,9 @@ const PRESETS_UC={
   'Revelación y Fe':{
     sigla:'TTF012',
     periodo:'2026-2',
+    // BuscaCursos 2026-2 (las 4 secciones de TTF012). Sin este dato los créditos
+    // salían del homónimo TEB110 (8) o quedaban vacíos. Reportado el 2026-10-01.
+    creditos:10,
     evals:[['Evaluación 1',20,{fecha:'2026-09-07'}],['Evaluación 2',20,{fecha:'2026-10-14'}],['Evaluación 3',30,{fecha:'2026-11-16'}],['Examen final',30]],
     noCalcula:[
       'Si tienes más de 75% de asistencia y una nota de presentación igual o superior a 6,00, te eximes del Examen final; tu nota de presentación se calcula como el promedio simple de Evaluación 1, Evaluación 2 y Evaluación 3, sin usar sus ponderaciones',
