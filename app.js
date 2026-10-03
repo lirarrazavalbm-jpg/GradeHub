@@ -29,8 +29,11 @@ function estadoPeriodoPauta(periodo,ahora){
   if(!m)return 'desconocido';
   const fecha=ahora&&typeof ahora.getTime==='function'?ahora:new Date();
   const anio=Number(m[1]),semestre=Number(m[2]);
-  const fin=Date.UTC(semestre===1?anio:anio+1,semestre===1?7:0,1);
-  return fecha.getTime()<fin?'vigente':'vencido';
+  // El período cierra a la medianoche de Chile, no a la de Greenwich: con
+  // Date.UTC vencía a las 20:00 o 21:00 del último día (issue #579, punto 14).
+  const hoy=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Santiago'}).format(fecha);
+  const fin=semestre===1?`${anio}-08-01`:`${anio+1}-01-01`;
+  return hoy<fin?'vigente':'vencido';
 }
 function definicionPreset(nombre,tenant,carrera){
   if(tenant!=='uc'){
@@ -356,6 +359,14 @@ function normalize(data) {
     // sin reinterpretar notas ni tocar ramos manuales.
     const recuperativoOficial=copiarRecuperativo(definicionPresetDelRamo(r)?.recuperativo);
     if(!r.recuperativo&&recuperativoOficial)r.recuperativo=recuperativoOficial;
+    // La regla de eximición vive en el catálogo, que el conector MCP no tiene:
+    // sin una copia en el ramo, un examen eximido y confirmado seguía pendiente
+    // para el agente (60% evaluado en vez de 100%; issue #579, punto 7). La app
+    // sigue calculando con el catálogo; la copia solo viaja con los datos y se
+    // renueva en cada carga, así que sigue al catálogo si este cambia.
+    const eximicionOficial=definicionPresetDelRamo(r)?.eximicion;
+    if(eximicionOficial)r.eximicion=JSON.parse(JSON.stringify(eximicionOficial));
+    else delete r.eximicion;
     // Igual que el recuperativo, la regla llega a los ramos oficiales creados
     // antes de publicarla, sin activar nada por sí sola.
     if(!r.reglasAusenciaJustificada){
