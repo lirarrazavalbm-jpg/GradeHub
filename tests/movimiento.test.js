@@ -163,6 +163,19 @@ const bloquesReduce = [];
   bloquesReduce.push(css.slice(m.index, j));
 });
 chk(`hay tratamiento de movimiento reducido (${bloquesReduce.length} bloques)`, bloquesReduce.length > 0);
+// El carrusel recorre un viewport completo. La preferencia tiene que apagar
+// esa transición en todas las pestañas, incluidas las de profesor y admin;
+// conservar sus transform finales es imprescindible para mostrar la elegida.
+const navReduce=bloquesReduce.join('\n').replace(/\/\*[\s\S]*?\*\//g,'');
+const reglasNavReduce=[...navReduce.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+for(const tab of ['home','stats','agenda','profesor','admin']){
+  const selector='.app.tab-mode #screen-'+tab;
+  const regla=reglasNavReduce.find(([,sels,decl])=>sels.split(',').map(s=>s.trim()).includes(selector)&&/transition:\s*none\s*[;}]/.test(decl+'}'));
+  chk(tab+': movimiento reducido cancela el desplazamiento del carrusel',!!regla);
+  chk(tab+': conserva su posición final y no superpone pantallas',!regla||!/\btransform\s*:/.test(regla[2]));
+}
+chk('sin la preferencia el carrusel conserva su transición habitual',
+  /\.app\.tab-mode #screen-admin\{[^}]*transition:transform var\(--motion-screen\) var\(--ease-out\)/.test(css));
 const nuclear = bloquesReduce.filter(b => /\*[^{]*\{[^}]*(animation|transition)-duration:[^;}]*!important/.test(b));
 chk('no se apaga todo con un * y !important', nuclear.length === 0);
 // Cada entrada que se reemplaza bajo la preferencia tiene que seguir diciendo
