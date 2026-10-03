@@ -105,6 +105,25 @@ const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
  assert.match(cancelado.style.transform,/translateY/);cancelado.listeners.touchcancel();assert.equal(cancelado.style.transform,'');
  reducido=true;console.log('  OK   touchcancel devuelve la historia a su lugar');
  console.log('  OK   Reducir movimiento: arrastre sin transform y cierre inmediato, restaura foco/inert');
+ // Al retroceder desde Compartir, el repaint retira el botón enfocado del DOM.
+ // Modelar esa pérdida reproduce lo que hace el navegador, sin compartir nada.
+ const pintarAntes=ctx.pintarWrapped,anterior=el(),siguiente=el(),cerrar=el();
+ const historia=el(),navegacion=el();
+ navegacion.querySelector=sel=>sel==='[data-paso="-1"]'?anterior:sel==='[data-paso="1"]'?siguiente:cerrar;
+ const enfocado=el();enfocado.closest=sel=>sel==='.wrapped-slide'?historia:null;
+ ctx.pintarWrapped=()=>{ctx.document.activeElement=ctx.document.body;};
+ set('_wrapped',{ov:navegacion,slides:[{},{}],i:1});ctx.document.activeElement=enfocado;
+ ctx.pasarWrapped(-1);assert.equal(ctx.document.activeElement,anterior,'retroceder conserva el foco dentro del Wrapped');
+ set('_wrapped',{ov:navegacion,slides:[{},{}],i:0});ctx.document.activeElement=enfocado;
+ ctx.pasarWrapped(1);assert.equal(ctx.document.activeElement,siguiente,'avanzar vuelve al control de navegación correspondiente');
+ ctx.pintarWrapped=()=>{};ctx.document.activeElement=cerrar;
+ ctx.pasarWrapped(-1);assert.equal(ctx.document.activeElement,cerrar,'un control persistente conserva su foco');
+ ctx.pasarWrapped(-1);assert.equal(ctx.document.activeElement,cerrar,'retroceder en la primera historia no salta de foco');
+ ctx.pintarWrapped=()=>{set('_wrapped',null);ctx.document.activeElement=foco;};
+ set('_wrapped',{ov:navegacion,slides:[{},{}],i:1});ctx.document.activeElement=enfocado;
+ ctx.pasarWrapped(-1);assert.equal(ctx.document.activeElement,foco,'si la historia se cierra al repintar, no vuelve a enfocar el overlay retirado');
+ ctx.pintarWrapped=pintarAntes;
+ console.log('  OK   cambio de historia restaura solo el foco retirado y conserva navegación persistente');
  // Compartir se llama sin esperar ninguna promesa: requisito de Safari iOS.
  const archivo={name:'mi-semestre-gradehub.png',type:'image/png'};set('_wrapped',{ov:el(),archivo,imagen:new Promise(()=>{}),slides:[],i:0});
  let invocado=false;ctx.navigator.canShare=()=>true;ctx.navigator.share=()=>{invocado=true;return Promise.resolve();};
