@@ -6482,6 +6482,7 @@ function openSettings(){
       const contacto=`<p class="feedback-contact">¿Prefieres escribirnos por correo? <a id="feedback-contact" href="${esc(correoSugerenciaHref())}" onclick="actualizarCorreoSugerencia()">gradehub.app@gmail.com</a></p>`;
       return currentUser?`
       <p class="settings-help settings-help-top">¿Algo no se entiende, está fallando o podría ser mejor? Lo leemos nosotros.</p>
+      ${typeof entradaEncuestaHTML==='function'?entradaEncuestaHTML():''}
       <label class="modal-label" for="s-feedback-type">Tipo de comentario</label>
       <select class="feedback-select" id="s-feedback-type" onchange="actualizarCorreoSugerencia()">
         <option value="sugerencia">Tengo una sugerencia</option>
