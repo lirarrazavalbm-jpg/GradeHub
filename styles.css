@@ -2079,6 +2079,13 @@ input.settings-search{width:100%;min-width:0;min-height:44px;margin-bottom:20px;
    toggle y el scale del punto de color seleccionado. Son posición y estado,
    no animación — anularlos descoloca la interfaz. */
 @media(prefers-reduced-motion:reduce){
+  /* El carrusel mantiene la posición de cada pestaña, pero cambia de pantalla
+     sin recorrer un viewport cuando la persona pidió reducir movimiento. */
+  .app.tab-mode #screen-stats,
+  .app.tab-mode #screen-home,
+  .app.tab-mode #screen-agenda,
+  .app.tab-mode #screen-profesor,
+  .app.tab-mode #screen-admin{transition:none;will-change:auto;}
   .ramo-row,.insight-card,.stat-card,.ag-row,.ag-priority-card,.eval-row,.eval-group,.cat-card{will-change:auto;}
 
   /* Hundirse al tocar y levantarse al apuntar: el color y la sombra siguen
