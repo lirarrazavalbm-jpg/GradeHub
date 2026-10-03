@@ -10,7 +10,7 @@ function preparar(){
  let abierto=true,confirmacion=false;
  const contenedor={querySelectorAll:()=>[oculto,deshabilitado,primero,ultimo,nodo('oculto-final',{hidden:true})]};
  const overlay={classList:{contains:()=>abierto},querySelectorAll:contenedor.querySelectorAll,querySelector:()=>contenedor};
- doc.getElementById=id=>id==='modal'?overlay:{classList:{contains:()=>confirmacion}};
+ doc.getElementById=id=>id==='modal'?overlay:{classList:{contains:()=>confirmacion},querySelectorAll:()=>[]};
  doc.querySelector=()=>contenedor;
  const ctx={document:doc};vm.createContext(ctx);vm.runInContext(app.slice(inicio,fin),ctx);
  const tecla=(shiftKey=false,key='Tab')=>{const e={key,shiftKey,target:doc.activeElement,prevented:false,preventDefault(){this.prevented=true;}};listeners.forEach(fn=>fn(e));return e;};
