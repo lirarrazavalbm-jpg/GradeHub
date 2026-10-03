@@ -72,17 +72,20 @@ if (atrapadas.length) console.log('       atrapadas: ' + atrapadas.slice(0, 8).j
 console.log('\n=== También quien escribe una carrera que no está en la lista ===');
 chk('una carrera declarada a mano entra', intentar('uc', null, 'Programa nuevo que no existe en la lista', 3).entro);
 
-console.log('\n=== UAndes sin malla verificada sigue teniendo una salida clara ===');
+// La UAndes ya tiene mallas (mallas-uandes.js). ING-UA es el código anterior de
+// "Ingeniería Civil", que no calza con ninguna carrera oficial: quien lo tiene
+// guardado no tiene malla propia, pero sí el buscador de toda la universidad.
+console.log('\n=== UAndes con una carrera antigua sin malla sigue teniendo salida ===');
 chk('UAndes aparece al elegir universidad', run('tenantsVisibles().some(([codigo])=>codigo==="uandes")'));
 run('selectedTenant="uandes"'); run('selectedCarrera="ING-UA"');
 run('selectedCarreraNombre="Ingeniería Civil"'); run('selectedSem=1'); run('obRamos=[]'); run('obManualOpen=false');
 const introUandes=run('obCoursePickerIntro([])');
-chk('explica que la malla falta y orienta a agregar ramos a mano', /malla verificada/i.test(introUandes)&&/a mano/i.test(introUandes));
+chk('orienta a buscar o agregar los ramos a mano', /busca/i.test(introUandes)&&/a mano/i.test(introUandes));
 const getElementByIdOriginal=ctx.document.getElementById;
 ctx.document.getElementById=id=>id==='ob-course-picker'?stub:null;
 run('renderObCoursePicker()');
 ctx.document.getElementById=getElementByIdOriginal;
-chk('prioriza agregar un ramo manual y no un buscador vacío', stub.innerHTML.includes('Agregar un ramo de mi horario')&&!stub.innerHTML.includes('id="ob-course-search"'));
+chk('ofrece el buscador de la universidad y el ramo manual', stub.innerHTML.includes('id="ob-course-search"')&&stub.innerHTML.includes('obToggleManual'));
 
 console.log('\n=== En cualquier semestre ===');
 const semestres = [1, 5, 11].map(s => intentar('uc', 'ING-PC', 'Ingeniería', s).entro);

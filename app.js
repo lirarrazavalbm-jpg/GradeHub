@@ -613,12 +613,12 @@ function mallaDeCarrera(tenant,carrera){
 function mallasExtraDe(tenant){
   if(tenant==='uc'&&typeof MALLAS_UC_EXTRA!=='undefined')return MALLAS_UC_EXTRA;
   if(tenant==='uai'&&typeof MALLAS_UAI_EXTRA!=='undefined')return MALLAS_UAI_EXTRA;
+  if(tenant==='uandes'&&typeof MALLAS_UANDES_EXTRA!=='undefined')return MALLAS_UANDES_EXTRA;
   return null;
 }
 // Qué archivo trae las mallas diferidas de cada universidad. Sin entrada acá,
-// el tenant funciona igual: sin sugerencia automática y agregando ramos a mano,
-// que es como funciona hoy la UAndes.
-const ARCHIVO_MALLAS={uc:'mallas-uc.js',uai:'mallas-uai.js'};
+// el tenant funciona igual: sin sugerencia automática y agregando ramos a mano.
+const ARCHIVO_MALLAS={uc:'mallas-uc.js',uai:'mallas-uai.js',uandes:'mallas-uandes.js'};
 
 // Las mallas extra de UC y UAI se traen cuando se necesitan y no en cada carga:
 // meterlas en data.js habría cobrado ese peso a todo el mundo, incluida la gente

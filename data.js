@@ -168,10 +168,9 @@ const TENANTS={
   // completo (tema, carreras, presets) para quien ya lo tenga seleccionado.
   // Quitar la marca cuando se quiera lanzar.
   uai:{name:'U. Adolfo Ibáñez', short:'UAI', mono:'UAI', sub:'Todas las carreras'},
-  // UAndes ya tiene carreras declarables, aunque todavía no una malla verificada.
-  // Se ofrece igual: el onboarding deja armar el semestre con los ramos del
-  // horario, sin inventar sugerencias ni ponderaciones.
-  uandes:{name:'U. de los Andes', short:'UANDES', mono:'UA', sub:'Carreras y ramos manuales'},
+  // Las mallas de la UAndes viven en mallas-uandes.js. Pautas todavía no hay:
+  // no se inventan ponderaciones.
+  uandes:{name:'U. de los Andes', short:'UANDES', mono:'UA', sub:'Todas las carreras'},
 };
 
 // Equivalencias institucionales para calificaciones que sí participan del
@@ -395,49 +394,50 @@ const CARRERAS_DECLARABLES={
   // Las carreras y bachilleratos que la UAndes lista en admision.uandes.cl/carreras
   // (revisada el 2026-10-03), con los nombres tal como salen ahí. Quedó fuera
   // "Derecho e Historia": su enlace lleva a una página de respaldo, no a la de
-  // admisión. Ninguna tiene malla todavía.
+  // admisión. Todas menos Arquitectura, que no publica malla, la tienen en
+  // mallas-uandes.js.
   //
-  // Los cuatro códigos `-UA` NO son mallas: vienen de CARRERAS_UANDES, que era
-  // la lista anterior, y hay cuentas que ya los tienen guardados en S.carrera y
-  // en el origen de sus ramos. Se conservan para que esas personas sigan viendo
-  // su carrera marcada. La quinta, "Ingeniería Civil" (ING-UA), no calza con
+  // Los cuatro códigos `-UA` vienen de CARRERAS_UANDES, que era la lista
+  // anterior, y hay cuentas que ya los tienen guardados en S.carrera y en el
+  // origen de sus ramos. Se conservan —y sus mallas usan ese código— para que
+  // esas personas sigan viendo su carrera marcada y reciban su malla. La quinta, "Ingeniería Civil" (ING-UA), no calza con
   // ninguna carrera oficial —la UAndes admite por especialidad— y no se ofrece
   // más; quien la tenga la sigue viendo por su nombre en Ajustes.
   uandes:[
-    {n:'Administración de Servicios'},
+    {n:'Administración de Servicios',malla:'UA-ADMINISTRACION-DE-SERVICIOS'},
     {n:'Arquitectura'},
-    {n:'Ciencia Política'},
+    {n:'Ciencia Política',malla:'UA-CIENCIA-POLITICA'},
     {n:'Derecho',malla:'DER-UA'},
-    {n:'Derecho y Filosofía'},
-    {n:'Educación de Párvulos con menciones'},
-    {n:'Enfermería'},
-    {n:'Filosofía'},
-    {n:'Historia'},
-    {n:'Ingeniería Civil Eléctrica'},
-    {n:'Ingeniería Civil en Ciencias de la Computación'},
-    {n:'Ingeniería Civil en Obras Civiles'},
-    {n:'Ingeniería Civil Industrial'},
-    {n:'Ingeniería Civil Química'},
+    {n:'Derecho y Filosofía',malla:'UA-DERECHO-Y-FILOSOFIA'},
+    {n:'Educación de Párvulos con menciones',malla:'UA-EDUCACION-DE-PARVULOS'},
+    {n:'Enfermería',malla:'UA-ENFERMERIA'},
+    {n:'Filosofía',malla:'UA-FILOSOFIA'},
+    {n:'Historia',malla:'UA-HISTORIA'},
+    {n:'Ingeniería Civil Eléctrica',malla:'UA-INGENIERIA-CIVIL-ELECTRICA'},
+    {n:'Ingeniería Civil en Ciencias de la Computación',malla:'UA-INGENIERIA-CIVIL-EN-CIENCIAS-DE-LA-COMPUTACION'},
+    {n:'Ingeniería Civil en Obras Civiles',malla:'UA-INGENIERIA-CIVIL-EN-OBRAS-CIVILES'},
+    {n:'Ingeniería Civil Industrial',malla:'UA-INGENIERIA-CIVIL-INDUSTRIAL'},
+    {n:'Ingeniería Civil Química',malla:'UA-INGENIERIA-CIVIL-QUIMICA'},
     {n:'Ingeniería Comercial',malla:'COM-UA'},
-    {n:'International Business'},
-    {n:'Kinesiología'},
-    {n:'Marketing y Publicidad'},
+    {n:'International Business',malla:'UA-INTERNATIONAL-BUSINESS'},
+    {n:'Kinesiología',malla:'UA-KINESIOLOGIA'},
+    {n:'Marketing y Publicidad',malla:'UA-MARKETING-Y-PUBLICIDAD'},
     {n:'Medicina',malla:'MED-UA'},
-    {n:'Odontología'},
-    {n:'Pedagogía Básica con menciones'},
-    {n:'Pedagogía Básica Bilingüe Inglés Español'},
-    {n:'Periodismo y Comunicación Estratégica'},
+    {n:'Odontología',malla:'UA-ODONTOLOGIA'},
+    {n:'Pedagogía Básica con menciones',malla:'UA-PEDAGOGIA-BASICA'},
+    {n:'Pedagogía Básica Bilingüe Inglés Español',malla:'UA-PEDAGOGIA-BASICA-BILINGUE'},
+    {n:'Periodismo y Comunicación Estratégica',malla:'UA-PERIODISMO-Y-COMUNICACION-ESTRATEGICA'},
     {n:'Psicología',malla:'PSI-UA'},
-    {n:'Sociología'},
-    {n:'Terapia Ocupacional'},
-    {n:'Bachillerato de Derecho'},
-    {n:'Bachillerato de Enfermería'},
-    {n:'Bachillerato de Ingeniería Civil'},
-    {n:'Bachillerato de Ingeniería Comercial'},
-    {n:'Bachillerato de Medicina'},
-    {n:'Bachillerato de Obstetricia y Puericultura'},
-    {n:'Bachillerato de Odontología'},
-    {n:'Bachillerato de Psicología'},
+    {n:'Sociología',malla:'UA-SOCIOLOGIA'},
+    {n:'Terapia Ocupacional',malla:'UA-TERAPIA-OCUPACIONAL'},
+    {n:'Bachillerato de Derecho',malla:'UA-BACHILLERATO-DE-DERECHO'},
+    {n:'Bachillerato de Enfermería',malla:'UA-BACHILLERATO-DE-ENFERMERIA'},
+    {n:'Bachillerato de Ingeniería Civil',malla:'UA-BACHILLERATO-DE-INGENIERIA-CIVIL'},
+    {n:'Bachillerato de Ingeniería Comercial',malla:'UA-BACHILLERATO-DE-INGENIERIA-COMERCIAL'},
+    {n:'Bachillerato de Medicina',malla:'UA-BACHILLERATO-DE-MEDICINA'},
+    {n:'Bachillerato de Obstetricia y Puericultura',malla:'UA-BACHILLERATO-DE-OBSTETRICIA-Y-PUERICULTURA'},
+    {n:'Bachillerato de Odontología',malla:'UA-BACHILLERATO-DE-ODONTOLOGIA'},
+    {n:'Bachillerato de Psicología',malla:'UA-BACHILLERATO-DE-PSICOLOGIA'},
   ],
   fen:[
     {n:'Ingeniería Comercial',malla:'IC'},

@@ -294,7 +294,7 @@ Lo que las separa no es el selector sino cuánto contenido tienen detrás:
 | UC | 71 | 2 (ING-PC, COM) | 49 en malla + catálogo completo | 45 |
 | FEN | 3 | 3 | 88 | 12 |
 | UAI | 23, todas con malla | 23 | 530 | 6 |
-| UAndes | 5 + "Otra" | ninguna | — | — |
+| UAndes | 34, todas menos Arquitectura con malla | 33 | 869 | 0 |
 
 **Una pauta que deja la mitad o más del ramo en grupos sin cantidad** (por
 ejemplo "Evaluaciones sumativas 60%" sin decir cuántas) no se carga ni se
@@ -327,6 +327,7 @@ tocar todo, es lo único que evita conflictos.
 |---|---|---|
 | Contenido FEN | `data.js` — mallas, presets y carreras de FEN | `ms` |
 | Contenido UC | `data.js` — mallas, presets, carreras y créditos de UC | `li` |
+| Contenido UAndes | `data.js` — carreras de la UAndes; `mallas-uandes.js` | `ms` |
 | Motor y experiencia | `engine.js`, `app.js`, `app-session.js`, `render-main.js`, `render-agenda.js` | `codex` |
 | Infra y seguridad | workflows, `sw.js`, `styles.css`, `_headers` | `li` |
 
