@@ -1093,7 +1093,7 @@ function datosWrapped(ramos){
     // Un color por nota, en orden de ramo: la grilla del semestre.
     notasColores:lista.flatMap(({r})=>(r.categorias||[]).flatMap(c=>(c.notas||[]).filter(n=>typeof n.valor==='number').map(()=>r.color))),
     ranking:orden.map(x=>({nombre:x.r.nombre,color:x.r.color,avg:x.avg})),
-    aprobando:lista.filter(x=>notaAprobada(x.avg)).length,
+    aprobando:lista.filter(x=>notaAprobadaRamo(x.r,x.avg)).length,
     estrella:orden[0],
     // Con un solo ramo, "el que más te costó" sería la misma estrella.
     dificil:orden.length>1?orden[orden.length-1]:null,
@@ -1187,7 +1187,7 @@ function slidesWrapped(d,comp,label){
   // "Lo sacaste adelante" solo si de verdad lo aprobó: el resumen no celebra
   // lo que el semáforo pinta rojo.
   if(d.dificil)s.push({k:'El que más pelea dio',titulo:esc(d.dificil.r.nombre),big:cifraWrapped(fmtPromedio(d.dificil.avg),1),
-    sub:notaAprobada(d.dificil.avg)?'Y lo sacaste adelante.':'Un semestre no define a nadie.'});
+    sub:!ramoCompletamenteEvaluado(d.dificil.r)?'Todavía quedan evaluaciones por registrar.':notaAprobadaRamo(d.dificil.r,d.dificil.avg)?'Y lo sacaste adelante.':'Un semestre no define a nadie.'});
   if(comp&&comp.curso)s.push({k:`En ${esc(comp.curso.ramo)}`,big:cifraWrapped(comp.curso.mejorQue+'%'),
     sub:frasePosicionCurso(comp.curso.mejorQue,comp.curso.total).replace(/<\/?b>/g,'')+'.',viz:reglaWrapped(comp.curso.mejorQue)});
   // El servidor compara el promedio simple de los ramos, no el ponderado de

@@ -1,0 +1,26 @@
+// Wrapped debe dar el mismo veredicto que Inicio y la ficha, también con 3,99.
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const el=()=>({style:{setProperty(){},removeProperty(){}},classList:{add(){},remove(){},contains(){return false;}},children:[],dataset:{},value:'',innerHTML:'',textContent:'',addEventListener(){},appendChild(){},setAttribute(){},removeAttribute(){},getAttribute(){return null;},querySelector(){return null;},querySelectorAll(){return [];}});
+const ctx={window:{addEventListener(){},matchMedia:()=>({matches:true,addEventListener(){}})},document:{getElementById:el,createElement:el,addEventListener(){},querySelector(){return null;},querySelectorAll(){return [];},documentElement:el(),body:el()},localStorage:{getItem(){return null;},setItem(){throw Error('No debe guardar');},removeItem(){}},navigator:{},location:{hash:'',origin:''},console,setTimeout(){return 1;},clearTimeout(){}};
+vm.createContext(ctx);for(const f of ['data.js','engine.js','app.js','app-session.js','render-main.js'])vm.runInContext(fs.readFileSync(__dirname+'/../'+f,'utf8'),ctx,{filename:f});
+const run=c=>vm.runInContext(c,ctx);
+const cat=(id,peso,valor)=>({id,nombre:id,peso,directNota:true,notas:valor===null?[]:[{id:'n-'+id,nombre:id,valor,peso:1}]});
+const ramo=(id,valor)=>({id,nombre:id,color:'#6633aa',gates:[],categorias:[cat(id+'-nota',100,valor)]});
+const bloqueado={...ramo('Requisito incumplido',6),categorias:[cat('trabajo',50,6),cat('examen',50,2.9)],gates:[{type:'min_grade_required',catId:'examen',min:3,cap:3.99}]};
+ctx.__ramos=[ramo('Otro ramo',6),bloqueado];run('S={...freshState(),ramos:__ramos};');
+const foto=run('JSON.stringify(S)'),d=run('datosWrapped(S.ramos)');
+assert.equal(run('fmtPromedio(ramoAvg(S.ramos[1]))'),'4.0');
+assert.equal(run('notaAprobadaRamo(S.ramos[1],ramoAvg(S.ramos[1]))'),false);
+assert.equal(d.aprobando,1,'Wrapped no cuenta como aprobado un ramo que la ficha reprueba por compuerta');
+let dificil=run('slidesWrapped(datosWrapped(S.ramos),null,"2026-2")').find(x=>x.k==='El que más pelea dio');
+assert.doesNotMatch(dificil.sub,/sacaste adelante/,'no celebra una aprobación impedida por compuerta');
+assert.equal(run('JSON.stringify(S)'),foto,'no cambia los datos');
+ctx.__ramos=[ramo('Otro ramo',6),ramo('Borde normal',3.99)];run('S.ramos=__ramos;');
+assert.equal(run('datosWrapped(S.ramos).aprobando'),2,'el redondeo normal sigue aprobando 3,99 sin compuerta');
+dificil=run('slidesWrapped(datosWrapped(S.ramos),null,"2026-2")').find(x=>x.k==='El que más pelea dio');
+assert.match(dificil.sub,/sacaste adelante/,'un ramo cerrado y aprobado conserva el mensaje');
+ctx.__ramos=[ramo('Otro ramo',6),{...ramo('Pendiente',5),categorias:[cat('control',50,5),cat('examen',50,null)]}];run('S.ramos=__ramos;');
+dificil=run('slidesWrapped(datosWrapped(S.ramos),null,"2026-2")').find(x=>x.k==='El que más pelea dio');
+assert.doesNotMatch(dificil.sub,/sacaste adelante/,'un promedio parcial no afirma cierre');
+assert.match(dificil.sub,/pendiente|registrar/);
+console.log('OK: Wrapped respeta compuertas, redondeo y evaluaciones pendientes');
