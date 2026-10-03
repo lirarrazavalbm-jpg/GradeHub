@@ -77,6 +77,14 @@ Node.js ≥22. `npm ci` instala las dependencias del lockfile. En un worktree si
 
 `bash bin/estado.sh` conserva el chequeo completo del repo. `--rapido` omite la suite inicial; `--local` evita consultas de red, y ambos se pueden combinar. Una suite omitida se reporta como SKIP, nunca PASS. Ejecuta los checks necesarios antes de entregar.
 
+## Higiene local
+
+`.gitignore` deja fuera el paquete generado en `dist/`, cobertura, logs de npm, variables de entorno y ajustes `*.local.json` de Claude. Conserva la configuración compartida `.claude/launch.json`; `.env.example` puede versionarse con valores de ejemplo, nunca credenciales. No borres ajustes privados al limpiar el estado de Git.
+
+`.ignore` reduce el ruido de búsqueda: además de catálogos grandes, omite los HTML oficiales en `tests/fixtures/catalogo-uc*/`, el paquete generado y `.claude/`. Estos archivos siguen disponibles nombrando su ruta: `rg -n 'patrón' tests/fixtures/catalogo-uc/BIO143M.html`. Los tests leen las mismas fixtures; no se mueven ni eliminan.
+
+Los worktrees son carpetas con trabajo, no caché. Antes de retirarlos, consulta `git worktree list`, sus cambios locales y el PR asociado; un PR mergeado no prueba que no haya commits o archivos posteriores. Conserva todo trabajo pendiente y usa `git worktree move` para cambiar ubicaciones sin romper enlaces. No elimines ramas para ordenar carpetas.
+
 ## Ramas compartidas
 
 Trabaja desde la referencia de main verificada y conserva cambios ajenos. Antes de actualizar una rama:
