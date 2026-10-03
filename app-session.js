@@ -292,6 +292,9 @@ async function cambiarCorreoCuenta(){
 }
 
 async function submitAuth(){
+  const btn=document.getElementById('auth-btn');
+  // Enter llama esta función desde el campo, aunque el botón esté deshabilitado.
+  if(btn.disabled)return;
   const email=(document.getElementById('auth-user').value||'').trim().toLowerCase();
   const p=document.getElementById('auth-pass').value;
   const p2=document.getElementById('auth-pass2').value;
@@ -316,7 +319,7 @@ async function submitAuth(){
   }
   if(!supabaseClient){authError('Falta configurar Supabase (URL y clave) en el código.');return;}
 
-  const btn=document.getElementById('auth-btn');const orig=btn.textContent;
+  const orig=btn.textContent;
   btn.disabled=true;btn.textContent='Cargando...';
   try{
     if(authMode==='signup'){
@@ -418,6 +421,8 @@ async function forgotPassword(){
 // Al volver del correo, Supabase dispara PASSWORD_RECOVERY (ver boot()).
 // Esta función recibe la nueva contraseña y la guarda.
 async function submitNewPassword(){
+  const btn=document.getElementById('reset-btn');
+  if(btn.disabled)return;
   const p1=document.getElementById('reset-pass').value;
   const p2=document.getElementById('reset-pass2').value;
   const err=document.getElementById('reset-error');
@@ -426,7 +431,7 @@ async function submitNewPassword(){
   if(policyError){err.textContent=policyError;err.style.display='block';return;}
   if(p1!==p2){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
   if(!supabaseClient){err.textContent='Supabase no está configurado.';err.style.display='block';return;}
-  const btn=document.getElementById('reset-btn');const orig=btn.textContent;
+  const orig=btn.textContent;
   btn.disabled=true;btn.textContent='Guardando...';
   try{
     const {data,error}=await supabaseClient.auth.updateUser({password:p1});
