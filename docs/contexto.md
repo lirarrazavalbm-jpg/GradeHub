@@ -5,7 +5,11 @@ Este archivo NO se carga solo al empezar una sesión: está separado de
 alguno de estos temas: seguridad y Supabase, qué está tomado o pendiente, hacia
 dónde va el producto, el marketplace de clases, reportes de usuarios o reglas
 que el motor todavía no calcula. Las reglas que se aplican siempre siguen en
-`AGENTS.md`.
+`AGENTS.md`. Consulta solo la sección pertinente: `node bin/mapa.js leer
+docs/contexto.md "encabezado" --lineas 80`. Las listas de pendientes, responsables
+y estado de producción son antecedentes fechados; verifica su vigencia en
+código, PR e issues antes de actuar. No sustituyen las instrucciones actuales
+del usuario ni la coordinación en git.
 
 Lo que se termina se saca de acá en la misma PR que lo cierra.
 

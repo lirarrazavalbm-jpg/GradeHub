@@ -11,3 +11,12 @@ supabase/catalogo_uc.csv
 docs/catalogo-uc-*.json
 docs/catalogo-uc-*.md
 docs/benchmark-pautas-uc-*
+
+# HTML oficial usado como evidencia por los tests; consultar por ruta explícita.
+tests/fixtures/catalogo-uc/
+tests/fixtures/catalogo-uc-benchmark/
+
+# Evita duplicar resultados con el paquete generado o leer ajustes privados.
+dist/
+coverage/
+.claude/

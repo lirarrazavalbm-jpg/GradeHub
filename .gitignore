@@ -4,3 +4,12 @@ node_modules/
 .DS_Store
 borradores/
 .cache/
+
+# Artefactos locales: no forman parte de la app ni de la configuración compartida.
+/dist/
+/coverage/
+/.claude/*.local.json
+/.env
+/.env.*
+!/.env.example
+npm-debug.log*
