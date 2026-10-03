@@ -64,11 +64,11 @@ function el(){let html='';const n={style:{setProperty(){},removeProperty(){}},cl
   addEventListener(){},removeEventListener(){},appendChild(h){return h;},setAttribute(){},removeAttribute(){},getAttribute(){return null;},querySelector(){return el();},querySelectorAll(){return [];},focus(){},remove(){},closest(){return null;},src:''};
   Object.defineProperty(n,'innerHTML',{get(){return html;},set(v){html=String(v);}});return n;}
 function dispositivo(nube,almacen=new Map()){
-  const ids={};let modalAbierto=false;
+  const ids={},oyentes={};let modalAbierto=false;
   const modal=el();modal.classList.contains=c=>c==='open'&&modalAbierto;ids.modal=modal;
   const avisos=[];
   const ctx={
-    window:{addEventListener(){},matchMedia:()=>({matches:false,addEventListener(){},addListener(){}})},
+    window:{addEventListener(t,f){(oyentes[t]=oyentes[t]||[]).push(f);},matchMedia:()=>({matches:false,addEventListener(){},addListener(){}})},
     document:{getElementById:id=>ids[id]||(ids[id]=el()),createElement:el,addEventListener(){},removeEventListener(){},documentElement:el(),querySelector(){return null;},querySelectorAll(){return [];},body:el(),head:{appendChild(){}},visibilityState:'visible'},
     localStorage:{getItem:k=>almacen.has(k)?almacen.get(k):null,setItem:(k,v)=>almacen.set(k,String(v)),removeItem:k=>almacen.delete(k)},
     navigator:{},location:{origin:'',pathname:'/',hash:'',reload(){}},history:{replaceState(){}},
@@ -79,7 +79,7 @@ function dispositivo(nube,almacen=new Map()){
   const run=c=>vm.runInContext(c,ctx);
   ctx.__avisos=avisos;
   run(`showToast=(m)=>__avisos.push(m);enterApp=()=>{};enterOnboarding=()=>{};renderHome=()=>{};aplicarConsensoAuto=async()=>0;aportarPautasAlCatalogo=async()=>0;`);
-  return {ctx,run,almacen,avisos,setModal:v=>{modalAbierto=v;},
+  return {ctx,run,almacen,avisos,setModal:v=>{modalAbierto=v;},disparar:t=>(oyentes[t]||[]).forEach(f=>f()),
     entrar:async uid=>{run(`supabaseClient=__nube;currentUser={id:${JSON.stringify(uid)}};`);await run('afterLogin()');},
     // Anotar una nota como lo hace la app: se modifica S y se guarda.
     // save() programa una subida a los 800 ms; se cancela para que el test
@@ -268,6 +268,36 @@ const esperar=ms=>new Promise(r=>setTimeout(r,ms));
     await enCamino;
     chk('la nota de A igual llegó a su nube',JSON.stringify(notasEnNube(nube))===JSON.stringify([[[6.1],[]]]));
     chk('pero la caché sigue siendo de B',d.almacen.get('gradehub_cache_owner')==='u2');
+  }
+
+  console.log('\n=== 10. Una lectura tardía de A no se aplica en la sesión de B ===');
+  {
+    // Issue #579, punto 2.
+    const nube=createNubeYa();
+    nube.filas.set('u1',{...estadoInicial(),userName:'Nombre de A'});
+    nube.filas.set('u2',{...estadoInicial(),userName:'Nombre de B'});
+    const d=dispositivo(nube);
+    let soltar;d.ctx.__lenta=new Promise(r=>{soltar=r;});
+    d.run(`supabaseClient=__nube;currentUser={id:'u1'};globalThis.__normal=loadFromCloud;loadFromCloud=()=>__lenta.then(()=>__normal());`);
+    const deA=d.run('afterLogin()');
+    d.run(`loadFromCloud=__normal;currentUser={id:'u2'};`);
+    await d.run('afterLogin()');
+    soltar();await deA;
+    chk('en pantalla quedan los datos de B',d.run('S.userName')==='Nombre de B');
+    chk('y la caché sigue siendo de B',d.almacen.get('gradehub_cache_owner')==='u2'&&JSON.parse(d.almacen.get('gradehub_v1')).userName==='Nombre de B');
+  }
+
+  console.log('\n=== 11. Lo que no subió sin red se sube al volver la conexión ===');
+  {
+    // Issue #579, punto 13.
+    const nube=createNubeYa();
+    const d=await preparar(nube);
+    nube.red=false;d.anotar(0,6.2,'offline');await d.subir();
+    chk('sin red queda solo en el dispositivo',JSON.stringify(notasEnNube(nube))===JSON.stringify([[[],[]]]));
+    nube.red=true;d.disparar('online');await esperar(30);
+    chk('al volver la red se sube sola',JSON.stringify(notasEnNube(nube))===JSON.stringify([[[6.2],[]]]));
+    const antes=nube.escrituras;d.disparar('online');await esperar(30);
+    chk('y sin nada pendiente no vuelve a escribir',nube.escrituras===antes);
   }
 
   console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
