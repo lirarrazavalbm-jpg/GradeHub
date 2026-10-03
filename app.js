@@ -8965,7 +8965,9 @@ function buildICS(){
     // prueba. Se usa una hora como convención visible, no como afirmación.
     if(e.hora){
       lines.push(`DTSTART:${icsDateTime(e.fecha,e.hora)}`);
-      lines.push(`DTEND:${icsDateTime(e.fecha,sumaUnaHora(e.hora))}`);
+      // La hora convencional de duración cruza de día si parte a las 23:xx.
+      const fin=e.hora.startsWith('23')?icsDatePlus1(e.fecha):e.fecha;
+      lines.push(`DTEND:${icsDateTime(fin,sumaUnaHora(e.hora))}`);
     }else{
       lines.push(`DTSTART;VALUE=DATE:${icsDate(e.fecha)}`);
       lines.push(`DTEND;VALUE=DATE:${icsDatePlus1(e.fecha)}`);
