@@ -7479,6 +7479,22 @@ document.addEventListener('keydown',e=>{
   el.click();
 });
 
+// Una hoja abierta conserva el recorrido del teclado dentro de sus controles.
+// La confirmación de encima tiene su propio recorrido y toma la prioridad.
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Tab')return;
+  const modal=document.getElementById('modal');
+  const confirmacion=document.getElementById('confirm-overlay');
+  if(!modal.classList.contains('open')||confirmacion.classList.contains('open'))return;
+  const controles=[...modal.querySelectorAll('button,input,select,textarea,a[href],[tabindex]')]
+    .filter(el=>!el.disabled&&el.tabIndex>=0&&el.getClientRects().length);
+  const i=controles.indexOf(document.activeElement);
+  if(controles.length&&(i<0||(e.shiftKey?i===0:i===controles.length-1))){
+    e.preventDefault();
+    controles[e.shiftKey?controles.length-1:0].focus({preventScroll:true});
+  }
+});
+
 // Enter o Tab en una casilla de nota guarda y salta a la siguiente (Shift+Tab,
 // a la anterior). Guardar repinta la ficha entera (renderRamo) y el foco caía
 // al body: quien llenaba varias notas seguidas tenía que volver a tocar cada
