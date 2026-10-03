@@ -218,6 +218,7 @@ function enterApp(){
   document.getElementById('screen-auth').classList.remove('active');
   document.getElementById('screen-onboard').classList.remove('active');
   showMainApp();
+  if(typeof consultarEncuestaAlEntrar==='function')consultarEncuestaAlEntrar().catch(()=>{});
 }
 
 function traduceAuthError(e,contexto){
@@ -576,6 +577,7 @@ async function importarCacheSinDueno(uid){
 async function afterSignup(){
   track('signup');
   const uid=currentUser?.id;
+  if(typeof marcarPrimeraSesionEncuesta==='function')marcarPrimeraSesionEncuesta(uid);
   const aislamiento=uid&&aislarCacheEnRegistro(uid);
   if(!aislamiento){
     try{await supabaseClient.auth.signOut();}catch(e){}
@@ -1050,6 +1052,7 @@ async function boot(){
   // Suscribirse a cambios de auth: el evento PASSWORD_RECOVERY viene cuando
   // el usuario abre el link del correo de "olvidé mi contraseña".
   supabaseClient.auth.onAuthStateChange((event, session)=>{
+    if(typeof sesionEncuestasCambio==='function')sesionEncuestasCambio(event,session?.user?.id);
     // Otra pestaña puede salir o cambiar de cuenta, y una sesión puede vencer.
     // Se reinicia la visita para cancelar también las lecturas de la cuenta
     // anterior. La copia local se conserva; no se borra una edición sin subir.
