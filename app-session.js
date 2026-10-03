@@ -271,9 +271,13 @@ async function cambiarCorreoCuenta(){
     return false;
   }
   const original=btn?btn.textContent:'';
+  const usuario=currentUser;
   if(btn){btn.disabled=true;btn.textContent='Guardando…';}
   try{
     const {data,error}=await supabaseClient.auth.updateUser({email:correo});
+    // La respuesta pertenece a la visita que pidió el cambio, incluso si se
+    // salió y se volvió a entrar con el mismo id mientras estaba en vuelo.
+    if(currentUser!==usuario)return false;
     if(error)throw error;
     const correoGuardado=String(data&&data.user&&data.user.email||'').trim().toLowerCase();
     if(correoGuardado!==correo){
@@ -284,6 +288,7 @@ async function cambiarCorreoCuenta(){
     estadoCambioCorreo('Correo actualizado. Desde ahora entra con esta dirección.',false);
     return true;
   }catch(e){
+    if(currentUser!==usuario)return false;
     estadoCambioCorreo(traduceAuthError(e,'cambio_correo'),true);
     return false;
   }finally{
@@ -427,9 +432,11 @@ async function submitNewPassword(){
   if(p1!==p2){err.textContent='Las contraseñas no coinciden.';err.style.display='block';return;}
   if(!supabaseClient){err.textContent='Supabase no está configurado.';err.style.display='block';return;}
   const btn=document.getElementById('reset-btn');const orig=btn.textContent;
+  const usuario=currentUser;
   btn.disabled=true;btn.textContent='Guardando...';
   try{
     const {data,error}=await supabaseClient.auth.updateUser({password:p1});
+    if(currentUser!==usuario)return;
     if(error)throw error;
     currentUser=data.user;
     enRecuperacion=false;
@@ -437,6 +444,7 @@ async function submitNewPassword(){
     document.getElementById('screen-reset').classList.remove('active');
     await afterLogin();
   }catch(e){
+    if(currentUser!==usuario)return;
     // El mensaje de Supabase viene en inglés ("New password should be different…").
     err.textContent=traduceAuthError(e);err.style.display='block';
   }finally{
