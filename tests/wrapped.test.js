@@ -41,10 +41,10 @@ chk('la tarjeta incluye la comparación con la universidad',JSON.stringify(final
 ctx.__ramos[0].nombre='<img src=x onerror=alert(1)>';
 chk('los nombres se escapan',!run('JSON.stringify(slidesWrapped(datosWrapped(__ramos),null,"x"))').includes('<img'));
 
-// El 20 y no antes: los exámenes y recuperativos tienen que estar ingresados.
-chk('no aparece el 19 de diciembre',!run('wrappedDisponible(new Date(2026,11,19))'));
-chk('aparece el 20 de diciembre',run('wrappedDisponible(new Date(2026,11,20))'));
-chk('se va en marzo',!run('wrappedDisponible(new Date(2027,2,1))'));
+// Ventana de esta campaña: diciembre y enero, según el calendario de Chile.
+chk('no aparece el 30 de noviembre',!run('wrappedDisponible(new Date(2026,10,30))'));
+chk('aparece el 1 de diciembre',run('wrappedDisponible(new Date(2026,11,1))'));
+chk('se va el 1 de febrero',!run('wrappedDisponible(new Date(2027,1,1))'));
 
 // Las piezas visuales dicen lo mismo que los números.
 ctx.__ramos[0].nombre='Micro';

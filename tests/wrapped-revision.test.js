@@ -47,10 +47,10 @@ const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
   run('renderWrappedHome()');assert.equal(reemplazos,0,'el reloj no reemplaza el botón enfocado');
  });
  check('la ventana sigue medianoche de Chile, aunque UTC cambie de día',()=>{
-  assert.equal(run('wrappedDisponible(new Date("2026-12-20T02:59:59Z"))'),false);
-  assert.equal(run('wrappedDisponible(new Date("2026-12-20T03:00:00Z"))'),true);
-  assert.equal(run('wrappedDisponible(new Date("2027-03-01T02:59:59Z"))'),true);
-  assert.equal(run('wrappedDisponible(new Date("2027-03-01T03:00:00Z"))'),false);
+  assert.equal(run('wrappedDisponible(new Date("2026-12-01T02:59:59Z"))'),false);
+  assert.equal(run('wrappedDisponible(new Date("2026-12-01T03:00:00Z"))'),true);
+  assert.equal(run('wrappedDisponible(new Date("2027-02-01T02:59:59Z"))'),true);
+  assert.equal(run('wrappedDisponible(new Date("2027-02-01T03:00:00Z"))'),false);
  });
  check('cuentas límite conservan las cifras de ramoAvg/gpa sin NaN ni undefined',()=>{
   for(const tenant of ['uc','fen','uai','uandes'])for(const rs of [[],[ramo('uno')],[ramo('uno',2),ramo('dos',3)],[ramo('uno',3.95,10),ramo('dos',6,20)],[ramo('manual',4,null)]]){
@@ -97,13 +97,13 @@ const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
  ctx.openModal=abrirModal;ctx.openRamo=abrirRamo;ctx.closeModal=cerrarModal;ctx.comparacionWrapped=comparar;
  console.log('  OK   parcial bloqueada antes de RPC; Revisar notas abre su ramo');
  check('fuera de ventana ni hash ni apertura directa revelan Wrapped',()=>{
-  mostrar([ramo('uno')]);ahora=new Date(2026,11,19,23,59).getTime();ctx.location.hash='#wrapped';run('renderWrappedHome()');assert.equal(ids['home-wrapped'].innerHTML,'');
+  mostrar([ramo('uno')]);ahora=new Date(2026,10,30,23,59).getTime();ctx.location.hash='#wrapped';run('renderWrappedHome()');assert.equal(ids['home-wrapped'].innerHTML,'');
   assert.equal(ids['home-wrapped'].style.display,'none');
  });
  await run('abrirWrapped()');assert.equal(run('_wrapped'),null);assert.equal(run('_wrappedAbriendo'),false);
- ahora=new Date(2026,11,20).getTime();assert.equal(run('wrappedDisponible()'),true);
- ahora=new Date(2027,1,28,23,59).getTime();assert.equal(run('wrappedDisponible()'),true);
- ahora=new Date(2027,2,1).getTime();assert.equal(run('wrappedDisponible()'),false);
+ ahora=new Date(2026,11,1).getTime();assert.equal(run('wrappedDisponible()'),true);
+ ahora=new Date(2027,0,31,23,59).getTime();assert.equal(run('wrappedDisponible()'),true);
+ ahora=new Date(2027,1,1).getTime();assert.equal(run('wrappedDisponible()'),false);
  ahora=new Date(2026,11,21).getTime();
  // RPC opcionales: solo proyecciones numéricas válidas, mínimo cinco.
  set('currentUser',{id:'sintetico',email:'privado-sintetico@example.invalid'});run('subirNotasCurso=async()=>{};cargarPosicionesCurso=async()=>({});invalidarPosicionesCurso=()=>{}');
@@ -132,7 +132,7 @@ const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
  // Una apertura pendiente no puede duplicarse ni abrir tras salir de la ventana.
  mostrar([ramo('uno')]);set('currentUser',null);run('comparacionWrapped=()=>new Promise(resolve=>{resolverComparacion=resolve})');
  const apertura=run('abrirWrapped()');assert.equal(run('_wrappedAbriendo'),true);await run('abrirWrapped()');assert.equal(run('_wrapped'),null);
- ahora=new Date(2027,2,1).getTime();run('resolverComparacion(null)');await apertura;assert.equal(run('_wrapped'),null);
+ ahora=new Date(2027,1,1).getTime();run('resolverComparacion(null)');await apertura;assert.equal(run('_wrapped'),null);
  console.log('  OK   apertura única y guarda de fecha tras una respuesta lenta');
  ahora=new Date(2026,11,21).getTime();
  const editando=run('abrirWrapped()');run('S.ramos[0].categorias[0].notas[0].valor=6;resolverComparacion(null)');await editando;
@@ -155,7 +155,7 @@ const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
  await run('abrirWrapped()');assert.ok(run('_wrapped'),'se puede volver a ver voluntariamente');
  set('currentUser',{id:'otra-cuenta'});run('renderWrappedHome()');assert.equal(run('_wrapped'),null);
  set('currentUser',null);await run('abrirWrapped()');assert.ok(run('_wrapped'));
- ahora=new Date('2027-03-01T03:00:00Z').getTime();ctx.document.visibilityState='visible';eventos.visibilitychange();
+ ahora=new Date('2027-02-01T03:00:00Z').getTime();ctx.document.visibilityState='visible';eventos.visibilitychange();
  assert.equal(run('_wrapped'),null);assert.equal(ids['home-wrapped'].innerHTML,'');
  ahora=new Date(2026,11,21).getTime();
  console.log('  OK   cierre/reapertura, cambio de cuenta y vuelta a la app fuera de fechas');

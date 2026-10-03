@@ -1058,7 +1058,7 @@ function renderStats(){
 // La ventana habilita la acción, no declara completas las notas. El estudiante
 // pulsa «Semestre terminado» y el motor revisa el cierre antes de la sorpresa.
 // Fechas civiles en Chile, inicio inclusivo y término exclusivo. Sin atajos URL.
-const WRAPPED_DESDE='2026-12-20',WRAPPED_HASTA='2027-03-01',WRAPPED_PERIODO='2026-2';
+const WRAPPED_DESDE='2026-12-01',WRAPPED_HASTA='2027-02-01',WRAPPED_PERIODO='2026-2';
 function wrappedDisponible(hoy){
   const d=hoy||new Date();
   if(!Number.isFinite(d.getTime()))return false;
