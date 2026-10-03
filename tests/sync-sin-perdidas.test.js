@@ -229,6 +229,47 @@ const esperar=ms=>new Promise(r=>setTimeout(r,ms));
     chk('y no se pisó nada en la nube',JSON.stringify(notasEnNube(nube))===JSON.stringify([[[6.6],[]]]));
   }
 
+  // Issue #579: las dos pestañas comparten localStorage. La de S viejo en
+  // memoria leía la base que acababa de subir la otra y su escritura
+  // condicional pasaba, borrando la nota ajena también en la nube.
+  console.log('\n=== 8. Dos pestañas del mismo navegador ===');
+  {
+    const nube=createNubeYa();nube.filas.set('u1',estadoInicial());
+    const almacen=new Map();
+    const a=dispositivo(nube,almacen);await a.entrar('u1');
+    const b=dispositivo(nube,almacen);await b.entrar('u1');
+    a.anotar(0,6.5,'a');await a.subir();
+    b.anotar(1,5,'b');await b.subir();
+    chk('la nube conserva las notas de las dos pestañas',JSON.stringify(notasEnNube(nube))===JSON.stringify([[[6.5],[5]]]));
+    chk('y la pestaña vieja muestra las dos',JSON.stringify(b.notas())===JSON.stringify([[[6.5],[5]]]));
+  }
+  {
+    // La pestaña vieja anota sin red y se cierra todo: al reabrir, lo que
+    // subió la otra pestaña no se pierde aunque el disco quedó con su copia.
+    const nube=createNubeYa();nube.filas.set('u1',estadoInicial());
+    const almacen=new Map();
+    const a=dispositivo(nube,almacen);await a.entrar('u1');
+    const b=dispositivo(nube,almacen);await b.entrar('u1');
+    a.anotar(0,6.5,'a');await a.subir();
+    nube.red=false;b.anotar(1,5,'b');await b.subir();nube.red=true;
+    const reabierto=dispositivo(nube,almacen);await reabierto.entrar('u1');await esperar(50);
+    chk('al reabrir están las dos notas',JSON.stringify(reabierto.notas())===JSON.stringify([[[6.5],[5]]]));
+    chk('y las dos llegan a la nube',JSON.stringify(notasEnNube(nube))===JSON.stringify([[[6.5],[5]]]));
+  }
+
+  console.log('\n=== 9. Una subida que termina después de cambiar de cuenta ===');
+  {
+    // Issue #579, punto 3: la respuesta tardía de A marcaba como suya la caché de B.
+    const nube=createNubeYa();nube.filas.set('u1',estadoInicial());
+    const d=dispositivo(nube);await d.entrar('u1');
+    d.anotar(0,6.1,'tarde');
+    const enCamino=d.subir();
+    d.run(`currentUser={id:'u2'};setCacheOwner('u2');`);
+    await enCamino;
+    chk('la nota de A igual llegó a su nube',JSON.stringify(notasEnNube(nube))===JSON.stringify([[[6.1],[]]]));
+    chk('pero la caché sigue siendo de B',d.almacen.get('gradehub_cache_owner')==='u2');
+  }
+
   console.log(`\nPASS: ${ok}   FAIL: ${fail}`);
   process.exit(fail?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

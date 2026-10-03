@@ -64,7 +64,8 @@ const run=s=>vm.runInContext(s,ctx);
   vm.createContext(c2);
   for(const f of ['data.js','engine.js','app.js','app-session.js'])vm.runInContext(fs.readFileSync(path.join(raiz,f),'utf8'),c2,{filename:f});
   const r2=x=>vm.runInContext(x,c2);
-  r2(`currentUser={id:'u1'};globalThis.__subidas=0;supabaseClient={from(){return{upsert(){__subidas++;return Promise.resolve({error:null});}};}};`);
+  r2(`currentUser={id:'u1'};globalThis.__subidas=0;supabaseClient={from(){return{upsert(){__subidas++;return Promise.resolve({error:null});},
+    update(){const q={eq(){return q;},is(){return q;},select(){__subidas++;return Promise.resolve({data:[{user_id:'u1'}],error:null});}};return q;}};}};`);
   chk('escucha cuando la página se esconde o se cierra',typeof oyentes['d:visibilitychange']==='function'&&typeof oyentes['w:pagehide']==='function');
   r2('syncToCloud()');
   c2.document.visibilityState='hidden';oyentes['d:visibilitychange']();
