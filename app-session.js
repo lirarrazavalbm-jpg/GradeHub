@@ -605,6 +605,8 @@ async function afterSignup(){
 async function afterLogin(){
   track('login');
   const uid=currentUser?currentUser.id:null;
+  const visita=++_visitaSesion;
+  const vigente=()=>visita===_visitaSesion&&!!currentUser&&currentUser.id===uid;
   // Una sesión anterior pudo terminar por vencimiento, sin pasar por signOut.
   // Ninguna de sus propuestas debe asomarse en Inicio de la cuenta nueva.
   if(typeof propuestasPautaAgente!=='undefined')propuestasPautaAgente=[];
@@ -619,6 +621,7 @@ async function afterLogin(){
   // normalize() y enterApp() quedan fuera a propósito. Si una de ellas falla,
   // continuar con estado o DOM a medias sería peor que detenerse con un aviso.
   try{cloud=await loadFromCloud();}catch(e){ok=false;}
+  if(!vigente())return;
   const mismaCache=getCacheOwner()===uid;
   // La copia previa a importar es de quien importó. Si la caché es de otra
   // cuenta (navegador compartido, o una sesión que venció sin cerrarse), se va:
@@ -670,6 +673,7 @@ async function afterLogin(){
       showToast('No pudimos cargar tus datos. Revisa tu conexión.',true);
     }
   }
+  if(!vigente())return;
   if(S.onboardingDone)enterApp();else enterOnboarding();
   // No bloquea la entrada: es una lectura de red y la app ya está en pantalla.
   // Si llega con algo, repinta y lo dice — una pauta no aparece en silencio.
@@ -718,6 +722,12 @@ async function afterLogin(){
   }
 }
 
+// Cada entrada y cada salida abren una visita nueva. Una lectura de la nube que
+// vuelve después de cambiar de cuenta, o de salir y volver a entrar, es de la
+// visita anterior: aplicarla mostraba los datos de A en la sesión de B y los
+// dejaba en su caché (issue #579, punto 2).
+let _visitaSesion=0;
+
 // La persona suele consultar al agente en otra app y volver a GradeHub. Al
 // regresar, se consulta la bandeja sin obligarla a cerrar sesión ni recargar.
 if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('visibilitychange',()=>{
@@ -747,10 +757,22 @@ function subirSyncPendiente(){
   syncNow();
   return true;
 }
+// Una subida que falló sin red no se reintentaba hasta la próxima edición: la
+// nota quedaba solo en el dispositivo aunque la conexión ya hubiera vuelto
+// (issue #579, punto 13). Se reintenta al volver la red y al volver a la
+// pestaña, por el mismo camino de siempre (subida condicional y fusión).
+function reintentarSubida(){
+  if(!_syncTimer&&!_subida&&hayCambiosSinSubir())syncNow();
+}
 if(typeof document!=='undefined'&&typeof document.addEventListener==='function')
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')subirSyncPendiente();});
-if(typeof window!=='undefined'&&typeof window.addEventListener==='function')
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden')subirSyncPendiente();
+    else reintentarSubida();
+  });
+if(typeof window!=='undefined'&&typeof window.addEventListener==='function'){
   window.addEventListener('pagehide',subirSyncPendiente);
+  window.addEventListener('online',reintentarSubida);
+}
 // Una subida a la vez: si llega otra mientras una va en camino, se repite al
 // terminar con el estado de ese momento. Dos subidas cruzadas partirían de la
 // misma versión y la segunda chocaría con la primera.
@@ -1026,17 +1048,17 @@ async function registrarAceptacionLegal(){
 // la copia local: una nota anotada sin conexión se perdía sin aviso, aunque la
 // app ya hubiera dicho "No cierres sesión". Antes de salir se intenta subir y,
 // si no se puede, se pregunta.
+// ¿Tiene esta pestaña algo que la nube todavía no tiene?
+function hayCambiosSinSubir(){
+  if(!supabaseClient||!currentUser)return false;
+  const base=leerBaseSync(currentUser.id);
+  if(base)return !igualSync(sinRevSync(S),sinRevSync(base));
+  return !!(S.ramos?.length||S.historial?.length||S.onboardingDone);
+}
 async function respaldoAlDia(){
-  if(!supabaseClient||!currentUser)return true;
-  const uid=currentUser.id;
-  const alDia=()=>{
-    const base=leerBaseSync(uid);
-    if(base)return igualSync(sinRevSync(S),sinRevSync(base));
-    return !(S.ramos?.length||S.historial?.length||S.onboardingDone);
-  };
-  if(alDia())return true;
+  if(!hayCambiosSinSubir())return true;
   clearTimeout(_syncTimer);_syncTimer=null;
-  return (await syncNow())&&alDia();
+  return (await syncNow())&&!hayCambiosSinSubir();
 }
 async function signOut(){
   if(!(await respaldoAlDia())){
@@ -1048,6 +1070,7 @@ async function signOut(){
   await cerrarSesion();
 }
 async function cerrarSesion(){
+  _visitaSesion++;
   try{_cerrandoSesion=true;await supabaseClient.auth.signOut();}catch(e){}
   finally{_cerrandoSesion=false;}
   currentUser=null;closeModal();
