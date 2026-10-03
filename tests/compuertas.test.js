@@ -277,7 +277,7 @@ if(confirmacionCopia.includes('2 evaluaciones')&&confirmacionCopia.includes('No 
 else {fail++;console.log('  FAIL texto de confirmación → '+confirmacionCopia);}
 const pautaNodes={
   'modal-content':{innerHTML:'',style:{},focus(){}},
-  modal:{style:{},classList:{open:false,add(c){if(c==='open')this.open=true;},remove(c){if(c==='open')this.open=false;}}},
+  modal:{style:{},classList:{open:false,contains(c){return c==='open'&&this.open;},add(c){if(c==='open')this.open=true;},remove(c){if(c==='open')this.open=false;}}},
   sheet:{style:{},scrollTop:0,addEventListener(){}}
 };
 const getBeforePauta=ctx.document.getElementById,queryBeforePauta=ctx.document.querySelector;

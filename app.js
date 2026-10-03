@@ -5570,6 +5570,10 @@ function closeUserMenu(){
 // Cierra el menú y ejecuta la acción (deja que corra la animación de cierre)
 function umGo(fn){
   closeUserMenu();
+  // El menú deja de ser visible antes de abrir la hoja. Conserva su origen
+  // para que el cierre de la siguiente vista no devuelva el foco al body.
+  const origen=document.getElementById('user-avatar');
+  if(origen&&origen.isConnected){try{origen.focus({preventScroll:true});}catch(e){origen.focus();}}
   setTimeout(()=>{try{fn();}catch(e){}},60);
 }
 document.addEventListener('keydown',e=>{
@@ -7380,7 +7384,8 @@ let _quienAbrioModal=null;
 
 function openModal(){
   const ov=document.getElementById('modal');
-  _quienAbrioModal=document.activeElement;
+  // Cambiar una hoja ya abierta conserva el punto de regreso original.
+  if(!ov.classList.contains('open'))_quienAbrioModal=document.activeElement;
   ov.classList.add('open');
   const sheet=document.querySelector('.modal-sheet');
   const contenido=document.getElementById('modal-content');
