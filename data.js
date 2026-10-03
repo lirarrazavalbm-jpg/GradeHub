@@ -392,6 +392,53 @@ const CARRERAS_DECLARABLES={
     {n:'Ingeniería Civil en Minería',malla:'UAI-INGENIERIA-CIVIL-EN-MINERIA'},
     {n:'Bachillerato de Ingeniería Civil',malla:'UAI-BACHILLERATO-DE-INGENIERIA-CIVIL'}
   ],
+  // Las carreras y bachilleratos que la UAndes lista en admision.uandes.cl/carreras
+  // (revisada el 2026-10-03), con los nombres tal como salen ahí. Quedó fuera
+  // "Derecho e Historia": su enlace lleva a una página de respaldo, no a la de
+  // admisión. Ninguna tiene malla todavía.
+  //
+  // Los cuatro códigos `-UA` NO son mallas: vienen de CARRERAS_UANDES, que era
+  // la lista anterior, y hay cuentas que ya los tienen guardados en S.carrera y
+  // en el origen de sus ramos. Se conservan para que esas personas sigan viendo
+  // su carrera marcada. La quinta, "Ingeniería Civil" (ING-UA), no calza con
+  // ninguna carrera oficial —la UAndes admite por especialidad— y no se ofrece
+  // más; quien la tenga la sigue viendo por su nombre en Ajustes.
+  uandes:[
+    {n:'Administración de Servicios'},
+    {n:'Arquitectura'},
+    {n:'Ciencia Política'},
+    {n:'Derecho',malla:'DER-UA'},
+    {n:'Derecho y Filosofía'},
+    {n:'Educación de Párvulos con menciones'},
+    {n:'Enfermería'},
+    {n:'Filosofía'},
+    {n:'Historia'},
+    {n:'Ingeniería Civil Eléctrica'},
+    {n:'Ingeniería Civil en Ciencias de la Computación'},
+    {n:'Ingeniería Civil en Obras Civiles'},
+    {n:'Ingeniería Civil Industrial'},
+    {n:'Ingeniería Civil Química'},
+    {n:'Ingeniería Comercial',malla:'COM-UA'},
+    {n:'International Business'},
+    {n:'Kinesiología'},
+    {n:'Marketing y Publicidad'},
+    {n:'Medicina',malla:'MED-UA'},
+    {n:'Odontología'},
+    {n:'Pedagogía Básica con menciones'},
+    {n:'Pedagogía Básica Bilingüe Inglés Español'},
+    {n:'Periodismo y Comunicación Estratégica'},
+    {n:'Psicología',malla:'PSI-UA'},
+    {n:'Sociología'},
+    {n:'Terapia Ocupacional'},
+    {n:'Bachillerato de Derecho'},
+    {n:'Bachillerato de Enfermería'},
+    {n:'Bachillerato de Ingeniería Civil'},
+    {n:'Bachillerato de Ingeniería Comercial'},
+    {n:'Bachillerato de Medicina'},
+    {n:'Bachillerato de Obstetricia y Puericultura'},
+    {n:'Bachillerato de Odontología'},
+    {n:'Bachillerato de Psicología'},
+  ],
   fen:[
     {n:'Ingeniería Comercial',malla:'IC'},
     {n:'Ingeniería en Información y Control de Gestión',malla:'IICG'},
