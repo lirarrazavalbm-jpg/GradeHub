@@ -1,5 +1,6 @@
 // Cuentas sintéticas y reloj dentro de la ventana. Ejecuta el motor y renderer reales.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+process.env.TZ='America/Santiago'; // Las fechas civiles de las fixtures son chilenas.
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
 let ahora=new Date(2026,11,21,12).getTime(),reducido=true;
 class Reloj extends Date{constructor(...args){super(...(args.length?args:[ahora]));}static now(){return ahora;}}
@@ -22,6 +23,35 @@ const ramo=(id,valor=5,creditos=null)=>({id,nombre:'Ramo '+id,color:'#456789',cr
 const mostrar=(rs,tenant='uc')=>{set('S',{...run('freshState()'),tenant,ramos:rs,userName:'Nombre Privado',historial:[]});return run('datosWrapped(S.ramos)');};
 const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
 (async()=>{
+ check('el cierre revisa todos los ramos y las casillas con el motor real',()=>{
+  const parcial=ramo('parcial');parcial.categorias=[cat('Control',50,5),cat('Examen',50,null)];
+  mostrar([ramo('completo'),parcial]);
+  assert.equal(run('cierreWrapped(ramosWrapped()).listo'),false);
+  assert.match(JSON.stringify(run('cierreWrapped(ramosWrapped()).pendientes')),/Examen/);
+  const casillas=ramo('casillas');casillas.categorias=[{...cat('Informes',100,6),slots:3}];
+  mostrar([casillas]);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),false);
+  casillas.categorias[0].notas=[{id:'i1',nombre:'Informe 1',slot:0,valor:6},{id:'duplicado',nombre:'Informe repetido',slot:0,valor:6}];
+  casillas.categorias[0].slots=2;mostrar([casillas]);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),false,'dos notas en la misma casilla no completan la segunda');
+  casillas.categorias[0].notas[1].slot=1;casillas.categorias[0].dropLowest=1;
+  mostrar([casillas]);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),true,'un descarte con todas las evaluaciones resueltas permite cerrar');
+  mostrar([ramo('sin-notas',null)]);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),false);
+  mostrar([{...ramo('sin-pauta'),categorias:[]}]);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),false);
+  mostrar([ramo('reprobado',2)]);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),true);
+ });
+ check('Inicio no revela historias ni cifras antes de finalizar',()=>{
+  mostrar([ramo('listo')]);run('renderWrappedHome()');
+  assert.match(ids['home-wrapped'].innerHTML,/Semestre terminado/);
+  assert.doesNotMatch(ids['home-wrapped'].innerHTML,/en historias|Tu mejor nota|Ver mi semestre|Wrapped/);
+  let reemplazos=0,html=ids['home-wrapped'].innerHTML;
+  Object.defineProperty(ids['home-wrapped'],'innerHTML',{configurable:true,get:()=>html,set:v=>{reemplazos++;html=v;}});
+  run('renderWrappedHome()');assert.equal(reemplazos,0,'el reloj no reemplaza el botón enfocado');
+ });
+ check('la ventana sigue medianoche de Chile, aunque UTC cambie de día',()=>{
+  assert.equal(run('wrappedDisponible(new Date("2026-12-20T02:59:59Z"))'),false);
+  assert.equal(run('wrappedDisponible(new Date("2026-12-20T03:00:00Z"))'),true);
+  assert.equal(run('wrappedDisponible(new Date("2027-03-01T02:59:59Z"))'),true);
+  assert.equal(run('wrappedDisponible(new Date("2027-03-01T03:00:00Z"))'),false);
+ });
  check('cuentas límite conservan las cifras de ramoAvg/gpa sin NaN ni undefined',()=>{
   for(const tenant of ['uc','fen','uai','uandes'])for(const rs of [[],[ramo('uno')],[ramo('uno',2),ramo('dos',3)],[ramo('uno',3.95,10),ramo('dos',6,20)],[ramo('manual',4,null)]]){
    const antes=JSON.stringify(rs),d=mostrar(rs,tenant);assert.equal(JSON.stringify(rs),antes);
@@ -38,19 +68,34 @@ const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
   run("PRESETS_UC['Ramo eximido']={eximicion:{evaluacion:'Examen',segun:['Presentación'],min:5,ignoraDescartes:true,requiereConfirmacion:true}}");
   r.origen={tenant:'uc',carrera:'ING-PC'};const d=mostrar([r]);
   assert.equal(run('estadoEximicion(S.ramos[0]).activa'),true);assert.equal(d.gpa,run('gpa(S.ramos)'));assert.equal(d.nNotas,1);
+  assert.equal(run('cierreWrapped(ramosWrapped()).listo'),true);
+  r.eximicionConfirmada=false;mostrar([r]);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),false,'eximición sin confirmar no oculta el examen');
  });
  check('inasistencia justificada usa el mismo traspaso del motor',()=>{
   const r=ramo('inasistencia');r.categorias=[cat('control',20,null),cat('examen',30,5),cat('prueba',50,5)];
   r.reglasAusenciaJustificadaUsuario={declaradaPor:'estudiante',rezagos:[],reemplazos:[],traspasos:[{desdeId:'control',haciaId:'examen'}]};r.ausenciasJustificadas=['control'];
   const d=mostrar([r]);assert.equal(d.gpa,run('gpa(S.ramos)'));assert.equal(d.gpa,5);assert.equal(d.nNotas,2);
+  assert.equal(run('cierreWrapped(ramosWrapped()).listo'),true);
  });
  check('no afirma cierre de un ramo todavía pendiente ni celebra todos reprobados',()=>{
   const r=ramo('pendiente');r.categorias=[cat('control',50,3),cat('examen',50,null)];mostrar([r]);
   const slides=JSON.stringify(run('slidesWrapped(datosWrapped(S.ramos),null,semester())'));assert.doesNotMatch(slides,/Cerraste|sacaste adelante|sobre el 4,0/);assert.match(slides,/con promedio de aprobación/);
  });
- check('historial sin etiqueta no imprime undefined ni inventa un período',()=>{
-  mostrar([]);set('S.historial',[{ramos:[ramo('archivado')]}]);assert.equal(run('ramosWrapped().label'),'Semestre archivado');
+ check('no usa un historial de otro período ni adivina etiquetas antiguas',()=>{
+  mostrar([]);set('S.historial',[{ramos:[ramo('archivado')]}]);assert.equal(run('ramosWrapped()'),null);
+  set('S.historial',[{label:'2025-2',ramos:[ramo('archivado')]}]);assert.equal(run('ramosWrapped()'),null);
+  set('S.historial',[{label:'2026-2',ramos:[{...ramo('acta',null),avgOverride:5}]}]);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),true);
+  mostrar([ramo('actual',null)]);set('S.historial',[{label:'2026-2',ramos:[ramo('anterior')]}]);
+  assert.equal(run('ramosWrapped().actual'),true);assert.equal(run('cierreWrapped(ramosWrapped()).listo'),false);
  });
+ // La comprobación ocurre antes de cualquier comparación o revelación.
+ mostrar([ramo('parcial',null)]);let modales=0,llamadas=0,ramoAbierto;
+ const abrirModal=ctx.openModal,abrirRamo=ctx.openRamo,cerrarModal=ctx.closeModal,comparar=ctx.comparacionWrapped;
+ ctx.openModal=()=>modales++;ctx.closeModal=()=>{};ctx.openRamo=id=>ramoAbierto=id;ctx.comparacionWrapped=async()=>{llamadas++;return null;};
+ await run('abrirWrapped()');assert.equal(modales,1);assert.equal(llamadas,0);assert.equal(run('_wrapped'),null);
+ ids['modal-content'].querySelector('.btn-confirm').listeners.click();assert.equal(ramoAbierto,'parcial');
+ ctx.openModal=abrirModal;ctx.openRamo=abrirRamo;ctx.closeModal=cerrarModal;ctx.comparacionWrapped=comparar;
+ console.log('  OK   parcial bloqueada antes de RPC; Revisar notas abre su ramo');
  check('fuera de ventana ni hash ni apertura directa revelan Wrapped',()=>{
   mostrar([ramo('uno')]);ahora=new Date(2026,11,19,23,59).getTime();ctx.location.hash='#wrapped';run('renderWrappedHome()');assert.equal(ids['home-wrapped'].innerHTML,'');
   assert.equal(ids['home-wrapped'].style.display,'none');
@@ -89,9 +134,16 @@ const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
  const apertura=run('abrirWrapped()');assert.equal(run('_wrappedAbriendo'),true);await run('abrirWrapped()');assert.equal(run('_wrapped'),null);
  ahora=new Date(2027,2,1).getTime();run('resolverComparacion(null)');await apertura;assert.equal(run('_wrapped'),null);
  console.log('  OK   apertura única y guarda de fecha tras una respuesta lenta');
+ ahora=new Date(2026,11,21).getTime();
+ const editando=run('abrirWrapped()');run('S.ramos[0].categorias[0].notas[0].valor=6;resolverComparacion(null)');await editando;
+ assert.equal(run('_wrapped'),null,'no publica una comparación preparada antes de cambiar notas');
+ console.log('  OK   edición durante RPC descarta la apertura anterior');
  ahora=new Date(2026,11,21).getTime();run('comparacionWrapped=async()=>null');
  const foco=el();ctx.document.activeElement=foco;const fondo=el(),yaInert=el();yaInert.inert=true;ctx.document.body.children=[fondo,yaInert];
  await run('abrirWrapped()');assert.equal(fondo.inert,true);assert.equal(yaInert.inert,true);
+ assert.equal(run('_wrapped.slides[0].tipo'),'umbral');
+ assert.doesNotMatch(run('_wrapped.ov.querySelector(".wrapped-slide").innerHTML'),/Nombre Privado|5[.,]0|Mejor nota/);
+ assert.equal(run('_wrapped.ov.querySelector(\'[data-paso="1"]\').textContent'),'Descubrir mi semestre');
  check('Tab permanece en el modal y Espacio respeta Compartir',()=>{
   const ov=run('_wrapped.ov'),a=el(),b=el();ov.querySelectorAll=()=>[a,b];ctx.document.activeElement=b;let prevenido=false;
   ctx.teclaWrapped({key:'Tab',preventDefault(){prevenido=true;}});assert.ok(prevenido);assert.equal(ctx.document.activeElement,a);
@@ -100,6 +152,13 @@ const check=(nombre,fn)=>{fn();console.log('  OK   '+nombre);};
  const ov=run('_wrapped.ov');ctx.arrastreWrapped(ov);
  ov.listeners.touchstart({touches:[{clientY:0}],timeStamp:0});ov.listeners.touchmove({touches:[{clientY:160}],timeStamp:100});
  assert.equal(ov.style.transform,undefined);ov.listeners.touchend();assert.equal(run('_wrapped'),null);assert.equal(fondo.inert,false);assert.equal(yaInert.inert,true);assert.equal(ctx.document.activeElement,foco);
+ await run('abrirWrapped()');assert.ok(run('_wrapped'),'se puede volver a ver voluntariamente');
+ set('currentUser',{id:'otra-cuenta'});run('renderWrappedHome()');assert.equal(run('_wrapped'),null);
+ set('currentUser',null);await run('abrirWrapped()');assert.ok(run('_wrapped'));
+ ahora=new Date('2027-03-01T03:00:00Z').getTime();ctx.document.visibilityState='visible';eventos.visibilitychange();
+ assert.equal(run('_wrapped'),null);assert.equal(ids['home-wrapped'].innerHTML,'');
+ ahora=new Date(2026,11,21).getTime();
+ console.log('  OK   cierre/reapertura, cambio de cuenta y vuelta a la app fuera de fechas');
  const cancelado=el();ctx.arrastreWrapped(cancelado);reducido=false;
  cancelado.listeners.touchstart({touches:[{clientY:0}],timeStamp:0});cancelado.listeners.touchmove({touches:[{clientY:60}],timeStamp:100});
  assert.match(cancelado.style.transform,/translateY/);cancelado.listeners.touchcancel();assert.equal(cancelado.style.transform,'');

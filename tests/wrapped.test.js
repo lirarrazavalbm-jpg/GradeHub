@@ -1,6 +1,7 @@
 // El Wrapped tiene que decir los mismos números que Inicio y no aparecer antes
 // de tiempo. La pauta de ejemplo va acá adentro, no sale del catálogo.
 const fs=require('fs'),vm=require('vm');
+process.env.TZ='America/Santiago';
 const raiz=__dirname+'/../';
 const src=['data.js','engine.js','app.js','app-session.js','render-main.js','render-agenda.js']
   .map(f=>fs.readFileSync(raiz+f,'utf8')).join('\n');
@@ -61,7 +62,7 @@ chk('el arco no usa colores del semáforo',!/var\(--(green|yellow|red)/.test(run
 // HIG, Accessibility: un gesto necesita una alternativa, y el texto tiene que
 // poder agrandarse al 200% sin que nada se salga de la pantalla.
 const render=fs.readFileSync(raiz+'render-main.js','utf8'),css=fs.readFileSync(raiz+'styles.css','utf8');
-chk('VoiceOver y teclado tienen Anterior y Siguiente',/data-paso="-1">Anterior</.test(render)&&/data-paso="1">Siguiente</.test(render));
+chk('VoiceOver y teclado tienen Anterior y Siguiente',/data-paso="-1"[^>]*>Anterior</.test(render)&&/data-paso="1"[^>]*>Siguiente</.test(render));
 chk('los números gigantes no crecen con el texto del sistema',/\.wrapped-big\{font-size:clamp\(\d+px,[^;]*\d+px\)/.test(css));
 chk('la pantalla se desplaza si el texto grande no cabe',/\.wrapped-slide\{[^}]*overflow-y:auto/.test(css));
 

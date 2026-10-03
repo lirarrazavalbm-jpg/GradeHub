@@ -1055,24 +1055,62 @@ function renderStats(){
 // `curso_posicion` y `universidad_posicion`, que solo devuelven porcentajes y
 // solo desde cinco personas.
 //
-// Sale el 20 de diciembre y no antes: para entonces ya están las notas de
-// exámenes y recuperativos, y un resumen con el examen pendiente dice un
-// promedio que todavía puede cambiar. Decisión de Martín del 2026-09-28.
-// Las pruebas fuerzan el reloj: ninguna URL revela la sorpresa antes de fecha.
-const WRAPPED_DESDE='2026-12-20',WRAPPED_HASTA='2027-03-01';
+// La ventana habilita la acción, no declara completas las notas. El estudiante
+// pulsa «Semestre terminado» y el motor revisa el cierre antes de la sorpresa.
+// Fechas civiles en Chile, inicio inclusivo y término exclusivo. Sin atajos URL.
+const WRAPPED_DESDE='2026-12-20',WRAPPED_HASTA='2027-03-01',WRAPPED_PERIODO='2026-2';
 function wrappedDisponible(hoy){
   const d=hoy||new Date();
-  const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(!Number.isFinite(d.getTime()))return false;
+  const partes=new Intl.DateTimeFormat('en',{timeZone:'America/Santiago',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d);
+  const parte=t=>partes.find(p=>p.type===t).value;
+  const iso=`${parte('year')}-${parte('month')}-${parte('day')}`;
   return iso>=WRAPPED_DESDE&&iso<WRAPPED_HASTA;
 }
 
-// El semestre en curso si tiene notas; si ya se archivó, el último archivado
-// (el historial guarda lo más reciente al inicio).
+// Los ramos actuales; si ya se archivaron, solo el último del período de esta
+// campaña. Nunca se reemplaza una cuenta parcial con un semestre anterior.
 function ramosWrapped(){
-  const conNota=rs=>ramosDelPromedio(rs||[]).some(r=>ramoAvg(r,undefined,rs)!==null);
-  if(conNota(S.ramos))return {ramos:S.ramos,actual:true,label:semester()};
+  // Un ramo vacío también pertenece al cierre: no se oculta detrás del último
+  // archivado ni se elimina del resumen para hacer pasar una cuenta parcial.
+  if((S.ramos||[]).length)return {ramos:S.ramos,actual:true,label:WRAPPED_PERIODO};
   const h=(S.historial||[])[0];
-  return h&&conNota(h.ramos)?{ramos:h.ramos,actual:false,label:h.label||'Semestre archivado'}:null;
+  return h&&h.label===WRAPPED_PERIODO&&(h.ramos||[]).length?{ramos:h.ramos,actual:false,label:h.label}:null;
+}
+
+// No calcula promedios nuevos ni modifica el estado. Casillas, eximición,
+// descartes e inasistencias se resuelven en la misma estructura que usa la app.
+function cierreWrapped(base){
+  const pendientes=[];
+  for(const r of base&&base.ramos||[]){
+    // El acta importada al historial ya trae la nota final confirmada.
+    if(!base.actual&&Number.isFinite(r.avgOverride))continue;
+    const {res,estructura}=calculoRamoConCompuertas(r);
+    const faltantes=res.emptyLeaves.filter(n=>n.effectiveWeight>0).map(n=>n.name||'Evaluación sin nota');
+    for(const c of estructura.children||[]){
+      if(c.weight>0&&!c.children.length)faltantes.push(c.name||'Evaluaciones sin registrar');
+    }
+    if(!Number.isFinite(ramoAvg(r,undefined,base.ramos)))faltantes.push('Revisa la pauta y las notas de este ramo');
+    if(faltantes.length)pendientes.push({id:r.id,nombre:r.nombre,evaluaciones:[...new Set(faltantes)]});
+  }
+  return {listo:!!base&&base.ramos.length>0&&pendientes.length===0,pendientes};
+}
+
+function revisarCierreWrapped(base,cierre){
+  const cuenta=currentUser&&currentUser.id,tenant=S.tenant;
+  const caja=document.getElementById('modal-content');
+  caja.innerHTML=`<div class="modal-title">Antes de ver tu resumen</div>
+    <p>Revisa estas evaluaciones para cerrar el semestre con tus notas finales.</p>
+    <ul style="padding-left:20px;margin:16px 0;line-height:1.5;">${cierre.pendientes.map(r=>`<li><b>${esc(r.nombre)}</b><ul>${r.evaluaciones.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></li>`).join('')}</ul>
+    <div class="modal-btns"><button class="btn-cancel" type="button" style="min-height:44px;">Ahora no</button>
+    <button class="btn-confirm" type="button" style="min-height:44px;">Revisar notas</button></div>`;
+  caja.querySelector('.btn-cancel').addEventListener('click',closeModal);
+  caja.querySelector('.btn-confirm').addEventListener('click',()=>{
+    closeModal();
+    if(base.actual&&(currentUser&&currentUser.id)===cuenta&&S.tenant===tenant&&S.ramos===base.ramos&&S.ramos.some(r=>r.id===cierre.pendientes[0]?.id))openRamo(cierre.pendientes[0].id);
+    else if(!base.actual&&(currentUser&&currentUser.id)===cuenta){renderStats();showTab('stats');}
+  });
+  openModal();
 }
 
 // Todo sale de `ramoAvg` y `gpa`: son las únicas fórmulas de promedio que hay,
@@ -1179,6 +1217,7 @@ function slidesWrapped(d,comp,label){
   // `short` ("FEN", "UC"): "En toda U. de Chile · FEN" no se dice así.
   const u=esc((TENANTS[S.tenant]&&TENANTS[S.tenant].short)||'tu universidad');
   const nombre=esc((S.userName||'').split(' ')[0]||'');
+  s.push({tipo:'umbral',k:'Antes de seguir',titulo:'Hay algo que queremos mostrarte.',sub:'Un semestre entero. Muchas historias. Algunas quedaron acá.'});
   s.push({tipo:'portada',k:esc(label),titulo:nombre?`${nombre}, este fue tu semestre`:'Este fue tu semestre',sub:'Tus notas, contadas de otra forma.'});
   s.push({k:'Este semestre ingresaste',big:cifraWrapped(String(d.nNotas)),sub:`nota${pl(d.nNotas)} en ${d.nRamos} ramo${pl(d.nRamos)}`,viz:grillaWrapped(d.notasColores)});
   if(d.gpa!==null)s.push({k:'Tu promedio',big:cifraWrapped(fmtPromedio(d.gpa),1),sub:`${d.aprobando} de ${d.nRamos} ramo${pl(d.nRamos)} con promedio de aprobación`,viz:arcoWrapped(d.gpa)});
@@ -1206,22 +1245,31 @@ const ICONO_CERRAR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" 
 // El ícono de compartir de iOS: cuadrado abierto con la flecha hacia arriba.
 const ICONO_COMPARTIR='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M8 11H6.5A1.5 1.5 0 0 0 5 12.5v7A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-7a1.5 1.5 0 0 0-1.5-1.5H16"/></svg>';
 
-let _wrapped=null,_wrappedAbriendo=false;
+let _wrapped=null,_wrappedAbriendo=false,_wrappedVentanaTimer=null;
+function contextoWrappedVigente(estado){
+  const base=ramosWrapped();
+  return wrappedDisponible()&&(currentUser&&currentUser.id)===estado.cuenta&&S.tenant===estado.tenant&&base&&base.ramos===estado.ramos&&JSON.stringify(base.ramos)===estado.version;
+}
+// Reevaluar al minuto civil y al volver a la app: ni una pestaña abierta de
+// noche ni un teléfono que despierta mantienen la sorpresa fuera de fecha.
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')renderWrappedHome();});
 async function abrirWrapped(){
   const base=wrappedDisponible()&&ramosWrapped();if(!base||_wrapped||_wrappedAbriendo)return;
+  const cierre=cierreWrapped(base);if(!cierre.listo){revisarCierreWrapped(base,cierre);return;}
   _wrappedAbriendo=true;
   const cuenta=currentUser&&currentUser.id,tenant=S.tenant;
+  const version=JSON.stringify(base.ramos);
   // El foco se guarda ANTES de desactivar el botón: desactivarlo se lo quita,
   // y al cerrar volvía al body en vez de al botón que lo abrió.
   const foco=document.activeElement;
   const btn=document.getElementById('home-wrapped-btn');
   const etiqueta=btn&&btn.querySelector('span');
-  if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');etiqueta.textContent='Preparando…';}
+  if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');etiqueta.textContent='Revisando tus notas…';}
   const comp=base.actual?await Promise.race([comparacionWrapped(),new Promise(r=>setTimeout(()=>r(null),4000))]):null;
-  if(btn){btn.disabled=false;btn.removeAttribute('aria-busy');etiqueta.textContent='Ver mi semestre';}
+  if(btn){btn.disabled=false;btn.removeAttribute('aria-busy');etiqueta.textContent='Semestre terminado';}
   _wrappedAbriendo=false;
   const actual=ramosWrapped();
-  if(!wrappedDisponible()||(currentUser&&currentUser.id)!==cuenta||S.tenant!==tenant||!actual||actual.ramos!==base.ramos)return;
+  if(!wrappedDisponible()||(currentUser&&currentUser.id)!==cuenta||S.tenant!==tenant||!actual||actual.ramos!==base.ramos||JSON.stringify(actual.ramos)!==version||!cierreWrapped(actual).listo)return;
   const datos=datosWrapped(base.ramos);if(!datos)return;
   const slides=slidesWrapped(datos,comp,base.label);
   track('wrapped_open',{pantallas:slides.length});
@@ -1232,9 +1280,11 @@ async function abrirWrapped(){
   ov.innerHTML=`<span class="wrapped-luz a"></span><span class="wrapped-luz b"></span><span class="wrapped-luz c"></span>
     <span class="wrapped-tinta a"></span><span class="wrapped-tinta b"></span>
     <div class="wrapped-barras"></div>
-    <button class="wrapped-cerrar wrapped-vidrio" type="button" aria-label="Cerrar">${ICONO_CERRAR}</button>
+    <button class="wrapped-cerrar wrapped-vidrio" type="button" aria-label="Cerrar" style="flex-shrink:0;">${ICONO_CERRAR}</button>
     <div class="wrapped-slide" aria-live="polite"></div>
-    <div class="wrapped-pasos"><button type="button" data-paso="-1">Anterior</button><button type="button" data-paso="1">Siguiente</button></div>`;
+    <div class="wrapped-pasos" style="position:relative;z-index:2;display:flex;justify-content:space-between;gap:12px;flex-shrink:0;">
+      <button class="wrapped-vidrio" type="button" data-paso="-1" style="position:static;opacity:1;padding:0 14px;border-radius:999px;font:inherit;">Anterior</button>
+      <button class="wrapped-vidrio" type="button" data-paso="1" style="position:static;opacity:1;padding:0 14px;border-radius:999px;font:inherit;">Siguiente</button></div>`;
   // Tocar el tercio izquierdo vuelve, el resto avanza: igual que las historias.
   // Los botones "Anterior" y "Siguiente" hacen lo mismo para VoiceOver y el
   // teclado, que no tienen cómo tocar un tercio de pantalla (HIG, Accessibility:
@@ -1251,7 +1301,7 @@ async function abrirWrapped(){
   document.body.appendChild(ov);
   const fondo=[...document.body.children].filter(el=>el!==ov).map(el=>({el,inert:el.inert}));
   fondo.forEach(({el})=>{el.inert=true;});
-  _wrapped={ov,slides,i:0,foco,fondo,imagen:null,archivo:null,imagenTerminada:false};
+  _wrapped={ov,slides,i:0,foco,fondo,cuenta,tenant,ramos:base.ramos,version,imagen:null,archivo:null,imagenTerminada:false};
   pintarWrapped();
   ov.querySelector('.wrapped-cerrar').focus();
 }
@@ -1297,8 +1347,10 @@ function arrastreWrapped(ov){
 }
 
 function pintarWrapped(){
-  if(!wrappedDisponible())return cerrarWrapped(true);
+  if(!wrappedDisponible()||(_wrapped?.version&&!contextoWrappedVigente(_wrapped)))return cerrarWrapped(true);
   const {ov,slides,i}=_wrapped,s=slides[i];
+  ov.querySelector('[data-paso="-1"]').disabled=i===0;
+  ov.querySelector('[data-paso="1"]').textContent=s.tipo==='umbral'?'Descubrir mi semestre':i===slides.length-1?'Terminar':'Siguiente';
   // Las tres luces del fondo cambian de lugar en cada pantalla: es lo que hace
   // sentir que se avanzó, sin mover el texto de su sitio.
   ov.dataset.tono=String(i%4);
@@ -1491,16 +1543,22 @@ async function compartirWrapped(){
 }
 
 function renderWrappedHome(){
+  clearTimeout(_wrappedVentanaTimer);
   const caja=document.getElementById('home-wrapped');
   if(!caja)return;
+  if(ramosWrapped())_wrappedVentanaTimer=setTimeout(renderWrappedHome,60000-Date.now()%60000);
+  if(_wrapped&&!contextoWrappedVigente(_wrapped))cerrarWrapped(true);
   const base=wrappedDisponible()&&ramosWrapped();
   if(!base){caja.style.display='none';caja.innerHTML='';if(_wrapped)cerrarWrapped(true);return;}
   caja.style.display='grid';
+  // Conservar el botón y su foco mientras la ventana sigue abierta. El reloj
+  // no debe quitarlo bajo el dedo ni desconectar el foco de vuelta del modal.
+  if(caja.innerHTML)return;
   caja.innerHTML=`<div class="home-wrapped-texto">
-      <span class="home-wrapped-k">Ya está listo</span>
-      <strong>Tu ${esc(base.label)}, en historias</strong>
-      <small>Tus números, tu mejor nota y cómo te fue al lado del resto.</small>
-      <button id="home-wrapped-btn" type="button"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 1.5v9l7.5-4.5z" fill="currentColor"/></svg><span>Ver mi semestre</span></button>
+      <span class="home-wrapped-k">Cierre del semestre</span>
+      <strong>¿Ya tienes todas tus notas?</strong>
+      <small>Revisa tu semestre antes de seguir. Tus ramos y notas se conservan.</small>
+      <button id="home-wrapped-btn" type="button"><span>Semestre terminado</span></button>
     </div>
     <div class="home-wrapped-pila" aria-hidden="true"><span></span><span></span><span><b>${esc(base.label)}</b></span></div>`;
   document.getElementById('home-wrapped-btn').addEventListener('click',abrirWrapped);
