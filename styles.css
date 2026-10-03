@@ -2969,3 +2969,19 @@ input.eval-row-input{border-radius:7px;background:var(--bg2);font-weight:550;}
 @media(min-width:1000px){#admin-body:has(.admin-hig){max-width:1100px;margin:0 auto;}}
 @media(max-width:760px){.admin-hig-resumen{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 16px;}.admin-hig-resumen>div+div{padding-left:0;border-left:0;}.admin-hig-fila>summary{grid-template-columns:minmax(0,1fr) auto;gap:12px;}.admin-hig-identidad{grid-column:1/-1;}.admin-hig-importe{grid-column:2;grid-row:2;}.admin-hig-fila>summary>span:last-child{display:none;}.admin-hig .admin-cobro{grid-template-columns:repeat(2,minmax(0,1fr));}.admin-hig .admin-cobro>span{grid-column:1/-1;}.admin-hig .admin-cobro button{grid-column:1/-1;}.admin-hig .admin-anuncio{padding:16px;}.admin-hig-persona{align-items:flex-start;flex-direction:column;}.admin-hig-buscar{flex-basis:100%;}.admin-revision-datos,.admin-revision-acciones{grid-template-columns:minmax(0,1fr);}.admin-revision-acciones label{grid-column:1;}.admin-revision-acciones .btn-confirm{width:100%;}.admin-revision-acciones .clase-accion{width:100%;}}
 @media(prefers-reduced-motion:reduce){.admin-hig *{animation:none;transition:none;}}
+
+/* Wrapped conserva sus historias; los controles permiten volver a cualquier momento. */
+.wrapped-cabecera{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative;z-index:3;margin-top:10px;}
+.wrapped-cabecera .wrapped-cerrar{margin:0;flex-shrink:0;}
+.wrapped-historias{min-height:44px;min-width:44px;padding:8px 14px;border-radius:24px;font:600 .875rem var(--font-ui);}
+.wrapped-historias-lista{position:absolute;z-index:4;top:calc(env(safe-area-inset-top,0px) + 72px);left:max(24px,env(safe-area-inset-left,0px));right:max(24px,env(safe-area-inset-right,0px));max-width:430px;margin:auto;max-height:60vh;overflow:auto;padding:8px;background:#0b1016;color:#fff;border:1px solid #757b83;border-radius:16px;box-shadow:var(--shadow-lg);}
+.wrapped-historias-lista button{display:block;width:100%;min-height:44px;padding:12px;text-align:left;font:inherit;font-size:1rem;line-height:1.4;background:transparent;color:#fff;border:0;border-radius:8px;overflow-wrap:anywhere;}
+.wrapped-historias-lista [aria-current=step]{background:#fff;color:#0b1016;font-weight:700;}
+.wrapped .wrapped-pasos{position:relative;z-index:2;display:flex;justify-content:space-between;gap:12px;flex-shrink:0;padding-top:12px;}
+.wrapped .wrapped-pasos button,.wrapped .wrapped-pasos button:focus-visible{position:static;opacity:1;min-width:44px;min-height:44px;width:auto;height:auto;bottom:auto;margin:0;padding:10px 18px;border:1px solid #757b83;border-radius:24px;background:#0b1016;color:#fff;font:600 .875rem var(--font-ui);}
+.wrapped .wrapped-pasos button:disabled{background:#262c34;color:#c4c9d0;cursor:default;}
+.wrapped-saludo video{display:block;margin:auto;width:auto;max-width:100%;height:auto;max-height:46vh;object-fit:contain;border-radius:12px;background:#000;}
+.wrapped-saludo details{margin-top:12px;border-radius:12px;background:#0b1016;color:#fff;padding:4px 12px;user-select:text;-webkit-user-select:text;}
+.wrapped-saludo summary{min-height:44px;display:list-item;padding:12px 0;font-size:1rem;cursor:pointer;}
+.wrapped-saludo details p,.wrapped-saludo-estado{font-size:1rem;line-height:1.5;white-space:pre-wrap;padding:8px 0;overflow-wrap:anywhere;}
+.wrapped [hidden]{display:none!important;}
