@@ -2589,3 +2589,8 @@ const PRESETS_UAI={
 // Registro de contenido: sumar una universidad no exige replicar los cuatro
 // selectores de pautas. UC conserva su restricción por carrera en el adaptador.
 const PRESETS_POR_TENANT={fen:PRESETS_FEN,uc:PRESETS_UC,uai:PRESETS_UAI};
+
+// Saludos editoriales para Wrapped. Vacío hasta recibir videos reales y revisados.
+// Cada entrada: {id, universidad, docente, siglas:[], nombres:[], video, poster,
+// subtitulos, transcripcion, segundos}. Selección local, sin notas ni rankings.
+const SALUDOS_WRAPPED=[];

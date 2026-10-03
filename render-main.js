@@ -1129,6 +1129,51 @@ async function comparacionWrapped(){
   return vigente()?out:null;
 }
 
+// Un saludo es contenido editorial, no evidencia de quién dicta una sección.
+// Se prioriza un ramo que realmente esté en el resumen; después un saludo general.
+function saludoWrapped(ramos,tenant,catalogo){
+  if(!wrappedDisponible()||!['fen','uc','uai','uandes'].includes(tenant))return null;
+  const normalizar=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+  const media=(url,ext)=>{
+    if(typeof url!=='string'||!/^https:\/\/|^\/(?!\/)/.test(url))return false;
+    try{const u=new URL(url,location.origin);return u.origin===location.origin&&!u.username&&!u.password&&!u.search&&!u.hash&&ext.test(u.pathname);}catch(e){return false;}
+  };
+  const validos=(Array.isArray(catalogo)?catalogo:[]).filter(c=>c&&c.universidad===tenant&&
+    typeof c.id==='string'&&c.id.length>0&&typeof c.docente==='string'&&c.docente.trim().length>0&&c.docente.length<=100&&
+    Number.isFinite(c.segundos)&&c.segundos>0&&c.segundos<=30&&
+    Array.isArray(c.siglas)&&c.siglas.every(x=>typeof x==='string'&&x.trim())&&Array.isArray(c.nombres)&&c.nombres.every(x=>typeof x==='string'&&x.trim())&&
+    typeof c.transcripcion==='string'&&c.transcripcion.trim().length>0&&c.transcripcion.length<=5000&&
+    media(c.video,/\.mp4$/i)&&media(c.poster,/\.(jpe?g|png|webp)$/i)&&media(c.subtitulos,/\.vtt$/i));
+  const propios=(ramos||[]).filter(r=>r&&(!r.origen?.tenant||r.origen.tenant===tenant));
+  const especifico=validos.find(c=>propios.some(r=>{
+    const sigla=r.sigla||(r.origen?siglaDeRamo(r,tenant):null);
+    // Si el saludo usa códigos, un homónimo por nombre no reemplaza el código.
+    return c.siglas.length?!!sigla&&c.siglas.some(x=>normalizar(x)===normalizar(sigla)):
+      c.nombres.some(x=>normalizar(x)===normalizar(r.nombre));
+  }));
+  return especifico||validos.find(c=>!c.siglas.length&&!c.nombres.length)||null;
+}
+function pararSaludoWrapped(){_wrapped?.ov.querySelector('video')?.pause?.();}
+function visibilidadSaludoWrapped(){if(document.visibilityState==='hidden')pararSaludoWrapped();}
+function historiaWrapped(s){
+  return s.tipo==='portada'?'Tu semestre':s.tipo==='final'?'Resumen para compartir':
+    s.tipo==='saludo'?'Saludo de '+esc(s.saludo.docente):s.k;
+}
+function elegirHistoriaWrapped(i){
+  if(!_wrapped||!Number.isInteger(i)||i<0||i>=_wrapped.slides.length)return;
+  const paso=i-_wrapped.i;
+  _wrapped.ov.querySelector('.wrapped-historias-lista').hidden=true;
+  _wrapped.ov.querySelector('.wrapped-historias').setAttribute('aria-expanded','false');
+  if(paso)pasarWrapped(paso);
+  _wrapped?.ov.querySelector('.wrapped-historias').focus();
+}
+function desplegarHistoriasWrapped(){
+  if(!_wrapped)return;
+  const panel=_wrapped.ov.querySelector('.wrapped-historias-lista'),abrir=panel.hidden;
+  panel.hidden=!abrir;_wrapped.ov.querySelector('.wrapped-historias').setAttribute('aria-expanded',String(abrir));
+  if(abrir){pararSaludoWrapped();panel.querySelector('[aria-current="step"]')?.focus();}
+}
+
 // ─── Piezas visuales de cada pantalla ───
 // Todo lo que llevan adentro es texto ya escapado o números que calculó la app.
 // Son decorado con `aria-hidden`: lo que importa también está dicho en palabras.
@@ -1224,6 +1269,8 @@ async function abrirWrapped(){
   if(!wrappedDisponible()||(currentUser&&currentUser.id)!==cuenta||S.tenant!==tenant||!actual||actual.ramos!==base.ramos)return;
   const datos=datosWrapped(base.ramos);if(!datos)return;
   const slides=slidesWrapped(datos,comp,base.label);
+  const saludo=saludoWrapped(base.ramos,tenant,typeof SALUDOS_WRAPPED==='undefined'?[]:SALUDOS_WRAPPED);
+  if(saludo)slides.splice(slides.length-1,0,{tipo:'saludo',k:'Antes de cerrar',saludo});
   track('wrapped_open',{pantallas:slides.length});
   const ov=document.createElement('div');
   ov.className='wrapped';
@@ -1232,7 +1279,9 @@ async function abrirWrapped(){
   ov.innerHTML=`<span class="wrapped-luz a"></span><span class="wrapped-luz b"></span><span class="wrapped-luz c"></span>
     <span class="wrapped-tinta a"></span><span class="wrapped-tinta b"></span>
     <div class="wrapped-barras"></div>
-    <button class="wrapped-cerrar wrapped-vidrio" type="button" aria-label="Cerrar">${ICONO_CERRAR}</button>
+    <div class="wrapped-cabecera"><button class="wrapped-historias wrapped-vidrio" type="button" aria-expanded="false" aria-controls="wrapped-historias-lista">Historias</button>
+    <button class="wrapped-cerrar wrapped-vidrio" type="button" aria-label="Cerrar">${ICONO_CERRAR}</button></div>
+    <nav id="wrapped-historias-lista" class="wrapped-historias-lista" aria-label="Historias del semestre" hidden></nav>
     <div class="wrapped-slide" aria-live="polite"></div>
     <div class="wrapped-pasos"><button type="button" data-paso="-1">Anterior</button><button type="button" data-paso="1">Siguiente</button></div>`;
   // Tocar el tercio izquierdo vuelve, el resto avanza: igual que las historias.
@@ -1243,11 +1292,16 @@ async function abrirWrapped(){
     if(e.target.closest('.wrapped-cerrar'))return cerrarWrapped();
     if(e.target.closest('.wrapped-compartir'))return compartirWrapped();
     if(e.target.closest('.wrapped-descargar'))return descargarWrapped();
+    if(e.target.closest('.wrapped-historias'))return desplegarHistoriasWrapped();
+    const historia=e.target.closest('[data-historia]');if(historia)return elegirHistoriaWrapped(Number(historia.dataset.historia));
+    if(e.target.closest('video,summary,details,a,.wrapped-historias-lista'))return;
+    if(ov.querySelector('.wrapped-historias-lista').hidden===false)return desplegarHistoriasWrapped();
     const b=e.target.closest('[data-paso]');
     pasarWrapped(b?Number(b.dataset.paso):e.clientX<ov.clientWidth/3?-1:1);
   });
   arrastreWrapped(ov);
   document.addEventListener('keydown',teclaWrapped);
+  document.addEventListener('visibilitychange',visibilidadSaludoWrapped);
   document.body.appendChild(ov);
   const fondo=[...document.body.children].filter(el=>el!==ov).map(el=>({el,inert:el.inert}));
   fondo.forEach(({el})=>{el.inert=true;});
@@ -1271,7 +1325,7 @@ function arrastreWrapped(ov){
     ov.style.borderRadius=y?`${Math.round(k*36)}px`:'';
   };
   ov.addEventListener('touchstart',e=>{
-    y0=ov.querySelector('.wrapped-slide').scrollTop>0?null:e.touches[0].clientY;
+    y0=e.target?.closest?.('video,button,summary,a,.wrapped-historias-lista')||ov.querySelector('.wrapped-slide').scrollTop>0?null:e.touches[0].clientY;
     dy=0;v=0;yPrev=y0;tPrev=t0=e.timeStamp;
     ov.style.transition='none';
   },{passive:true});
@@ -1299,6 +1353,12 @@ function arrastreWrapped(ov){
 function pintarWrapped(){
   if(!wrappedDisponible())return cerrarWrapped(true);
   const {ov,slides,i}=_wrapped,s=slides[i];
+  pararSaludoWrapped();
+  const lista=ov.querySelector('.wrapped-historias-lista');lista.hidden=true;
+  lista.innerHTML=slides.map((historia,j)=>`<button type="button" data-historia="${j}"${j===i?' aria-current="step"':''}>${j+1}. ${historiaWrapped(historia)}</button>`).join('');
+  const historias=ov.querySelector('.wrapped-historias');historias.textContent=`Historias · ${i+1} de ${slides.length}`;historias.setAttribute('aria-expanded','false');
+  ov.querySelector('[data-paso="-1"]').disabled=i===0;
+  ov.querySelector('[data-paso="1"]').textContent=i===slides.length-1?'Terminar':'Siguiente';
   // Las tres luces del fondo cambian de lugar en cada pantalla: es lo que hace
   // sentir que se avanzó, sin mover el texto de su sitio.
   ov.dataset.tono=String(i%4);
@@ -1323,6 +1383,18 @@ function pintarWrapped(){
     // compartir se abra en el mismo toque, y dibujarla ahí lo haría esperar.
     prepararImagenWrapped(s);
     actualizarCompartirWrapped();
+    return;
+  }
+  if(s.tipo==='saludo'){
+    const c=s.saludo;
+    caja.innerHTML=p('wrapped-k',s.k)+p('wrapped-titulo',`Un saludo de ${esc(c.docente)}`)+
+      `<div class="wrapped-saludo"><video controls playsinline preload="none" crossorigin="anonymous" poster="${esc(c.poster)}" src="${esc(c.video)}" aria-label="Saludo de ${esc(c.docente)}">
+        <track kind="captions" srclang="es" label="Español" src="${esc(c.subtitulos)}" default></video>
+        <p class="wrapped-saludo-estado" role="status" hidden>No pudimos cargar el video. Puedes leer el saludo abajo y seguir con tu resumen.</p>
+        <details><summary>Leer el saludo</summary><p>${esc(c.transcripcion)}</p></details></div>`;
+    const video=caja.querySelector('video');
+    video.addEventListener('error',()=>{video.hidden=true;caja.querySelector('.wrapped-saludo-estado').hidden=false;caja.querySelector('details').open=true;});
+    // No autoplay ni avance automático: la persona decide cuándo mirar o seguir.
     return;
   }
   const portada=s.tipo==='portada';
@@ -1370,12 +1442,17 @@ function pasarWrapped(paso){
 function teclaWrapped(e){
   if(!_wrapped)return;
   if(e.key==='Tab'){
-    const botones=[..._wrapped.ov.querySelectorAll('button:not(:disabled)')];
+    const botones=[..._wrapped.ov.querySelectorAll('button:not(:disabled),summary,video')].filter(el=>!el.closest('[hidden]'));
     const indice=botones.indexOf(document.activeElement);
     if(botones.length&&(indice<0||(e.shiftKey?indice===0:indice===botones.length-1))){
       e.preventDefault();botones[e.shiftKey?botones.length-1:0].focus();
     }
-  }else if(e.key==='Escape')cerrarWrapped();
+  }else if(e.key==='Escape'){
+    if(document.fullscreenElement||_wrapped.ov.querySelector('video')?.webkitDisplayingFullscreen)return;
+    if(_wrapped.ov.querySelector('.wrapped-historias-lista')?.hidden===false){desplegarHistoriasWrapped();_wrapped.ov.querySelector('.wrapped-historias').focus();}
+    else cerrarWrapped();
+  }
+  else if(e.target?.closest?.('video,summary,details,.wrapped-historias-lista'))return;
   else if(e.key===' '&&e.target&&e.target.closest('button'))return; // La barra activa el botón enfocado.
   else if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();pasarWrapped(1);}
   else if(e.key==='ArrowLeft')pasarWrapped(-1);
@@ -1386,6 +1463,8 @@ function cerrarWrapped(yaSalio){
   if(!_wrapped||_wrapped.saliendo)return;
   _wrapped.saliendo=true;
   document.removeEventListener('keydown',teclaWrapped);
+  document.removeEventListener('visibilitychange',visibilidadSaludoWrapped);
+  pararSaludoWrapped();
   const {ov,foco,fondo}=_wrapped;
   const fin=()=>{ov.remove();fondo.forEach(({el,inert})=>{el.inert=inert;});_wrapped=null;if(foco&&foco.isConnected&&foco.focus)foco.focus();};
   if(yaSalio===true||movimientoReducido())return fin();
