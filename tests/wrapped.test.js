@@ -50,6 +50,13 @@ ctx.__ramos[0].nombre='Micro';
 const d2=run('datosWrapped(__ramos)');
 chk('la grilla tiene un punto por nota',d2.notasColores.length===d2.nNotas);
 chk('el ranking va de mejor a peor',d2.ranking.map(x=>x.nombre).join()==='Micro,Conta');
+const rankingAccesible=run('rankingWrapped(datosWrapped(__ramos).ranking)');
+chk('los nombres y promedios del ranking se ofrecen al lector de pantalla',
+  !/<(?:ol|li|span|b)\b[^>]*aria-hidden="true"/.test(rankingAccesible)
+  && /<span>Micro<\/span><b>6\.0<\/b>/.test(rankingAccesible)
+  && /<span>Conta<\/span><b>3\.5<\/b>/.test(rankingAccesible));
+chk('el ranking accesible conserva una lista ordenada y una entrada por ramo',
+  /^<ol\b/.test(rankingAccesible) && (rankingAccesible.match(/<li\b/g)||[]).length===d2.ranking.length);
 const cifra=run('cifraWrapped("5.6",1)');
 chk('la cifra que cuenta termina en el texto que formateó la app',/data-hasta="5.6"/.test(cifra)&&/data-desde="1"/.test(cifra)&&/>5\.6<\/span>/.test(cifra));
 chk('VoiceOver lee la cifra final, no el conteo',/aria-hidden="true"/.test(cifra)&&/class="wrapped-oculto">5\.6</.test(cifra));

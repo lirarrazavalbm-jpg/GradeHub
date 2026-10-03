@@ -1131,7 +1131,8 @@ async function comparacionWrapped(){
 
 // ─── Piezas visuales de cada pantalla ───
 // Todo lo que llevan adentro es texto ya escapado o números que calculó la app.
-// Son decorado con `aria-hidden`: lo que importa también está dicho en palabras.
+// Los gráficos son decorado con `aria-hidden`; el ranking conserva su lista
+// accesible porque contiene nombres y promedios que no se repiten en el texto.
 
 // Una cifra que cuenta desde `desde` hasta su valor cuando aparece la pantalla.
 // El texto final es SIEMPRE el que ya formateó la app (`fmtPromedio`, `fmt`):
@@ -1162,7 +1163,7 @@ function arcoWrapped(g){
 // Los ramos ordenados por promedio. La línea de color a la izquierda es la
 // misma que en Inicio: el color del ramo vive ahí y no tiñe la barra.
 function rankingWrapped(ranking){
-  return `<ol class="wrapped-ranking" aria-hidden="true">${ranking.slice(0,5).map((x,i)=>`
+  return `<ol class="wrapped-ranking">${ranking.slice(0,5).map((x,i)=>`
     <li class="${i===0?'top':''}" style="--c:${esc(x.color)};--d:${3+i/2};--v:${Math.max((x.avg-1)/6,.02).toFixed(3)}">
       <span>${esc(x.nombre)}</span><b>${fmtPromedio(x.avg)}</b><i></i></li>`).join('')}</ol>`;
 }
