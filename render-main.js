@@ -1361,11 +1361,15 @@ function pasarWrapped(paso){
   const i=_wrapped.i+paso;
   if(i>=_wrapped.slides.length)return cerrarWrapped();
   if(i<0)return;
+  const estado=_wrapped,focoEnHistoria=document.activeElement&&document.activeElement.closest('.wrapped-slide');
   _wrapped.i=i;
   // La entrada viene del lado hacia donde se avanzó: adelante entra desde la
   // derecha, atrás desde la izquierda (HIG: consistencia espacial).
   _wrapped.ov.dataset.dir=paso>0?'adelante':'atras';
   pintarWrapped();
+  // Compartir y Descargar pertenecen a una historia: al reemplazarla se
+  // retiran del DOM. El teclado sigue en el control persistente de ese paso.
+  if(focoEnHistoria&&_wrapped===estado)estado.ov.querySelector(`[data-paso="${paso>0?1:-1}"]`).focus({preventScroll:true});
 }
 function teclaWrapped(e){
   if(!_wrapped)return;
