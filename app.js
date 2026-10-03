@@ -8997,21 +8997,29 @@ function buildICS(){
 // de una RPC `security definer` y va en la ruta, que es el único lugar donde
 // Google puede llevar un secreto.
 let _feedUrl=null;
+let _feedUsuario=null,_feedVersion=0;
 
 async function pedirFeedCalendario(regenerar){
   if(!supabaseClient||!currentUser)return null;
+  const usuario=currentUser,version=++_feedVersion;
   const {data,error}=await supabaseClient.rpc(regenerar?'calendar_feed_revoke':'calendar_feed_token');
+  if(currentUser!==usuario||version!==_feedVersion)return null;
   if(error)throw error;
   _feedUrl=location.origin+'/cal/'+data;
+  _feedUsuario=usuario;
   return _feedUrl;
 }
 
 async function pintarFeedCalendario(regenerar){
   const inp=document.getElementById('s-cal-url');if(!inp)return;
   inp.value=regenerar?'Generando una nueva…':'Generando…';
+  const usuario=currentUser,pendiente=pedirFeedCalendario(regenerar),version=_feedVersion;
+  const vigente=()=>currentUser===usuario&&version===_feedVersion&&document.getElementById('s-cal-url')===inp;
   try{
-    inp.value=await pedirFeedCalendario(regenerar);
+    const url=await pendiente;
+    if(vigente()&&url)inp.value=url;
   }catch(e){
+    if(!vigente())return;
     inp.value='';
     showToast('No pudimos generar tu URL. Intenta de nuevo.',true);
   }
@@ -9019,7 +9027,7 @@ async function pintarFeedCalendario(regenerar){
 
 function copiarFeedCalendario(){
   const inp=document.getElementById('s-cal-url');
-  if(!inp||!inp.value||!_feedUrl){showToast('Todavía se está generando',true);return;}
+  if(!inp||!inp.value||!_feedUrl||_feedUsuario!==currentUser){showToast('Todavía se está generando',true);return;}
   navigator.clipboard.writeText(_feedUrl)
     .then(()=>{track('calendar_feed_copiado');showToast('URL copiada — pégala en tu calendario');})
     .catch(()=>{inp.select();showToast('Cópiala a mano: quedó seleccionada',true);});
