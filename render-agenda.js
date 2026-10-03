@@ -2,9 +2,20 @@
 // les falta fecha. Se ofrecen como acción, no como un dato perdido.
 function agendaSinFecha(){
   const out=[];
-  S.ramos.forEach(r=>(r.categorias||[]).forEach(c=>{
-    if(!categoriaEximida(r,c)&&!c.fecha&&avgPond(c.notas)===null)out.push({ramo:r,cat:c});
-  }));
+  S.ramos.forEach(r=>{
+    const calculo=calculoRamoConCompuertas(r);
+    const pendientes=new Set(calculo.res.emptyLeaves.map(n=>n.id));
+    (r.categorias||[]).forEach(c=>{
+      if(c.fecha)return;
+      const grupo=calculo.estructura.children.find(g=>g.id===c.id);
+      // La estructura ya excluye eximidos y resuelve ausencias justificadas.
+      if(!grupo||!(grupo.weight>0))return;
+      const fechadas=new Set((c.notas||[]).filter(n=>n.fecha).map(n=>n.id));
+      // Una primera nota no cierra las demás casillas. Tampoco se pide fecha
+      // para las pendientes que ya aparecen con fecha propia en la Agenda.
+      if(!grupo.children.length||grupo.children.some(n=>pendientes.has(n.id)&&!fechadas.has(n.id)))out.push({ramo:r,cat:c});
+    });
+  });
   return out;
 }
 
