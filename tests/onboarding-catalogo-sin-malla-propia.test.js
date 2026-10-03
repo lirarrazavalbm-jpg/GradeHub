@@ -21,7 +21,7 @@ const run=s=>vm.runInContext(s,ctx);
   assert.equal(fila.propio,false);assert.equal(fila.semestre,0,'no inventa el semestre de la carrera propia');
   for(const tenant of ['uc','fen','uandes']){
     run(`selectedTenant='${tenant}';selectedCarrera=null;obRamos=[];renderObCoursePicker();`);
-    assert.equal(/id="ob-course-search"/.test(porId('ob-course-picker').innerHTML),tenant!=='uandes',tenant);
+    assert.match(porId('ob-course-picker').innerHTML,/id="ob-course-search"/,tenant+' sin carrera igual busca en su universidad');
     assert.match(porId('ob-course-picker').innerHTML,/obToggleManual/,'siempre permite ingreso manual');
   }
   console.log('OK: buscador universitario independiente de la malla propia y salida manual');
